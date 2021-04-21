@@ -35,35 +35,35 @@ SDMPC36TG7ADLOPDHA43R3DRR4AEGTPWHXCA6UAAPBB5KMQH4ULFXCQT
 
 Create the participants.
 ```
-cat 1-tx-create-initiator | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
-cat 2-tx-create-responder | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
+cat 1-tx-create-initiator | tee >(stc -) | stc -post -
+cat 2-tx-create-responder | tee >(stc -) | stc -post -
 ```
 
 Create the channel. For the sake of simplicity the root will be the source of
 this transaction so that the sequence number of the transaction is
 predictable, but ordinarily it should be the initiator.
 ```
-cat 3-tx-create-channel | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
+cat 3-tx-create-channel | tee >(stc -) | stc -post -
 ```
 
 ### Close with I getting 75, R getting 75
 Declare a close of the account.
 ```
-date && cat 4-tx-declare-close | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
+date && cat 4-tx-declare-close | tee >(stc -) | stc -post -
 ```
 
 Complete the close of the account.
 ```
-date && cat 5-tx-complete-close | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
+date && cat 5-tx-complete-close | tee >(stc -) | stc -post -
 ```
 
 ### Close with I getting 135, R getting 15
 Declare a close of the account.
 ```
-date && cat 6-tx-declare-close | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
+date && cat 6-tx-declare-close | tee >(stc -) | stc -post -
 ```
 
 Complete the close of the account.
 ```
-date && cat 7-tx-complete-close | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
+date && cat 7-tx-complete-close | tee >(stc -) | stc -post -
 ```
