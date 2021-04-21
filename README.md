@@ -16,7 +16,7 @@ The code in this repository uses forks of some software with partial implementat
 - xdr: https://github.com/leighmcculloch/stellar--stellar-core/tree/cap21/src/xdr
 - stellar-core: https://github.com/leighmcculloch/stellar--stellar-core/pull/1
 - horizon: https://github.com/stellar/go/pull/35
-- stc: https://github.com/leighmcculloch/xdrpp--stc/pull/1
 - quickstart: https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon/pull/1
+- stc: https://github.com/leighmcculloch/xdrpp--stc/pull/1
 
 [CAP-21]: https://stellar.org/protocol/cap-21
