@@ -40,8 +40,8 @@ cat 2-tx-create-responder | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc
 ```
 
 Create the channel. For the sake of simplicity the root will be the source of
-this account so that the sequence number of the transaction is predictable,
-but ordinarily it should be the initiator.
+this transaction so that the sequence number of the transaction is
+predictable, but ordinarily it should be the initiator.
 ```
 cat 3-tx-create-channel | tee >(stc -) | stc -c - | tee >(stc -txhash -) | stc -post -
 ```
