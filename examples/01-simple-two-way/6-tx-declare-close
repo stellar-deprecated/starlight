@@ -1,0 +1,22 @@
+type: ENVELOPE_TYPE_TX
+tx.sourceAccount: GBK34BGFU2HBRUF53HGPV5ICFYJMDMOAUHNUIPZT5C7FTISQGQRHCRYU
+tx.fee: 100
+tx.seqNum: 2000000000000000001
+tx.cond.type: PRECOND_GENERAL
+tx.cond.general.timeBounds._present: false
+tx.cond.general.ledgerBounds._present: false
+tx.cond.general.minSeqNum._present: true
+tx.cond.general.minSeqNum: 0
+tx.cond.general.minSeqAge: 0
+tx.cond.general.minSeqLedgerGap: 0
+tx.memo.type: MEMO_NONE
+tx.operations.len: 1
+tx.operations[0].sourceAccount._present: false
+tx.operations[0].body.type: BUMP_SEQUENCE
+tx.operations[0].body.bumpSequenceOp.bumpTo: 0
+tx.ext.v: 0
+signatures.len: 2
+signatures[0].hint: 662dd7f5 (bad signature/unknown key/standalone is wrong network)
+signatures[0].signature: e0857511df221dafc21fb0e68f00487d32d33d535fbbe4cfdba28f0c08117707b09997ea9b4168a8f2b7e25b3a59f8246590691142cf38616436b63e2a53c202
+signatures[1].hint: ae673f4b (bad signature/unknown key/standalone is wrong network)
+signatures[1].signature: d5106fdb95d0a31b0ff7844cf7403d5c9be1f9e7731017d8d2bcf00339e531061e4abcef49d500e61c648a0ab27d545a245d746670111774aeac0f30af3b1207
