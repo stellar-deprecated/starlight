@@ -25,6 +25,7 @@ Use the fork of `stc`:
 git clone -b cap21 https://github.com/leighmcculloch/xdrpp--stc stc
 cd stc
 make depend
+make
 make install
 export STCNET=standalone
 ```
