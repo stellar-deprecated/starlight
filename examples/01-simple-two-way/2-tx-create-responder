@@ -1,0 +1,15 @@
+type: ENVELOPE_TYPE_TX
+tx.sourceAccount: GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI
+tx.fee: 100
+tx.seqNum: 2
+tx.cond.type: PRECOND_NONE
+tx.memo.type: MEMO_NONE
+tx.operations.len: 1
+tx.operations[0].sourceAccount._present: false
+tx.operations[0].body.type: CREATE_ACCOUNT
+tx.operations[0].body.createAccountOp.destination: GD7ZSZ7G2P3N3JOH5C2CIIHNJWJOD6OMT7R542AC4MW2CY5OM47UWUZG
+tx.operations[0].body.createAccountOp.startingBalance: 5000000000 (500e7)
+tx.ext.v: 0
+signatures.len: 1
+signatures[0].hint: 11b946d6 (GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI)
+signatures[0].signature: 5dfee5d9782b7d9b37673f6f063a3aff33c720ec3bc52027cdce5396156bddb5ab1f57d7d088ea69a67e2d832f586b8ef22e366ef350efb03a482a1db2c8200a

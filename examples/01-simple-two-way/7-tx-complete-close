@@ -1,0 +1,42 @@
+type: ENVELOPE_TYPE_TX
+tx.sourceAccount: GBK34BGFU2HBRUF53HGPV5ICFYJMDMOAUHNUIPZT5C7FTISQGQRHCRYU
+tx.fee: 200
+tx.seqNum: 2000000000000000002
+tx.cond.type: PRECOND_GENERAL
+tx.cond.general.timeBounds._present: false
+tx.cond.general.ledgerBounds._present: false
+tx.cond.general.minSeqNum._present: false
+tx.cond.general.minSeqAge: 120
+tx.cond.general.minSeqLedgerGap: 0
+tx.memo.type: MEMO_NONE
+tx.operations.len: 2
+tx.operations[0].sourceAccount._present: false
+tx.operations[0].body.type: CREATE_CLAIMABLE_BALANCE
+tx.operations[0].body.createClaimableBalanceOp.asset: native
+tx.operations[0].body.createClaimableBalanceOp.amount: 150000000 (15e7)
+tx.operations[0].body.createClaimableBalanceOp.claimants.len: 1
+tx.operations[0].body.createClaimableBalanceOp.claimants[0].type: CLAIMANT_TYPE_V0
+tx.operations[0].body.createClaimableBalanceOp.claimants[0].v0.destination: GD7ZSZ7G2P3N3JOH5C2CIIHNJWJOD6OMT7R542AC4MW2CY5OM47UWUZG
+tx.operations[0].body.createClaimableBalanceOp.claimants[0].v0.predicate.type: CLAIM_PREDICATE_UNCONDITIONAL
+tx.operations[1].sourceAccount._present: false
+tx.operations[1].body.type: SET_OPTIONS
+tx.operations[1].body.setOptionsOp.inflationDest._present: false
+tx.operations[1].body.setOptionsOp.clearFlags._present: false
+tx.operations[1].body.setOptionsOp.setFlags._present: false
+tx.operations[1].body.setOptionsOp.masterWeight._present: false
+tx.operations[1].body.setOptionsOp.lowThreshold._present: true
+tx.operations[1].body.setOptionsOp.lowThreshold: 1
+tx.operations[1].body.setOptionsOp.medThreshold._present: true
+tx.operations[1].body.setOptionsOp.medThreshold: 1
+tx.operations[1].body.setOptionsOp.highThreshold._present: true
+tx.operations[1].body.setOptionsOp.highThreshold: 1
+tx.operations[1].body.setOptionsOp.homeDomain._present: false
+tx.operations[1].body.setOptionsOp.signer._present: true
+tx.operations[1].body.setOptionsOp.signer.key: GD7ZSZ7G2P3N3JOH5C2CIIHNJWJOD6OMT7R542AC4MW2CY5OM47UWUZG
+tx.operations[1].body.setOptionsOp.signer.weight: 0
+tx.ext.v: 0
+signatures.len: 2
+signatures[0].hint: 662dd7f5 (bad signature/unknown key/standalone is wrong network)
+signatures[0].signature: bb5340289d761aa81ddf2799c6846c7b06bbe51d6ecbeb3d11f7049e4371da6f3408be5ccce0d323e7f275ab5f04c06ff7134bb977c81256ec7f98cc78368402
+signatures[1].hint: ae673f4b (GD7ZSZ7G2P3N3JOH5C2CIIHNJWJOD6OMT7R542AC4MW2CY5OM47UWUZG)
+signatures[1].signature: de9abce4c104d66a7e4855301218616e971ec5b463ba82706630215075aeb2a767087993301cecb888d73d50a0c67300cff6e5d3aeff4144cdab2276e62e3a02
