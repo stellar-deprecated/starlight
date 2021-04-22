@@ -19,7 +19,7 @@ SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
 
 ## Building Transactions
 
-Use the fork of `stc`:
+Use the fork of `stc` (if `which stc` returns something, you will need to uninstall that version first):
 
 ```
 git clone -b cap21 https://github.com/leighmcculloch/xdrpp--stc stc
