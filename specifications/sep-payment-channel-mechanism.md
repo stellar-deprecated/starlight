@@ -87,35 +87,6 @@ The participants agree on the period O at channel open.
 The participants may agree at anytime by following the [Change the
 Observation Period](#Change-the-Observation-Period) process.
 
-#### Change the Observation Period
-
-The participants may agree at anytime to decrease period O by simply using a
-smaller value for O in future transaction sets.  The change will only apply
-to future transaction sets.  The change does not require submitting a
-transaction to the network.
-
-The participants may agree at anytime to increase period O by using a larger
-value for O in the next and future transaction sets, or regenerating the most
-recent transaction set, then signing and submitting a transaction that bumps
-the sequence number of the escrow account to the sequence before the most
-recent D_i.  The sequence bump ensures only the most recent transaction with
-the new period O is valid.
-
-The participants:
-
-1. Follow the [Update](#Update) process with the new period O.
-2. Sign and exchange a bump transaction B.
-3. TODO: Set new values for s and i.
-
-The transactions are constructed as follows:
-
-- B, the _bump transaction_, bumps the sequence number of escrow account E
-such that only the most recent transaction set is valid.  B has source
-account E, sequence number s.
-
-  B contains operations:
-  - One `BUMP_SEQUENCE` operation with sequence set to 2(i-1)+1.
-
 ### Accounts
 
 The payment channel utilizes two Stellar accounts that are both 2-of-2
@@ -269,6 +240,35 @@ increase E's sequence number to s.
 
 To close the channel cooperatively, the parties re-sign C_i with a
 `minSeqNum` of s and a `minSeqAge` of 0, then submit this transaction.
+
+#### Change the Observation Period
+
+The participants may agree at anytime to decrease period O by simply using a
+smaller value for O in future transaction sets.  The change will only apply
+to future transaction sets.  The change does not require submitting a
+transaction to the network.
+
+The participants may agree at anytime to increase period O by using a larger
+value for O in the next and future transaction sets, or regenerating the most
+recent transaction set, then signing and submitting a transaction that bumps
+the sequence number of the escrow account to the sequence before the most
+recent D_i.  The sequence bump ensures only the most recent transaction with
+the new period O is valid.
+
+The participants:
+
+1. Follow the [Update](#Update) process with the new period O.
+2. Sign and exchange a bump transaction B.
+3. TODO: Set new values for s and i.
+
+The transactions are constructed as follows:
+
+- B, the _bump transaction_, bumps the sequence number of escrow account E
+such that only the most recent transaction set is valid.  B has source
+account E, sequence number s.
+
+  B contains operations:
+  - One `BUMP_SEQUENCE` operation with sequence set to 2(i-1)+1.
 
 ### Network Transaction Fees
 
