@@ -84,8 +84,8 @@ submit transactions in response to changing state.
 
 The participants agree on the period O at channel open.
 
-The participants may agree at anytime by following the [Change the
-Observation Period](#Change-the-Observation-Period) process.
+The participants may agree to change the period O at anytime by following the
+[Change the Observation Period](#Change-the-Observation-Period) process.
 
 ### Accounts
 
