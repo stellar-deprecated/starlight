@@ -313,6 +313,20 @@ Participant R provides reserves for:
 - Signers added to V for R
 - Claimable balances created at close
 
+The total reserves required for each participant are:
+
+- Participant I
+
+  - 1 (Escrow Account E)
+  - \+ Number of Assets (for Trustlines)
+  - \+ 2 x Number of I's Signers
+
+- Participant R
+
+  - 1 (Reserve Account V)
+  - \+ Number of Assets (for Claimable Balances)
+  - \+ 2 x Number of R's Signers
+
 In the rare event that a network upgrade results in base reserve increasing,
 but participant R does not increase the funds in reserve account V to
 sufficiently cover the reserve cost, participant I may choose to deposit the
