@@ -40,43 +40,118 @@ that make it easier to do this.
 
 ## Abstract
 
-TODO
-
-## Specification
+This protocol defines the Stellar transactions that two participants use to
+open and close a payment channel by using an escrow account to holds funds, a
+reserve account to hold native asset to pay for new ledger entries, and
+claimable balances as an uninterruptable method for final disbursement.
 
 A payment channel has two participants, an initiator I and a responder R.
 
-The protocol assumes some _synchrony period_, S, such that both parties are
+The protocol assumes some _observation period_, O, such that both parties are
 guaranteed to be able to observe the blockchain state and submit transactions
-within any period of length S.
+within any period of length O.
 
-The payment channel consists of a 2-of-2 multisig escrow account E, initially
-created and configured by I, and a series of transaction sets that contain
-_declaration_ and _closing_ transactions on E signed by both parties.  The
-closing transaction defines the final state of the channel.  Each generation
-of transaction sets in the series are an agreement on a new final state for
-the channel.
+The payment channel consists of two 2-of-2 multisig escrow account E, and a
+series of transaction sets that contain _declaration_ and _closing_
+transactions on E signed by both participants.  The closing transaction
+defines the final state of the channel that creates claimable balances for R
+and returns control of E to I.  Each generation of declaration and closing
+transaction sets in the series are an agreement on a new final state for the
+channel.
 
-The payment channel also uses a second 2-of-2 multisig reserve account V,
-initially created, configured, and funded by R, that will fund the reserves
-for the claimable balances ledger entries that are created at channel close,
-and that disburse funds to R.
+The payment channel also uses a second 2-of-2 multisig reserve account V, to
+sponsor the claimable balances ledger entries that are created at channel
+close, and that disburse funds to R.
+
+## Specification
+
+### Participants
+
+A payment channel has two participants:
+
+- I, the _initiator_, who proposes the payment channel, performs the first
+setup step, and will be able to make deposits to the payment channel without
+coordination.  I creates escrow account E and receives disbursement through
+regaining control of E at channel close.
+
+- R, the _responder_, who joins the payment channel, and receives disbursement through claimable balances at channel close.
+
+### Observation Period
+
+A payment channel defines an observation period O within which all
+participants are guaranteed to be able to observe the blockchain state and
+submit transactions in response to changing state.
+
+The participants agree on the period O at channel open.
+
+The participants may agree at anytime by following the [Change the
+Observation Period](#Change-the-Observation-Period) process.
+
+#### Change the Observation Period
+
+The participants may agree at anytime to decrease period O by simply using a
+smaller value for O in future transaction sets.  The change will only apply
+to future transaction sets.  The change does not require submitting a
+transaction to the network.
+
+The participants may agree at anytime to increase period O by using a larger
+value for O in the next and future transaction sets, or regenerating the most
+recent transaction set, then signing and submitting a transaction that bumps
+the sequence number of the escrow account to the sequence before the most
+recent D_i.  The sequence bump ensures only the most recent transaction with
+the new period O is valid.
+
+The participants:
+
+1. Follow the [Update](#Update) process with the new period O.
+2. Sign and exchange a bump transaction B.
+3. TODO: Set new values for s and i.
+
+The transactions are constructed as follows:
+
+- B, the _bump transaction_, bumps the sequence number of escrow account E
+such that only the most recent transaction set is valid.  B has source
+account E, sequence number s.
+
+  B contains operations:
+  - One `BUMP_SEQUENCE` operation with sequence set to 2(i-1)+1.
+
+### Accounts
+
+The payment channel utilizes two Stellar accounts that are both 2-of-2
+multisig accounts while the channel is open:
+
+- E, the _escrow account_, that holds the assets that both participants have
+contributed to the channel and that will be distributed to the participants
+at channel close according to the final close transactions submitted.
+Created by I.  Jointly controlled by I and R while the channel is open.
+Control is returned to I at close.
+
+- V, the _reserve account_, that holds an amount of native asset contributed
+by R that will be used to sponsor the claimable balance ledger entries
+created at disbursement.  Created by R.  Jointly controlled by I and R while
+the channel is open.  Control is returned to R at close.  Cannot be merged
+until all claimable balances created at close for R are claimed by R.
 
 ### Variables
 
 The two participants maintain the following two variables during the lifetime
 of the channel:
 
-* s - the _starting sequence number_, is initialized to one greater
+- s, the _starting sequence number_, is initialized to one greater
 than the sequence number of the escrow account E after E has been created and
 configured. It is changed only when withdrawing from or topping up the
 escrow account E.
 
-* i - the _iteration number_ of the payment channel, is initialized to
-((s+1)/2)+1. It is incremented with every off-chain update of the payment channel
-state.
+- i, the _iteration number_ of the payment channel, is initialized to
+((s+1)/2)+1.  It is incremented with every off-chain update of the payment
+channel state.
 
-### Setup Process
+TODO: Change how the iteration number is initialized and used.
+
+### Processes
+
+#### Setup
 
 To setup the payment channel:
 
@@ -88,37 +163,41 @@ To setup the payment channel:
 
 The transactions are constructed as follows:
 
-* F, the _formation transaction_, deposits R's contribution to escrow account
+- C_i, see [Update Process](#Update-Process).
+
+- D_i, see [Update Process](#Update-Process).
+
+- F, the _formation transaction_, deposits R's contribution to escrow account
 E, and changes escrow account E and reserve account V to be 2-of-2 multisig
 accounts.  F has source account E, and sequence number set to s.
 
-  F contains operations in this order:
+  F contains operations:
 
-  - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
-  account I as a sponsor of future reserves.
-  - One or more `SET_OPTIONS` operations adjusting escrow account E's
-  thresholds such that I and R's signers must both sign, and adding I's
-  signers to E.
-  - One or more `SET_OPTIONS` operations adding I's signers to V.
-  - One or more `CHANGE_TRUST` operations adding trustlines to E.
-  - One `END_SPONSORING_FUTURE_RESERVES` operation that confirms reserve
-  account I's sponsorship.
-
-  - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
-  account R as a sponsor of future reserves.
-  - One or more `SET_OPTIONS` operations adjusting escrow account V's
-  thresholds such that R and I's signers must both sign, and adding R's
-  signers to V.
-  - One or more `SET_OPTIONS` operations adding R's signers to E.
-  - One `END_SPONSORING_FUTURE_RESERVES` operation that confirms reserve
-  account R's sponsorship.
-
+  - Operations sponsored by I:
+    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies participant
+    I as a sponsor of future reserves.
+    - One or more `SET_OPTIONS` operations adjusting escrow account E's
+    thresholds such that I and R's signers must both sign, and adding I's
+    signers to E.
+    - One or more `SET_OPTIONS` operations adding I's signers to V.
+    - One or more `CHANGE_TRUST` operations adding trustlines to E.
+    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
+    future reserves of subsequent operations.
+  - Operations sponsored by R:
+    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
+    account R as a sponsor of future reserves.
+    - One or more `SET_OPTIONS` operations adjusting escrow account V's
+    thresholds such that R and I's signers must both sign, and adding R's
+    signers to V.
+    - One or more `SET_OPTIONS` operations adding R's signers to E.
+    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
+    future reserves of subsequent operations.
   - One or more `PAYMENT` operations depositing I's contribution to E.
   - One or more `PAYMENT` operations depositing R's contribution to E.
   - One or more `PAYMENT` operations depositing R's reserves for each
   trustline on E to V.
 
-### Update Process
+#### Update
 
 To update the payment channel state, the participants:
 
@@ -128,27 +207,16 @@ To update the payment channel state, the participants:
 
 The transactions are constructed as follows:
 
-* D_i, the _declaration transaction_, declares an intent to execute
-the corresponding closing transactions IC_i/RC_i.  D_i has source account E,
-sequence number 2i, and `minSeqNum` set to s.  Hence, D_i can execute at any
-time, so long as E's sequence number n satisfies s <= n < 2i.  Because C_i
-has source account E and sequence number 2i+1, D_i leaves E in a state where
-C_i can execute.
-
-  D_i does not require any operations, but since Stellar disallows empty
-  transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0
-  as a no-op.
-
-* C_i, the _closing transaction_, disburses funds to R and changes the
+- C_i, the _closing transaction_, disburses funds to R and changes the
 signing weights on E such that I unilaterally controls E.  C_i has source
-account E, sequence number 2i+1, and a `minSeqAge` of S (the synchrony
+account E, sequence number 2i+1, and a `minSeqAge` of O (the observation
 period).
 
   The `minSeqAge` prevents a misbehaving party from executing C_i when the
   channel state has already progressed to a later iteration number, as the
   other party can invalidate C_i by submitting D_i' for some i' > i.
   
-  C_i contains operations in this order:
+  C_i contains operations:
   - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
   account V as a sponsor of future reserves.
   - One `CREATE_CLAIMABLE_BALANCE` operation for each trustline that is
@@ -160,9 +228,36 @@ period).
   - One or more `SET_OPTIONS` operation adjusting reserve account E's
   thresholds to give R full control of V, and removing I's signers.
 
-### Top-Up and Withdraw-Without-Close Processes
+- D_i, the _declaration transaction_, declares an intent to execute
+the corresponding closing transactions IC_i/RC_i.  D_i has source account E,
+sequence number 2i, and `minSeqNum` set to s.  Hence, D_i can execute at any
+time, so long as E's sequence number n satisfies s <= n < 2i.  Because C_i
+has source account E and sequence number 2i+1, D_i leaves E in a state where
+C_i can execute.
 
-TODO:
+  D_i does not require any operations, but since Stellar disallows empty
+  transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0
+  as a no-op.
+
+#### Uncooperative Close
+
+TODO: 
+
+#### Cooperative Close
+
+TODO: 
+
+#### Top-up by Initiator
+
+TODO: 
+
+#### Top-up by Responder
+
+TODO: 
+
+#### Withdraw Without Close
+
+TODO: Flesh out with more steps and list operations explicitly.
 
 For R to top-up or withdraw excess funds from the escrow account E, the
 participants skip a generation. They set s = 2(i+1), and i = i+2. They then
@@ -175,31 +270,33 @@ increase E's sequence number to s.
 To close the channel cooperatively, the parties re-sign C_i with a
 `minSeqNum` of s and a `minSeqAge` of 0, then submit this transaction.
 
-### Fees
+### Network Transaction Fees
 
 All transaction fees are paid by the participant submitting the transaction
 to the Stellar network.
 
-All transactions that are presigned have their fees set to zero.  The
+All transactions defined in the protocol have their fees set to zero.  The
 submitter of a transaction wraps the transactions in a fee bump transaction
-envelope and provides an appropriate fee, paying for the fee themselves.
+envelope and provides an appropriate fee, paying the fee themselves.
 
-Credits and debits to escrow account E only ever represent payments between I
-and R, or top-ups or withdrawals, since all transaction fees are paid by the
-participants.
+Credits and debits to escrow account E only ever represent deposits or
+withdrawals by I or R, and the sum of all disbursements at close equal the
+sum of all deposits minus the sum of all withdrawals.  Network transaction
+fees do not change the balance of the channel.
 
 ### Reserves
 
 All reserves for new ledger entries created to support the payment channel
 are supplied by the participant who will be in control of the ledger entry at
 channel close.  Participants should have no impact or dependence on each
-other and so they must not sponsor ledger entries that only the other party
-controls after channel close.  For example, if the escrow account was to
-sponsor the creation of claimable balances at channel close, participant I
-would be unable to merge escrow account E until participant R claimed their
-claimable balances.
+other after channel close, and so they must not sponsor ledger entries that
+only the other party controls after channel close, either directly or
+indirectly through the escrow or reserve accounts.  For example, if the
+escrow account was to sponsor the creation of claimable balances at channel
+close, participant I would be unable to merge escrow account E until
+participant R claimed their claimable balances.
 
-Ledger entries that do not surbibe channel close, such as signers, are
+Ledger entries that do not survive channel close, such as signers, are
 sponsored by their beneficiary.  A participant should not need to fund
 another participants excessive use of signers, participants should pay for
 their own key and signing requirements.
@@ -215,6 +312,12 @@ Participant R provides reserves for:
 - Reserve account V
 - Signers added to V for R
 - Claimable balances created at close
+
+In the rare event that a network upgrade results in base reserve increasing,
+but participant R does not increase the funds in reserve account V to
+sufficiently cover the reserve cost, participant I may choose to deposit the
+amount of native asset necessary into reserve account V themselves, at some
+written-off cost to themselves.
 
 ## Security Concerns
 
@@ -241,7 +344,7 @@ separate proposals.
 
 ## Implementations
 
-TODO
+TODO: Add implementation.
 
 [CAP-21]: https://stellar.org/protocol/cap-21
 [CAP-23]: https://stellar.org/protocol/cap-23
