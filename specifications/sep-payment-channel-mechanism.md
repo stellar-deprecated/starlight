@@ -106,19 +106,20 @@ until all claimable balances created at close for R are claimed by R.
 
 ### Variables
 
-The two participants maintain the following two variables during the lifetime
-of the channel:
+The two participants maintain the following variables during the lifetime of
+the channel:
 
-- s, the _starting sequence number_, is initialized to one greater
-than the sequence number of the escrow account E after E has been created and
-configured. It is changed only when withdrawing from or topping up the
+- s, the _starting sequence number_, is initialized to one greater than the
+sequence number of the escrow account E after E has been created and
+configured.  It is changed only when withdrawing from or topping up the
 escrow account E.
 
-- i, the _iteration number_ of the payment channel, is initialized to
-((s+1)/2)+1.  It is incremented with every off-chain update of the payment
-channel state.
+- i, the _iteration number_ of the payment channel, is initialized to zero.
+It is incremented with every off-chain update of the payment channel state,
+or on-chain setup, deposit, withdrawal.
 
-TODO: Change how the iteration number is initialized and used.
+- s_i, the _iteration sequence number_, is the sequence number that the
+iteration's transactions set starts at.  It is always computable as, s+(i*2).
 
 ### Processes
 
@@ -128,9 +129,16 @@ To setup the payment channel:
 
 1. I creates the escrow account E.
 2. R creates the reserve account V.
-3. I and R sign and exchange signatures for the first closing transaction C_i.
-4. I and R sign and exchange signatures for the first declaration transaction D_i.
-5. I and R sign and exchange signatures for the formation transaction F.
+3. Set variable initial states:
+   - s to E's sequence number + 1.
+   - i to 0.
+5. I and R prepare the formation transaction F.
+6. I and R follow the [Update Process](#Update-Process), including the step
+to increment i, to prepare, sign, and exchange declaration and closing
+transactions that allow the payment channel to be closed with disbursements
+matching the initial contributions.
+7. I and R sign and exchange signatures for formation transaction F.
+8. I or R submit F.
 
 The transactions are constructed as follows:
 
@@ -138,9 +146,10 @@ The transactions are constructed as follows:
 
 - D_i, see [Update Process](#Update-Process).
 
-- F, the _formation transaction_, deposits R's contribution to escrow account
-E, and changes escrow account E and reserve account V to be 2-of-2 multisig
-accounts.  F has source account E, and sequence number set to s.
+- F, the _formation transaction_, deposits I and R's contributions to escrow
+account E, R's reserves to reserve account V, and changes escrow account E
+and reserve account V to be 2-of-2 multisig accounts.  F has source account
+E, and sequence number set to s_i.
 
   F contains operations:
 
@@ -173,14 +182,14 @@ accounts.  F has source account E, and sequence number set to s.
 To update the payment channel state, the participants:
 
 1. Increment i.
-2. Sign and exchange a closing transactions C_i.
+2. Sign and exchange a closing transaction C_i.
 3. Sign and exchange a declaration transaction D_i.
 
 The transactions are constructed as follows:
 
 - C_i, the _closing transaction_, disburses funds to R and changes the
 signing weights on E such that I unilaterally controls E.  C_i has source
-account E, sequence number 2i+1, and a `minSeqAge` of O (the observation
+account E, sequence number s_i+1, and a `minSeqAge` of O (the observation
 period).
 
   The `minSeqAge` prevents a misbehaving party from executing C_i when the
@@ -199,24 +208,53 @@ period).
   - One or more `SET_OPTIONS` operation adjusting reserve account E's
   thresholds to give R full control of V, and removing I's signers.
 
-- D_i, the _declaration transaction_, declares an intent to execute
-the corresponding closing transactions IC_i/RC_i.  D_i has source account E,
-sequence number 2i, and `minSeqNum` set to s.  Hence, D_i can execute at any
-time, so long as E's sequence number n satisfies s <= n < 2i.  Because C_i
-has source account E and sequence number 2i+1, D_i leaves E in a state where
-C_i can execute.
+- D_i, the _declaration transaction_, declares an intent to execute the
+corresponding closing transaction C_i.  D_i has source account E, sequence
+number s_i, and `minSeqNum` set to s.  Hence, D_i can execute at any time, so
+long as E's sequence number n satisfies s <= n < s_i.  Because C_i has source
+account E and sequence number s_i+1, D_i leaves E in a state where C_i can
+execute.
 
   D_i does not require any operations, but since Stellar disallows empty
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0
   as a no-op.
 
-#### Uncooperative Close
-
-TODO: 
-
 #### Cooperative Close
 
-TODO: 
+Participants can agree to close the channel immediately by modifying and
+resigning the most recently signed declaration transaction.  The participants
+change the `minSeqAge` to zero.
+
+1. Modify the most recent D_i `minSeqAge` to zero.
+2. Resign and exchange the modified declaration transaction D_i.
+3. Submit modified D_i
+3. Submit C_i
+
+#### Uncooperative Close
+
+Either participant can close the channel at the latest state by submitting
+the most recently declaration transaction, waiting the observation period O,
+then submitting the closing transaction.
+
+1. Submit most recent D_i
+2. Wait observation period O
+3. Submit C_i
+
+#### Contesting an Uncooperative Close
+
+Either participant can attempt to close the channel at an earlier state that
+benefits them using the uncooperative close process.  The other participant
+can identify that the close process has started at an earlier state by
+monitoring changes in the accounts sequence.  If the other participant sees
+the sequence number of escrow account E change to a value that is not the
+most recent consumed s_i, they can use the following process to contest the
+close.  A participant contests a close by submitting a more recent
+declaration transaction.
+
+1. Monitor if E's sequence number changes to a value that is not s_i
+2. Submit most recent D_i
+3. Wait observation period O
+4. Submit C_i
 
 #### Top-up by Initiator
 
@@ -335,17 +373,25 @@ written-off cost to themselves.
 
 ## Security Concerns
 
-The closing transaction, C_i, creates one or more new claimable balance
-ledger entries that each require sponsoring.  If the sponsor has insufficient
-native asset the closing transactions will fail and consume the sequence
-number of the escrow account E, locking the funds.  If that situation occurs
-with the most recently agreed upon closing transaction, fair distribution of
-the assets depends on both participants signing new closing transactions.
+### Closing Transaction Failure
 
-To avoid this situation it is critical that participants lock sufficient
-funds up-front to provide the reserve, and that both participants monitor
-base reserve changes in the network and respond by adding additional native
-asset if required.
+The closing transaction, C_i, must never fail.  Under the conditions of the
+Stellar Consensus Protocol as it is defined today, and under correct use of
+this protocol, there is no known conditions that will cause it to fail.  It
+will be either invalid or valid and successful, but not valid and failed.  If
+C_i was to be valid and fail it would consume a sequence number and fair
+distribution of the assets within the escrow account would require the
+cooperation of all participants.
+
+If this protocol is not implemented correctly one condition that can result
+in the closing transaction failing is if there is not sufficient native asset
+to sponsor the ledger entries created by the transaction.  The closing
+transaction creates one or more new claimable balance ledger entries that
+each require sponsoring.  If the sponsor has insufficient native asset the
+closing transaction will fail.  To avoid this situation it is critical that
+participants lock sufficient funds up-front to provide the reserve, and that
+both participants monitor base reserve changes in the network and respond by
+adding additional native asset if required.
 
 ## Limitations
 
