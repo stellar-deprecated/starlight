@@ -243,26 +243,47 @@ then submitting the closing transaction.
 #### Contesting an Uncooperative Close
 
 Either participant can attempt to close the channel at an earlier state that
-benefits them using the uncooperative close process.  The other participant
-can identify that the close process has started at an earlier state by
-monitoring changes in the accounts sequence.  If the other participant sees
-the sequence number of escrow account E change to a value that is not the
-most recent consumed s_i, they can use the following process to contest the
-close.  A participant contests a close by submitting a more recent
-declaration transaction.
+benefits them, by using the uncooperative close process.  The other
+participant can identify that the close process has started at an earlier
+state by monitoring changes in the accounts sequence.  If the other
+participant sees the sequence number of escrow account E change to a value
+that is not the most recently used s_i, they can use the following process to
+contest the close.  A participant contests a close by submitting a more
+recent declaration transaction and closing the channel.
 
 1. Monitor if E's sequence number changes to a value that is not s_i
 2. Submit most recent D_i
 3. Wait observation period O
 4. Submit C_i
 
-#### Top-up by Initiator
+#### Add or Remove Trustlines
 
-TODO: 
+TODO:
 
-#### Top-up by Responder
+1. Set s to 
 
-TODO: 
+#### Deposit by Initiator
+
+Participant I may deposit into the channel without coordination with
+participant R, as long as escrow account E already has a trustline for the
+asset being deposited.
+
+If participant I wishes to deposit an asset that escrow account E does not
+hold a trustline for, the [Add or Remove
+Trustlines](#Add-or-Remove-Trustlines) process must be used first.
+
+#### Deposit by Responder
+
+Participant R may deposit into the channel without coordination with
+participant R, as long as escrow account E already has a trustline for the
+asset being deposited, and as long as participants R's intent is to make a
+payment of the same value to participant I.  Any amounts deposited to the
+payment channel without coordination will be disbursable to participant I.
+
+Participant R must coordinate with participant I to deposit any amount that
+it does not intend to pay participant I. The participants use the following process:
+
+1. TODO: 
 
 #### Withdraw Without Close
 
