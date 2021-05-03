@@ -74,7 +74,8 @@ setup step, and will be able to make deposits to the payment channel without
 coordination.  I creates escrow account E and receives disbursement through
 regaining control of E at channel close.
 
-- R, the _responder_, who joins the payment channel, and receives disbursement through claimable balances at channel close.
+- R, the _responder_, who joins the payment channel, and receives disbursement
+through claimable balances at channel close.
 
 ### Observation Period
 
@@ -104,22 +105,43 @@ created at disbursement.  Created by R.  Jointly controlled by I and R while
 the channel is open.  Control is returned to R at close.  Cannot be merged
 until all claimable balances created at close for R are claimed by R.
 
+### Constants
+
+The two participants agree on the following constants:
+
+- m, the _transaction set maximum transaction count_, is defined as 2, the
+maximum number of transactions that can be signed in any process between the
+increments of iteration number i. This constant may be changed in protocol
+upgrades.
+
 ### Variables
 
 The two participants maintain the following variables during the lifetime of
 the channel:
 
 - s, the _starting sequence number_, is initialized to one greater than the
-sequence number of the escrow account E after E has been created and
-configured.  It is changed only when withdrawing from or topping up the
-escrow account E.
+sequence number of escrow account E after E has been created. It the first
+available sequence number for iterations to consume.
 
 - i, the _iteration number_ of the payment channel, is initialized to zero.
 It is incremented with every off-chain update of the payment channel state,
 or on-chain setup, deposit, withdrawal.
 
-- s_i, the _iteration sequence number_, is the sequence number that the
-iteration's transactions set starts at.  It is always computable as, s+(i*2).
+- e, the _last executed iteration_, is initialized to zero. It is incremented
+with every on-chain setup, deposit, withdrawal.
+
+### Computed Values
+
+The two participants frequently use the following computed values:
+
+- s_i, the _iteration sequence number_, is the sequence number that iteration
+i's transaction set starts at. Assuming the history of the payment channel has a
+single value for m it is computable as, s+(m*i).
+
+- s_e, the _last executed iteration sequence number_, is the sequence number
+that the last agreed-to-be-executed iteration i's transaction set starts at,
+where i is e. Assuming the history of the payment channel has a single value for
+m it is computable as, s+(m*e).
 
 ### Processes
 
@@ -132,13 +154,15 @@ To setup the payment channel:
 3. Set variable initial states:
    - s to E's sequence number + 1.
    - i to 0.
-5. I and R prepare the formation transaction F.
+5. Increment i.
+4. I and R build the formation transaction F.
 6. I and R follow the [Update Process](#Update-Process), including the step
-to increment i, to prepare, sign, and exchange declaration and closing
+to increment i, to build, sign, and exchange declaration and closing
 transactions that allow the payment channel to be closed with disbursements
 matching the initial contributions.
 7. I and R sign and exchange signatures for formation transaction F.
 8. I or R submit F.
+9. Set e to F's iteration number.
 
 The transactions are constructed as follows:
 
@@ -148,7 +172,7 @@ The transactions are constructed as follows:
 
 - F, the _formation transaction_, deposits I and R's contributions to escrow
 account E, R's reserves to reserve account V, and changes escrow account E
-and reserve account V to be 2-of-2 multisig accounts.  F has source account
+and reserve account V to be 2-of-2 multisig accounts. F has source account
 E, and sequence number set to s_i.
 
   F contains operations:
@@ -174,9 +198,10 @@ E, and sequence number set to s_i.
     future reserves of subsequent operations.
   - One or more `PAYMENT` operations depositing I's contribution to E.
   - One or more `PAYMENT` operations depositing R's contribution to E.
-  - One or more `PAYMENT` operations depositing R's reserves for each
-  trustline on E to V.
-
+  - One or more `PAYMENT` operations depositing R's reserves to V, for each
+  trustline on E that will be used to sponsor claimable balances at
+  disbursement.
+  
 #### Update
 
 To update the payment channel state, the participants:
@@ -222,19 +247,19 @@ execute.
 #### Cooperative Close
 
 Participants can agree to close the channel immediately by modifying and
-resigning the most recently signed declaration transaction.  The participants
+resigning the most recently signed confirmation transaction. The participants
 change the `minSeqAge` to zero.
 
-1. Modify the most recent D_i `minSeqAge` to zero.
-2. Resign and exchange the modified declaration transaction D_i.
-3. Submit modified D_i
-3. Submit C_i
+1. Modify the most recent C_i `minSeqAge` to zero.
+2. Resign and exchange the modified confirmation transaction C_i.
+3. Submit D_i
+4. Submit modified C_i
 
 #### Uncooperative Close
 
-Either participant can close the channel at the latest state by submitting
-the most recently declaration transaction, waiting the observation period O,
-then submitting the closing transaction.
+Participants can close the channel at the latest state by submitting the most
+recently signed declaration transaction, waiting the observation period O, then
+submitting the closing transaction.
 
 1. Submit most recent D_i
 2. Wait observation period O
@@ -242,25 +267,98 @@ then submitting the closing transaction.
 
 #### Contesting an Uncooperative Close
 
-Either participant can attempt to close the channel at an earlier state that
-benefits them, by using the uncooperative close process.  The other
-participant can identify that the close process has started at an earlier
-state by monitoring changes in the accounts sequence.  If the other
-participant sees the sequence number of escrow account E change to a value
-that is not the most recently used s_i, they can use the following process to
-contest the close.  A participant contests a close by submitting a more
-recent declaration transaction and closing the channel.
+Participants can attempt to close the channel at a state that is earlier in the
+history of the channel than the most recently agreed to state. A participant who
+is a malicious actor might attempt to do this if an earlier state benefits them.
 
-1. Monitor if E's sequence number changes to a value that is not s_i
-2. Submit most recent D_i
-3. Wait observation period O
-4. Submit C_i
+The malicious participant can do this by performing the [Uncooperative
+Close](#Uncooperative-Close) process with a declaration transaction that is not
+the most recently signed declaration transaction.
 
-#### Add or Remove Trustlines
+The other participant can identify that the close process has started at an
+earlier state by monitoring changes in escrow account E's sequence. If the other
+participant sees the sequence number of escrow account E change to a value that
+is not the most recently used s_i, they can use the following process to contest
+the close. A participant contests a close by submitting a more recent
+declaration transaction and closing the channel at the actual final state.
 
-TODO:
+1. Get E's sequence number n
+2. If s_e > n < s_i, go to 3, otherwise go to 1
+3. Submit most recent D_i
+4. Wait observation period O
+5. Submit C_i
 
-1. Set s to 
+#### Add Trustline
+
+Participants can add additional trustlines if they plan to make deposits of new balances.
+
+1. Increment i.
+2. I and R build the trustline transaction TA_i.
+3. I and R follow the [Update Process](#Update-Process), including the step to
+increment i, to build, sign, and exchange declaration and closing transactions
+that close the channel in the same state as the most recently asgreed state.
+4. I and R sign and exchange signatures for trustline transaction TA_i.
+5. I or R submit TA_i.
+6. Wait for E's sequence number to be TA_i's.
+6. Set e to TA_i's iteration number.
+
+The transactions are constructed as follows:
+
+- C_i, see [Update Process](#Update-Process).
+
+- D_i, see [Update Process](#Update-Process).
+
+- TA_i, the _add trustline transaction_, adds one or more trustlines on escrow
+account E, and deposits R's reserves to reserve account V. TA_i has source
+account E, and sequence number set to s_i.
+
+  TA_i contains operations:
+
+  - Operations sponsored by I:
+    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
+    participant I as a sponsor of future reserves.
+    - One or more `CHANGE_TRUST` operations adding trustlines to E.
+    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
+    future reserves of subsequent operations.
+  - One or more `PAYMENT` operations depositing R's reserves to V, for each new
+  trustline on E that will be used to sponsor claimable balances at
+  disbursement.
+
+#### Remove Trustline
+
+Participants can remove empty trustlines.
+
+1. Increment i.
+2. I and R build the trustline transaction TR_i.
+3. I and R follow the [Update Process](#Update-Process), including the step to
+increment i, to build, sign, and exchange declaration and closing transactions
+that close the channel in the same state as the most recently asgreed state.
+4. I and R sign and exchange signatures for trustline transaction TR_i.
+5. I or R submit TR_i.
+6. Wait for E's sequence number to be TR_i's.
+6. Set e to TR_i's iteration number.
+
+The transactions are constructed as follows:
+
+- C_i, see [Update Process](#Update-Process).
+
+- D_i, see [Update Process](#Update-Process).
+
+- TR_i, the _add trustline transaction_, removes one or more trustline on escrow
+account E, and withdraws R's reserves from reserve account V. TR_i has source
+account E, and sequence number set to s_i.
+
+  TR_i contains operations:
+
+  - Operations sponsored by I:
+    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
+    participant I as a sponsor of future reserves.
+    - One or more `CHANGE_TRUST` operations removing trustlines from E.
+    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
+    future reserves of subsequent operations.
+  - One or more `PAYMENT` operations withdrawing R's reserves from V, for each
+  trustline being removed from E that would have been used to sponsor claimable
+  balances at disbursement and are no longer required.
 
 #### Deposit by Initiator
 
@@ -268,17 +366,17 @@ Participant I may deposit into the channel without coordination with
 participant R, as long as escrow account E already has a trustline for the
 asset being deposited.
 
-If participant I wishes to deposit an asset that escrow account E does not
-hold a trustline for, the [Add or Remove
-Trustlines](#Add-or-Remove-Trustlines) process must be used first.
+If participant I wishes to deposit an asset that escrow account E does not hold
+a trustline for, the [Add Trustlines](#Add-Trustline) process must be used
+first.
 
 #### Deposit by Responder
 
-Participant R may deposit into the channel without coordination with
-participant R, as long as escrow account E already has a trustline for the
-asset being deposited, and as long as participants R's intent is to make a
-payment of the same value to participant I.  Any amounts deposited to the
-payment channel without coordination will be disbursable to participant I.
+Participant R may deposit into the channel without coordination with participant
+R, as long as escrow account E already has a trustline for the asset being
+deposited, and as long as participants R's intent is to make a payment of the
+same value to participant I. Any amounts deposited to the payment channel
+without coordination will be disbursable to participant I at close.
 
 Participant R must coordinate with participant I to deposit any amount that
 it does not intend to pay participant I. The participants use the following process:
