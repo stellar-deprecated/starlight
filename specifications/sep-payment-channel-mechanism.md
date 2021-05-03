@@ -156,19 +156,20 @@ To setup the payment channel:
    - i to 0.
 5. Increment i.
 4. I and R build the formation transaction F.
-6. I and R follow the [Update Process](#Update-Process), including the step
-to increment i, to build, sign, and exchange declaration and closing
-transactions that allow the payment channel to be closed with disbursements
-matching the initial contributions.
+6. I and R follow the [Update Process](#Update-Process), including the step to
+increment i, to build, sign, and exchange declaration and closing transactions
+that allow the payment channel to be closed with disbursements matching the
+initial contributions. This step yields transactions D_i' and C_i' where i' =
+i+1.
 7. I and R sign and exchange signatures for formation transaction F.
 8. I or R submit F.
 9. Set e to F's iteration number.
 
 The transactions are constructed as follows:
 
-- C_i, see [Update Process](#Update-Process).
+- C_i', see [Update Process](#Update-Process).
 
-- D_i, see [Update Process](#Update-Process).
+- D_i', see [Update Process](#Update-Process).
 
 - F, the _formation transaction_, deposits I and R's contributions to escrow
 account E, R's reserves to reserve account V, and changes escrow account E
@@ -296,7 +297,8 @@ Participants can add additional trustlines if they plan to make deposits of new 
 2. I and R build the trustline transaction TA_i.
 3. I and R follow the [Update Process](#Update-Process), including the step to
 increment i, to build, sign, and exchange declaration and closing transactions
-that close the channel in the same state as the most recently asgreed state.
+that close the channel in the same state as the most recently agreed state.
+This step yields transactions D_i' and C_i' where i' = i+1.
 4. I and R sign and exchange signatures for trustline transaction TA_i.
 5. I or R submit TA_i.
 6. Wait for E's sequence number to be TA_i's.
@@ -304,9 +306,9 @@ that close the channel in the same state as the most recently asgreed state.
 
 The transactions are constructed as follows:
 
-- C_i, see [Update Process](#Update-Process).
+- C_i', see [Update Process](#Update-Process).
 
-- D_i, see [Update Process](#Update-Process).
+- D_i', see [Update Process](#Update-Process).
 
 - TA_i, the _add trustline transaction_, adds one or more trustlines on escrow
 account E, and deposits R's reserves to reserve account V. TA_i has source
@@ -332,7 +334,8 @@ Participants can remove empty trustlines.
 2. I and R build the trustline transaction TR_i.
 3. I and R follow the [Update Process](#Update-Process), including the step to
 increment i, to build, sign, and exchange declaration and closing transactions
-that close the channel in the same state as the most recently asgreed state.
+that close the channel in the same state as the most recently agreed state.
+This step yields transactions D_i' and C_i' where i' = i+1.
 4. I and R sign and exchange signatures for trustline transaction TR_i.
 5. I or R submit TR_i.
 6. Wait for E's sequence number to be TR_i's.
@@ -340,9 +343,9 @@ that close the channel in the same state as the most recently asgreed state.
 
 The transactions are constructed as follows:
 
-- C_i, see [Update Process](#Update-Process).
+- C_i', see [Update Process](#Update-Process).
 
-- D_i, see [Update Process](#Update-Process).
+- D_i', see [Update Process](#Update-Process).
 
 - TR_i, the _add trustline transaction_, removes one or more trustline on escrow
 account E, and withdraws R's reserves from reserve account V. TR_i has source
@@ -378,12 +381,52 @@ deposited, and as long as participants R's intent is to make a payment of the
 same value to participant I. Any amounts deposited to the payment channel
 without coordination will be disbursable to participant I at close.
 
-Participant R must coordinate with participant I to deposit any amount that
-it does not intend to pay participant I. The participants use the following process:
+Participant R must coordinate with participant I to deposit any amount that it
+does not intend to immediately pay participant I. The participants use the
+following process:
 
-1. TODO: 
+1. Increment i.
+2. I and R build the deposit transaction P_i.
+3. I and R follow the [Update Process](#Update-Process), including the step to
+increment i, to build, sign, and exchange declaration and closing transactions
+that close the channel in the same state as the most recently agreed state.
+This step yields transactions D_i' and C_i' where i' = i+1.
+4. I and R follow the [Update Process](#Update-Process), including the step to
+increment i, to build, sign, and exchange declaration and closing transactions
+that define how the assets held by the escrow account will be disbursed at close
+of the channel such that the deposited amount included in P_i will be disbursed
+to participant R. This step yields transactions D_i'' and C_i'' where i'' = i+2.
+4. I and R sign and exchange signatures for deposit transaction P_i.
+5. I or R submit P_i.
+6. Wait for E's sequence number to be P_i's.
+6. Set e to P_i's iteration number.
 
-#### Withdraw Without Close
+The transactions are constructed as follows:
+
+- C_i', see [Update Process](#Update-Process).
+
+- D_i', see [Update Process](#Update-Process).
+
+- C_i'', see [Update Process](#Update-Process).
+
+- D_i'', see [Update Process](#Update-Process).
+
+- P_i, the _deposit transaction_, makes one or more payments from any Stellar
+accounts to escrow account E. P_i has source account E, and sequence number set
+to s_i.
+
+  P_i contains operations:
+
+  - One or more `PAYMENT` operations depositing assets into escrow account E.
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
+  E to s_i''.
+
+TODO: This deposit operation is not safe. If it succeeds the appropriate final
+state closure is possible with D_i'' and C_i''. If it fails the existing state
+is preserved in D_i' and C_i', however there is now nothing preventing D_i'' and
+C_i'' being submitted.
+
+#### Withdraw
 
 TODO: Flesh out with more steps and list operations explicitly.
 
