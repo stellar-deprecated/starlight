@@ -285,20 +285,39 @@ declaration transaction and closing the channel at the actual final state.
 4. Wait observation period O
 5. Submit C_i
 
-#### Mutating the Channel
+#### Changing the Channel Setup
 
 The payment channel setup can be altered with on-chain transactions after
-channel setup. The following operations can take place. Each operation is
-implemented in a two-step process where participants first agree on a new state
-at a future iteration that is not yet executable, then participants sign a
-transaction to make that new state possible.
+channel setup. Some of the operations used to alter the channel setup may fail
+even if the transactions are valid, while others will always succeed if the
+transactions are valid.
+
+Each operation is implemented in a two-step process. Participants agree on a new
+closing state at a future iteration by signing C_i and D_i transactions where i
+has skipped an iteration that is not yet executable because the D_i's
+`minSeqNum` is also set in the future. Participants then sign a transaction to
+make the change that only moves the sequence of escrow account E to satisfy the
+`minSeqNum` of the future D_i.
+
+Operations that can fail have the following requirements as well:
+
+- The transaction that can fail must have its source account set to an account
+that is not escrow account E.
+- The transaction that can fail must contain a `BUMP_SEQUENCE` operation that
+bumps escrow account E's sequence number to a sequence number that makes the D_i
+executable.
+
+Operations that cannot fail:
+
+- [Change the Observation Period](#Change-the-Observation-Period)
+
+Operations that can fail:
 
 - [Add Trustline](#Add-Trustline)
 - [Remove Trustline](#Remove-Trustline)
 - [Deposit by Initiator](#Deposit-by-Initiator)
 - [Deposit by Responder](#Deposit-by-Responder)
 - [Withdraw](#Withdraw)
-- [Change the Observation Period](#Change-the-Observation-Period)
 
 ##### Add Trustline
 
