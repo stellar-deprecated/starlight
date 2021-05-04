@@ -421,10 +421,9 @@ to s_i.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
   E to s_i''.
 
-TODO: This deposit process is dependent on a maxSeqNo being added to CAP-21 that
-is not currently part of the proposal. is not safe. If it succeeds the appropriate final
-state closure is possible with D_i'' and C_i''. If it fails the existing state
-is preserved in D_i' and C_i', however there is now nothing preventing D_i'' and
+TODO: This deposit is not safe. If it succeeds the appropriate final state
+closure is possible with D_i'' and C_i''. If it fails the existing state is
+preserved in D_i' and C_i', however there is now nothing preventing D_i'' and
 C_i'' being submitted.
 
 #### Withdraw
