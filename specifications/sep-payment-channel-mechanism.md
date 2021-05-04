@@ -124,10 +124,10 @@ available sequence number for iterations to consume.
 
 - i, the _iteration number_ of the payment channel, is initialized to zero.
 It is incremented with every off-chain update of the payment channel state,
-or on-chain setup, deposit, withdrawal.
+or on-chain setup, deposit, withdrawal, etc.
 
-- e, the _last executed iteration_, is initialized to zero. It is incremented
-with every on-chain setup, deposit, withdrawal.
+- e, the _executed iteration number_, is initialized to zero. It is incremented
+with every iteration submitted on-chain.
 
 ### Computed Values
 
@@ -137,10 +137,9 @@ The two participants frequently use the following computed values:
 i's transaction set starts at. Assuming the history of the payment channel has a
 single value for m it is computable as, s+(m*i).
 
-- s_e, the _last executed iteration sequence number_, is the sequence number
-that the last agreed-to-be-executed iteration i's transaction set starts at,
-where i is e. Assuming the history of the payment channel has a single value for
-m it is computable as, s+(m*e).
+- s_e, the _executed iteration sequence number_, is the sequence number that the
+executed iteration e's transaction set starts at. Assuming the history of the
+payment channel has a single value for m it is computable as, s+(m*e).
 
 ### Processes
 
@@ -153,14 +152,14 @@ To setup the payment channel:
 3. Set variable initial states:
    - s to E's sequence number + 1.
    - i to 0.
+   - e to 0.
 5. I and R build the formation transaction F.
 6. Increment i.
 7. Sign and exchange a closing transaction C_i, that closes the channel with
 disbursements matching the initial contributions.
 8. Sign and exchange a declaration transaction D_i.
 9. I and R sign and exchange signatures for formation transaction F.
-10. Set e to F's iteration number.
-11. I or R submit F.
+10. I or R submit F.
 
 The transactions are constructed as follows:
 
@@ -286,7 +285,22 @@ declaration transaction and closing the channel at the actual final state.
 4. Wait observation period O
 5. Submit C_i
 
-#### Add Trustline
+#### Mutating the Channel
+
+The payment channel setup can be altered with on-chain transactions after
+channel setup. The following operations can take place. Each operation is
+implemented in a two-step process where participants first agree on a new state
+at a future iteration that is not yet executable, then participants sign a
+transaction to make that new state possible.
+
+- [Add Trustline](#Add-Trustline)
+- [Remove Trustline](#Remove-Trustline)
+- [Deposit by Initiator](#Deposit-by-Initiator)
+- [Deposit by Responder](#Deposit-by-Responder)
+- [Withdraw](#Withdraw)
+- [Change the Observation Period](#Change-the-Observation-Period)
+
+##### Add Trustline
 
 Participants can add additional trustlines if they plan to make deposits of new balances.
 
@@ -325,12 +339,14 @@ account that is not E or V, typically the participant proposing the change.
   - One or more `PAYMENT` operations depositing R's reserves to V, for each new
   trustline on E that will be used to sponsor claimable balances at
   disbursement.
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
+  E to s_i.
   
 - C_i, see [Update](#Update) process.
 
 - D_i, see [Update](#Update) process.
 
-#### Remove Trustline
+##### Remove Trustline
 
 Participants can remove empty trustlines.
 
@@ -370,12 +386,14 @@ change.
   - One or more `PAYMENT` operations withdrawing R's reserves from V, for each
   trustline being removed from E that would have been used to sponsor claimable
   balances at disbursement and are no longer required.
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
+  E to s_i.
   
 - C_i, see [Update](#Update) process.
 
 - D_i, see [Update](#Update) process.
 
-#### Deposit by Initiator
+##### Deposit by Initiator
 
 Participant I may deposit into the channel without coordination with
 participant R, as long as escrow account E already has a trustline for the
@@ -385,7 +403,7 @@ If participant I wishes to deposit an asset that escrow account E does not hold
 a trustline for, the [Add Trustlines](#Add-Trustline) process must be used
 first.
 
-#### Deposit by Responder
+##### Deposit by Responder
 
 Participant R may deposit into the channel without coordination with participant
 I, as long as escrow account E already has a trustline for the asset being
@@ -432,7 +450,7 @@ typically the participant proposing the change.
 
 - D_i, see [Update](#Update) process.
 
-#### Withdraw
+##### Withdraw
 
 Participants must coordinate to withdraw an amount without closing the channel.
 The participants use the following process, where W is the participant
@@ -473,7 +491,7 @@ typically the participant proposing the change.
 
 - D_i, see [Update](#Update) process.
 
-#### Change the Observation Period
+##### Change the Observation Period
 
 The participants may agree at anytime to decrease period O by simply using a
 smaller value for O in future transaction sets.  The change will only apply to
