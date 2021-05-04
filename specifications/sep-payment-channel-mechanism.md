@@ -109,10 +109,9 @@ until all claimable balances created at close for R are claimed by R.
 
 The two participants agree on the following constants:
 
-- m, the _transaction set maximum transaction count_, is defined as 2, the
-maximum number of transactions that can be signed in any process between the
-increments of iteration number i. This constant may be changed in protocol
-upgrades.
+- m, the _maximum transaction account of an iteration's transaction set_, is
+defined as 2, the maximum number of transactions that can be signed in any
+process between the increments of iteration number i.
 
 ### Variables
 
@@ -120,7 +119,7 @@ The two participants maintain the following variables during the lifetime of
 the channel:
 
 - s, the _starting sequence number_, is initialized to one greater than the
-sequence number of escrow account E after E has been created. It the first
+sequence number of escrow account E after E has been created. It is the first
 available sequence number for iterations to consume.
 
 - i, the _iteration number_ of the payment channel, is initialized to zero.
@@ -154,27 +153,21 @@ To setup the payment channel:
 3. Set variable initial states:
    - s to E's sequence number + 1.
    - i to 0.
-5. Increment i.
-4. I and R build the formation transaction F.
-6. I and R follow the [Update Process](#Update-Process), including the step to
-increment i, to build, sign, and exchange declaration and closing transactions
-that allow the payment channel to be closed with disbursements matching the
-initial contributions. This step yields transactions D_i' and C_i' where i' =
-i+1.
-7. I and R sign and exchange signatures for formation transaction F.
-8. I or R submit F.
-9. Set e to F's iteration number.
+5. I and R build the formation transaction F.
+6. Increment i.
+7. Sign and exchange a closing transaction C_i, that closes the channel with
+disbursements matching the initial contributions.
+8. Sign and exchange a declaration transaction D_i.
+9. I and R sign and exchange signatures for formation transaction F.
+10. Set e to F's iteration number.
+11. I or R submit F.
 
 The transactions are constructed as follows:
 
-- C_i', see [Update Process](#Update-Process).
-
-- D_i', see [Update Process](#Update-Process).
-
 - F, the _formation transaction_, deposits I and R's contributions to escrow
-account E, R's reserves to reserve account V, and changes escrow account E
-and reserve account V to be 2-of-2 multisig accounts. F has source account
-E, and sequence number set to s_i.
+account E, R's reserves to reserve account V, and changes escrow account E and
+reserve account V to be 2-of-2 multisig accounts. F has source account E, and
+sequence number set to s_i.
 
   F contains operations:
 
@@ -203,6 +196,10 @@ E, and sequence number set to s_i.
   trustline on E that will be used to sponsor claimable balances at
   disbursement.
   
+- C_i, see [Update](#Update) process.
+
+- D_i, see [Update](#Update) process.
+
 #### Update
 
 To update the payment channel state, the participants:
@@ -295,24 +292,27 @@ Participants can add additional trustlines if they plan to make deposits of new 
 
 1. Increment i.
 2. I and R build the trustline transaction TA_i.
-3. I and R follow the [Update Process](#Update-Process), including the step to
-increment i, to build, sign, and exchange declaration and closing transactions
-that close the channel in the same state as the most recently agreed state.
-This step yields transactions D_i' and C_i' where i' = i+1.
-4. I and R sign and exchange signatures for trustline transaction TA_i.
-5. I or R submit TA_i.
-6. Wait for E's sequence number to be TA_i's.
-6. Set e to TA_i's iteration number.
+3. Set e' to e.
+4. Set e to i.
+5. Increment i.
+6. Sign and exchange a closing transaction C_i, that closes the channel with
+disbursements matching the most recent agreed state.
+7. Sign and exchange a declaration transaction D_i.
+8. I and R sign and exchange signatures for trustline transaction TA_i.
+9. I or R submit TA_i.
+
+If the remove trustline transaction TA_i fails or is never submitted, the C_i
+and D_i are not executable because escrow account E's sequence number was not
+bumped to s_i.  The participants should take the following steps since the
+transaction did not succeed:
+
+10. Set e to e'.
 
 The transactions are constructed as follows:
 
-- C_i', see [Update Process](#Update-Process).
-
-- D_i', see [Update Process](#Update-Process).
-
 - TA_i, the _add trustline transaction_, adds one or more trustlines on escrow
-account E, and deposits R's reserves to reserve account V. TA_i has source
-account E, and sequence number set to s_i.
+account E, and deposits R's reserves to reserve account V. TA_i has any source
+account that is not E or V, typically the participant proposing the change.
 
   TA_i contains operations:
 
@@ -325,6 +325,10 @@ account E, and sequence number set to s_i.
   - One or more `PAYMENT` operations depositing R's reserves to V, for each new
   trustline on E that will be used to sponsor claimable balances at
   disbursement.
+  
+- C_i, see [Update](#Update) process.
+
+- D_i, see [Update](#Update) process.
 
 #### Remove Trustline
 
@@ -332,24 +336,28 @@ Participants can remove empty trustlines.
 
 1. Increment i.
 2. I and R build the trustline transaction TR_i.
-3. I and R follow the [Update Process](#Update-Process), including the step to
-increment i, to build, sign, and exchange declaration and closing transactions
-that close the channel in the same state as the most recently agreed state.
-This step yields transactions D_i' and C_i' where i' = i+1.
-4. I and R sign and exchange signatures for trustline transaction TR_i.
-5. I or R submit TR_i.
-6. Wait for E's sequence number to be TR_i's.
-6. Set e to TR_i's iteration number.
+3. Set e' to e.
+4. Set e to i.
+5. Increment i.
+6. Sign and exchange a closing transaction C_i, that closes the channel with
+disbursements matching the most recent agreed state.
+7. Sign and exchange a declaration transaction D_i.
+8. I and R sign and exchange signatures for trustline transaction TR_i.
+9. I or R submit TR_i.
+
+If the remove trustline transaction TR_i fails or is never submitted, the C_i
+and D_i are not executable because escrow account E's sequence number was not
+bumped to s_i.  The participants should take the following steps since the
+deposit did not succeed:
+
+10. Set e to e'.
 
 The transactions are constructed as follows:
 
-- C_i', see [Update Process](#Update-Process).
-
-- D_i', see [Update Process](#Update-Process).
-
-- TR_i, the _add trustline transaction_, removes one or more trustline on escrow
-account E, and withdraws R's reserves from reserve account V. TR_i has source
-account E, and sequence number set to s_i.
+- TR_i, the _remove trustline transaction_, removes one or more trustline on
+escrow account E, and withdraws R's reserves from reserve account V. TR_i has
+any source account that is not E or V, typically the participant proposing the
+change.
 
   TR_i contains operations:
 
@@ -362,6 +370,10 @@ account E, and sequence number set to s_i.
   - One or more `PAYMENT` operations withdrawing R's reserves from V, for each
   trustline being removed from E that would have been used to sponsor claimable
   balances at disbursement and are no longer required.
+  
+- C_i, see [Update](#Update) process.
+
+- D_i, see [Update](#Update) process.
 
 #### Deposit by Initiator
 
@@ -376,7 +388,7 @@ first.
 #### Deposit by Responder
 
 Participant R may deposit into the channel without coordination with participant
-R, as long as escrow account E already has a trustline for the asset being
+I, as long as escrow account E already has a trustline for the asset being
 deposited, and as long as participants R's intent is to make a payment of the
 same value to participant I. Any amounts deposited to the payment channel
 without coordination will be disbursable to participant I at close.
@@ -387,55 +399,86 @@ following process:
 
 1. Increment i.
 2. I and R build the deposit transaction P_i.
-3. I and R follow the [Update Process](#Update-Process), including the step to
-increment i, to build, sign, and exchange declaration and closing transactions
-that close the channel in the same state as the most recently agreed state.
-This step yields transactions D_i' and C_i' where i' = i+1.
-4. I and R follow the [Update Process](#Update-Process), including the step to
-increment i, to build, sign, and exchange declaration and closing transactions
-that define how the assets held by the escrow account will be disbursed at close
-of the channel such that the deposited amount included in P_i will be disbursed
-to participant R. This step yields transactions D_i'' and C_i'' where i'' = i+2.
-4. I and R sign and exchange signatures for deposit transaction P_i.
-5. I or R submit P_i.
-6. Wait for E's sequence number to be P_i's.
-6. Set e to P_i's iteration number.
+3. Set e' to e.
+4. Set e to i.
+5. Increment i.
+6. Sign and exchange a closing transaction C_i, that closes the channel with
+disbursements matching the most recent agreed state, but increasing R's
+disbursed amount by R's deposit amount.
+7. Sign and exchange a declaration transaction D_i.
+8. I and R sign and exchange signatures for deposit transaction P_i.
+9. I or R submit P.
+
+If the deposit transaction P fails or is never submitted, the C_i and D_i are
+not executable because escrow account E's sequence number was not bumped to s_i.
+The participants should take the following steps since the deposit did not
+succeed:
+
+10. Set e to e'.
 
 The transactions are constructed as follows:
 
-- C_i', see [Update Process](#Update-Process).
-
-- D_i', see [Update Process](#Update-Process).
-
-- C_i'', see [Update Process](#Update-Process).
-
-- D_i'', see [Update Process](#Update-Process).
-
 - P_i, the _deposit transaction_, makes one or more payments from any Stellar
-accounts to escrow account E. P_i has source account E, and sequence number set
-to s_i.
+accounts to escrow account E. P_i has any source account that is not E or V,
+typically the participant proposing the change.
 
   P_i contains operations:
 
   - One or more `PAYMENT` operations depositing assets into escrow account E.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
-  E to s_i''.
+  E to s_i.
+  
+- C_i, see [Update](#Update) process.
 
-TODO: This deposit is not safe. If it succeeds the appropriate final state
-closure is possible with D_i'' and C_i''. If it fails the existing state is
-preserved in D_i' and C_i', however there is now nothing preventing D_i'' and
-C_i'' being submitted.
+- D_i, see [Update](#Update) process.
 
 #### Withdraw
 
-TODO: Write this flow out.
+Participants must coordinate to withdraw an amount without closing the channel.
+The participants use the following process, where W is the participant
+withdrawing:
+
+1. Increment i.
+2. I and R build the withdrawal transaction W_i.
+3. Set e' to e.
+4. Set e to i.
+5. Increment i.
+6. Sign and exchange a closing transaction C_i, that closes the channel with
+disbursements matching the most recent agreed state, but reducing W's disbursed
+amount by W's withdrawal amount.
+7. Sign and exchange a declaration transaction D_i.
+8. I and R sign and exchange signatures for withdrawal transaction W_i.
+9. I or R submit W.
+
+If the withdrawal transaction W_i fails or is never submitted, the C_i and D_i
+are not executable because escrow account E's sequence number was not bumped to
+s_i.  The participants should take the following steps since the withdrawal did
+not succeed:
+
+10. Set e to e'.
+
+The transactions are constructed as follows:
+
+- W_i, the _withdrawal transaction_, makes one or more payments from the escrow
+account E to any Stellar account. W_i has any source account that is not E or V,
+typically the participant proposing the change.
+
+  W_i contains operations:
+
+  - One or more `PAYMENT` operations withdrawing assets from escrow account E.
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
+  E to s_i.
+  
+- C_i, see [Update](#Update) process.
+
+- D_i, see [Update](#Update) process.
 
 #### Change the Observation Period
 
 The participants may agree at anytime to decrease period O by simply using a
-smaller value for O in future transaction sets.  The change will only apply
-to future transaction sets.  The change does not require submitting a
-transaction to the network.
+smaller value for O in future transaction sets.  The change will only apply to
+future transaction sets.  The change does not require submitting a transaction
+to the network.
 
 The participants may agree at anytime to increase period O by using a larger
 value for O in the next and future transaction sets, or regenerating the most
@@ -448,14 +491,13 @@ The participants:
 
 1. Increment i.
 2. I and R build the bump transaction B_i.
-3. I and R follow the [Update Process](#Update-Process), including the step to
-increment i, to build, sign, and exchange declaration and closing transactions
-that close the channel in the same state as the most recently agreed state.
-This step yields transactions D_i' and C_i' where i' = i+1.
-4. I and R sign and exchange signatures for deposit transaction B_i.
-5. I or R submit B_i.
-6. Wait for E's sequence number to be B_i's.
-6. Set e to B_i's iteration number.
+3. Increment i.
+4. Sign and exchange a closing transaction C_i, that closes the channel with
+disbursements matching the most recent agreed state.
+5. Sign and exchange a declaration transaction D_i.
+6. I and R sign and exchange signatures for bump transaction B_i.
+7. I or R submit B_i.
+9. Set e to B_i's iteration number.
 
 The transactions are constructed as follows:
 
@@ -469,34 +511,34 @@ sequence number s_i.
 
 ### Network Transaction Fees
 
-All transaction fees are paid by the participant submitting the transaction
-to the Stellar network.
+All transaction fees are paid by the participant submitting the transaction to
+the Stellar network.
 
-All transactions defined in the protocol have their fees set to zero.  The
-submitter of a transaction wraps the transactions in a fee bump transaction
-envelope and provides an appropriate fee, paying the fee themselves.
+All transactions defined in the protocol with escrow account E as the source
+account have their fees set to zero.  The submitter of a transaction wraps the
+transaction in a fee bump transaction envelope and provides an appropriate fee,
+paying the fee themselves.
 
 Credits and debits to escrow account E only ever represent deposits or
-withdrawals by I or R, and the sum of all disbursements at close equal the
-sum of all deposits minus the sum of all withdrawals.  Network transaction
-fees do not change the balance of the channel.
+withdrawals by I or R, and the sum of all disbursements at close equal the sum
+of all deposits minus the sum of all withdrawals.  Network transaction fees do
+not change the balance of the channel.
 
 ### Reserves
 
-All reserves for new ledger entries created to support the payment channel
-are supplied by the participant who will be in control of the ledger entry at
-channel close.  Participants should have no impact or dependence on each
-other after channel close, and so they must not sponsor ledger entries that
-only the other party controls after channel close, either directly or
-indirectly through the escrow or reserve accounts.  For example, if the
-escrow account was to sponsor the creation of claimable balances at channel
-close, participant I would be unable to merge escrow account E until
-participant R claimed their claimable balances.
+All reserves for new ledger entries created to support the payment channel are
+supplied by the participant who will be in control of the ledger entry at
+channel close.  Participants should have no impact or dependence on each other
+after channel close, and so they must not sponsor ledger entries that only the
+other party controls after channel close, either directly or indirectly through
+the escrow or reserve accounts.  For example, if the escrow account was to
+sponsor the creation of claimable balances at channel close, participant I would
+be unable to merge escrow account E until participant R claimed their claimable
+balances.
 
-Ledger entries that do not survive channel close, such as signers, are
-sponsored by their beneficiary.  A participant should not need to fund
-another participants excessive use of signers, participants should pay for
-their own key and signing requirements.
+Ledger entries that do not survive channel close, such as signers, are sponsored
+by their beneficiary.  Participants pay for their own key and signing
+requirements.
 
 Participant I provides reserves for:
 - Escrow account E
@@ -524,42 +566,42 @@ The total reserves required for each participant are:
   - \+ Number of Assets (for Claimable Balances)
   - \+ 2 x Number of R's Signers
 
-In the rare event that a network upgrade results in base reserve increasing,
-but participant R does not increase the funds in reserve account V to
-sufficiently cover the reserve cost, participant I may choose to deposit the
-amount of native asset necessary into reserve account V themselves, at some
-written-off cost to themselves.
+In the rare event that a network upgrade results in base reserve increasing, but
+participant R does not increase the funds in reserve account V to sufficiently
+cover the reserve cost, participant I may choose to deposit the amount of native
+asset necessary into reserve account V themselves, at some written-off cost to
+themselves.
 
 ## Security Concerns
 
 ### Closing Transaction Failure
 
 The closing transaction, C_i, must never fail.  Under the conditions of the
-Stellar Consensus Protocol as it is defined today, and under correct use of
-this protocol, there is no known conditions that will cause it to fail.  It
-will be either invalid or valid and successful, but not valid and failed.  If
-C_i was to be valid and fail it would consume a sequence number and fair
-distribution of the assets within the escrow account would require the
-cooperation of all participants.
+Stellar Consensus Protocol as it is defined today, and under correct use of this
+protocol, there is no known conditions that will cause it to fail.  It will be
+either invalid or valid and successful, but not valid and failed.  If C_i was to
+be valid and fail it would consume a sequence number and fair distribution of
+the assets within the escrow account would require the cooperation of all
+participants.
 
-If this protocol is not implemented correctly one condition that can result
-in the closing transaction failing is if there is not sufficient native asset
-to sponsor the ledger entries created by the transaction.  The closing
-transaction creates one or more new claimable balance ledger entries that
-each require sponsoring.  If the sponsor has insufficient native asset the
-closing transaction will fail.  To avoid this situation it is critical that
-participants lock sufficient funds up-front to provide the reserve, and that
-both participants monitor base reserve changes in the network and respond by
-adding additional native asset if required.
+If this protocol is not implemented correctly one condition that can result in
+the closing transaction failing is if there is not sufficient native asset to
+sponsor the ledger entries created by the transaction.  The closing transaction
+creates one or more new claimable balance ledger entries that each require
+sponsoring.  If the sponsor has insufficient native asset the closing
+transaction will fail.  To avoid this situation it is critical that participants
+lock sufficient funds up-front to provide the reserve, and that both
+participants monitor base reserve changes in the network and respond by adding
+additional native asset if required.
 
 ## Limitations
 
-This protocol defines the mechanisms of the Stellar network's core protocol
-that are used to enforce agreements made by two participants. This protocol
-does not define the transport through which the agreements are coordinated,
-or the methods through which more than two participants can coordinate and
-exchange dependent agreements. These issues are likely to be discussed in
-separate proposals.
+This protocol defines the mechanisms of the Stellar network's core protocol that
+are used to enforce agreements made by two participants. This protocol does not
+define the transport through which the agreements are coordinated, or the
+methods through which more than two participants can coordinate and exchange
+dependent agreements. These issues are likely to be discussed in separate
+proposals.
 
 ## Implementations
 
