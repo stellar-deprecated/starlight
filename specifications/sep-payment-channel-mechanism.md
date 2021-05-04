@@ -395,8 +395,7 @@ This step yields transactions D_i' and C_i' where i' = i+1.
 increment i, to build, sign, and exchange declaration and closing transactions
 that define how the assets held by the escrow account will be disbursed at close
 of the channel such that the deposited amount included in P_i will be disbursed
-   to participant R. This step yields transactions D_i'' and C_i'' where i'' =
-   i+2. **D_i''**'s maxSeqNo is additionally set to i.
+to participant R. This step yields transactions D_i'' and C_i'' where i'' = i+2.
 4. I and R sign and exchange signatures for deposit transaction P_i.
 5. I or R submit P_i.
 6. Wait for E's sequence number to be P_i's.
