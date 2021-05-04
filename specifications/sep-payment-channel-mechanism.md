@@ -236,8 +236,8 @@ period).
 
 - D_i, the _declaration transaction_, declares an intent to execute the
 corresponding closing transaction C_i.  D_i has source account E, sequence
-number s_i, and `minSeqNum` set to s.  Hence, D_i can execute at any time, so
-long as E's sequence number n satisfies s <= n < s_i.  Because C_i has source
+number s_i, and `minSeqNum` set to s_e.  Hence, D_i can execute at any time, so
+long as E's sequence number n satisfies s_e <= n < s_i.  Because C_i has source
 account E and sequence number s_i+1, D_i leaves E in a state where C_i can
 execute.
 
@@ -395,7 +395,8 @@ This step yields transactions D_i' and C_i' where i' = i+1.
 increment i, to build, sign, and exchange declaration and closing transactions
 that define how the assets held by the escrow account will be disbursed at close
 of the channel such that the deposited amount included in P_i will be disbursed
-to participant R. This step yields transactions D_i'' and C_i'' where i'' = i+2.
+   to participant R. This step yields transactions D_i'' and C_i'' where i'' =
+   i+2. **D_i''**'s maxSeqNo is additionally set to i.
 4. I and R sign and exchange signatures for deposit transaction P_i.
 5. I or R submit P_i.
 6. Wait for E's sequence number to be P_i's.
@@ -421,25 +422,15 @@ to s_i.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
   E to s_i''.
 
-TODO: This deposit operation is not safe. If it succeeds the appropriate final
+TODO: This deposit process is dependent on a maxSeqNo being added to CAP-21 that
+is not currently part of the proposal. is not safe. If it succeeds the appropriate final
 state closure is possible with D_i'' and C_i''. If it fails the existing state
 is preserved in D_i' and C_i', however there is now nothing preventing D_i'' and
 C_i'' being submitted.
 
 #### Withdraw
 
-TODO: Flesh out with more steps and list operations explicitly.
-
-For R to top-up or withdraw excess funds from the escrow account E, the
-participants skip a generation. They set s = 2(i+1), and i = i+2. They then
-exchange C_i and D_i (which unlike the update case, can be exchanged in a
-single phase of communication because D_i is not yet executable while E's
-sequence number is below the new s). Finally, they create a top-up
-transaction that atomically adjusts E's balance and uses `BUMP_SEQUENCE` to
-increase E's sequence number to s.
-
-To close the channel cooperatively, the parties re-sign C_i with a
-`minSeqNum` of s and a `minSeqAge` of 0, then submit this transaction.
+TODO: Write this flow out.
 
 #### Change the Observation Period
 
@@ -450,25 +441,33 @@ transaction to the network.
 
 The participants may agree at anytime to increase period O by using a larger
 value for O in the next and future transaction sets, or regenerating the most
-recent transaction set, then signing and submitting a transaction that bumps
-the sequence number of the escrow account to the sequence before the most
-recent D_i.  The sequence bump ensures only the most recent transaction with
-the new period O is valid.
+recent transaction set, then signing and submitting a transaction that bumps the
+sequence number of the escrow account to the sequence before the most recent
+D_i. The sequence bump ensures only the most recent transaction with the new
+period O is valid.
 
 The participants:
 
-1. Follow the [Update](#Update) process with the new period O.
-2. Sign and exchange a bump transaction B.
-3. TODO: Set new values for s and i.
+1. Increment i.
+2. I and R build the bump transaction B_i.
+3. I and R follow the [Update Process](#Update-Process), including the step to
+increment i, to build, sign, and exchange declaration and closing transactions
+that close the channel in the same state as the most recently agreed state.
+This step yields transactions D_i' and C_i' where i' = i+1.
+4. I and R sign and exchange signatures for deposit transaction B_i.
+5. I or R submit B_i.
+6. Wait for E's sequence number to be B_i's.
+6. Set e to B_i's iteration number.
 
 The transactions are constructed as follows:
 
-- B, the _bump transaction_, bumps the sequence number of escrow account E
-such that only the most recent transaction set is valid.  B has source
-account E, sequence number s.
+- B_i, the _bump transaction_, bumps the sequence number of escrow account E
+such that only the most recent transaction set is valid. B has source account E,
+sequence number s_i.
 
-  B contains operations:
-  - One `BUMP_SEQUENCE` operation with sequence set to 2(i-1)+1.
+  B_i does not require any operations, but since Stellar disallows empty
+  transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0 as
+  a no-op.
 
 ### Network Transaction Fees
 
