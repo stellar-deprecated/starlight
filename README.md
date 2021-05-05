@@ -11,7 +11,15 @@ The code and documents in this repository are a work-in-progress and are incompl
 
 ## Forks
 
-The code in this repository uses forks of some software with partial implementations of [CAP-21]. The forks may not be exactly the same as the CAP as shortcuts may have been taken for experimentation purposes.
+The code in this repository uses forks of some software with partial implementations of [CAP-21].
+
+The forks may not be exactly the same as the CAP as shortcuts may have been taken for experimentation purposes. The account extension was implemented using the existing dangling format and not the `cur` format that CAP-21 proposes. Also, not all general preconditions were implemented. The preconditions available in CAP-21 are listed here, and checked if implemented:
+
+- [x] `timeBounds`
+- [ ] `ledgerBounds`
+- [x] `minSeqNum`
+- [x] `minSeqAge`
+- [x] `minSeqLedgerGap`
 
 - xdr: https://github.com/leighmcculloch/stellar--stellar-core/tree/cap21/src/xdr
 - stellar-core: https://github.com/leighmcculloch/stellar--stellar-core/pull/1
