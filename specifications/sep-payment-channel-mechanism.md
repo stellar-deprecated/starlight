@@ -247,7 +247,7 @@ execute.
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0
   as a no-op.
 
-#### Cooperative Close
+#### Coordinated Close
 
 Participants can agree to close the channel immediately by modifying and
 resigning the most recently signed confirmation transaction. The participants
@@ -258,7 +258,7 @@ change `minSeqAge` and `minSeqLedgerGap` to zero.
 3. Submit D_i
 4. Submit modified C_i
 
-#### Uncooperative Close
+#### Uncordinated Close
 
 Participants can close the channel at the latest state by submitting the most
 recently signed declaration transaction, waiting the observation period O, then
