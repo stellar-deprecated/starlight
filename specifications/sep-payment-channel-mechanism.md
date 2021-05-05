@@ -51,7 +51,7 @@ The protocol assumes some _observation period_, O, such that both parties are
 guaranteed to be able to observe the blockchain state and submit transactions
 within any period of length O.
 
-The payment channel consists of two 2-of-2 multisig escrow account E, and a
+The payment channel consists of a 2-of-2 multisig escrow account E, and a
 series of transaction sets that contain _declaration_ and _closing_
 transactions on E signed by both participants.  The closing transaction
 defines the final state of the channel that creates claimable balances for R
@@ -84,6 +84,11 @@ participants are guaranteed to be able to observe the blockchain state and
 submit transactions in response to changing state.
 
 The participants agree on the period O at channel open.
+
+The observation period is defined both as a duration in time, and a count of
+ledgers. The observation period has passed if both the duration and ledger count
+have been exceeded. These two properties together are referred to as O
+throughout the protocol.
 
 The participants may agree to change the period O at anytime by following the
 [Change the Observation Period](#Change-the-Observation-Period) process.
@@ -122,9 +127,9 @@ the channel:
 sequence number of escrow account E after E has been created. It is the first
 available sequence number for iterations to consume.
 
-- i, the _iteration number_ of the payment channel, is initialized to zero.
-It is incremented with every off-chain update of the payment channel state,
-or on-chain setup, deposit, withdrawal, etc.
+- i, the _iteration number_, is initialized to zero.  It is incremented with
+every off-chain update of the payment channel state, or on-chain setup, deposit,
+withdrawal, etc.
 
 - e, the _executed iteration number_, is initialized to zero. It is incremented
 with every iteration submitted on-chain.
@@ -209,14 +214,15 @@ To update the payment channel state, the participants:
 
 The transactions are constructed as follows:
 
-- C_i, the _closing transaction_, disburses funds to R and changes the
-signing weights on E such that I unilaterally controls E.  C_i has source
-account E, sequence number s_i+1, and a `minSeqAge` of O (the observation
-period).
+- C_i, the _closing transaction_, disburses funds to R and changes the signing
+weights on E such that I unilaterally controls E.  C_i has source account E,
+sequence number s_i+1, a `minSeqAge` of O (the observation period time
+duration), and a `minSeqLedgerGap` of O (the observation period ledger count).
 
-  The `minSeqAge` prevents a misbehaving party from executing C_i when the
-  channel state has already progressed to a later iteration number, as the
-  other party can invalidate C_i by submitting D_i' for some i' > i.
+  The `minSeqAge` and `minSeqLedgerGap` prevents a misbehaving party from
+  executing C_i when the channel state has already progressed to a later
+  iteration number, as the other party has the period O to invalidate C_i by
+  submitting D_i' for some i' > i.
   
   C_i contains operations:
   - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
@@ -245,9 +251,9 @@ execute.
 
 Participants can agree to close the channel immediately by modifying and
 resigning the most recently signed confirmation transaction. The participants
-change the `minSeqAge` to zero.
+change `minSeqAge` and `minSeqLedgerGap` to zero.
 
-1. Modify the most recent C_i `minSeqAge` to zero.
+1. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero.
 2. Resign and exchange the modified confirmation transaction C_i.
 3. Submit D_i
 4. Submit modified C_i
