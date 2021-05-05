@@ -260,9 +260,10 @@ change `minSeqAge` and `minSeqLedgerGap` to zero.
 
 #### Uncordinated Close
 
-Participants can close the channel at the latest state by submitting the most
-recently signed declaration transaction, waiting the observation period O, then
-submitting the closing transaction.
+Participants can close the channel after the observation period O without
+coordinating. They do this by submitting the most recently signed declaration
+transaction, waiting the observation period O, then submitting the closing
+transaction.
 
 1. Submit most recent D_i
 2. Wait observation period O
