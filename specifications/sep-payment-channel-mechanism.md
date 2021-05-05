@@ -114,7 +114,7 @@ until all claimable balances created at close for R are claimed by R.
 
 The two participants agree on the following constants:
 
-- m, the _maximum transaction account of an iteration's transaction set_, is
+- m, the _maximum transaction count for an iteration's transaction set_, is
 defined as 2, the maximum number of transactions that can be signed in any
 process between the increments of iteration number i.
 
