@@ -556,6 +556,14 @@ sequence number s_i.
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0 as
   a no-op.
 
+#### Reusing a Channel
+
+After close, escrow account E and reserve account V can be reused for another
+channel with the same or different participants. The relevant account creation
+steps during [Setup](#Setup) are skipped. All variable values from the closed
+channel are discarded and set anew with iteration number i and executed
+iteration number e being set to zero.
+
 ### Network Transaction Fees
 
 All transaction fees are paid by the participant submitting the transaction to
