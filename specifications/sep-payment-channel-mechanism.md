@@ -253,12 +253,12 @@ Participants can agree to close the channel immediately by modifying and
 resigning the most recently signed confirmation transaction. The participants
 change `minSeqAge` and `minSeqLedgerGap` to zero.
 
-1. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero.
-2. Resign and exchange the modified confirmation transaction C_i.
-3. Submit D_i
+1. Submit most recent D_i
+2. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero
+3. Resign and exchange the modified confirmation transaction C_i
 4. Submit modified C_i
 
-#### Uncordinated Close
+#### Uncoordinated Close
 
 Participants can close the channel after the observation period O without
 coordinating. They do this by submitting the most recently signed declaration
@@ -269,14 +269,17 @@ transaction.
 2. Wait observation period O
 3. Submit C_i
 
-#### Contesting an Uncoordinated Close
+#### Contesting a Close
+
+Participants can contest a close if the close is not the most recent agreed
+closing state of the payment channel.
 
 Participants can attempt to close the channel at a state that is earlier in the
 history of the channel than the most recently agreed to state. A participant who
 is a malicious actor might attempt to do this if an earlier state benefits them.
 
-The malicious participant can do this by performing the [Uncooperative
-Close](#Uncooperative-Close) process with a declaration transaction that is not
+The malicious participant can do this by performing the [Uncoordinated
+Close](#Uncoordinated-Close) process with a declaration transaction that is not
 the most recently signed declaration transaction.
 
 The other participant can identify that the close process has started at an
@@ -287,7 +290,7 @@ the close. A participant contests a close by submitting a more recent
 declaration transaction and closing the channel at the actual final state.
 
 1. Get E's sequence number n
-2. If s_e > n < s_i, go to 3, otherwise go to 1
+2. If s_{e+1} >= n < s_i, go to step 3, else go to step 1
 3. Submit most recent D_i
 4. Wait observation period O
 5. Submit C_i
