@@ -269,7 +269,7 @@ transaction.
 2. Wait observation period O
 3. Submit C_i
 
-#### Contesting an Uncooperative Close
+#### Contesting an Uncoordinated Close
 
 Participants can attempt to close the channel at a state that is earlier in the
 history of the channel than the most recently agreed to state. A participant who
