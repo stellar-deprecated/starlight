@@ -302,14 +302,15 @@ channel setup. Some of the operations used to alter the channel setup may fail
 even if the transactions are valid, while others will always succeed if the
 transactions are valid.
 
-Each operation is implemented in a two-step process. Participants agree on a new
-closing state at a future iteration by signing C_i and D_i transactions where i
-has skipped an iteration that is not yet executable because the D_i's
+Some operations are implemented in a two-step process. Participants agree on a
+new closing state at a future iteration by signing C_i and D_i transactions
+where i has skipped an iteration that is not yet executable because the D_i's
 `minSeqNum` is also set in the future. Participants then sign a transaction to
 make the change that only moves the sequence of escrow account E to satisfy the
 `minSeqNum` of the future D_i.
 
-Operations that can fail have the following requirements as well:
+Operations that can fail and change the balances of the channel have the
+following requirements as well:
 
 - The transaction that can fail must have its source account set to an account
 that is not escrow account E.
@@ -317,14 +318,13 @@ that is not escrow account E.
 bumps escrow account E's sequence number to a sequence number that makes the D_i
 executable.
 
-Operations that cannot fail:
+Operations where failure cannot occur or is of no consequence:
 
 - [Change the Observation Period](#Change-the-Observation-Period)
-
-Operations that can fail:
-
 - [Add Trustline](#Add-Trustline)
 - [Remove Trustline](#Remove-Trustline)
+
+Operations that can fail:
 - [Deposit by Initiator](#Deposit-by-Initiator)
 - [Deposit by Responder](#Deposit-by-Responder)
 - [Withdraw](#Withdraw)
@@ -333,23 +333,11 @@ Operations that can fail:
 
 Participants can add additional trustlines if they plan to make deposits of new balances.
 
-1. Increment i.
-2. I and R build the trustline transaction TA_i.
-3. Set e' to e.
-4. Set e to i.
-5. Increment i.
-6. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the most recent agreed state.
-7. Sign and exchange a declaration transaction D_i.
-8. I and R sign and exchange signatures for trustline transaction TA_i.
-9. I or R submit TA_i.
+1. I and R sign and exchange signatures for trustline transaction TA_i.
+2. I or R submit TA_i.
 
-If the remove trustline transaction TA_i fails or is never submitted, the C_i
-and D_i are not executable because escrow account E's sequence number was not
-bumped to s_i.  The participants should take the following steps since the
-transaction did not succeed:
-
-10. Set e to e'.
+If the remove trustline transaction TA_i fails or is never submitted, there is
+no consequence to the channel.
 
 The transactions are constructed as follows:
 
@@ -368,34 +356,16 @@ account that is not E or V, typically the participant proposing the change.
   - One or more `PAYMENT` operations depositing R's reserves to V, for each new
   trustline on E that will be used to sponsor claimable balances at
   disbursement.
-  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
-  E to s_i.
-  
-- C_i, see [Update](#Update) process.
-
-- D_i, see [Update](#Update) process.
 
 ##### Remove Trustline
 
 Participants can remove empty trustlines.
 
-1. Increment i.
-2. I and R build the trustline transaction TR_i.
-3. Set e' to e.
-4. Set e to i.
-5. Increment i.
-6. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the most recent agreed state.
-7. Sign and exchange a declaration transaction D_i.
-8. I and R sign and exchange signatures for trustline transaction TR_i.
-9. I or R submit TR_i.
+1. I and R sign and exchange signatures for trustline transaction TR_i.
+2. I or R submit TR_i.
 
-If the remove trustline transaction TR_i fails or is never submitted, the C_i
-and D_i are not executable because escrow account E's sequence number was not
-bumped to s_i.  The participants should take the following steps since the
-deposit did not succeed:
-
-10. Set e to e'.
+If the remove trustline transaction TR_i fails or is never submitted, there is
+no consequence to the channel.
 
 The transactions are constructed as follows:
 
@@ -415,12 +385,6 @@ change.
   - One or more `PAYMENT` operations withdrawing R's reserves from V, for each
   trustline being removed from E that would have been used to sponsor claimable
   balances at disbursement and are no longer required.
-  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
-  E to s_i.
-  
-- C_i, see [Update](#Update) process.
-
-- D_i, see [Update](#Update) process.
 
 ##### Deposit by Initiator
 
