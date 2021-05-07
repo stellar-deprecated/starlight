@@ -362,7 +362,7 @@ Participants can add additional trustlines if they plan to make deposits of new 
 1. I and R sign and exchange signatures for trustline transaction TA_i.
 2. I or R submit TA_i.
 
-If the remove trustline transaction TA_i fails or is never submitted, there is
+If the add trustline transaction TA_i fails or is never submitted, there is
 no consequence to the channel.
 
 The transactions are constructed as follows:
