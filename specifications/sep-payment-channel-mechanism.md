@@ -436,7 +436,7 @@ following process:
 
 1. Increment i.
 2. I and R build the deposit transaction P_i.
-3. Set e' to e.
+3. Set e' to the value of e.
 4. Set e to i.
 5. Increment i.
 6. Sign and exchange a closing transaction C_i, that closes the channel with
@@ -451,7 +451,7 @@ not executable because escrow account E's sequence number was not bumped to s_i.
 The participants should take the following steps since the deposit did not
 succeed:
 
-10. Set e to e'.
+10. Set e to the value of e'.
 
 The transactions are constructed as follows:
 
@@ -477,7 +477,7 @@ withdrawing:
 
 1. Increment i.
 2. I and R build the withdrawal transaction W_i.
-3. Set e' to e.
+3. Set e' to the value of e.
 4. Set e to i.
 5. Increment i.
 6. Sign and exchange a closing transaction C_i, that closes the channel with
@@ -492,7 +492,7 @@ are not executable because escrow account E's sequence number was not bumped to
 s_i.  The participants should take the following steps since the withdrawal did
 not succeed:
 
-10. Set e to e'.
+10. Set e to the value of e'.
 
 The transactions are constructed as follows:
 
