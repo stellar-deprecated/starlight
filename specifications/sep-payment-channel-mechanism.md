@@ -363,7 +363,7 @@ Operations where failure cannot occur or is of no consequence:
 - [Add Trustline](#Add-Trustline)
 - [Remove Trustline](#Remove-Trustline)
 
-Operations that can fail:
+Operations that can fail and where the additional requirements apply:
 - [Deposit by Initiator](#Deposit-by-Initiator)
 - [Deposit by Responder](#Deposit-by-Responder)
 - [Withdraw](#Withdraw)
