@@ -59,6 +59,16 @@ and returns control of E to I.  Each generation of declaration and closing
 transaction sets in the series are an agreement on a new final state for the
 channel.
 
+Participants use each iteration of declaration and closing transaction sets to
+agree, and continuously re-agree, on a new final states for the channel. They
+may choose to modify their agreement based on individual payments to one
+another, or on some other basis such as to perform net settlement.
+
+For example, if the channel initial state is $30 of which $10 belongs to I and
+$20 belongs to R, the first closing transaction will disburse $10 to I and $20
+to R. If I makes a payment of $2 to R, then I and R agree on a new closing
+transaction that will disburse $8 to I and $22 to R.
+
 The payment channel also uses a second 2-of-2 multisig reserve account V, to
 sponsor the claimable balances ledger entries that are created at channel
 close, and that disburse funds to R.
@@ -205,6 +215,17 @@ sequence number set to s_i.
 - D_i, see [Update](#Update) process.
 
 #### Update
+
+Participants use the update process to agree, and re-agree, on a new final state
+for the channel. Participants will agree on a new final state when making
+payments to one another within the channel.
+
+For example, if the channel initial state is $30 of which $10 belongs to I and
+$20 belongs to R, the first closing transaction will disburse $10 to I and $20
+to R. If I makes a payment of $2 to R, this update process will involve I and R
+agreeing on a new declaration and aclosing transaction that supersedes all
+previous declaration and closing transaction and that will disburse $8 to I and
+$22 to R.
 
 To update the payment channel state, the participants:
 
