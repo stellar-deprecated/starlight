@@ -308,7 +308,12 @@ earlier state by monitoring changes in escrow account E's sequence. If the other
 participant sees the sequence number of escrow account E change to a value that
 is not the most recently used s_i, they can use the following process to contest
 the close. A participant contests a close by submitting a more recent
-declaration transaction and closing the channel at the actual final state.
+declaration transaction and closing the channel at the actual final state. A
+more recent declaration transaction may be submitted because it has a higher
+sequence number than the declaration transaction that the malicious actor
+submitted. The more recent declaration transaction prevents the malicious actor
+from submitting the older closing transaction because it has a lower sequence
+number making that transaction invalid.
 
 1. Get E's sequence number n
 2. If s_{e+1} >= n < s_i, go to step 3, else go to step 1
