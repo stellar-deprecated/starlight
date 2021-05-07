@@ -176,6 +176,11 @@ disbursements matching the initial contributions.
 9. I and R sign and exchange signatures for formation transaction F.
 10. I or R submit F.
 
+It is important that F is signed after C_i and D_i because F will make the
+accounts E and V 2-of-2 multisig. Without C_i and D_i, I and R would not be able
+to close the channel, or regain control of the accounts, and the assets within
+without coordinating with each other.
+
 The transactions are constructed as follows:
 
 - F, the _formation transaction_, deposits I and R's contributions to escrow
@@ -232,6 +237,13 @@ To update the payment channel state, the participants:
 1. Increment i.
 2. Sign and exchange a closing transaction C_i.
 3. Sign and exchange a declaration transaction D_i.
+
+It is important that D_i is signed after C_i because D_i will invalidate any
+previously signed C_i. If I and R signed and exchanged D_i first either party
+could prevent the channel from closing without coordination by submitting D_i
+and refusing to sign C_i.  The participants would not be able to close the
+channel, or regain control of the accounts, and the assets within without
+coordinating with each other.
 
 The transactions are constructed as follows:
 
@@ -618,6 +630,14 @@ asset necessary into reserve account V themselves, at some written-off cost to
 themselves.
 
 ## Security Concerns
+
+### Transaction Signing Order
+
+In many of the processes outlined in the protocol an order is provided to when
+transactions should be signed and exchanged. This order is critical to the
+protocol. If a participant signs transactions out-of-order they will allow the
+other participant to place the channel into a state where disbursement is not
+possible without the participants coordinating.
 
 ### Closing Transaction Failure
 
