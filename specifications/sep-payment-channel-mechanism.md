@@ -141,8 +141,9 @@ available sequence number for iterations to consume.
 every off-chain update of the payment channel state, or on-chain setup, deposit,
 withdrawal, etc.
 
-- e, the _executed iteration number_, is initialized to zero. It is incremented
-with every iteration submitted on-chain.
+- e, the _executed iteration number_, is initialized to zero. It is updated to
+the most recent iteration number i that the participants agree to execute
+on-chain, such as a setup, deposit, or withdrawal.
 
 ### Computed Values
 
