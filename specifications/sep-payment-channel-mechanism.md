@@ -257,8 +257,8 @@ ledger count).
 - D_i, the _declaration transaction_, declares an intent to execute the
 corresponding closing transaction C_i.  D_i has source account EI, sequence
 number s_i, and `minSeqNum` set to s_e.  Hence, D_i can execute at any time, so
-long as E's sequence number n satisfies s_e <= n < s_i.  Because C_i has source
-account E and sequence number s_i+1, D_i leaves EI in a state where C_i can
+long as EI's sequence number n satisfies s_e <= n < s_i.  Because C_i has source
+account EI and sequence number s_i+1, D_i leaves EI in a state where C_i can
 execute.
 
   D_i does not require any operations, but since Stellar disallows empty
@@ -329,7 +329,7 @@ Some operations are implemented in a two-step process. Participants agree on a
 new closing state at a future iteration by signing C_i and D_i transactions
 where i has skipped an iteration that is not yet executable because the D_i's
 `minSeqNum` is also set in the future. Participants then sign a transaction to
-make the change that only moves the sequence of escrow account E to satisfy the
+make the change that only moves the sequence of escrow account EI to satisfy the
 `minSeqNum` of the future D_i.
 
 Operations that can fail and change the balances of the channel have the
@@ -510,12 +510,12 @@ being set to zero.
 All transaction fees are paid by the participant submitting the transaction to
 the Stellar network.
 
-All transactions defined in the protocol with escrow account E as the source
+All transactions defined in the protocol with escrow account EI as the source
 account have their fees set to zero.  The submitter of a transaction wraps the
 transaction in a fee bump transaction envelope and provides an appropriate fee,
 paying the fee themselves.
 
-Credits and debits to escrow account E only ever represent deposits or
+Credits and debits to escrow accounts EI and ER only ever represent deposits or
 withdrawals by I or R, and the sum of all disbursements at close equal the sum
 of all deposits minus the sum of all withdrawals.  Network transaction fees do
 not change the balance of the channel.
