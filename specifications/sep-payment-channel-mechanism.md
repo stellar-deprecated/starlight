@@ -3,7 +3,7 @@
 ```
 SEP: ????
 Title: Payment Channel
-Author: David Mazeries <@standford-scs>, Leigh McCulloch <@leighmcculloch>
+Author: David Mazières <@standford-scs>, Leigh McCulloch <@leighmcculloch>
 Track: Standard
 Status: Draft
 Discussion: https://github.com/stellar/experimental-payment-channels/issues
