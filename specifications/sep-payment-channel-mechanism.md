@@ -659,6 +659,11 @@ lock sufficient funds up-front to provide the reserve, and that both
 participants monitor base reserve changes in the network and respond by adding
 additional native asset if required.
 
+Another condition that can result in the closing transaction failing is if the
+use of claimable balances is replaced with payment operations. Payment
+operations may fail and as such a closing transaction containing a payment can
+fail.
+
 ## Limitations
 
 This protocol defines the mechanisms of the Stellar network's core protocol that
