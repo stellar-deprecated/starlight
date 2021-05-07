@@ -7,6 +7,7 @@ The code and documents in this repository are a work-in-progress and are incompl
 ## Index
 
 - [Getting Started](Getting%20Started.md)
+- [SEP](specifications/sep-payment-channel-mechanism.md)
 - [Examples](examples/)
 
 ## Forks
