@@ -1,0 +1,35 @@
+sequenceDiagram
+    participant I as Initiator
+    participant R as Responder
+    
+    Note over I,R: 1. Setup
+    Note right of R: i = 0, e = 0
+    I-->>I: create and deposit funds to EI
+    R-->>R: create and deposits funds to ER
+    I->>+R: Create formation transaction F
+    Note right of R: i = 1
+    I->>+R: Create and sign C_1
+    R-->>-I: sign C_1, send back
+    I->>+R: Create and sign D_1
+    R-->>-I: sign D_1, send back
+    I->>+R: Sign F
+    R->>-R: Sign F, submit
+
+    Note over I,R: 2. Update
+    Note right of R: i=2
+    I->>+R: Create and sign C_2
+    R-->>-I: Sign C_2, send back
+    I->>+R: Create and sign D_2
+    R-->>-I: Sign D-2, send back
+
+    Note over I,R: 3. Closing
+    alt Coordinated Close
+        Note right of R: e = 2
+        I->>+I: submit D_2
+        I->>+R: modify C_2 to be able to submit immediately, sign
+        R->>+R: re-sign C_2, submit
+    else Uncoordinated Close
+        I->>+I: submit D_1
+        R->>+R: submit D_2, wait observation period O to pass
+        R->>+R: submit C_2
+    end
