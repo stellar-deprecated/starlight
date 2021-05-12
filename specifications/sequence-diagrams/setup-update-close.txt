@@ -27,13 +27,20 @@ sequenceDiagram
     R-->>I: Sign D-2, send back
 
     Note over I,R: 3. Closing
+    Note right of R: e = 2
     alt Coordinated Close
-        Note right of R: e = 2
         I->>I: submit D_2
         I->>R: modify C_2 to be able to submit immediately, sign
         R->>R: re-sign C_2, submit
-    else Uncoordinated Close
+    else Uncoordinated Close, non-responsive actor
+        I->>I: submit D_2
+        I->>R: modify C_2 to be able to submit immediately, sign
+        Note over R: R is non-responsive
+        I->>I: wait observation period O
+        I->>I: submit C_2
+    else Uncoordinated Close, malicious actor
         I->>I: submit D_1
+        Note over R: R notices a close from an expired payment has been initiated
         R->>R: submit D_2, wait observation period O to pass
         R->>R: submit C_2
     end
