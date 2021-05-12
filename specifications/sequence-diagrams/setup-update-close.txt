@@ -1,0 +1,46 @@
+sequenceDiagram
+    participant I as Initiator
+    participant R as Responder
+    
+    Note over I,R: 1. Setup
+    Note right of R: i = 0, e = 0
+    I-->>I: create and deposit funds to EI
+    R-->>R: create and deposits funds to ER
+    I->>R: Create formation transaction F
+    I->>I: increment i
+    R->>R: increment i
+    Note right of R: i = 1
+    I->>R: Create and sign C_1
+    R-->>I: sign C_1, send back
+    I->>R: Create and sign D_1
+    R-->>I: sign D_1, send back
+    I->>R: Sign F
+    R->>R: Sign F, submit
+
+    Note over I,R: 2. Update
+    I->>I: increment i
+    R->>R: increment i
+    Note right of R: i=2
+    I->>R: Create and sign C_2
+    R-->>I: Sign C_2, send back
+    I->>R: Create and sign D_2
+    R-->>I: Sign D-2, send back
+
+    Note over I,R: 3. Closing
+    Note right of R: e = 2
+    alt Coordinated Close
+        I->>I: submit D_2
+        I->>R: modify C_2 to be able to submit immediately, sign
+        R->>R: re-sign C_2, submit
+    else Uncoordinated Close, non-responsive actor
+        I->>I: submit D_2
+        I->>R: modify C_2 to be able to submit immediately, sign
+        Note over R: R is non-responsive
+        I->>I: wait observation period O
+        I->>I: submit C_2
+    else Uncoordinated Close, malicious actor
+        I->>I: submit D_1
+        Note over R: R notices a close from an expired payment has been initiated
+        R->>R: submit D_2, wait observation period O to pass
+        R->>R: submit C_2
+    end
