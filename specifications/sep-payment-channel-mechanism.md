@@ -591,7 +591,7 @@ Another condition that can result in the closing transaction failing is if the
 payment operations between the escrow accounts would exceed any limits either
 account has on making a payment, due to liabilities, or would exceed limits on
 the receiving account, such as a trustline limit. Participants must ensure that
-the payments they sign for a receivable by the escrow accounts.
+the payments they sign for are receivable by the escrow accounts.
 
 ## Limitations
 
