@@ -33,9 +33,9 @@ network is fast, but not as fast as two parties forming an agreement directly
 with each other.  For high-frequency transactors it would be beneficial if
 there was a simple method on Stellar to allow two parties to escrow funds
 into an account that is controlled by both parties, where agreements can be
-formed and guaranteed to be executable and contested on-chain.  [CAP-21],
-[CAP-23], and [CAP-33] introduce new functionality to the Stellar protocol
-that make it easier to do this.
+formed and guaranteed to be executable and contested on-chain.  [CAP-21] and
+[CAP-33] introduce new functionality to the Stellar protocol that make it
+easier to do this.
 
 ## Abstract
 
