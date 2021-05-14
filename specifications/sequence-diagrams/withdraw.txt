@@ -28,4 +28,5 @@ sequenceDiagram
         I->>I: set e = e'
         R->>R: set e = e'
         Note right of R: e = 0
+        Note right of R: note: D_4.minSeq = s_3, with an unsuccessful W_3, <br> D_4 is impossible to submit successfully
     end
