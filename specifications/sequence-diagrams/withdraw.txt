@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant I as Initiator
+    participant R as Responder
+    
+    Note over I,R: 1. Setup and a single update
+    Note right of R: i = 2, e = 0
+    Note left of I: EI.seqNum = 1000
+    
+    Note over I,R: 2. Withdrawal by I
+    I->>I: increment i
+    R->>R: increment i
+    Note right of R: i = 3
+    I->>R: create W_3, which has a payment op from EI to I, and bumps EI.seqNum to s_3
+    I->>I: increment i, set e' = e, set e = i
+    R->>R: increment i, set e' = e, set e = i
+    Note right of R: i = 4, e' = 0, e = 3
+    I->>R: create and sign C_4, which has the last agreed upon payouts minus I's payout from W_3
+    R-->>I: sign C_4, send back
+    I->>R: create and sign D_4
+    R-->>I: sign D_4, send back
+    R->>I: sign W_4
+    I->>I: submit W_4
+
+    alt W_4 successful
+        Note right of R: withdrawal complete
+        Note left of I: EI.seqNum = 1007
+    else W_4 unsuccessful
+        I->>I: set e = e'
+        R->>R: set e = e'
+        Note right of R: e = 0
+    end

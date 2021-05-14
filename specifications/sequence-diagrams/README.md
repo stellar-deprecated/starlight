@@ -6,3 +6,6 @@ These sequence diagrams were created using the [mermaid diagram live editor](htt
 ## Diagrams
 [setup-update-close.txt](./setup-update-close.txt)
 - walks through the steps of the basic case for setting up a channel, updating it, and closing it either cooperatively or non-cooperatively
+
+[withdraw.txt](./withdraw.txt)
+- a withdrawal by I after setup and a single update
