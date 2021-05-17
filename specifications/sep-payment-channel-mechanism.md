@@ -593,6 +593,36 @@ account has on making a payment, due to liabilities, or would exceed limits on
 the receiving account, such as a trustline limit. Participants must ensure that
 the payments they sign for are receivable by the escrow accounts.
 
+### Auth Required
+
+Any trustlines on the escrow accounts that have been auth revoked, or could be
+auth revoked, could compromise the payment channels ability to close
+successfully.
+
+If the issuer of any auth revocable asset submits an allow trust operation
+freezing the amounts in either escrow account, the close transaction may fail to
+process if its payment operations are dependent on amounts frozen.
+
+There is nothing participants can do to prevent this, other than only using auth
+immutable assets.
+
+### Clawback
+
+Any trustlines on the escrow accounts that have clawback enabled could
+compromise the payment channels ability to close successfully.
+
+If the issuer of any clawback enabled trustline submits a clawback operation for
+amounts in either escrow account, the close transaction may fail to process if
+its payment operations are dependent on amounts clawed back.
+
+Participants can inspect the state of trustlines before and after formation to
+check if either participant has clawback enabled. Checking the state after
+formation is critical because there is no way for participants to guarantee
+trustline state until after formation has completed because the state can change
+prior to formation. For this reason participants should perform their initial
+deposit after formation, unless they trust the asset issuer not to clawback from
+payment channel escrow accounts, or unless the asset is auth immutable. 
+
 ## Limitations
 
 This protocol defines the mechanisms of the Stellar network's core protocol that
