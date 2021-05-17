@@ -575,7 +575,8 @@ possible without the participants coordinating.
 
 The closing transaction, C_i, must never fail.  Under the conditions of the
 Stellar Consensus Protocol as it is defined today, and under correct use of this
-protocol, there is no known conditions that will cause it to fail.  It will be
+protocol, and assuming no changes in the authorized state of the channels
+trustlines, there is no known conditions that will cause it to fail.  It will be
 either invalid or valid and successful, but not valid and failed.  If C_i was to
 be valid and fail it would consume a sequence number and fair distribution of
 the assets within the escrow account would require the cooperation of all
@@ -593,7 +594,7 @@ account has on making a payment, due to liabilities, or would exceed limits on
 the receiving account, such as a trustline limit. Participants must ensure that
 the payments they sign for are receivable by the escrow accounts.
 
-### Auth Required
+### Trustline Authorization
 
 Any trustlines on the escrow accounts that have been auth revoked, or could be
 auth revoked, could compromise the payment channels ability to close
@@ -603,7 +604,7 @@ If the issuer of any auth revocable asset submits an allow trust operation
 freezing the amounts in either escrow account, the close transaction may fail to
 process if its payment operations are dependent on amounts frozen.
 
-There is nothing participants can do to prevent this, other than only using auth
+There is nothing participants can do to prevent this, other than using only auth
 immutable assets.
 
 ### Clawback
