@@ -188,6 +188,7 @@ multisig accounts. F has source account E, and sequence number set to s_i.
   - Operations sponsored by I:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
+    - One or more `CHANGE_TRUST` operations configuring trustlines on EI.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
     - One or more `SET_OPTIONS` operations adding I's signers to ER.
@@ -196,12 +197,22 @@ multisig accounts. F has source account E, and sequence number set to s_i.
   - Operations sponsored by R:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
+    - One or more `CHANGE_TRUST` operations configuring trustlines on ER.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
     - One or more `SET_OPTIONS` operations adding R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
   
+  The escrow accounts EI and ER will likely have all the necessary trustlines
+  before the formation transaction is built. This means the `CHANGE_TRUST`
+  operations will likely be no-ops. The `CHANGE_TRUST` operations must be
+  included in the formation transaction so that participants are guaranteed the
+  trustlines are still in the same state after formation. If the operations are
+  not included a participant could intentionally or accidentally remove a
+  trustline between escrow account setup and formation causing the presigned
+  closing transaction to become invalid.
+
 - C_i, see [Update](#Update) process.
 
 - D_i, see [Update](#Update) process.
