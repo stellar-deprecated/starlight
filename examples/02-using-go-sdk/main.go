@@ -3,16 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/stellar/experimental-payment-channels/examples/02-using-go-sdk/pctx"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/txnbuild"
 )
 
 const networkPassphrase = "Standalone Network ; February 2017"
 
 var root = func() *keypair.Full {
-	// TODO: Add this logic as a root key function to the network package.
 	kp, err := keypair.FromRawSeed(network.ID(networkPassphrase))
 	if err != nil {
 		panic(err)
@@ -21,44 +20,50 @@ var root = func() *keypair.Full {
 }()
 
 const horizonURL = "http://localhost:8000"
-var client = horizonclient.Client{HorizonURL: horizonURL}
+
+var client = &horizonclient.Client{HorizonURL: horizonURL}
+
+func iferrpanic(err error) {
+	if err != nil {
+		panic(fmt.Sprintf("%#v", err))
+	}
+}
 
 func main() {
 	var err error
 
-	initiator := keypair.MustRandom()
-	err = friendbot(initiator.FromAddress(), "10000.0")
-	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
-	}
+	// Setup initiator and responder.
+	initiator, err := NewParticipant("Initiator")
+	iferrpanic(err)
+	responder, err := NewParticipant("Responder")
+	iferrpanic(err)
 
-	ei := keypair.MustRandom()
-	err = setupEscrowAccount(initiator, ei, "1000.0")
-	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
-	}
+	// Setup initiator escrow account.
+	err = initiator.SetupEscrowAccount()
+	iferrpanic(err)
 
-	responder := keypair.MustRandom()
-	err = friendbot(responder.FromAddress(), "10000.0")
-	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
-	}
+	// Setup responder escrow account.
+	err = responder.SetupEscrowAccount()
+	iferrpanic(err)
 
-	er := keypair.MustRandom()
-	err = setupEscrowAccount(responder, er, "2000.0")
-	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
-	}
-
-	// s := 0 // TODO: set to E's seq
-	// i := 0
+	s := initiator.EscrowSequenceNumber() + 1
+	fmt.Println("s:", s)
+	i := 0
+	fmt.Println("i:", i)
 	// e := 0
 
-	f, err := buildFormationTx(initiator.FromAddress(), responder.FromAddress(), ei.FromAddress(), er.FromAddress())
+	f, err := pctx.BuildFormationTx(
+		initiator.Address(),
+		responder.Address(),
+		initiator.EscrowAddress(),
+		responder.EscrowAddress(),
+		s,
+		i,
+	)
 	if err != nil {
 		panic(fmt.Sprintf("%#v", err))
 	}
-	f, err = f.Sign(networkPassphrase, initiator, responder)
+	f, err = f.Sign(networkPassphrase, initiator.Key(), responder.Key())
 	if err != nil {
 		panic(fmt.Sprintf("%#v", err))
 	}
@@ -66,128 +71,4 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("%#v", err))
 	}
-}
-
-func buildFormationTx(i *keypair.FromAddress, r *keypair.FromAddress, ei *keypair.FromAddress, er *keypair.FromAddress) (*txnbuild.Transaction, error) {
-	var err error
-
-	eia, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: ei.Address()})
-	if err != nil {
-		return nil, err
-	}
-	tp := txnbuild.TransactionParams{
-		SourceAccount:        &eia,
-		IncrementSequenceNum: true,
-		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewTimeout(300),
-	}
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: i.Address(), SponsoredID: ei.Address()})
-	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount:   ei.Address(),
-		MasterWeight:    txnbuild.NewThreshold(0),
-		LowThreshold:    txnbuild.NewThreshold(2),
-		MediumThreshold: txnbuild.NewThreshold(2),
-		HighThreshold:   txnbuild.NewThreshold(2),
-		Signer:          &txnbuild.Signer{Address: r.Address(), Weight: 1},
-	})
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: ei.Address()})
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: r.Address(), SponsoredID: er.Address()})
-	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount:   er.Address(),
-		MasterWeight:    txnbuild.NewThreshold(0),
-		LowThreshold:    txnbuild.NewThreshold(2),
-		MediumThreshold: txnbuild.NewThreshold(2),
-		HighThreshold:   txnbuild.NewThreshold(2),
-		Signer:          &txnbuild.Signer{Address: i.Address(), Weight: 1},
-	})
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: er.Address()})
-	tx, err := txnbuild.NewTransaction(tp)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
-}
-
-func setupEscrowAccount(creator *keypair.Full, account *keypair.Full, initialContribution string) error {
-	var err error
-
-	sourceAccount, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: creator.Address()})
-	if err != nil {
-		return err
-	}
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount:        &sourceAccount,
-			IncrementSequenceNum: true,
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimeout(300),
-			Operations: []txnbuild.Operation{
-				&txnbuild.BeginSponsoringFutureReserves{
-					SponsoredID: account.Address(),
-				},
-				&txnbuild.CreateAccount{
-					Destination: account.Address(),
-					Amount:      initialContribution,
-				},
-				&txnbuild.SetOptions{
-					SourceAccount:   account.Address(),
-					MasterWeight:    txnbuild.NewThreshold(0),
-					LowThreshold:    txnbuild.NewThreshold(1),
-					MediumThreshold: txnbuild.NewThreshold(1),
-					HighThreshold:   txnbuild.NewThreshold(1),
-					Signer:          &txnbuild.Signer{Address: creator.Address(), Weight: 1},
-				},
-				&txnbuild.EndSponsoringFutureReserves{
-					SourceAccount: account.Address(),
-				},
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-	tx, err = tx.Sign(networkPassphrase, creator, account)
-	if err != nil {
-		return err
-	}
-	_, err = client.SubmitTransaction(tx)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func friendbot(account *keypair.FromAddress, startingBalance string) error {
-	var err error
-
-	sourceAccount, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: root.Address()})
-	if err != nil {
-		return err
-	}
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount:        &sourceAccount,
-			IncrementSequenceNum: true,
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimeout(300),
-			Operations: []txnbuild.Operation{
-				&txnbuild.CreateAccount{
-					Destination: account.Address(),
-					Amount:      startingBalance,
-				},
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-	tx, err = tx.Sign(networkPassphrase, root)
-	if err != nil {
-		return err
-	}
-	_, err = client.SubmitTransaction(tx)
-	if err != nil {
-		return err
-	}
-	return nil
 }
