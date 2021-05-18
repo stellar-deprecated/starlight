@@ -17,8 +17,8 @@ type ChannelStateMachine struct {
 	Status                 string // waiting | active | closing | closed
 	Asset                  Asset
 	InitiatorEscrowAccount string
+	ResponderEscrowAccount string
 	ResponderClaimAmount   int
-	ReserveEscrowAccount   string
 	InitiatorClaimAmount   int
 	IsInitiator            bool
 	MyAccount              string
