@@ -34,7 +34,7 @@ func (c *ChannelStateMachine) CheckChannel() (*ChannelCheckResponse, error) {
 	return nil, error
 }
 
-func (c *ChannelStateMachine) Payment(sendAmount int, timeoutMillis int) error {
+func (c *ChannelStateMachine) Payment(sendAmount int) error {
 	return nil
 }
 
@@ -42,7 +42,7 @@ func (c *ChannelStateMachine) CloseStart(declareID int) error {
 	return nil
 }
 
-func (c *ChannelStateMachine) CloseCoordinated(timeoutMillis int, id string) (newStatus string, err error) {
+func (c *ChannelStateMachine) CloseCoordinated(id string) (newStatus string, err error) {
 	return "", nil
 }
 
