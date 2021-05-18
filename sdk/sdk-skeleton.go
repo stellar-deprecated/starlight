@@ -38,7 +38,7 @@ func (c *ChannelStateMachine) Payment(sendAmount int) error {
 	return nil
 }
 
-func (c *ChannelStateMachine) CloseStart(declareID int) error {
+func (c *ChannelStateMachine) CloseStart(iterationNumber int) error {
 	return nil
 }
 
