@@ -17,8 +17,8 @@ type ChannelStateMachine struct {
 	Asset                  Asset
 	InitiatorEscrowAccount string
 	ResponderEscrowAccount string
-	ResponderClaimAmount   int
 	InitiatorClaimAmount   int
+	ResponderClaimAmount   int
 	IsInitiator            bool
 	MyAccount              string
 	MyClaimAmount          int
