@@ -13,7 +13,6 @@ func NewChannelListenerService() {
 //// Channel State Machine
 
 type ChannelStateMachine struct {
-	ChannelID              string
 	Status                 string // waiting | active | closing | closed
 	Asset                  Asset
 	InitiatorEscrowAccount string
@@ -61,6 +60,7 @@ func (c *ChannelStateMachine) GetLatestCloseTx(id string) (*TxInfo, error) {
 
 type TxInfo struct {
 	ID               string
+	Iteration        int
 	Type             string // declaration | close
 	Seq              int64
 	InitiatorBalance int
