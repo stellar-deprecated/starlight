@@ -6,10 +6,6 @@ func NewChannel() {
 
 }
 
-func NewChannelListenerService() {
-
-}
-
 //// Channel State Machine
 
 type ChannelStateMachine struct {
