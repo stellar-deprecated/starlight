@@ -2,148 +2,73 @@ package apidesign
 
 import "time"
 
-type ObservationParams struct{}
-
 type Asset struct{}
 
-type ChannelFactory struct{}
-
-type ChannelConnection struct {
-	ChannelID                string
-	Status                   string // waiting | active | closed_collaborative | closed_hostile
-	Asset                    Asset
-	InitiatorEscrowAccount   string
-	InitiatorStartingBalance int
-	InitiatorCurrentBalance  int
-	ReserveEscrowAccount     string
-	ReserveStartingBalance   int
-	ReserveCurrentBalance    int
-	IsInitiator              bool
-	MyAccount                string
-	MyStartingBalance        int
-	MyBalance                int
-	OtherAccount             string
-	OtherStartingBalance     int
-	OtherBalance             int
+type EscrowAccount struct {
+	PublicKey      string
+	SequenceNumber int64
+	Contributions  []Balance
 }
 
-type NotificationHandler func(ChannelCreationRequest)
-
-type NegotiationParams struct {
-	InitiatorEscrowAccount   string
-	InitiatorStartingBalance int
-	ReserveEscrowAccount     string
-	ReserveStartingBalance   int
+type Balance struct {
+	Asset  Asset
+	Amount int
 }
 
-type ChannelCreationRequest struct {
-	ChannelID         string
-	RequestTime       time.Time
-	Asset             Asset
-	NegotiationParams NegotiationParams
+type Channel struct {
+	Config                  Config
+	Initiator               bool
+	Status                  string // waiting | active | closed_collaborative | closed_hostile
+	ThisEscrow              EscrowAccount
+	OtherEscrow             EscrowAccount
+	BalancesIncoming        []Balance // balances owed to this participant
+	BalancesOutgoing        []Balance // balances owed to the other participant
+	SequenceStart           int
+	IterationNumber         int
+	ExecutedIterationNumber int
 }
 
-type ChannelCreationResponse struct {
-	ChannelID         string
-	Response          string // accept | reject
-	Asset             Asset
-	NegotiationParams NegotiationParams
+type ChannelState Channel // TODO: All the fields that need persisting to persist the state of the channel.
+
+type ObservationPeriod struct {
+	Time      time.Duration
+	LedgerGap int64
 }
 
-type TxInfo struct {
-	ID string
-	Type string // declaration | close
-	Seq int64
-	InitiatorBalance int
-	ResponseBalance int
+type Config struct {
+	SecretKey         string
+	ObservationPeriod ObservationPeriod
 }
 
-func NewChannelFactory(secretKey string, op ObservationParams, startIndex int) (*ChannelFactory, error) {
+type Payment struct {
+	Index       int
+	Source      string
+	Destination string
+	Amount      string
+}
+
+type Connection interface{}
+
+func NewChannel(config Config) (*Channel, error) {
 	return nil, nil
 }
 
-func GetChannelFactories() []*ChannelFactory {
+func (c *Channel) Connect(conn Connection) (ChannelState, error) {
 	return nil
 }
 
-func GetChannelFactory(publicKey string) *ChannelFactory {
-	return nil
+func (c *Channel) CheckState() (ChannelState, error) {
+	return ChannelState{}, nil
 }
 
-func (f *ChannelFactory) InitiateNewChannel(ipAddress string, counterpartyIPAddress string, initiatorStartingAmount string, counterpartyStartingAmount int, asset Asset) (*ChannelConnection, error) {
-	return nil, nil
+func (c *Channel) Pay(amount string) (ChannelState, error) {
+	return ChannelState{}, nil
 }
 
-func (f *ChannelFactory) TriggerChannelListenerService(port int, notificationHandler NotificationHandler) error {
-	return nil
+func (c *Channel) StartClose() (ChannelState, error) {
+	return ChannelState{}, nil
 }
 
-func (f *ChannelFactory) GetPendingChannelCreationRequests(sinceTime *time.Time) []*ChannelCreationRequest {
-	return nil
-}
-
-func (f *ChannelFactory) RespondChannelCreationRequest(channelID string, response ChannelCreationResponse, timeoutMillis int) (*ChannelConnection, error) {
-	return nil, nil
-}
-
-func GetChannelConnection(channelID string) *ChannelConnection {
-	return nil
-}
-
-type MonitoringNotificationHandler func(channelID string, isContestable bool, asset Asset, triggeredTxInfo TxInfo, latestTxInfo TxInfo) (attemptContest bool)
-
-func (c *ChannelConnection) RegisterMonitoringNotificationHandler(handler MonitoringNotificationHandler) error {
-	return nil
-}
-
-func (c *ChannelConnection) StartMonitoringService() error {
-	return nil
-}
-
-func (c *ChannelConnection) UpdateChannelState(newInitiatorBalance int, newResponderBalance int, timeoutMillis int) error {
-	return nil
-}
-
-func (c *ChannelConnection) CloseDeclarationSubmit(id string) error {
-	return nil
-}
-
-func (c *ChannelConnection) CloseCoordinated(timeoutMillis int, id string) (newStatus string, err error) {
-	return "", nil
-}
-
-func (c *ChannelConnection) CloseUncoordinated(id string) (error) {
-	return nil
-}
-
-func (c *ChannelConnection) GetDeclarationTxList() []*TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetDeclarationTx(id string) *TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetPrevDeclarationTx(id string) *TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetNextDeclarationTx(id string) *TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetCloseTxList() []*TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetCloseTx(id string) *TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetPrevCloseTx(id string) *TxInfo {
-	return nil
-}
-
-func (c *ChannelConnection) GetNextCloseTx(id string) *TxInfo {
-	return nil
+func (c *Channel) CompleteClose() (ChannelState, error) {
+	return ChannelState{}, nil
 }
