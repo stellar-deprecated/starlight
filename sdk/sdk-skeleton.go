@@ -1,5 +1,3 @@
-import "time"
-
 type Asset struct{}
 
 //// Methods directly on the SDK
@@ -9,10 +7,6 @@ func NewChannel() {
 }
 
 func NewChannelListenerService() {
-
-}
-
-func GetChannel() {
 
 }
 
@@ -28,16 +22,12 @@ type ChannelStateMachine struct {
 	InitiatorClaimAmount   int
 	IsInitiator            bool
 	MyAccount              string
-	MyClaimAMount          int
+	MyClaimAmount          int
 	OtherAccount           string
 	OtherClaimAmount       int
 }
 
 func (c *ChannelStateMachine) Init() {
-	return nil
-}
-
-func (c *ChannelStateMachine) RegisterMonitoringNotificationHandler(handler MonitoringNotificationHandler) error {
 	return nil
 }
 
@@ -84,43 +74,4 @@ type ChannelCheckResponse struct {
 	LatestTxInfo    TxInfo
 }
 
-type MonitoringNotificationHandler struct {
-}
-
-//// ChannelListenerService
-
-type ChannelListenerService struct {
-	Port int
-	// []func(ChannelCreationRequest) void
-}
-
-type ChannelCreationRequest struct {
-	ChannelID         string
-	RequestTime       time.Time
-	Asset             Asset
-	NegotiationParams NegotiationParams
-}
-
-type NegotiationParams struct {
-	InitiatorEscrowAccount   string
-	InitiatorStartingBalance int
-	ReserveEscrowAccount     string
-	ReserveStartingBalance   int
-}
-
-func (cls *ChannelListenerService) RegisterNotificationhandler() {
-	return nil
-}
-
-func (cls *ChannelListenerService) Trigger() {
-	return nil
-}
-
-func (cls *ChannelListenerService) GetPendingChannelCreationRequests() {
-	return nil
-}
-
-func (cls *ChannelListenerService) RespondChannelCreationRequest(channelID string, response ChannelCreationResponse, timeoutMillis int) (*ChannelConnection, error) {
-	return nil, nil
-}
 
