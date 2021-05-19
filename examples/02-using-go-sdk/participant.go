@@ -49,10 +49,10 @@ func (p *Participant) EscrowSequenceNumber() int64 {
 	return p.escrowSequenceNumber
 }
 
-func (p *Participant) SetupEscrowAccount() error {
+func (p *Participant) SetupEscrowAccount(initialContribution int64) error {
 	ea := keypair.MustRandom()
 	fmt.Println(p.name+" escrow account:", ea.Address())
-	err := pctx.SetupEscrowAccount(networkPassphrase, client, p.kp, ea, "1000.0")
+	err := pctx.SetupEscrowAccount(networkPassphrase, client, p.kp, ea, initialContribution)
 	if err != nil {
 		return err
 	}

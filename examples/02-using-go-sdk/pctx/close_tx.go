@@ -1,11 +1,12 @@
 package pctx
 
 import (
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
-func BuildCloseTx(initiator *keypair.FromAddress, responder *keypair.FromAddress, ei *keypair.FromAddress, er *keypair.FromAddress, s int64, i int, amountToInitiator string, amountToResponder string) (*txnbuild.Transaction, error) {
+func BuildCloseTx(initiator *keypair.FromAddress, responder *keypair.FromAddress, ei *keypair.FromAddress, er *keypair.FromAddress, s int64, i int, amountToInitiator int64, amountToResponder int64) (*txnbuild.Transaction, error) {
 	var err error
 
 	tp := txnbuild.TransactionParams{
@@ -34,19 +35,23 @@ func BuildCloseTx(initiator *keypair.FromAddress, responder *keypair.FromAddress
 				HighThreshold:   txnbuild.NewThreshold(1),
 				Signer:          &txnbuild.Signer{Address: initiator.Address(), Weight: 0},
 			},
-			&txnbuild.Payment{
-				SourceAccount: er.Address(),
-				Destination:   ei.Address(),
-				Asset:         txnbuild.NativeAsset{},
-				Amount:        amountToInitiator,
-			},
-			&txnbuild.Payment{
-				SourceAccount: ei.Address(),
-				Destination:   er.Address(),
-				Asset:         txnbuild.NativeAsset{},
-				Amount:        amountToResponder,
-			},
 		},
+	}
+	if amountToInitiator != 0 {
+		tp.Operations = append(tp.Operations, &txnbuild.Payment{
+			SourceAccount: er.Address(),
+			Destination:   ei.Address(),
+			Asset:         txnbuild.NativeAsset{},
+			Amount:        amount.StringFromInt64(amountToInitiator),
+		})
+	}
+	if amountToResponder != 0 {
+		tp.Operations = append(tp.Operations, &txnbuild.Payment{
+			SourceAccount: ei.Address(),
+			Destination:   er.Address(),
+			Asset:         txnbuild.NativeAsset{},
+			Amount:        amount.StringFromInt64(amountToResponder),
+		})
 	}
 	tx, err := txnbuild.NewTransaction(tp)
 	if err != nil {

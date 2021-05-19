@@ -1,12 +1,13 @@
 package pctx
 
 import (
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
-func SetupEscrowAccount(networkPassphrase string, client horizonclient.ClientInterface, creator *keypair.Full, account *keypair.Full, initialContribution string) error {
+func SetupEscrowAccount(networkPassphrase string, client horizonclient.ClientInterface, creator *keypair.Full, account *keypair.Full, initialContribution int64) error {
 	var err error
 
 	sourceAccount, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: creator.Address()})
@@ -25,7 +26,7 @@ func SetupEscrowAccount(networkPassphrase string, client horizonclient.ClientInt
 				},
 				&txnbuild.CreateAccount{
 					Destination: account.Address(),
-					Amount:      initialContribution,
+					Amount:      amount.StringFromInt64(initialContribution),
 				},
 				&txnbuild.SetOptions{
 					SourceAccount:   account.Address(),
