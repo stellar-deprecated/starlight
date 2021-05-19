@@ -2,7 +2,7 @@ stateDiagram-v2
     [*] --> Waiting: NewChannel()
     note left of [*]: Initiator opening a channel
 
-    Waiting --> Active: channel.Init()
+    Waiting --> Active: channel.Open()
 
     Active --> Closing: channel.CloseStart()
     
