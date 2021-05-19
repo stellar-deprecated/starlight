@@ -1,6 +1,8 @@
-package pctx
+package txbuild
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	observationPeriodTime      = 1 * time.Minute
@@ -10,10 +12,10 @@ const (
 
 const m = 2
 
-func s_i(s int64, i int) int64 {
-	return s + int64(i)*m
+func startSequenceOfIteration(startSequence int64, iterationNumber int64) int64 {
+	return startSequence + iterationNumber*m
 }
 
-func s_e(s int64, e int) int64 {
-	return s + int64(e)*m
+func int64ptr(i int64) *int64 {
+	return &i
 }

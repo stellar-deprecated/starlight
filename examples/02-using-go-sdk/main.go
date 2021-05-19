@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/examples/02-using-go-sdk/pctx"
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -46,11 +46,11 @@ func main() {
 	rContribution := int64(1000_0000000)
 
 	// Setup initiator escrow account.
-	err = initiator.SetupEscrowAccount(iContribution)
+	err = initiator.CreateEscrow(iContribution)
 	iferrpanic(err)
 
 	// Setup responder escrow account.
-	err = responder.SetupEscrowAccount(rContribution)
+	err = responder.CreateEscrow(rContribution)
 	iferrpanic(err)
 
 	// Tx history
@@ -59,24 +59,24 @@ func main() {
 
 	// Initial variable state
 	s := initiator.EscrowSequenceNumber() + 1
-	i := 0
-	e := 0
+	i := int64(0)
+	e := int64(0)
 	fmt.Println("s:", s, "i:", i, "e:", e)
 
 	// Build F
-	f, err := pctx.BuildFormationTx(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i)
+	f, err := txbuild.Formation(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s)
 	iferrpanic(err)
 
 	// Exchange signed C_i, D_i
 	i++
 	fmt.Println("s:", s, "i:", i, "e:", e)
 	{
-		ci, err := pctx.BuildCloseTx(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, 0, 0)
+		ci, err := txbuild.Close(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, 0, 0)
 		iferrpanic(err)
 		ci, err = ci.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
 		c = append(c, Tx{ci})
-		di, err := pctx.BuildDeclarationTx(initiator.EscrowAddress(), s, i, e)
+		di, err := txbuild.Declaration(initiator.EscrowAddress(), s, i, e)
 		iferrpanic(err)
 		di, err = di.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
@@ -117,12 +117,12 @@ func main() {
 		}
 		fmt.Println("i owes r", iOwesR)
 		fmt.Println("r owes i", rOwesI)
-		ci, err := pctx.BuildCloseTx(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, rOwesI, iOwesR)
+		ci, err := txbuild.Close(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, rOwesI, iOwesR)
 		iferrpanic(err)
 		ci, err = ci.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
 		c = append(c, Tx{ci})
-		di, err := pctx.BuildDeclarationTx(initiator.EscrowAddress(), s, i, e)
+		di, err := txbuild.Declaration(initiator.EscrowAddress(), s, i, e)
 		iferrpanic(err)
 		di, err = di.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
@@ -157,7 +157,7 @@ func main() {
 	}()
 
 	// Submit latest D_i
-	lastIteration := len(d)-1
+	lastIteration := len(d) - 1
 	lastD := d[lastIteration]
 	fmt.Println("Submitting:", lastD)
 	_, err = client.SubmitTransaction(lastD.Transaction)

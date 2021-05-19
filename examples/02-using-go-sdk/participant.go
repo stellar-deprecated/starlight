@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/stellar/experimental-payment-channels/examples/02-using-go-sdk/pctx"
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 )
@@ -49,14 +49,11 @@ func (p *Participant) EscrowSequenceNumber() int64 {
 	return p.escrowSequenceNumber
 }
 
-func (p *Participant) SetupEscrowAccount(initialContribution int64) error {
-	ea := keypair.MustRandom()
-	fmt.Println(p.name+" escrow account:", ea.Address())
-	err := pctx.SetupEscrowAccount(networkPassphrase, client, p.kp, ea, initialContribution)
-	if err != nil {
-		return err
-	}
-	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: ea.Address()})
+func (p *Participant) CreateEscrow(initialContribution int64) error {
+	escrow := keypair.MustRandom()
+	fmt.Println(p.name+" escrow account:", escrow.Address())
+
+	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: p.kp.Address()})
 	if err != nil {
 		return err
 	}
@@ -64,8 +61,23 @@ func (p *Participant) SetupEscrowAccount(initialContribution int64) error {
 	if err != nil {
 		return err
 	}
-	p.escrowAddress = ea.FromAddress()
-	p.escrowSequenceNumber = seqNum
+	tx, err := txbuild.CreateEscrow(p.kp, escrow, seqNum, initialContribution)
+	if err != nil {
+		return err
+	}
+
+	tx, err = tx.Sign(networkPassphrase, p.kp, escrow)
+	if err != nil {
+		return err
+	}
+
+	txResp, err := client.SubmitTransaction(tx)
+	if err != nil {
+		return err
+	}
+
+	p.escrowAddress = escrow.FromAddress()
+	p.escrowSequenceNumber = int64(txResp.Ledger)<<32
 	fmt.Println(p.name+" escrow account created.", "Sequence number:", seqNum)
 	return nil
 }

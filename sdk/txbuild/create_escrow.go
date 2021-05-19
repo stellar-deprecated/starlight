@@ -1,35 +1,31 @@
-package pctx
+package txbuild
 
 import (
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
-func SetupEscrowAccount(networkPassphrase string, client horizonclient.ClientInterface, creator *keypair.Full, account *keypair.Full, initialContribution int64) error {
-	var err error
-
-	sourceAccount, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: creator.Address()})
-	if err != nil {
-		return err
-	}
+func CreateEscrow(creator *keypair.Full, escrow *keypair.Full, sequenceNumber int64, initialContribution int64) (*txnbuild.Transaction, error) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &sourceAccount,
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: creator.Address(),
+				Sequence:  sequenceNumber,
+			},
 			IncrementSequenceNum: true,
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
 			Operations: []txnbuild.Operation{
 				&txnbuild.BeginSponsoringFutureReserves{
-					SponsoredID: account.Address(),
+					SponsoredID: escrow.Address(),
 				},
 				&txnbuild.CreateAccount{
-					Destination: account.Address(),
+					Destination: escrow.Address(),
 					Amount:      amount.StringFromInt64(initialContribution),
 				},
 				&txnbuild.SetOptions{
-					SourceAccount:   account.Address(),
+					SourceAccount:   escrow.Address(),
 					MasterWeight:    txnbuild.NewThreshold(0),
 					LowThreshold:    txnbuild.NewThreshold(1),
 					MediumThreshold: txnbuild.NewThreshold(1),
@@ -37,21 +33,13 @@ func SetupEscrowAccount(networkPassphrase string, client horizonclient.ClientInt
 					Signer:          &txnbuild.Signer{Address: creator.Address(), Weight: 1},
 				},
 				&txnbuild.EndSponsoringFutureReserves{
-					SourceAccount: account.Address(),
+					SourceAccount: escrow.Address(),
 				},
 			},
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	tx, err = tx.Sign(networkPassphrase, creator, account)
-	if err != nil {
-		return err
-	}
-	_, err = client.SubmitTransaction(tx)
-	if err != nil {
-		return err
-	}
-	return nil
+	return tx, nil
 }
