@@ -165,29 +165,29 @@ To setup the payment channel:
    - s to EI's sequence number + 1.
    - i to 0.
    - e to 0.
-5. I and R build the formation transaction F.
-6. Increment i.
-7. Sign and exchange a closing transaction C_i, that closes the channel with
+4. Increment i.
+5. Sign and exchange a closing transaction C_i, that closes the channel with
 disbursements matching the initial contributions.
-8. Sign and exchange a declaration transaction D_i.
-9. I and R sign and exchange signatures for formation transaction F.
-10. I or R submit F.
+6. Sign and exchange a declaration transaction D_i.
+7. I and R sign and exchange the formation transaction F.
+8. I or R submit F.
 
 It is important that F is signed after C_i and D_i because F will make the
 accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R would not be
-able to close the channel, or regain control of the accounts, and the assets
-within without coordinating with each other.
+able to close the channel, or regain control of the accounts and the assets
+within, without coordinating with each other.
 
 The transactions are constructed as follows:
 
 - F, the _formation transaction_, changes escrow accounts EI and ER to be 2-of-2
-multisig accounts. F has source account E, and sequence number set to s_i.
+multisig accounts. F has source account E, and sequence number set to s.
 
   F contains operations:
 
   - Operations sponsored by I:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
+    - One or more `CHANGE_TRUST` operations configuring trustlines on EI.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
     - One or more `SET_OPTIONS` operations adding I's signers to ER.
@@ -196,12 +196,22 @@ multisig accounts. F has source account E, and sequence number set to s_i.
   - Operations sponsored by R:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
+    - One or more `CHANGE_TRUST` operations configuring trustlines on ER.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
     - One or more `SET_OPTIONS` operations adding R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
   
+  The escrow accounts EI and ER will likely have all the necessary trustlines
+  before the formation transaction is built. This means the `CHANGE_TRUST`
+  operations will likely be no-ops. The `CHANGE_TRUST` operations must be
+  included in the formation transaction so that participants are guaranteed the
+  trustlines are still in the same state after formation. If the operations are
+  not included a participant could intentionally or accidentally remove a
+  trustline between escrow account setup and formation causing the presigned
+  closing transaction to become invalid.
+
 - C_i, see [Update](#Update) process.
 
 - D_i, see [Update](#Update) process.
