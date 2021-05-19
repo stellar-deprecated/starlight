@@ -165,23 +165,22 @@ To setup the payment channel:
    - s to EI's sequence number + 1.
    - i to 0.
    - e to 0.
-5. I and R build the formation transaction F.
-6. Increment i.
-7. Sign and exchange a closing transaction C_i, that closes the channel with
+4. Increment i.
+5. Sign and exchange a closing transaction C_i, that closes the channel with
 disbursements matching the initial contributions.
-8. Sign and exchange a declaration transaction D_i.
-9. I and R sign and exchange signatures for formation transaction F.
-10. I or R submit F.
+6. Sign and exchange a declaration transaction D_i.
+7. I and R sign and exchange the formation transaction F.
+8. I or R submit F.
 
 It is important that F is signed after C_i and D_i because F will make the
 accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R would not be
-able to close the channel, or regain control of the accounts, and the assets
-within without coordinating with each other.
+able to close the channel, or regain control of the accounts and the assets
+within, without coordinating with each other.
 
 The transactions are constructed as follows:
 
 - F, the _formation transaction_, changes escrow accounts EI and ER to be 2-of-2
-multisig accounts. F has source account E, and sequence number set to s_i.
+multisig accounts. F has source account E, and sequence number set to s.
 
   F contains operations:
 
