@@ -148,7 +148,7 @@ func main() {
 			fmt.Println("Submitting:", oldC)
 			_, err = client.SubmitTransaction(oldC.Transaction)
 			if err == nil {
-				fmt.Println("Success")
+				fmt.Println("Submitting:", oldC, "Success")
 				break
 			}
 			fmt.Println("Submitting:", oldC, "Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
@@ -157,19 +157,22 @@ func main() {
 	}()
 
 	// Submit latest D_i
-	fmt.Println("Submitting:", d[len(d)-1])
-	_, err = client.SubmitTransaction(d[len(d)-1].Transaction)
+	lastIteration := len(d)-1
+	lastD := d[lastIteration]
+	fmt.Println("Submitting:", lastD)
+	_, err = client.SubmitTransaction(lastD.Transaction)
 	iferrpanic(err)
-	fmt.Println("Submitted:", d[len(d)-1])
+	fmt.Println("Submitted:", lastD)
 	// Continue trying to submit C_i
+	lastC := c[lastIteration]
 	for {
-		fmt.Println("Submitting:", c[len(d)-1])
-		_, err = client.SubmitTransaction(c[len(c)-1].Transaction)
+		fmt.Println("Submitting:", lastC)
+		_, err = client.SubmitTransaction(lastC.Transaction)
 		if err == nil {
-			fmt.Println("Success")
+			fmt.Println("Submitting:", lastC, "Success")
 			break
 		}
-		fmt.Println("Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+		fmt.Println("Submitting:", lastC, "Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
 		time.Sleep(time.Second * 10)
 	}
 }
