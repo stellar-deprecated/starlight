@@ -601,7 +601,7 @@ the payments they sign for are receivable by the escrow accounts.
 ### Trustline Authorization
 
 Any trustlines on the escrow accounts that have been auth revoked, or could be
-auth revoked, could compromise the payment channels ability to close
+auth revoked, could compromise the payment channel's ability to close
 successfully.
 
 If the issuer of any auth revocable asset submits an allow trust operation
