@@ -66,7 +66,7 @@ func main() {
 	i++
 	fmt.Println("s:", s, "i:", i, "e:", e)
 	{
-		ci, err := pctx.BuildCloseTx(initiator.EscrowAddress(), responder.EscrowAddress(), s, i, "100.0", "200.0")
+		ci, err := pctx.BuildCloseTx(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, "100.0", "200.0")
 		iferrpanic(err)
 		ci, err = ci.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
@@ -91,7 +91,7 @@ func main() {
 	i++
 	fmt.Println("s:", s, "i:", i, "e:", e)
 	{
-		ci, err := pctx.BuildCloseTx(initiator.EscrowAddress(), responder.EscrowAddress(), s, i, "100.0", "200.0")
+		ci, err := pctx.BuildCloseTx(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, "100.0", "200.0")
 		iferrpanic(err)
 		ci, err = ci.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
@@ -115,9 +115,11 @@ func main() {
 	for {
 		fmt.Println("Submitting:", c[len(d)-1])
 		_, err = client.SubmitTransaction(c[len(c)-1].Transaction)
-		if err != nil {
-			fmt.Println("Error:", err)
+		if err == nil {
+			fmt.Println("Success")
+			break
 		}
+		fmt.Printf("Error: %#v", err.(*horizonclient.Error).Problem)
 		time.Sleep(time.Second * 10)
 	}
 }
