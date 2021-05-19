@@ -22,7 +22,8 @@ type ChannelStateMachine struct {
 	OtherClaimAmount       int
 }
 
-func (c *ChannelStateMachine) Init() {
+// Open handles the logic for opening a channel. This includes the Formation Transaction, C_1, and D_1.
+func (c *ChannelStateMachine) Open() {
 	return nil
 }
 
@@ -68,6 +69,9 @@ type ChannelCheckResponse struct {
 	Asset           Asset
 	TriggeredTxInfo TxInfo
 	LatestTxInfo    TxInfo
+}
+
+type EscrowAccount struct {
 }
 
 
