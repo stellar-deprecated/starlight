@@ -11,5 +11,5 @@ These diagrams were created using the [mermaid diagram live editor](https://merm
 - a withdrawal by I after setup and a single update
 
 ### State Diagrams
-[state-diagrams](./state-diagrams/channel-state.txt)
+[channel-state.txt](./state-diagrams/channel-state.txt)
 - state diagram describing the possible channel states and actions that trigger movement to next states
