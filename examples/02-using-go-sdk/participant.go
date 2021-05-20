@@ -61,7 +61,12 @@ func (p *Participant) CreateEscrow(initialContribution int64) error {
 	if err != nil {
 		return err
 	}
-	tx, err := txbuild.CreateEscrow(p.kp, escrow, seqNum, initialContribution)
+	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
+		Creator:             p.kp.FromAddress(),
+		Escrow:              escrow.FromAddress(),
+		SequenceNumber:      seqNum,
+		InitialContribution: initialContribution,
+	})
 	if err != nil {
 		return err
 	}
@@ -77,7 +82,7 @@ func (p *Participant) CreateEscrow(initialContribution int64) error {
 	}
 
 	p.escrowAddress = escrow.FromAddress()
-	p.escrowSequenceNumber = int64(txResp.Ledger)<<32
+	p.escrowSequenceNumber = int64(txResp.Ledger) << 32
 	fmt.Println(p.name+" escrow account created.", "Sequence number:", seqNum)
 	return nil
 }

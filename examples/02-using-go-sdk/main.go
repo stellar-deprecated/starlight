@@ -17,6 +17,12 @@ const horizonURL = "http://localhost:8000"
 
 var client = &horizonclient.Client{HorizonURL: horizonURL}
 
+const (
+	observationPeriodTime      = 1 * time.Minute
+	averageLedgerDuration      = 5 * time.Second
+	observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+)
+
 func iferrpanic(err error) {
 	if err != nil {
 		panic(fmt.Sprintf("%#v", err))
@@ -54,19 +60,42 @@ func main() {
 	fmt.Println("s:", s, "i:", i, "e:", e)
 
 	// Build F
-	f, err := txbuild.Formation(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s)
+	f, err := txbuild.Formation(txbuild.FormationParams{
+		InitiatorSigner: initiator.Address(),
+		ResponderSigner: responder.Address(),
+		InitiatorEscrow: initiator.EscrowAddress(),
+		ResponderEscrow: responder.EscrowAddress(),
+		StartSequence:   s,
+	})
 	iferrpanic(err)
 
 	// Exchange signed C_i, D_i
 	i++
 	fmt.Println("s:", s, "i:", i, "e:", e)
 	{
-		ci, err := txbuild.Close(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, 0, 0)
+		closeParams := txbuild.CloseParams{
+			ObservationPeriodTime:      observationPeriodTime,
+			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+			InitiatorSigner:            initiator.Address(),
+			ResponderSigner:            responder.Address(),
+			InitiatorEscrow:            initiator.EscrowAddress(),
+			ResponderEscrow:            responder.EscrowAddress(),
+			StartSequence:              s,
+			IterationNumber:            i,
+			AmountToInitiator:          0,
+			AmountToResponder:          0,
+		}
+		ci, err := txbuild.Close(closeParams)
 		iferrpanic(err)
 		ci, err = ci.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
 		c = append(c, Tx{ci})
-		di, err := txbuild.Declaration(initiator.EscrowAddress(), s, i, e)
+		di, err := txbuild.Declaration(txbuild.DeclarationParams{
+			InitiatorEscrow: initiator.EscrowAddress(),
+			StartSequence: s,
+			IterationNumber: i,
+			IterationNumberExecuted: e,
+		})
 		iferrpanic(err)
 		di, err = di.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
@@ -107,12 +136,29 @@ func main() {
 		}
 		fmt.Println("i owes r", iOwesR)
 		fmt.Println("r owes i", rOwesI)
-		ci, err := txbuild.Close(initiator.Address(), responder.Address(), initiator.EscrowAddress(), responder.EscrowAddress(), s, i, rOwesI, iOwesR)
+		closeParams := txbuild.CloseParams{
+			ObservationPeriodTime:      observationPeriodTime,
+			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+			InitiatorSigner:            initiator.Address(),
+			ResponderSigner:            responder.Address(),
+			InitiatorEscrow:            initiator.EscrowAddress(),
+			ResponderEscrow:            responder.EscrowAddress(),
+			StartSequence:              s,
+			IterationNumber:            i,
+			AmountToInitiator:          rOwesI,
+			AmountToResponder:          iOwesR,
+		}
+		ci, err := txbuild.Close(closeParams)
 		iferrpanic(err)
 		ci, err = ci.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
 		c = append(c, Tx{ci})
-		di, err := txbuild.Declaration(initiator.EscrowAddress(), s, i, e)
+		di, err := txbuild.Declaration(txbuild.DeclarationParams{
+			InitiatorEscrow: initiator.EscrowAddress(),
+			StartSequence: s,
+			IterationNumber: i,
+			IterationNumberExecuted: e,
+		})
 		iferrpanic(err)
 		di, err = di.Sign(networkPassphrase, initiator.Key(), responder.Key())
 		iferrpanic(err)
