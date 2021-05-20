@@ -31,6 +31,10 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		HighThreshold:   txnbuild.NewThreshold(2),
 		Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
+	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
+		SourceAccount: p.InitiatorEscrow.Address(),
+		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
+	})
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
@@ -40,6 +44,10 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		MediumThreshold: txnbuild.NewThreshold(2),
 		HighThreshold:   txnbuild.NewThreshold(2),
 		Signer:          &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
+	})
+	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
+		SourceAccount: p.ResponderEscrow.Address(),
+		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
 	tx, err := txnbuild.NewTransaction(tp)
