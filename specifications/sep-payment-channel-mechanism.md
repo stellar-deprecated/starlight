@@ -194,7 +194,7 @@ multisig accounts. F has source account E, and sequence number set to s.
     - One or more `CHANGE_TRUST` operations configuring trustlines on EI.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
-    - One or more `SET_OPTIONS` operations adding I and R's signers to ER with equal weight.
+    - One or more `SET_OPTIONS` operations adding I and R's signers to ER.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
   - Operations sponsored by R:
@@ -203,7 +203,7 @@ multisig accounts. F has source account E, and sequence number set to s.
     - One or more `CHANGE_TRUST` operations configuring trustlines on ER.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
-    - One or more `SET_OPTIONS` operations adding I and R's signers to EI with equal weight.
+    - One or more `SET_OPTIONS` operations adding I and R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
   
