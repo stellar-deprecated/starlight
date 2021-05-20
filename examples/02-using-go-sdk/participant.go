@@ -64,7 +64,7 @@ func (p *Participant) CreateEscrow(initialContribution int64) error {
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 		Creator:             p.kp.FromAddress(),
 		Escrow:              escrow.FromAddress(),
-		SequenceNumber:      seqNum,
+		SequenceNumber:      seqNum+1,
 		InitialContribution: initialContribution,
 	})
 	if err != nil {
