@@ -5,35 +5,43 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-func Formation(initiator *keypair.FromAddress, responder *keypair.FromAddress, initiatorEscrow *keypair.FromAddress, responderEscrow *keypair.FromAddress, startSequence int64) (*txnbuild.Transaction, error) {
+type FormationParams struct {
+	InitiatorSigner *keypair.FromAddress
+	ResponderSigner *keypair.FromAddress
+	InitiatorEscrow *keypair.FromAddress
+	ResponderEscrow *keypair.FromAddress
+	StartSequence   int64
+}
+
+func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: initiatorEscrow.Address(),
-			Sequence:  startSequence,
+			AccountID: p.InitiatorEscrow.Address(),
+			Sequence:  p.StartSequence,
 		},
 		BaseFee:    txnbuild.MinBaseFee,
 		Timebounds: txnbuild.NewTimeout(300),
 	}
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: initiator.Address(), SponsoredID: initiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.InitiatorEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount:   initiatorEscrow.Address(),
+		SourceAccount:   p.InitiatorEscrow.Address(),
 		MasterWeight:    txnbuild.NewThreshold(0),
 		LowThreshold:    txnbuild.NewThreshold(2),
 		MediumThreshold: txnbuild.NewThreshold(2),
 		HighThreshold:   txnbuild.NewThreshold(2),
-		Signer:          &txnbuild.Signer{Address: responder.Address(), Weight: 1},
+		Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: initiatorEscrow.Address()})
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: responder.Address(), SponsoredID: responderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount:   responderEscrow.Address(),
+		SourceAccount:   p.ResponderEscrow.Address(),
 		MasterWeight:    txnbuild.NewThreshold(0),
 		LowThreshold:    txnbuild.NewThreshold(2),
 		MediumThreshold: txnbuild.NewThreshold(2),
 		HighThreshold:   txnbuild.NewThreshold(2),
-		Signer:          &txnbuild.Signer{Address: initiator.Address(), Weight: 1},
+		Signer:          &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: responderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
 	tx, err := txnbuild.NewTransaction(tp)
 	if err != nil {
 		return nil, err

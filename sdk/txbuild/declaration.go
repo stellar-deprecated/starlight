@@ -5,15 +5,23 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-func Declaration(initiatorEscrow *keypair.FromAddress, startSequence int64, iterationNumber int64, executedIterationNumber int64) (*txnbuild.Transaction, error) {
+type DeclarationParams struct {
+	InitiatorEscrow         *keypair.FromAddress
+	StartSequence           int64
+	IterationNumber         int64
+	IterationNumberExecuted int64
+}
+
+func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
+	minSequenceNumber := startSequenceOfIteration(p.StartSequence, p.IterationNumberExecuted)
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: initiatorEscrow.Address(),
-			Sequence:  startSequenceOfIteration(startSequence, iterationNumber) + 0, // Declaration is the first transaction in an iteration's transaction set.
+			AccountID: p.InitiatorEscrow.Address(),
+			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 0, // Declaration is the first transaction in an iteration's transaction set.
 		},
 		BaseFee:           txnbuild.MinBaseFee,
 		Timebounds:        txnbuild.NewTimeout(300),
-		MinSequenceNumber: int64ptr(startSequenceOfIteration(startSequence, executedIterationNumber)),
+		MinSequenceNumber: &minSequenceNumber,
 		Operations: []txnbuild.Operation{
 			&txnbuild.BumpSequence{
 				BumpTo: 0,

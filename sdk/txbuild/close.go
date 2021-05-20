@@ -1,54 +1,69 @@
 package txbuild
 
 import (
+	"time"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
-func Close(initiatorSigner *keypair.FromAddress, responderSigner *keypair.FromAddress, initiatorEscrow *keypair.FromAddress, responderEscrow *keypair.FromAddress, startSequence int64, iterationNumber int64, amountToInitiator int64, amountToResponder int64) (*txnbuild.Transaction, error) {
+type CloseParams struct {
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	InitiatorSigner            *keypair.FromAddress
+	ResponderSigner            *keypair.FromAddress
+	InitiatorEscrow            *keypair.FromAddress
+	ResponderEscrow            *keypair.FromAddress
+	StartSequence              int64
+	IterationNumber            int64
+	AmountToInitiator          int64
+	AmountToResponder          int64
+}
+
+func Close(p CloseParams) (*txnbuild.Transaction, error) {
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: initiatorEscrow.Address(),
-			Sequence:  startSequenceOfIteration(startSequence, iterationNumber) + 1, // Close is the second transaction in an iteration's transaction set.
+			AccountID: p.InitiatorEscrow.Address(),
+			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 1, // Close is the second transaction in an iteration's transaction set.
 		},
 		BaseFee:              txnbuild.MinBaseFee,
 		Timebounds:           txnbuild.NewTimeout(300),
-		MinSequenceAge:       int64(observationPeriodTime.Seconds()),
-		MinSequenceLedgerGap: int64(observationPeriodLedgerGap),
+		MinSequenceAge:       int64(p.ObservationPeriodTime.Seconds()),
+		MinSequenceLedgerGap: p.ObservationPeriodLedgerGap,
 		Operations: []txnbuild.Operation{
 			&txnbuild.SetOptions{
-				SourceAccount:   initiatorEscrow.Address(),
+				SourceAccount:   p.InitiatorEscrow.Address(),
 				MasterWeight:    txnbuild.NewThreshold(0),
 				LowThreshold:    txnbuild.NewThreshold(1),
 				MediumThreshold: txnbuild.NewThreshold(1),
 				HighThreshold:   txnbuild.NewThreshold(1),
-				Signer:          &txnbuild.Signer{Address: responderSigner.Address(), Weight: 0},
+				Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 0},
 			},
 			&txnbuild.SetOptions{
-				SourceAccount:   responderEscrow.Address(),
+				SourceAccount:   p.ResponderEscrow.Address(),
 				MasterWeight:    txnbuild.NewThreshold(0),
 				LowThreshold:    txnbuild.NewThreshold(1),
 				MediumThreshold: txnbuild.NewThreshold(1),
 				HighThreshold:   txnbuild.NewThreshold(1),
-				Signer:          &txnbuild.Signer{Address: initiatorSigner.Address(), Weight: 0},
+				Signer:          &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 0},
 			},
 		},
 	}
-	if amountToInitiator != 0 {
+	if p.AmountToInitiator != 0 {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
-			SourceAccount: responderEscrow.Address(),
-			Destination:   initiatorEscrow.Address(),
+			SourceAccount: p.ResponderEscrow.Address(),
+			Destination:   p.InitiatorEscrow.Address(),
 			Asset:         txnbuild.NativeAsset{},
-			Amount:        amount.StringFromInt64(amountToInitiator),
+			Amount:        amount.StringFromInt64(p.AmountToInitiator),
 		})
 	}
-	if amountToResponder != 0 {
+	if p.AmountToResponder != 0 {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
-			SourceAccount: initiatorEscrow.Address(),
-			Destination:   responderEscrow.Address(),
+			SourceAccount: p.InitiatorEscrow.Address(),
+			Destination:   p.ResponderEscrow.Address(),
 			Asset:         txnbuild.NativeAsset{},
-			Amount:        amount.StringFromInt64(amountToResponder),
+			Amount:        amount.StringFromInt64(p.AmountToResponder),
 		})
 	}
 	tx, err := txnbuild.NewTransaction(tp)

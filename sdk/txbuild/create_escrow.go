@@ -6,34 +6,41 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-func CreateEscrow(creator *keypair.Full, escrow *keypair.Full, sequenceNumber int64, initialContribution int64) (*txnbuild.Transaction, error) {
+type CreateEscrowParams struct {
+	Creator             *keypair.FromAddress
+	Escrow              *keypair.FromAddress
+	SequenceNumber      int64
+	InitialContribution int64
+}
+
+func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
-				AccountID: creator.Address(),
-				Sequence:  sequenceNumber,
+				AccountID: p.Creator.Address(),
+				Sequence:  p.SequenceNumber,
 			},
 			IncrementSequenceNum: true,
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
 			Operations: []txnbuild.Operation{
 				&txnbuild.BeginSponsoringFutureReserves{
-					SponsoredID: escrow.Address(),
+					SponsoredID: p.Escrow.Address(),
 				},
 				&txnbuild.CreateAccount{
-					Destination: escrow.Address(),
-					Amount:      amount.StringFromInt64(initialContribution),
+					Destination: p.Escrow.Address(),
+					Amount:      amount.StringFromInt64(p.InitialContribution),
 				},
 				&txnbuild.SetOptions{
-					SourceAccount:   escrow.Address(),
+					SourceAccount:   p.Escrow.Address(),
 					MasterWeight:    txnbuild.NewThreshold(0),
 					LowThreshold:    txnbuild.NewThreshold(1),
 					MediumThreshold: txnbuild.NewThreshold(1),
 					HighThreshold:   txnbuild.NewThreshold(1),
-					Signer:          &txnbuild.Signer{Address: creator.Address(), Weight: 1},
+					Signer:          &txnbuild.Signer{Address: p.Creator.Address(), Weight: 1},
 				},
 				&txnbuild.EndSponsoringFutureReserves{
-					SourceAccount: escrow.Address(),
+					SourceAccount: p.Escrow.Address(),
 				},
 			},
 		},
