@@ -172,6 +172,10 @@ disbursements matching the initial contributions.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
 
+Participants should defer deposits of initial contributions till after formation
+for channels that will hold trustlines to issuers that are not auth immutable,
+and could be clawback enabled. See [Security](#Security).
+
 It is important that F is signed after C_i and D_i because F will make the
 accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R would not be
 able to close the channel, or regain control of the accounts and the assets
@@ -585,7 +589,8 @@ possible without the participants coordinating.
 
 The closing transaction, C_i, must never fail.  Under the conditions of the
 Stellar Consensus Protocol as it is defined today, and under correct use of this
-protocol, there is no known conditions that will cause it to fail.  It will be
+protocol, and assuming no changes in the authorized state of the channels
+trustlines, there is no known conditions that will cause it to fail.  It will be
 either invalid or valid and successful, but not valid and failed.  If C_i was to
 be valid and fail it would consume a sequence number and fair distribution of
 the assets within the escrow account would require the cooperation of all
@@ -602,6 +607,36 @@ payment operations between the escrow accounts would exceed any limits either
 account has on making a payment, due to liabilities, or would exceed limits on
 the receiving account, such as a trustline limit. Participants must ensure that
 the payments they sign for are receivable by the escrow accounts.
+
+### Trustline Authorization
+
+Any trustlines on the escrow accounts that have been auth revoked, or could be
+auth revoked, could compromise the payment channel's ability to close
+successfully.
+
+If the issuer of any auth revocable asset submits an allow trust operation
+freezing the amounts in either escrow account, the close transaction may fail to
+process if its payment operations are dependent on amounts frozen.
+
+There is nothing participants can do to prevent this, other than using only auth
+immutable assets.
+
+### Clawback
+
+Any trustlines on the escrow accounts that have clawback enabled could
+compromise the payment channels ability to close successfully.
+
+If the issuer of any clawback enabled trustline submits a clawback operation for
+amounts in either escrow account, the close transaction may fail to process if
+its payment operations are dependent on amounts clawed back.
+
+Participants can inspect the state of trustlines before and after formation to
+check if either participant has clawback enabled. Checking the state after
+formation is critical because there is no way for participants to guarantee
+trustline state until after formation has completed because the state can change
+prior to formation. For this reason participants should perform their initial
+deposit after formation, unless they trust the asset issuer not to clawback from
+payment channel escrow accounts, or unless the asset is auth immutable. 
 
 ## Limitations
 
