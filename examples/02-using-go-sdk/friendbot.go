@@ -7,8 +7,7 @@ import (
 )
 
 func friendbot(account *keypair.FromAddress, startingBalance string) error {
-	var err error
-
+	root := keypair.Master(networkPassphrase).(*keypair.Full)
 	sourceAccount, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: root.Address()})
 	if err != nil {
 		return err

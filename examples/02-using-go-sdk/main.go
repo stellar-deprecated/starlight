@@ -8,20 +8,10 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
 )
 
 const networkPassphrase = "Standalone Network ; February 2017"
-
-var root = func() *keypair.Full {
-	kp, err := keypair.FromRawSeed(network.ID(networkPassphrase))
-	if err != nil {
-		panic(err)
-	}
-	return kp
-}()
 
 const horizonURL = "http://localhost:8000"
 
