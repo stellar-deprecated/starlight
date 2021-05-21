@@ -10,16 +10,25 @@ jobs:
 
   quickstart:
     runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
-    - name: Build Quickstart
-      run: docker build -t stellar/quickstart:cap21 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
+    - name: Build
+      run: docker build -t localhost:5000/quickstart:cap21 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
+    - name: Push
+      run: docker push localhost:5000/quickstart:cap21
 
   test:
     needs: quickstart
     runs-on: ubuntu-latest
     services:
       stellar:
-        image: stellar/quickstart:cap21
+        image: localhost:5000/quickstart:cap21
+        ports:
+          - 8000:8000
     steps:
     - uses: actions/checkout@v2
     - name: Set up Go
