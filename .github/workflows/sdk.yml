@@ -6,11 +6,18 @@ on:
 
 jobs:
 
+  quickstart:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build Quickstart
+      run: docker build -t stellar/quickstart:cap21 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
+
   test:
+    needs: quickstart
     runs-on: ubuntu-latest
     services:
       stellar:
-        image: https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
+        image: stellar/quickstart:cap21
     steps:
     - uses: actions/checkout@v2
     - name: Set up Go
