@@ -9,7 +9,6 @@ on:
 jobs:
 
   test:
-    needs: quickstart
     runs-on: ubuntu-latest
     services:
       registry:
