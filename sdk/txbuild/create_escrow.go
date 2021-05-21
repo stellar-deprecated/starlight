@@ -20,7 +20,7 @@ func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
 				AccountID: p.Creator.Address(),
 				Sequence:  p.SequenceNumber,
 			},
-			BaseFee:              txnbuild.MinBaseFee,
+			BaseFee:              0,
 			Timebounds:           txnbuild.NewTimeout(300),
 			Operations: []txnbuild.Operation{
 				&txnbuild.BeginSponsoringFutureReserves{

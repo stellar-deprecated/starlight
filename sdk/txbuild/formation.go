@@ -19,7 +19,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorEscrow.Address(),
 			Sequence:  p.StartSequence,
 		},
-		BaseFee:    txnbuild.MinBaseFee,
+		BaseFee:    0,
 		Timebounds: txnbuild.NewTimeout(300),
 	}
 	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.InitiatorEscrow.Address()})
