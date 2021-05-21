@@ -1,0 +1,31 @@
+name: SDK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Stellar Quickstart w/ CAP-21: Build"
+      run: docker build -t stellar/quickstart:cap21 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
+    - name: "Stellar Quickstart w/ CAP-21: Run"
+      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart:cap21 --standalone
+    - name: "Stellar Quickstart w/ CAP-21: Wait for Ready"
+      run: while ! [ "$(curl -s --fail localhost:8000 | jq '.history_latest_ledger')" -gt 0 ]; do echo waiting; sleep 1; done
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1
+    - name: Build SDK
+      working-directory: sdk
+      run: go build -v ./...
+    - name: Test SDK
+      working-directory: sdk
+      run: go test -v ./...

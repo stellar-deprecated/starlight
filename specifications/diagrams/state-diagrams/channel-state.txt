@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> Waiting: NewChannel()
+    note left of [*]: Initiator opening a channel
+
+    Waiting --> Active: channel.Open()
+
+    Active --> Closing: channel.CloseStart()
+    
+    Closing --> Closed: Responder calls <br>channel.CloseCoordinated()
+    Closing --> Closed: channel.CloseUnCoordinated() 
+    
+    Closed --> [*]
