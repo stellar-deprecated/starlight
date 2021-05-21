@@ -60,7 +60,15 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, initiator.KP, initiator.Escrow)
 		require.NoError(t, err)
-		txResp, err := client.SubmitTransaction(tx)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		txResp, err := client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 		initiator.EscrowSequenceNumber = int64(txResp.Ledger) << 32
 	}
@@ -92,7 +100,15 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, responder.KP, responder.Escrow)
 		require.NoError(t, err)
-		txResp, err := client.SubmitTransaction(tx)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: responder.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+		require.NoError(t, err)
+		txResp, err := client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 		responder.EscrowSequenceNumber = int64(txResp.Ledger) << 32
 	}
@@ -158,7 +174,15 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)
 		require.NoError(t, err)
-		_, err = client.SubmitTransaction(f)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      f,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 	}
 
@@ -224,17 +248,33 @@ func Test(t *testing.T) {
 	}
 
 	// Confused participant attempts to close channel at old iteration.
-	t.Log("Confused participant closes channel at old iteration...")
+	t.Log("Confused participant (responder) closes channel at old iteration...")
 	{
 		oldIteration := len(declarationTxs) - 4
 		oldD := declarationTxs[oldIteration]
-		_, err := client.SubmitTransaction(oldD)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      oldD,
+			FeeAccount: responder.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		t.Log("Submitting Declaration:", oldD.SourceAccount().Sequence)
 		require.NoError(t, err)
 		go func() {
 			oldC := closeTxs[oldIteration]
 			for {
-				_, err = client.SubmitTransaction(oldC)
+				fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+					Inner:      oldC,
+					FeeAccount: responder.KP.Address(),
+					BaseFee:    txnbuild.MinBaseFee,
+				})
+				require.NoError(t, err)
+				fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+				require.NoError(t, err)
+				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
 					t.Log("Submitting:", oldC.SourceAccount().Sequence, "Success")
 					break
@@ -248,18 +288,34 @@ func Test(t *testing.T) {
 	done := make(chan struct{})
 
 	// Good participant closes channel at latest iteration.
-	t.Log("Good participant closes channel at latest iteration...")
+	t.Log("Good participant (initiator) closes channel at latest iteration...")
 	{
 		lastIteration := len(declarationTxs) - 1
 		lastD := declarationTxs[lastIteration]
-		_, err := client.SubmitTransaction(lastD)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      lastD,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		t.Log("Submitting Declaration:", lastD.SourceAccount().Sequence)
 		require.NoError(t, err)
 		go func() {
 			defer close(done)
 			lastC := closeTxs[lastIteration]
 			for {
-				_, err = client.SubmitTransaction(lastC)
+				fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+					Inner:      lastC,
+					FeeAccount: initiator.KP.Address(),
+					BaseFee:    txnbuild.MinBaseFee,
+				})
+				require.NoError(t, err)
+				fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+				require.NoError(t, err)
+				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
 					t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Success")
 					break
