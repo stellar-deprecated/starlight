@@ -13,8 +13,8 @@ jobs:
     steps:
     - name: Build
       run: docker build -t stellar/quickstart:cap21 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
-    - name: Push
-      run: docker run -p 8000:8000 stellar/quickstart:cap21
+    - name: Run
+      run: docker run -d -p 8000:8000 stellar/quickstart:cap21
     - uses: actions/checkout@v2
     - name: Set up Go
       uses: actions/setup-go@v2
