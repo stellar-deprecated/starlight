@@ -23,12 +23,12 @@ type ChannelStateMachine struct {
 }
 
 // Open handles the logic for opening a channel. This includes the Formation Transaction, C_1, and D_1.
-func (c *ChannelStateMachine) Open() {
+func (c *ChannelStateMachine) Open() error {
 	return nil
 }
 
 func (c *ChannelStateMachine) CheckChannel() (*ChannelCheckResponse, error) {
-	return nil, error
+	return nil, nil
 }
 
 func (c *ChannelStateMachine) Payment(sendAmount int) error {
