@@ -1,6 +1,6 @@
 stateDiagram-v2
     [*] --> Idle
-    note left of [*]: Initiator proposing a channel
+    note left of [*]: Initiator proposing a channel <br> Step1 agree on C1/D1 <br> Step2 agree on F
 
     Idle --> Connecting: Connect()
     Connecting --> Listening: handshake successful
