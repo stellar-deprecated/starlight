@@ -1,3 +1,5 @@
+package skeleton
+
 type Asset struct{}
 
 //// Methods directly on the SDK
@@ -84,5 +86,3 @@ type ChannelCheckResponse struct {
 
 type EscrowAccount struct {
 }
-
-
