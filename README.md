@@ -21,6 +21,7 @@ The forks may not be exactly the same as the CAP as shortcuts may have been take
 - [x] `minSeqNum`
 - [x] `minSeqAge`
 - [x] `minSeqLedgerGap`
+- [ ] `extraSigners`
 
 - xdr: https://github.com/leighmcculloch/stellar--stellar-core/tree/cap21/src/xdr
 - stellar-core: https://github.com/leighmcculloch/stellar--stellar-core/pull/1
