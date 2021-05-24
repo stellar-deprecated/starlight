@@ -17,9 +17,7 @@ type ChannelStateMachine struct {
 	ResponderClaimAmount   int
 	IsInitiator            bool
 	MyAccount              string
-	MyClaimAmount          int
 	OtherAccount           string
-	OtherClaimAmount       int
 }
 
 // Open handles the logic for opening a channel. This includes the Formation Transaction, C_1, and D_1.
@@ -55,13 +53,26 @@ func (c *ChannelStateMachine) GetLatestCloseTx(id string) (*TxInfo, error) {
 	return nil, nil
 }
 
+// helper method
+func (c *ChannelStateMachine) MyClaimAmount() error {
+	return nil
+}
+
+// helper method
+func (c *ChannelStateMachine) OtherClaimAmount() error {
+	return nil
+}
+
 type TxInfo struct {
-	ID               string
-	Iteration        int
-	Type             string // declaration | close
-	Seq              int64
-	InitiatorBalance int
-	ResponderBalance int
+	ID        string
+	Iteration int
+	Type      string // declaration | close
+	Seq       int64
+}
+
+// helper method
+func (t *TxInfo) MyBalance() error {
+	return nil
 }
 
 type ChannelCheckResponse struct {
