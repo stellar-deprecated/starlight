@@ -1,0 +1,18 @@
+stateDiagram-v2
+    [*] --> Idle
+    note left of [*]: Initiator sending a payment
+
+    Idle --> Connecting: Connect()
+    Connecting --> Listening: handshake successful
+    Connecting --> Idle: handshake failed
+    
+    %% Proposing:
+    Listening --> Proposing: ProposePayment() <br>Create D_i, C_i <br> Sign C_i <br> Send both to R
+    Proposing --> MessageReceived
+    note right of Proposing: waiting/listening while in proposing state
+    Proposing --> NoMessageReceived: timeout expires
+
+    NoMessageReceived --> Listening
+    MessageReceived --> Listening: Message invalid, or rejected
+    MessageReceived --> ProposalAccepted: valid message <br> receieved signed C_i/D_i
+    ProposalAccepted --> Listening: sign D_i and send both back
