@@ -2,7 +2,7 @@
 
 ```
 SEP: ????
-Title: Payment Channel
+Title: Payment Channel Transactions
 Author: David Mazières <@standford-scs>, Leigh McCulloch <@leighmcculloch>
 Track: Standard
 Status: Draft
