@@ -1,0 +1,20 @@
+stateDiagram-v2
+    [*] --> Idle
+    note left of [*]: Responder responding to payment
+    note left of Idle: foreground task
+    Idle --> Connecting: Connect()
+    Connecting --> Ready: handshake successful
+    Connecting --> Idle: handshake failed
+    
+    [*] --> Listening
+    note left of Listening: background task
+    Listening --> NewThread: received message
+    state NewThread{
+        [*] --> ProcessingReceivedMessage
+        ProcessingReceivedMessage --> StorePaymentProposal
+        StorePaymentProposal --> [*]
+    }
+
+    Ready --> ConfirmingPayment: FindPaymentProposal()
+    ConfirmingPayment --> Ready: ConfirmPayment()
+    ConfirmingPayment --> Ready: DeclinePayment()
