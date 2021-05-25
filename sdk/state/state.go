@@ -1,11 +1,26 @@
 package state
 
 import (
+	"context"
+	"time"
+
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
 type Asset = txnbuild.Asset
+
+// Amount is an amount of an asset.
+type Amount struct {
+	Asset  Asset
+	Amount int64
+}
+
+// Balance is an amount of an asset owing from the initiator to the responder,
+// if positive, or an amount owing from the responder to the initiator, if
+// negative.
+type Balance Amount
 
 type ChannelStatus string
 
@@ -17,31 +32,69 @@ const (
 	ChannelStatusClosed      = ChannelStatus("closed")
 )
 
-type Channel struct {
-	Status ChannelStatus
-
-	Initiator              bool
-	InitiatorEscrowAccount *keypair.FromAddress
-	ResponderEscrowAccount *keypair.FromAddress
-
-	// The balance owing from the initiator to the responder, if positive, or
-	// the balance owing from the responder to the initiator, if negative.
-	Balance int64
-	Asset   Asset
+type EscrowAccount struct {
+	Address        keypair.FromAddress
+	SequenceNumber int64
 }
 
-type Config struct{}
+type noCopy struct{}
+
+type Channel struct {
+	noCopy
+
+	observationPeriodTime      time.Duration
+	observationPeriodLedgerGap int64
+
+	status ChannelStatus
+
+	localEscrowAccount      EscrowAccount
+	remoteEscrowAccount     EscrowAccount
+	sequencingEscrowAccount *EscrowAccount
+
+	balances []Balance
+
+	key *keypair.Full
+}
+
+type Config struct {
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+
+	Initiator           bool
+	LocalEscrowAccount  EscrowAccount
+	RemoteEscrowAccount EscrowAccount
+
+	Key *keypair.Full
+}
 
 func NewChannel(c Config) *Channel {
+	channel := &Channel{
+		observationPeriodTime:      c.ObservationPeriodTime,
+		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		localEscrowAccount:         c.LocalEscrowAccount,
+		remoteEscrowAccount:        c.RemoteEscrowAccount,
+		key:                        c.Key,
+		status:                     ChannelStatusInitialized,
+	}
+	channel.sequencingEscrowAccount = &channel.localEscrowAccount
+	if !c.Initiator {
+		channel.sequencingEscrowAccount = &channel.remoteEscrowAccount
+	}
+	return channel
+}
+
+// OpenPropose proposes the open of the channel, it is called by the participant
+// initiating the channel.
+func OpenPropose() error {
 	return nil
 }
 
-// Open handles the logic for opening a channel. This includes the Formation Transaction, C_1, and D_1.
-func (c *Channel) Open() error {
+// OpenConfirm
+func OpenConfirm() error {
 	return nil
 }
 
-func (c *Channel) CheckNetwork() error {
+func (c *Channel) CheckNetwork(ctx context.Context, client horizonclient.ClientInterface) error {
 	return nil
 }
 
@@ -97,5 +150,3 @@ type ChannelCheckResponse struct {
 	TriggeredTxInfo TxInfo
 	LatestTxInfo    TxInfo
 }
-
-type EscrowAccount struct{}
