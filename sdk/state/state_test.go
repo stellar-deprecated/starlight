@@ -118,6 +118,7 @@ func Test(t *testing.T) {
 
 	// Create channels with escrow accounts.
 	initiatorChannel := state.NewChannel(state.Config{
+		NetworkPassphrase:          networkPassphrase,
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Initiator:                  true,
@@ -135,8 +136,11 @@ func Test(t *testing.T) {
 				{Asset: state.NativeAsset{}, Amount: responder.Contribution},
 			},
 		},
+		LocalSigner:  initiator.KP,
+		RemoteSigner: responder.KP.FromAddress(),
 	})
 	responderChannel := state.NewChannel(state.Config{
+		NetworkPassphrase:          networkPassphrase,
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Initiator:                  false,
@@ -154,76 +158,48 @@ func Test(t *testing.T) {
 				{Asset: state.NativeAsset{}, Amount: initiator.Contribution},
 			},
 		},
+		LocalSigner:  responder.KP,
+		RemoteSigner: initiator.KP.FromAddress(),
 	})
 
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
 	declarationTxs := []*txnbuild.Transaction{}
 
-	// Set initial variable state.
-	open, err := initiatorChannel.OpenPropose()
-	require.NoError(t, err)
-	open, err = responderChannel.OpenConfirm(open)
-	require.NoError(t, err)
-	open, err = initiatorChannel.OpenConfirm(open)
-	require.NoError(t, err)
-
 	s := initiator.EscrowSequenceNumber + 1
-	i := int64(0)
+	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
 
-	// Exchange initial C_i and D_i.
-	t.Log("Initial agreement...")
-	i++
-	t.Log("Vars: s:", s, "i:", i, "e:", e)
+	// Open
+	t.Log("Open...")
+	open, err := initiatorChannel.OpenPropose()
+	require.NoError(t, err)
+	open, _ = responderChannel.OpenConfirm(open)
+	open, _ = initiatorChannel.OpenConfirm(open)
+	open, _ = responderChannel.OpenConfirm(open)
+	open, err = initiatorChannel.OpenConfirm(open)
+	require.NoError(t, err)
+	open, err = responderChannel.OpenConfirm(open)
+	require.NoError(t, err)
+
 	{
-		ci, err := txbuild.Close(txbuild.CloseParams{
-			ObservationPeriodTime:      observationPeriodTime,
-			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-			InitiatorSigner:            initiator.KP.FromAddress(),
-			ResponderSigner:            responder.KP.FromAddress(),
-			InitiatorEscrow:            initiator.Escrow.FromAddress(),
-			ResponderEscrow:            responder.Escrow.FromAddress(),
-			StartSequence:              s,
-			IterationNumber:            i,
-			AmountToInitiator:          0,
-			AmountToResponder:          0,
-		})
+		ci, di, fi, err := initiatorChannel.OpenTxs()
 		require.NoError(t, err)
-		ci, err = ci.Sign(networkPassphrase, initiator.KP, responder.KP)
+
+		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
 		require.NoError(t, err)
 		closeTxs = append(closeTxs, ci)
-		di, err := txbuild.Declaration(txbuild.DeclarationParams{
-			InitiatorEscrow:         initiator.Escrow.FromAddress(),
-			StartSequence:           s,
-			IterationNumber:         i,
-			IterationNumberExecuted: e,
-		})
-		require.NoError(t, err)
-		di, err = di.Sign(networkPassphrase, initiator.KP, responder.KP)
+
+		di, err = di.AddSignatureDecorated(open.DeclarationSignatures...)
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
-	}
 
-	t.Log("Iteration", i, "Declarations:", declarationTxs)
-	t.Log("Iteration", i, "Closes:", closeTxs)
+		fi, err = fi.AddSignatureDecorated(open.FormationSignatures...)
+		require.NoError(t, err)
 
-	// Perform formation.
-	t.Log("Formation...")
-	{
-		f, err := txbuild.Formation(txbuild.FormationParams{
-			InitiatorSigner: initiator.KP.FromAddress(),
-			ResponderSigner: responder.KP.FromAddress(),
-			InitiatorEscrow: initiator.Escrow.FromAddress(),
-			ResponderEscrow: responder.Escrow.FromAddress(),
-			StartSequence:   s,
-		})
-		require.NoError(t, err)
-		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)
-		require.NoError(t, err)
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      f,
+			Inner:      fi,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
@@ -233,6 +209,9 @@ func Test(t *testing.T) {
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 	}
+
+	t.Log("Iteration", i, "Declarations:", declarationTxs)
+	t.Log("Iteration", i, "Closes:", closeTxs)
 
 	// Owing tracks how much each participant owes the other particiant.
 	// A positive amount = I owes R.

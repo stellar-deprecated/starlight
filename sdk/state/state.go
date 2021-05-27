@@ -1,10 +1,12 @@
 package state
 
 import (
+	"encoding/hex"
 	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 type (
@@ -97,6 +99,45 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 		return c.remoteSigner
 	} else {
 		return c.localSigner.FromAddress()
+	}
+}
+
+func (c *Channel) sign(tx *txnbuild.Transaction) (xdr.DecoratedSignature, error) {
+	hash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return xdr.DecoratedSignature{}, err
+	}
+	sig, err := c.localSigner.SignDecorated(hash[:])
+	if err != nil {
+		return xdr.DecoratedSignature{}, err
+	}
+	return sig, nil
+}
+
+type errNotSigned struct {
+	hash   string
+	signer string
+}
+
+func (e errNotSigned) Error() string { return "tx " + e.hash + " not signed by signer " + e.signer }
+
+func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) error {
+	hash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return err
+	}
+	for _, sig := range sigs {
+		if sig.Hint != signer.Hint() {
+			continue
+		}
+		err := signer.Verify(hash[:], sig.Signature)
+		if err == nil {
+			return nil
+		}
+	}
+	return errNotSigned{
+		hash:   hex.EncodeToString(hash[:]),
+		signer: signer.Address(),
 	}
 }
 
