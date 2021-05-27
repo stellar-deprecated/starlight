@@ -1,101 +1,103 @@
 package state
 
 import (
-	"context"
 	"time"
 
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
-type Asset = txnbuild.Asset
+type (
+	Asset       = txnbuild.Asset
+	NativeAsset = txnbuild.NativeAsset
+	CreditAsset = txnbuild.CreditAsset
+)
 
-// Amount is an amount of an asset.
 type Amount struct {
 	Asset  Asset
 	Amount int64
 }
 
-// Balance is an amount of an asset owing from the initiator to the responder,
-// if positive, or an amount owing from the responder to the initiator, if
-// negative.
-type Balance Amount
-
-type ChannelStatus string
-
-const (
-	ChannelStatusInitialized = ChannelStatus("initialized")
-	ChannelStatusOpen        = ChannelStatus("open")
-	ChannelStatusOpenWaiting = ChannelStatus("open_waiting")
-	ChannelStatusOpenClosing = ChannelStatus("closing")
-	ChannelStatusClosed      = ChannelStatus("closed")
-)
-
 type EscrowAccount struct {
-	Address        keypair.FromAddress
+	Address        *keypair.FromAddress
 	SequenceNumber int64
+	Balances       []Amount
 }
 
-type noCopy struct{}
-
 type Channel struct {
-	noCopy
-
+	networkPassphrase          string
 	observationPeriodTime      time.Duration
 	observationPeriodLedgerGap int64
 
-	status ChannelStatus
+	startingSequence int64
+	// TODO: balances         []Amount
 
-	localEscrowAccount      EscrowAccount
-	remoteEscrowAccount     EscrowAccount
-	sequencingEscrowAccount *EscrowAccount
+	initiator           bool
+	localEscrowAccount  *EscrowAccount
+	remoteEscrowAccount *EscrowAccount
 
-	balances []Balance
-
-	key *keypair.Full
+	localSigner  *keypair.Full
+	remoteSigner *keypair.FromAddress
 }
 
 type Config struct {
+	NetworkPassphrase          string
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 
-	Initiator           bool
-	LocalEscrowAccount  EscrowAccount
-	RemoteEscrowAccount EscrowAccount
+	Initiator bool
 
-	Key *keypair.Full
+	LocalEscrowAccount  *EscrowAccount
+	RemoteEscrowAccount *EscrowAccount
+
+	LocalSigner  *keypair.Full
+	RemoteSigner *keypair.FromAddress
 }
 
 func NewChannel(c Config) *Channel {
 	channel := &Channel{
+		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,
 		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		initiator:                  c.Initiator,
 		localEscrowAccount:         c.LocalEscrowAccount,
 		remoteEscrowAccount:        c.RemoteEscrowAccount,
-		key:                        c.Key,
-		status:                     ChannelStatusInitialized,
-	}
-	channel.sequencingEscrowAccount = &channel.localEscrowAccount
-	if !c.Initiator {
-		channel.sequencingEscrowAccount = &channel.remoteEscrowAccount
+		localSigner:                c.LocalSigner,
+		remoteSigner:               c.RemoteSigner,
 	}
 	return channel
 }
 
-// OpenPropose proposes the open of the channel, it is called by the participant
-// initiating the channel.
-func OpenPropose() error {
-	return nil
+func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
+	if c.initiator {
+		return c.localEscrowAccount
+	} else {
+		return c.remoteEscrowAccount
+	}
 }
 
-// OpenConfirm
-func OpenConfirm() error {
-	return nil
+func (c *Channel) responderEscrowAccount() *EscrowAccount {
+	if c.initiator {
+		return c.remoteEscrowAccount
+	} else {
+		return c.localEscrowAccount
+	}
 }
 
-func (c *Channel) CheckNetwork(ctx context.Context, client horizonclient.ClientInterface) error {
-	return nil
+func (c *Channel) initiatorSigner() *keypair.FromAddress {
+	if c.initiator {
+		return c.localSigner.FromAddress()
+	} else {
+		return c.remoteSigner
+	}
+}
+
+func (c *Channel) responderSigner() *keypair.FromAddress {
+	if c.initiator {
+		return c.remoteSigner
+	} else {
+		return c.localSigner.FromAddress()
+	}
 }
 
 func (c *Channel) Payment(sendAmount int) error {

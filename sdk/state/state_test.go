@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -115,11 +116,58 @@ func Test(t *testing.T) {
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution)
 
+	// Create channels with escrow accounts.
+	initiatorChannel := state.NewChannel(state.Config{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		Initiator:                  true,
+		LocalEscrowAccount: &state.EscrowAccount{
+			Address:        initiator.Escrow.FromAddress(),
+			SequenceNumber: initiator.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: initiator.Contribution},
+			},
+		},
+		RemoteEscrowAccount: &state.EscrowAccount{
+			Address:        responder.Escrow.FromAddress(),
+			SequenceNumber: responder.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: responder.Contribution},
+			},
+		},
+	})
+	responderChannel := state.NewChannel(state.Config{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		Initiator:                  false,
+		LocalEscrowAccount: &state.EscrowAccount{
+			Address:        responder.Escrow.FromAddress(),
+			SequenceNumber: responder.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: responder.Contribution},
+			},
+		},
+		RemoteEscrowAccount: &state.EscrowAccount{
+			Address:        initiator.Escrow.FromAddress(),
+			SequenceNumber: initiator.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: initiator.Contribution},
+			},
+		},
+	})
+
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
 	declarationTxs := []*txnbuild.Transaction{}
 
 	// Set initial variable state.
+	open, err := initiatorChannel.OpenPropose()
+	require.NoError(t, err)
+	open, err = responderChannel.OpenConfirm(open)
+	require.NoError(t, err)
+	open, err = initiatorChannel.OpenConfirm(open)
+	require.NoError(t, err)
+
 	s := initiator.EscrowSequenceNumber + 1
 	i := int64(0)
 	e := int64(0)
