@@ -16,8 +16,6 @@ type Open struct {
 }
 
 func (c *Channel) OpenTxs() (close, decl, formation *txnbuild.Transaction, err error) {
-	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
-
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
