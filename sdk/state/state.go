@@ -27,14 +27,13 @@ const (
 )
 
 type Channel struct {
-	Status         ChannelStatus
-	ProposalStatus ProposalStatus
-
+	Status                 ChannelStatus
+	ProposalStatus         ProposalStatus
 	Initiator              bool
 	InitiatorEscrowAccount *keypair.FromAddress
 	ResponderEscrowAccount *keypair.FromAddress
 
-	// TODO - is this the best way to rep Balance? (perspective of initiator/responder and not Me/Them)
+	// TODO - is this the best way to rep Balance? (perspective of initiator/responder and not Me/Other)
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
 	Balance int64
