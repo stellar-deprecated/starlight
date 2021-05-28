@@ -14,8 +14,8 @@ type PaymentProposal struct {
 	ObservationPeriodLedgerGap int64
 	AmountToInitiator          int64
 	AmountToResponder          int64
-	CloseSignatures            xdr.DecoratedSignature
-	DeclarationSignatures      xdr.DecoratedSignature
+	CloseSignatures            []xdr.DecoratedSignature
+	DeclarationSignatures      []xdr.DecoratedSignature
 }
 
 // TODO - validate inputs? (eg. no negative amounts)
