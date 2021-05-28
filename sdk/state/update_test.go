@@ -231,7 +231,6 @@ func TestUpdate(t *testing.T) {
 		//// INITIATOR: creates new Payment, sends to R
 		paymentProposal, err := initiatorChannel.NewPaymentProposal(initiator, responder, amountToInitiator, amountToResponder, s, i, e, 0, 0, networkPassphrase)
 		require.NoError(t, err)
-
 		j, err := json.Marshal(paymentProposal)
 		require.NoError(t, err)
 
@@ -239,25 +238,15 @@ func TestUpdate(t *testing.T) {
 		paymentProposal = &PaymentProposal{}
 		err = json.Unmarshal(j, paymentProposal)
 		require.NoError(t, err)
-
-		// TODO - handle when R is sending
-		expectedPaymentAmount := amountToResponder
-		valid := responderChannel.ValidatePayment(paymentProposal, expectedPaymentAmount)
-		if !valid {
-			t.Log("invalid payment proposal")
-			// TODO - handle invalid payment proposal
-		}
 		paymentProposal, err = responderChannel.ConfirmPayment(paymentProposal, initiator, responder, networkPassphrase)
 		require.NoError(t, err)
 		j, err := json.Marshal(paymentProposal)
 		require.NoError(t, err)
 
-		// ALEC NEXT
 		//// INITIATOR: re-confirms P_i by signing D_i and sending back
 		paymentProposal = PaymentProposal{}
 		err = json.Unmarshal(j, &paymentProposal)
-
-		dSig, err = initiatorChannel.ConfirmPayment(paymentProposal, networkPassphrase)
+		paymentProposal, err = initiatorChannel.ConfirmPayment(paymentProposal, networkPassphrase)
 		require.NoError(t, err)
 	}
 

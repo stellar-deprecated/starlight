@@ -17,18 +17,8 @@ const (
 	ChannelStatusClosed      = ChannelStatus("closed")
 )
 
-type ProposalStatus string
-
-const (
-	ProposalStatusNone      = ProposalStatus("none")
-	ProposalStatusProposed  = ProposalStatus("proposed")
-	ProposalStatusConfirmed = ProposalStatus("confirmed")
-	ProposalStatusRejected  = ProposalStatus("rejected")
-)
-
 type Channel struct {
 	Status                 ChannelStatus
-	ProposalStatus         ProposalStatus
 	Initiator              bool
 	InitiatorEscrowAccount *keypair.FromAddress
 	ResponderEscrowAccount *keypair.FromAddress
@@ -38,6 +28,14 @@ type Channel struct {
 	// the balance owing from the responder to the initiator, if negative.
 	Balance int64
 	Asset   Asset
+}
+
+type Participant struct {
+	Name                 string
+	KP                   *keypair.Full
+	Escrow               *keypair.Full
+	EscrowSequenceNumber int64
+	Contribution         int64
 }
 
 type Config struct{}
