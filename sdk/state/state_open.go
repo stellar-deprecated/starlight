@@ -53,6 +53,8 @@ func (c *Channel) OpenTxs() (close, decl, formation *txnbuild.Transaction, err e
 // OpenPropose proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) OpenPropose() (Open, error) {
+	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
+
 	close, _, _, err := c.OpenTxs()
 	if err != nil {
 		return Open{}, err
@@ -82,6 +84,8 @@ func (c *Channel) OpenPropose() (Open, error) {
 // If there are close, declaration, and formation signatures for all
 // participants, the channel will be considered open.
 func (c *Channel) OpenConfirm(m Open) (Open, error) {
+	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
+
 	close, decl, formation, err := c.OpenTxs()
 	if err != nil {
 		return m, err
