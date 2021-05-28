@@ -88,8 +88,8 @@ github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89/go.mod h1:Bvhd+E3laJ0AVk
 github.com/kr/text v0.0.0-20150520163712-e373e137fafd h1:ohpc+F5FseC/PPrR1wz2WcZxOc4kplnJ39pGbFlj/eY=
 github.com/kr/text v0.0.0-20150520163712-e373e137fafd/go.mod h1:sjUstKUATFIcff4qlB53Kml0wQPtJVc/3fWrmuUmcfA=
 github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f/go.mod h1:dXGbAdH5GtBTC4WfIxhKZfyBF/HBFgRZSWwZ9g/He9o=
-github.com/leighmcculloch/stellar--go v0.0.0-20210521212547-6e7c3ba30f97 h1:VFrUXbrayMXIaTWIlEWlevwzC+El6940SYZdhwoboas=
-github.com/leighmcculloch/stellar--go v0.0.0-20210521212547-6e7c3ba30f97/go.mod h1:1A0CTcMznKMFvMUikXykmoecbVX6YEJksvSm2JXFP4A=
+github.com/leighmcculloch/stellar--go v0.0.0-20210527221449-1306fe7becec h1:ibW/YR6Tt951urvgS6SMjmDiVjLNFWxySrizTczSdhA=
+github.com/leighmcculloch/stellar--go v0.0.0-20210527221449-1306fe7becec/go.mod h1:1A0CTcMznKMFvMUikXykmoecbVX6YEJksvSm2JXFP4A=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.2.0 h1:LXpIM/LZ5xGFhOpXAQUIMM1HdyqzVYM13zNdjCEEcA0=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=

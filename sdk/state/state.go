@@ -1,56 +1,148 @@
 package state
 
 import (
+	"encoding/hex"
+	"time"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
-type Asset = txnbuild.Asset
-
-type ChannelStatus string
-
-const (
-	ChannelStatusInitialized = ChannelStatus("initialized")
-	ChannelStatusOpen        = ChannelStatus("open")
-	ChannelStatusOpenWaiting = ChannelStatus("open_waiting")
-	ChannelStatusOpenClosing = ChannelStatus("closing")
-	ChannelStatusClosed      = ChannelStatus("closed")
+type (
+	Asset       = txnbuild.Asset
+	NativeAsset = txnbuild.NativeAsset
+	CreditAsset = txnbuild.CreditAsset
 )
+
+type Amount struct {
+	Asset  Asset
+	Amount int64
+}
+
+type EscrowAccount struct {
+	Address        *keypair.FromAddress
+	SequenceNumber int64
+	Balances       []Amount
+}
 
 type Channel struct {
-	Status                 ChannelStatus
-	Initiator              bool
-	InitiatorEscrowAccount *keypair.FromAddress
-	ResponderEscrowAccount *keypair.FromAddress
+	networkPassphrase          string
+	observationPeriodTime      time.Duration
+	observationPeriodLedgerGap int64
 
+	startingSequence int64
 	// TODO - is this the best way to rep Balance? (perspective of initiator/responder and not Me/Other)
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
 	Balance int64
 	Asset   Asset
+
+	initiator           bool
+	localEscrowAccount  *EscrowAccount
+	remoteEscrowAccount *EscrowAccount
+
+	localSigner  *keypair.Full
+	remoteSigner *keypair.FromAddress
 }
 
-type Participant struct {
-	Name                 string
-	KP                   *keypair.Full
-	Escrow               *keypair.Full
-	EscrowSequenceNumber int64
-	Contribution         int64
-}
+type Config struct {
+	NetworkPassphrase          string
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
 
-type Config struct{}
+	Initiator bool
+
+	LocalEscrowAccount  *EscrowAccount
+	RemoteEscrowAccount *EscrowAccount
+
+	LocalSigner  *keypair.Full
+	RemoteSigner *keypair.FromAddress
+}
 
 func NewChannel(c Config) *Channel {
-	return nil
+	channel := &Channel{
+		networkPassphrase:          c.NetworkPassphrase,
+		observationPeriodTime:      c.ObservationPeriodTime,
+		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		initiator:                  c.Initiator,
+		localEscrowAccount:         c.LocalEscrowAccount,
+		remoteEscrowAccount:        c.RemoteEscrowAccount,
+		localSigner:                c.LocalSigner,
+		remoteSigner:               c.RemoteSigner,
+	}
+	return channel
 }
 
-// Open handles the logic for opening a channel. This includes the Formation Transaction, C_1, and D_1.
-func (c *Channel) Open() error {
-	return nil
+func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
+	if c.initiator {
+		return c.localEscrowAccount
+	} else {
+		return c.remoteEscrowAccount
+	}
 }
 
-func (c *Channel) CheckNetwork() error {
-	return nil
+func (c *Channel) responderEscrowAccount() *EscrowAccount {
+	if c.initiator {
+		return c.remoteEscrowAccount
+	} else {
+		return c.localEscrowAccount
+	}
+}
+
+func (c *Channel) initiatorSigner() *keypair.FromAddress {
+	if c.initiator {
+		return c.localSigner.FromAddress()
+	} else {
+		return c.remoteSigner
+	}
+}
+
+func (c *Channel) responderSigner() *keypair.FromAddress {
+	if c.initiator {
+		return c.remoteSigner
+	} else {
+		return c.localSigner.FromAddress()
+	}
+}
+
+func (c *Channel) sign(tx *txnbuild.Transaction) (xdr.DecoratedSignature, error) {
+	hash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return xdr.DecoratedSignature{}, err
+	}
+	sig, err := c.localSigner.SignDecorated(hash[:])
+	if err != nil {
+		return xdr.DecoratedSignature{}, err
+	}
+	return sig, nil
+}
+
+type errNotSigned struct {
+	hash   string
+	signer string
+}
+
+func (e errNotSigned) Error() string { return "tx " + e.hash + " not signed by signer " + e.signer }
+
+func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) error {
+	hash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return err
+	}
+	for _, sig := range sigs {
+		if sig.Hint != signer.Hint() {
+			continue
+		}
+		err := signer.Verify(hash[:], sig.Signature)
+		if err == nil {
+			return nil
+		}
+	}
+	return errNotSigned{
+		hash:   hex.EncodeToString(hash[:]),
+		signer: signer.Address(),
+	}
 }
 
 func (c *Channel) CloseStart(iterationNumber int) error {
@@ -101,5 +193,3 @@ type ChannelCheckResponse struct {
 	TriggeredTxInfo TxInfo
 	LatestTxInfo    TxInfo
 }
-
-type EscrowAccount struct{}
