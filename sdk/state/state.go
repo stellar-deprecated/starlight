@@ -31,7 +31,9 @@ type Channel struct {
 	observationPeriodTime      time.Duration
 	observationPeriodLedgerGap int64
 
-	startingSequence int64
+	startingSequence        int64
+	iterationNumber         int64
+	iterationNumberExecuted int64
 	// TODO - is this the best way to rep Balance? (perspective of initiator/responder and not Me/Other)
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
@@ -46,7 +48,7 @@ type Channel struct {
 	remoteSigner *keypair.FromAddress
 }
 
-type Config struct {
+type ChannelConfig struct {
 	NetworkPassphrase          string
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -60,7 +62,7 @@ type Config struct {
 	RemoteSigner *keypair.FromAddress
 }
 
-func NewChannel(c Config) *Channel {
+func NewChannel(c ChannelConfig) *Channel {
 	channel := &Channel{
 		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,

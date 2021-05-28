@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -10,7 +9,7 @@ import (
 
 type PaymentProposal struct {
 	IterationNumber            int64
-	ObservarvationPeriodTime   time.Duration
+	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	AmountToInitiator          int64
 	AmountToResponder          int64
@@ -20,7 +19,7 @@ type PaymentProposal struct {
 
 // TODO - validate inputs? (eg. no negative amounts)
 // initiator will only call this
-func (c *Channel) NewPaymentProposal(me Participant, other Participant, payToInitiator int64, payToResponder int64, startSequence int64, i int64, e int64, o time.Duration, observationPeriodLedgerGap int64, networkPassphrase string) (*PaymentProposal, error) {
+func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64) (*PaymentProposal, error) {
 	newBalance := c.Balance + payToResponder - payToInitiator
 	amountToInitiator := int64(0)
 	amountToResponder := int64(0)
@@ -30,30 +29,29 @@ func (c *Channel) NewPaymentProposal(me Participant, other Participant, payToIni
 		amountToInitiator = newBalance
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      o,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		InitiatorSigner:            me.KP.FromAddress(),
-		ResponderSigner:            other.KP.FromAddress(),
-		InitiatorEscrow:            me.Escrow.FromAddress(),
-		ResponderEscrow:            other.Escrow.FromAddress(),
-		StartSequence:              startSequence,
-		IterationNumber:            i,
+		ObservationPeriodTime:      c.observationPeriodTime,
+		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+		InitiatorSigner:            c.localSigner.FromAddress(),
+		ResponderSigner:            c.remoteSigner,
+		InitiatorEscrow:            c.localEscrowAccount.Address,
+		ResponderEscrow:            c.remoteEscrowAccount.Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            c.iterationNumber,
 		AmountToInitiator:          amountToInitiator,
 		AmountToResponder:          amountToResponder,
 	})
 	if err != nil {
 		return nil, err
 	}
-	txC, err = txC.Sign(networkPassphrase, initiator.KP)
+	txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return nil, err
 	}
 	c.Balance += amountToResponder
 	c.Balance -= amountToInitiator
 	return &PaymentProposal{
-		IterationNumber:            i,
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		ObservationPeriodTime:      c.observationPeriodTime,
+		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		AmountToInitiator:          amountToInitiator,
 		AmountToResponder:          amountToResponder,
 		CloseSignatures:            txC.Signatures(),
@@ -61,8 +59,9 @@ func (c *Channel) NewPaymentProposal(me Participant, other Participant, payToIni
 }
 
 // TODO - what do to when you don't have the full other's KP? - Change to FullAddress?
-func (c *Channel) ConfirmPayment(p *PaymentProposal, initiator Participant, responder Participant, isInitiator bool, networkPassphrase string) (*PaymentProposal, error) {
-	if !isInitiator {
+func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
+	// TODO - is c.initiator good way of differentiating?
+	if !c.initiator {
 		newBalance := c.Balance + p.AmountToResponder - p.AmountToInitiator
 		// TODO - better var names to differentiate from C_i fields?
 		amountToInitiator := int64(0)
@@ -73,68 +72,68 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal, initiator Participant, resp
 			amountToInitiator = newBalance
 		}
 		txC, err := txbuild.Close(txbuild.CloseParams{
-			ObservationPeriodTime:      p.ObservationPeriodTime,
-			ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
-			InitiatorSigner:            initiator.KP.FromAddress(),
-			ResponderSigner:            responder.KP.FromAddress(),
-			InitiatorEscrow:            initiator.Escrow.FromAddress(),
-			ResponderEscrow:            responder.Escrow.FromAddress(),
-			StartSequence:              p.StartSequence,
-			IterationNumber:            p.IterationNumber,
-			AmountToInitiator:          p.AmountToInitiator,
-			AmountToResponder:          p.AmountToResponder,
+			ObservationPeriodTime:      c.observationPeriodTime,
+			ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+			InitiatorSigner:            c.remoteSigner,
+			ResponderSigner:            c.localSigner.FromAddress(),
+			InitiatorEscrow:            c.remoteEscrowAccount.Address,
+			ResponderEscrow:            c.localEscrowAccount.Address,
+			StartSequence:              c.startingSequence,
+			IterationNumber:            c.iterationNumber,
+			AmountToInitiator:          amountToInitiator,
+			AmountToResponder:          amountToResponder,
 		})
 		if err != nil {
 			return nil, err
 		}
-		// TODO - use correct method
-		if !verifyTxSignatures(txC, p.CloseSignatures) {
-			return nil, errors.New("invalid declaration transaction")
-		}
-		txC, err = txC.AddSignatureDecorated(p.CloseSignatures)
-		if err != nil {
+		if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
 			return nil, err
+		}
+		for _, sig := range p.CloseSignatures {
+			txC, err = txC.AddSignatureDecorated(sig)
+			if err != nil {
+				return nil, err
+			}
 		}
 		// TODO - why is signing here bad?
-		txC, err = txC.Sign(networkPassphrase, me.KP)
+		txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return nil, err
 		}
-
 		txD, err := txbuild.Declaration(txbuild.DeclarationParams{
-			InitiatorEscrow:         initiator.Escrow.FromAddress(),
-			StartSequence:           p.StartSequence,
-			IterationNumber:         p.IterationNumber,
-			IterationNumberExecuted: p.ExecutionNumber,
+			InitiatorEscrow:         c.remoteEscrowAccount.Address,
+			StartSequence:           c.startingSequence,
+			IterationNumber:         c.iterationNumber,
+			IterationNumberExecuted: c.iterationNumberExecuted,
 		})
 		if err != nil {
 			return nil, err
 		}
-		txD, err := txD.Sign(networkPassphrase, me.KP)
+		txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return nil, err
 		}
 		c.Balance = newBalance
 		p.CloseSignatures = txC.Signatures()
 		p.DeclarationSignatures = txD.Signatures()
-		return p
+		return p, nil
 	}
 
 	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         initiator.Escrow.FromAddress(),
-		StartSequence:           p.StartSequence,
-		IterationNumber:         p.IterationNumber,
-		IterationNumberExecuted: p.ExecutionNumber,
+		InitiatorEscrow:         c.localEscrowAccount.Address,
+		StartSequence:           c.startingSequence,
+		IterationNumber:         c.iterationNumber,
+		IterationNumberExecuted: c.iterationNumberExecuted,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	txD, err := txD.Sign(networkPassphrase, me.KP)
+	txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return nil, err
 	}
 
 	p.DeclarationSignatures = txD.Signatures()
-	return p
+	return p, nil
 }
