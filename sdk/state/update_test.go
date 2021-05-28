@@ -346,12 +346,3 @@ func randomPositiveInt64(t *testing.T, max int64) int64 {
 	require.NoError(t, err)
 	return int64(i) % max
 }
-
-// simplifications for now:
-// the actual message sending of P_1
-// no validation
-// the channel state for proposing/confirming eg. PROPOSING, CONFIRMING etc.
-
-// To figure out:
-// the re-confirming part
-// should P_1 just be intent?
