@@ -20,7 +20,15 @@ type PaymentProposal struct {
 
 // TODO - validate inputs? (eg. no negative amounts)
 // initiator will only call this
-func (c *Channel) NewPaymentProposal(me Participant, other Participant, amountToInitiator int64, amountToResponder int64, startSequence int64, i int64, e int64, o time.Duration, observationPeriodLedgerGap int64, networkPassphrase string) (*PaymentProposal, error) {
+func (c *Channel) NewPaymentProposal(me Participant, other Participant, payToInitiator int64, payToResponder int64, startSequence int64, i int64, e int64, o time.Duration, observationPeriodLedgerGap int64, networkPassphrase string) (*PaymentProposal, error) {
+	newBalance := c.Balance + payToResponder - payToInitiator
+	amountToInitiator := int64(0)
+	amountToResponder := int64(0)
+	if newBalance > 0 {
+		amountToResponder = newBalance
+	} else {
+		amountToInitiator = newBalance
+	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      o,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -79,6 +87,7 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal, initiator Participant, resp
 		if err != nil {
 			return nil, err
 		}
+		// TODO - use correct method
 		if !verifyTxSignatures(txC, p.CloseSignatures) {
 			return nil, errors.New("invalid declaration transaction")
 		}
@@ -105,7 +114,6 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal, initiator Participant, resp
 		if err != nil {
 			return nil, err
 		}
-
 		c.Balance = newBalance
 		p.CloseSignatures = txC.Signatures()
 		p.DeclarationSignatures = txD.Signatures()
