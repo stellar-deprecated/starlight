@@ -37,6 +37,7 @@ type Channel struct {
 	// TODO - is this the best way to rep Balance? (perspective of initiator/responder and not Me/Other)
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
+	// TODO - use Balance struct
 	Balance int64
 	Asset   Asset
 
@@ -52,6 +53,7 @@ type ChannelConfig struct {
 	NetworkPassphrase          string
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
+	StartingSequence           int64
 
 	Initiator bool
 
@@ -67,6 +69,7 @@ func NewChannel(c ChannelConfig) *Channel {
 		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,
 		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		startingSequence:           c.StartingSequence,
 		initiator:                  c.Initiator,
 		localEscrowAccount:         c.LocalEscrowAccount,
 		remoteEscrowAccount:        c.RemoteEscrowAccount,

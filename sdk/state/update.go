@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -18,15 +19,18 @@ type PaymentProposal struct {
 }
 
 // TODO - validate inputs? (eg. no negative amounts)
+// TODO - payments to be in Amount struct
 // initiator will only call this
 func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64) (*PaymentProposal, error) {
+	// TODO - remove
+	fmt.Println(c.Balance, payToResponder, payToInitiator)
 	newBalance := c.Balance + payToResponder - payToInitiator
 	amountToInitiator := int64(0)
 	amountToResponder := int64(0)
 	if newBalance > 0 {
 		amountToResponder = newBalance
 	} else {
-		amountToInitiator = newBalance
+		amountToInitiator = newBalance * -1
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
