@@ -187,7 +187,6 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// TODO - why does Channel need to know the current balance?
 	// TODO - create NewChannel method - always sets Balance to 0 at first
 	initiatorChannel := Channel{
 		Status:                 "initialized",
@@ -230,7 +229,7 @@ func TestUpdate(t *testing.T) {
 		t.Log("Proposal: ", i, paymentLog, amount)
 
 		//// INITIATOR: creates new Payment, sends to R
-		paymentProposal, err := initiatorChannel.ProposePayment(initiator, responder, amountToInitiator, amountToResponder, s, i, e, 0, networkPassphrase)
+		paymentProposal, err := initiatorChannel.NewPaymentProposal(initiator, responder, amountToInitiator, amountToResponder, s, i, e, 0, 0, networkPassphrase)
 		require.NoError(t, err)
 
 		j, err := json.Marshal(paymentProposal)
@@ -248,13 +247,17 @@ func TestUpdate(t *testing.T) {
 			t.Log("invalid payment proposal")
 			// TODO - handle invalid payment proposal
 		}
-
-		paymentProposal, err = responderChannel.ConfirmPayment(paymentProposal, responder, networkPassphrase)
+		paymentProposal, err = responderChannel.ConfirmPayment(paymentProposal, initiator, responder, networkPassphrase)
+		require.NoError(t, err)
+		j, err := json.Marshal(paymentProposal)
 		require.NoError(t, err)
 
 		// ALEC NEXT
 		//// INITIATOR: re-confirms P_i by signing D_i and sending back
-		paymentProposal, err = initiatorChannel.ConfirmPayment(paymentProposal, initiator, networkPassphrase)
+		paymentProposal = PaymentProposal{}
+		err = json.Unmarshal(j, &paymentProposal)
+
+		dSig, err = initiatorChannel.ConfirmPayment(paymentProposal, networkPassphrase)
 		require.NoError(t, err)
 	}
 
