@@ -219,8 +219,8 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Log("Iteration", i, "Declarations:", declarationTxs)
-	t.Log("Iteration", i, "Closes:", closeTxs)
+	t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
+	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
 	// Owing tracks how much each participant owes the other particiant.
 	// A positive amount = I owes R.
@@ -279,8 +279,8 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
 
-		t.Log("Iteration", i, "Declarations:", declarationTxs)
-		t.Log("Iteration", i, "Closes:", closeTxs)
+		t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
+		t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 	}
 
 	// Confused participant attempts to close channel at old iteration.
@@ -315,7 +315,7 @@ func Test(t *testing.T) {
 					t.Log("Submitting:", oldC.SourceAccount().Sequence, "Success")
 					break
 				}
-				t.Log("Submitting:", oldC.SourceAccount().Sequence, "Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+				t.Log("Submitting:", oldC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 5)
 			}
 		}()
@@ -356,7 +356,7 @@ func Test(t *testing.T) {
 					t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Success")
 					break
 				}
-				t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+				t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -422,4 +422,12 @@ func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, st
 		return err
 	}
 	return nil
+}
+
+func txSeqs(txs []*txnbuild.Transaction) []int64 {
+	seqs := make([]int64, len(txs))
+	for i := range txs {
+		seqs[i] = txs[i].SequenceNumber()
+	}
+	return seqs
 }
