@@ -199,6 +199,7 @@ func TestUpdate(t *testing.T) {
 		// TODO - increase these params
 		ObservationPeriodTime:      0,
 		ObservationPeriodLedgerGap: 0,
+		StartingSequence:           initiator.EscrowSequenceNumber,
 		Initiator:                  true,
 		LocalEscrowAccount: &EscrowAccount{
 			Address:        initiator.Escrow.FromAddress(),
@@ -218,7 +219,8 @@ func TestUpdate(t *testing.T) {
 		NetworkPassphrase:          networkPassphrase,
 		ObservationPeriodTime:      0,
 		ObservationPeriodLedgerGap: 0,
-		Initiator:                  true,
+		StartingSequence:           initiator.EscrowSequenceNumber,
+		Initiator:                  false,
 		LocalEscrowAccount: &EscrowAccount{
 			Address:        responder.Escrow.FromAddress(),
 			SequenceNumber: responder.EscrowSequenceNumber,
@@ -236,10 +238,9 @@ func TestUpdate(t *testing.T) {
 	//// SETUP DONE
 
 	//// NEW PROPOSALS
-	paymentProposal := PaymentProposal{}
+	paymentProposal := &PaymentProposal{}
 	for i < 7 {
 		i++
-
 		amount := randomPositiveInt64(t, 100_0000000)
 		amountToResponder := int64(0)
 		amountToInitiator := int64(0)
@@ -251,18 +252,23 @@ func TestUpdate(t *testing.T) {
 			amountToInitiator = amount
 			paymentLog = "R payment to I of: "
 		}
-		t.Log("Proposal: ", i, paymentLog, amount)
+		t.Log("Current channel balances: I: ", initiatorChannel.Balance/1_000_0000, "R: ", responderChannel.Balance/1_000_0000)
+		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// INITIATOR: creates new Payment, sends to R
-		paymentProposal, err := initiatorChannel.NewPaymentProposal(amountToInitiator, amountToResponder)
+		// TODO - when/where should channel.iterationNumber be incremented
+		initiatorChannel.iterationNumber = i
+		paymentProposal, err = initiatorChannel.NewPaymentProposal(amountToInitiator, amountToResponder)
 		require.NoError(t, err)
 		j, err := json.Marshal(paymentProposal)
 		require.NoError(t, err)
 
 		//// RESPONDER: receives new payment proposal, validates, then confirms by signing both
+		responderChannel.iterationNumber = i
 		paymentProposal = &PaymentProposal{}
 		err = json.Unmarshal(j, paymentProposal)
 		require.NoError(t, err)
+
 		paymentProposal, err = responderChannel.ConfirmPayment(paymentProposal)
 		require.NoError(t, err)
 		j, err = json.Marshal(paymentProposal)
@@ -275,48 +281,77 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Log(paymentProposal)
-	// // TODO - how does Initiator submit "latest", is it store in the Channel?
-	// //// INITIATOR: submits latest proposal
-	// txDGeneric, err := txnbuild.TransactionFromXDR(paymentProposal.DeclarationTxXDR)
-	// require.NoError(t, err)
-	// txD, isSimple := txDGeneric.Transaction()
-	// require.True(t, isSimple)
-	// fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-	// 	Inner:      txD,
-	// 	FeeAccount: initiator.KP.Address(),
-	// 	BaseFee:    txnbuild.MinBaseFee,
-	// })
-	// require.NoError(t, err)
-	// fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-	// require.NoError(t, err)
-	// _, err = client.SubmitFeeBumpTransaction(fbtx)
-	// if err != nil {
-	// 	t.Log("Error submitting fee bumpbed txD", err.(*horizonclient.Error).Problem.Extras["result_codes"])
-	// 	return
-	// }
+	// TODO - how does Initiator submit "latest", is it store in the Channel?
+	//// INITIATOR: closes channel by submitting latest proposal
 
-	// txCGeneric, err := txnbuild.TransactionFromXDR(paymentProposal.ClosingTxXDR)
-	// require.NoError(t, err)
-	// txC, isSimple := txCGeneric.Transaction()
-	// require.True(t, isSimple)
+	t.Log("Initiator Closing Channel at i: ", initiatorChannel.iterationNumber)
+	t.Log("Final channel balances: I: ", initiatorChannel.Balance/1_000_0000, "R: ", responderChannel.Balance/1_000_0000)
 
-	// fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-	// 	Inner:      txC,
-	// 	FeeAccount: initiator.KP.Address(),
-	// 	BaseFee:    txnbuild.MinBaseFee,
-	// })
-	// require.NoError(t, err)
-	// fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-	// require.NoError(t, err)
-	// _, err = client.SubmitFeeBumpTransaction(fbtx)
-	// if err != nil {
-	// 	t.Log("Error submitting fee bumpbed txC", err.(*horizonclient.Error).Problem.Extras["result_codes"])
-	// 	return
-	// }
+	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
+		InitiatorEscrow:         initiatorChannel.localEscrowAccount.Address,
+		StartSequence:           initiatorChannel.startingSequence,
+		IterationNumber:         initiatorChannel.iterationNumber,
+		IterationNumberExecuted: initiatorChannel.iterationNumberExecuted,
+	})
+	require.NoError(t, err)
+	for _, sig := range paymentProposal.DeclarationSignatures {
+		txD, err = txD.AddSignatureDecorated(sig)
+		require.NoError(t, err)
+	}
 
-	// assert.NoError(t, err)
+	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      txD,
+		FeeAccount: initiator.KP.Address(),
+		BaseFee:    txnbuild.MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+	require.NoError(t, err)
+	_, err = client.SubmitFeeBumpTransaction(fbtx)
+	if err != nil {
+		t.Log("Error submitting fee bumpbed txD", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+	}
+	require.NoError(t, err)
 
+	amountToInitiator := int64(0)
+	amountToResponder := int64(0)
+	if initiatorChannel.Balance > 0 {
+		amountToResponder = initiatorChannel.Balance
+	} else {
+		amountToInitiator = initiatorChannel.Balance * -1
+	}
+	txC, err := txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      initiatorChannel.observationPeriodTime,
+		ObservationPeriodLedgerGap: initiatorChannel.observationPeriodLedgerGap,
+		InitiatorSigner:            initiatorChannel.localSigner.FromAddress(),
+		ResponderSigner:            initiatorChannel.remoteSigner,
+		InitiatorEscrow:            initiatorChannel.localEscrowAccount.Address,
+		ResponderEscrow:            initiatorChannel.remoteEscrowAccount.Address,
+		StartSequence:              initiatorChannel.startingSequence,
+		IterationNumber:            initiatorChannel.iterationNumber,
+		AmountToInitiator:          amountToInitiator,
+		AmountToResponder:          amountToResponder,
+	})
+	require.NoError(t, err)
+
+	for _, sig := range paymentProposal.CloseSignatures {
+		txC, err = txC.AddSignatureDecorated(sig)
+		require.NoError(t, err)
+	}
+
+	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      txC,
+		FeeAccount: initiator.KP.Address(),
+		BaseFee:    txnbuild.MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+	require.NoError(t, err)
+	_, err = client.SubmitFeeBumpTransaction(fbtx)
+	if err != nil {
+		t.Log("Error submitting fee bumpbed txC", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+	}
+	require.NoError(t, err)
 }
 
 func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, startingBalance int64) error {

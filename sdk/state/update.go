@@ -1,8 +1,9 @@
 package state
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/xdr"
@@ -22,8 +23,6 @@ type PaymentProposal struct {
 // TODO - payments to be in Amount struct
 // initiator will only call this
 func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64) (*PaymentProposal, error) {
-	// TODO - remove
-	fmt.Println(c.Balance, payToResponder, payToInitiator)
 	newBalance := c.Balance + payToResponder - payToInitiator
 	amountToInitiator := int64(0)
 	amountToResponder := int64(0)
@@ -51,20 +50,17 @@ func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64)
 	if err != nil {
 		return nil, err
 	}
-	c.Balance += amountToResponder
-	c.Balance -= amountToInitiator
+	c.Balance = newBalance
 	return &PaymentProposal{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		AmountToInitiator:          amountToInitiator,
-		AmountToResponder:          amountToResponder,
+		AmountToInitiator:          payToInitiator,
+		AmountToResponder:          payToResponder,
 		CloseSignatures:            txC.Signatures(),
 	}, nil
 }
 
-// TODO - what do to when you don't have the full other's KP? - Change to FullAddress?
 func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
-	// TODO - is c.initiator good way of differentiating?
 	if !c.initiator {
 		newBalance := c.Balance + p.AmountToResponder - p.AmountToInitiator
 		// TODO - better var names to differentiate from C_i fields?
@@ -73,7 +69,7 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
 		if newBalance > 0 {
 			amountToResponder = newBalance
 		} else {
-			amountToInitiator = newBalance
+			amountToInitiator = newBalance * -1
 		}
 		txC, err := txbuild.Close(txbuild.CloseParams{
 			ObservationPeriodTime:      c.observationPeriodTime,
@@ -91,13 +87,7 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
 			return nil, err
 		}
 		if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
-			return nil, err
-		}
-		for _, sig := range p.CloseSignatures {
-			txC, err = txC.AddSignatureDecorated(sig)
-			if err != nil {
-				return nil, err
-			}
+			return nil, errors.Wrap(err, "the signed transaction may have different data")
 		}
 		// TODO - why is signing here bad?
 		txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
@@ -118,11 +108,11 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
 			return nil, err
 		}
 		c.Balance = newBalance
-		p.CloseSignatures = txC.Signatures()
-		p.DeclarationSignatures = txD.Signatures()
+		p.CloseSignatures = append(p.CloseSignatures, txC.Signatures()...)
+		p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
 		return p, nil
 	}
-
+	// TODO - split up function better
 	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.localEscrowAccount.Address,
 		StartSequence:           c.startingSequence,
@@ -132,12 +122,12 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	// TODO - add sign verification here as well?
 	txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return nil, err
 	}
 
-	p.DeclarationSignatures = txD.Signatures()
+	p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
 	return p, nil
 }
