@@ -3,6 +3,7 @@ package state_test
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"testing"
 	"time"
 
@@ -175,13 +176,21 @@ func Test(t *testing.T) {
 	t.Log("Open...")
 	open, err := initiatorChannel.OpenPropose()
 	require.NoError(t, err)
-	open, _ = responderChannel.OpenConfirm(open)
-	open, _ = initiatorChannel.OpenConfirm(open)
-	open, _ = responderChannel.OpenConfirm(open)
-	open, err = initiatorChannel.OpenConfirm(open)
-	require.NoError(t, err)
-	open, err = responderChannel.OpenConfirm(open)
-	require.NoError(t, err)
+	for {
+		var errR error
+		open, errR = responderChannel.OpenConfirm(open)
+		if errR != nil && !errors.As(errR, &state.ErrNotSigned{}) {
+			t.Fatal(errR)
+		}
+		var errI error
+		open, errI = initiatorChannel.OpenConfirm(open)
+		if errI != nil && !errors.As(errI, &state.ErrNotSigned{}) {
+			t.Fatal(errI)
+		}
+		if errR == nil && errI == nil {
+			break
+		}
+	}
 
 	{
 		ci, di, fi, err := initiatorChannel.OpenTxs()
