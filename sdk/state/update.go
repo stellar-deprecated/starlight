@@ -1,8 +1,6 @@
 package state
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -10,13 +8,11 @@ import (
 )
 
 type Payment struct {
-	IterationNumber            int64
-	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
-	AmountToInitiator          int64
-	AmountToResponder          int64
-	CloseSignatures            []xdr.DecoratedSignature
-	DeclarationSignatures      []xdr.DecoratedSignature
+	IterationNumber       int64
+	AmountToInitiator     int64
+	AmountToResponder     int64
+	CloseSignatures       []xdr.DecoratedSignature
+	DeclarationSignatures []xdr.DecoratedSignature
 }
 
 // TODO - validate inputs? (eg. no negative amounts)
@@ -52,11 +48,9 @@ func (c *Channel) NewPayment(payToInitiator int64, payToResponder int64) (*Payme
 	}
 	c.Balance = newBalance
 	return &Payment{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		AmountToInitiator:          payToInitiator,
-		AmountToResponder:          payToResponder,
-		CloseSignatures:            txC.Signatures(),
+		AmountToInitiator: payToInitiator,
+		AmountToResponder: payToResponder,
+		CloseSignatures:   txC.Signatures(),
 	}, nil
 }
 
