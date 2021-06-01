@@ -98,7 +98,7 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
 			InitiatorEscrow:         c.remoteEscrowAccount.Address,
 			StartSequence:           c.startingSequence,
 			IterationNumber:         c.iterationNumber,
-			IterationNumberExecuted: c.iterationNumberExecuted,
+			IterationNumberExecuted: 0,
 		})
 		if err != nil {
 			return nil, err
@@ -117,7 +117,7 @@ func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
 		InitiatorEscrow:         c.localEscrowAccount.Address,
 		StartSequence:           c.startingSequence,
 		IterationNumber:         c.iterationNumber,
-		IterationNumberExecuted: c.iterationNumberExecuted,
+		IterationNumberExecuted: 0,
 	})
 	if err != nil {
 		return nil, err

@@ -291,7 +291,7 @@ func TestUpdate(t *testing.T) {
 		InitiatorEscrow:         initiatorChannel.localEscrowAccount.Address,
 		StartSequence:           initiatorChannel.startingSequence,
 		IterationNumber:         initiatorChannel.iterationNumber,
-		IterationNumberExecuted: initiatorChannel.iterationNumberExecuted,
+		IterationNumberExecuted: 0,
 	})
 	require.NoError(t, err)
 	for _, sig := range paymentProposal.DeclarationSignatures {
