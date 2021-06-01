@@ -238,7 +238,7 @@ func TestUpdate(t *testing.T) {
 	//// SETUP DONE
 
 	//// NEW PROPOSALS
-	paymentProposal := &PaymentProposal{}
+	payment := &Payment{}
 	for i < 7 {
 		i++
 		amount := randomPositiveInt64(t, 100_0000000)
@@ -258,26 +258,26 @@ func TestUpdate(t *testing.T) {
 		//// INITIATOR: creates new Payment, sends to R
 		// TODO - when/where should channel.iterationNumber be incremented
 		initiatorChannel.iterationNumber = i
-		paymentProposal, err = initiatorChannel.NewPaymentProposal(amountToInitiator, amountToResponder)
+		payment, err = initiatorChannel.NewPayment(amountToInitiator, amountToResponder)
 		require.NoError(t, err)
-		j, err := json.Marshal(paymentProposal)
+		j, err := json.Marshal(payment)
 		require.NoError(t, err)
 
 		//// RESPONDER: receives new payment proposal, validates, then confirms by signing both
 		responderChannel.iterationNumber = i
-		paymentProposal = &PaymentProposal{}
-		err = json.Unmarshal(j, paymentProposal)
+		payment = &Payment{}
+		err = json.Unmarshal(j, payment)
 		require.NoError(t, err)
 
-		paymentProposal, err = responderChannel.ConfirmPayment(paymentProposal)
+		payment, err = responderChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		j, err = json.Marshal(paymentProposal)
+		j, err = json.Marshal(payment)
 		require.NoError(t, err)
 
 		//// INITIATOR: re-confirms P_i by signing D_i and sending back
-		paymentProposal = &PaymentProposal{}
-		err = json.Unmarshal(j, paymentProposal)
-		paymentProposal, err = initiatorChannel.ConfirmPayment(paymentProposal)
+		payment = &Payment{}
+		err = json.Unmarshal(j, payment)
+		payment, err = initiatorChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 	}
 
@@ -294,7 +294,7 @@ func TestUpdate(t *testing.T) {
 		IterationNumberExecuted: 0,
 	})
 	require.NoError(t, err)
-	for _, sig := range paymentProposal.DeclarationSignatures {
+	for _, sig := range payment.DeclarationSignatures {
 		txD, err = txD.AddSignatureDecorated(sig)
 		require.NoError(t, err)
 	}
@@ -334,7 +334,7 @@ func TestUpdate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	for _, sig := range paymentProposal.CloseSignatures {
+	for _, sig := range payment.CloseSignatures {
 		txC, err = txC.AddSignatureDecorated(sig)
 		require.NoError(t, err)
 	}

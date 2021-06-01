@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type PaymentProposal struct {
+type Payment struct {
 	IterationNumber            int64
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -22,7 +22,7 @@ type PaymentProposal struct {
 // TODO - validate inputs? (eg. no negative amounts)
 // TODO - payments to be in Amount struct
 // initiator will only call this
-func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64) (*PaymentProposal, error) {
+func (c *Channel) NewPayment(payToInitiator int64, payToResponder int64) (*Payment, error) {
 	newBalance := c.Balance + payToResponder - payToInitiator
 	amountToInitiator := int64(0)
 	amountToResponder := int64(0)
@@ -51,7 +51,7 @@ func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64)
 		return nil, err
 	}
 	c.Balance = newBalance
-	return &PaymentProposal{
+	return &Payment{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		AmountToInitiator:          payToInitiator,
@@ -60,7 +60,7 @@ func (c *Channel) NewPaymentProposal(payToInitiator int64, payToResponder int64)
 	}, nil
 }
 
-func (c *Channel) ConfirmPayment(p *PaymentProposal) (*PaymentProposal, error) {
+func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 	if !c.initiator {
 		newBalance := c.Balance + p.AmountToResponder - p.AmountToInitiator
 		// TODO - better var names to differentiate from C_i fields?
