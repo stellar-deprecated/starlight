@@ -179,12 +179,12 @@ func Test(t *testing.T) {
 	for {
 		var errR error
 		open, errR = responderChannel.OpenConfirm(open)
-		if errR != nil && !errors.As(errR, &state.ErrNotSigned{}) {
+		if errR != nil && !errors.Is(errR, state.ErrNotSigned{}) {
 			t.Fatal(errR)
 		}
 		var errI error
 		open, errI = initiatorChannel.OpenConfirm(open)
-		if errI != nil && !errors.As(errI, &state.ErrNotSigned{}) {
+		if errI != nil && !errors.Is(errI, state.ErrNotSigned{}) {
 			t.Fatal(errI)
 		}
 		if errR == nil && errI == nil {

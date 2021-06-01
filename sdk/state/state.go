@@ -119,6 +119,15 @@ type ErrNotSigned struct {
 	Signer string
 }
 
+func (e ErrNotSigned) Is(target error) bool {
+	t, ok := target.(ErrNotSigned)
+	if !ok {
+		return false
+	}
+	return (t.Hash == "" || e.Hash == t.Hash) &&
+		(t.Signer == "" || e.Signer == t.Signer)
+}
+
 func (e ErrNotSigned) Error() string { return "tx " + e.Hash + " not signed by signer " + e.Signer }
 
 func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) error {

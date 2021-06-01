@@ -99,7 +99,7 @@ func (c *Channel) OpenConfirm(m Open) (Open, error) {
 
 	// If local has not signed close, sign it.
 	err = c.verifySigned(close, m.CloseSignatures, c.localSigner)
-	if errors.As(err, &ErrNotSigned{}) {
+	if errors.Is(err, ErrNotSigned{}) {
 		closeSig, err := c.sign(close)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: close incomplete: %w", err)
@@ -111,7 +111,7 @@ func (c *Channel) OpenConfirm(m Open) (Open, error) {
 
 	// If local has not signed declaration, sign it.
 	err = c.verifySigned(decl, m.DeclarationSignatures, c.localSigner)
-	if errors.As(err, &ErrNotSigned{}) {
+	if errors.Is(err, ErrNotSigned{}) {
 		declSig, err := c.sign(decl)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: decl %w", err)
@@ -129,7 +129,7 @@ func (c *Channel) OpenConfirm(m Open) (Open, error) {
 
 	// If local has not signed formation, sign it.
 	err = c.verifySigned(formation, m.FormationSignatures, c.localSigner)
-	if errors.As(err, &ErrNotSigned{}) {
+	if errors.Is(err, ErrNotSigned{}) {
 		formationSig, err := c.sign(formation)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: formation local error %w", err)
