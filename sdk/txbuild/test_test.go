@@ -45,7 +45,7 @@ func Test(t *testing.T) {
 	t.Log("Initiator:", initiator.KP.Address())
 	t.Log("Initiator Escrow:", initiator.Escrow.Address())
 	{
-		err := fund(client, initiator.KP.FromAddress(), 10_000_0000000)
+		err := retry(2, func() error { return fund(client, initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
 		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.KP.Address()})
 		require.NoError(t, err)
@@ -85,7 +85,7 @@ func Test(t *testing.T) {
 	t.Log("Responder:", responder.KP.Address())
 	t.Log("Responder Escrow:", responder.Escrow.Address())
 	{
-		err := fund(client, responder.KP.FromAddress(), 10_000_0000000)
+		err := retry(2, func() error { return fund(client, responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
 		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.KP.Address()})
 		require.NoError(t, err)
@@ -348,6 +348,16 @@ func randomPositiveInt64(t *testing.T, max int64) int64 {
 	err := binary.Read(rand.Reader, binary.LittleEndian, &i)
 	require.NoError(t, err)
 	return int64(i) % max
+}
+
+func retry(maxAttempts int, f func() error) (err error) {
+	for i := 0; i < maxAttempts; i++ {
+		err = f()
+		if err == nil {
+			return
+		}
+	}
+	return err
 }
 
 func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, startingBalance int64) error {
