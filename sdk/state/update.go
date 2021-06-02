@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -52,8 +53,7 @@ func (c *Channel) ProposePayment(amount int64) (*Payment, error) {
 	}, nil
 }
 
-func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
-	var newCloseSignatures, newDeclarationSignatures []xdr.DecoratedSignature
+func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err error) {
 	var amountFromInitiator, amountFromResponder int64
 	if p.FromInitiator {
 		amountFromInitiator = p.Amount
@@ -61,9 +61,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 		amountFromResponder = p.Amount
 	}
 	newBalance := c.amount.Amount + amountFromInitiator - amountFromResponder
-
-	// validate txC, should always be signed correctly
-	txC, err := txbuild.Close(txbuild.CloseParams{
+	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
@@ -76,42 +74,58 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 		AmountToResponder:          maxInt64(0, newBalance),
 	})
 	if err != nil {
-		return nil, err
+		return
 	}
-	if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
-		return nil, fmt.Errorf("incorrect closing transaction, the one given may have different data: %w", err)
-	}
-	// validate txD, may or may not be signed depending where in the payment step we are
-	signedTxD := false
-	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
+	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
 		IterationNumber:         c.iterationNumber,
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
+		return
+	}
+	return
+}
+
+func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
+	var amountFromInitiator, amountFromResponder int64
+	if p.FromInitiator {
+		amountFromInitiator = p.Amount
+	} else {
+		amountFromResponder = p.Amount
+	}
+	newBalance := c.amount.Amount + amountFromInitiator - amountFromResponder
+
+	txC, txD, err := c.PaymentTxs(p)
+	if err != nil {
 		return nil, err
 	}
-	if err := c.verifySigned(txD, p.DeclarationSignatures, c.remoteSigner); err == nil {
-		signedTxD = true
+
+	// If remote has not signed close, error as is invalid.
+	if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
+		return nil, fmt.Errorf("incorrect closing transaction, the one given may have different data: %w", err)
 	}
-	// sign C_i if given a signed C_i with no D_i
-	if !signedTxD {
+
+	// If local has not signed close, sign.
+	if err := c.verifySigned(txC, p.CloseSignatures, c.localSigner); err != nil {
+		// TODO - differentiate between wrong signature and missing one
 		txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return nil, err
 		}
-		newCloseSignatures = txC.Signatures()
 	}
-	// sign D_i always if above passes
-	txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
-	if err != nil {
-		return nil, err
-	}
-	newDeclarationSignatures = txD.Signatures()
 
-	p.CloseSignatures = append(p.CloseSignatures, newCloseSignatures...)
-	p.DeclarationSignatures = append(p.DeclarationSignatures, newDeclarationSignatures...)
+	// Local should always sign declaration if have not yet.
+	if err := c.verifySigned(txD, p.DeclarationSignatures, c.localSigner); err != nil {
+		txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	p.CloseSignatures = append(p.CloseSignatures, txC.Signatures()...)
+	p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
 	c.amount.Amount = newBalance
 	return p, nil
 }
