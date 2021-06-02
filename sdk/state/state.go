@@ -36,7 +36,6 @@ type Channel struct {
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
 
-	// TODO - is this the best way to rep Balance? (perspective of initiator/responder and not Me/Other)
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
 	// TODO - use Balance struct

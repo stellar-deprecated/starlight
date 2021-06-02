@@ -267,7 +267,6 @@ func TestUpdate(t *testing.T) {
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// Sender: creates new Payment, sends to other party
-		// TODO - when/where should channel.iterationNumber be incremented
 		sendingChannel.iterationNumber = i
 		payment, err = sendingChannel.NewPayment(amount)
 		require.NoError(t, err)
