@@ -111,18 +111,6 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
-func (c *Channel) sign(tx *txnbuild.Transaction) (xdr.DecoratedSignature, error) {
-	hash, err := tx.Hash(c.networkPassphrase)
-	if err != nil {
-		return xdr.DecoratedSignature{}, err
-	}
-	sig, err := c.localSigner.SignDecorated(hash[:])
-	if err != nil {
-		return xdr.DecoratedSignature{}, err
-	}
-	return sig, nil
-}
-
 type ErrNotSigned struct {
 	Hash   string
 	Signer string

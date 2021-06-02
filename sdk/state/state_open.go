@@ -59,12 +59,12 @@ func (c *Channel) ProposeOpen() (Open, error) {
 	if err != nil {
 		return Open{}, err
 	}
-	closeSig, err := c.sign(close)
+	close, err = close.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return Open{}, err
 	}
 	open := Open{
-		CloseSignatures: []xdr.DecoratedSignature{closeSig},
+		CloseSignatures: close.Signatures(),
 	}
 	return open, nil
 }
@@ -100,11 +100,11 @@ func (c *Channel) ConfirmOpen(m Open) (Open, error) {
 	// If local has not signed close, sign it.
 	err = c.verifySigned(close, m.CloseSignatures, c.localSigner)
 	if errors.Is(err, ErrNotSigned{}) {
-		closeSig, err := c.sign(close)
+		close, err = close.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: close incomplete: %w", err)
 		}
-		m.CloseSignatures = append(m.CloseSignatures, closeSig)
+		m.CloseSignatures = append(m.CloseSignatures, close.Signatures()...)
 	} else if err != nil {
 		return m, fmt.Errorf("open confirm: close error: %w", err)
 	}
@@ -112,11 +112,11 @@ func (c *Channel) ConfirmOpen(m Open) (Open, error) {
 	// If local has not signed declaration, sign it.
 	err = c.verifySigned(decl, m.DeclarationSignatures, c.localSigner)
 	if errors.Is(err, ErrNotSigned{}) {
-		declSig, err := c.sign(decl)
+		decl, err = decl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: decl %w", err)
 		}
-		m.DeclarationSignatures = append(m.DeclarationSignatures, declSig)
+		m.DeclarationSignatures = append(m.DeclarationSignatures, decl.Signatures()...)
 	} else if err != nil {
 		return m, fmt.Errorf("open confirm: decl incomplete: %w", err)
 	}
@@ -130,11 +130,11 @@ func (c *Channel) ConfirmOpen(m Open) (Open, error) {
 	// If local has not signed formation, sign it.
 	err = c.verifySigned(formation, m.FormationSignatures, c.localSigner)
 	if errors.Is(err, ErrNotSigned{}) {
-		formationSig, err := c.sign(formation)
+		formation, err = formation.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: formation local error %w", err)
 		}
-		m.FormationSignatures = append(m.FormationSignatures, formationSig)
+		m.FormationSignatures = append(m.FormationSignatures, formation.Signatures()...)
 	} else if err != nil {
 		return m, fmt.Errorf("open confirm: formation local %w", err)
 	}
