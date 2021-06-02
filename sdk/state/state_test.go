@@ -1,11 +1,13 @@
-package txbuild_test
+package state_test
 
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -115,67 +117,98 @@ func Test(t *testing.T) {
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution)
 
+	// Create channels with escrow accounts.
+	initiatorChannel := state.NewChannel(state.Config{
+		NetworkPassphrase:          networkPassphrase,
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		Initiator:                  true,
+		LocalEscrowAccount: &state.EscrowAccount{
+			Address:        initiator.Escrow.FromAddress(),
+			SequenceNumber: initiator.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: initiator.Contribution},
+			},
+		},
+		RemoteEscrowAccount: &state.EscrowAccount{
+			Address:        responder.Escrow.FromAddress(),
+			SequenceNumber: responder.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: responder.Contribution},
+			},
+		},
+		LocalSigner:  initiator.KP,
+		RemoteSigner: responder.KP.FromAddress(),
+	})
+	responderChannel := state.NewChannel(state.Config{
+		NetworkPassphrase:          networkPassphrase,
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		Initiator:                  false,
+		LocalEscrowAccount: &state.EscrowAccount{
+			Address:        responder.Escrow.FromAddress(),
+			SequenceNumber: responder.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: responder.Contribution},
+			},
+		},
+		RemoteEscrowAccount: &state.EscrowAccount{
+			Address:        initiator.Escrow.FromAddress(),
+			SequenceNumber: initiator.EscrowSequenceNumber,
+			Balances: []state.Amount{
+				{Asset: state.NativeAsset{}, Amount: initiator.Contribution},
+			},
+		},
+		LocalSigner:  responder.KP,
+		RemoteSigner: initiator.KP.FromAddress(),
+	})
+
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
 	declarationTxs := []*txnbuild.Transaction{}
 
-	// Set initial variable state.
 	s := initiator.EscrowSequenceNumber + 1
-	i := int64(0)
+	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
 
-	// Exchange initial C_i and D_i.
-	t.Log("Initial agreement...")
-	i++
-	t.Log("Vars: s:", s, "i:", i, "e:", e)
-	{
-		ci, err := txbuild.Close(txbuild.CloseParams{
-			ObservationPeriodTime:      observationPeriodTime,
-			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-			InitiatorSigner:            initiator.KP.FromAddress(),
-			ResponderSigner:            responder.KP.FromAddress(),
-			InitiatorEscrow:            initiator.Escrow.FromAddress(),
-			ResponderEscrow:            responder.Escrow.FromAddress(),
-			StartSequence:              s,
-			IterationNumber:            i,
-			AmountToInitiator:          0,
-			AmountToResponder:          0,
-		})
-		require.NoError(t, err)
-		ci, err = ci.Sign(networkPassphrase, initiator.KP, responder.KP)
-		require.NoError(t, err)
-		closeTxs = append(closeTxs, ci)
-		di, err := txbuild.Declaration(txbuild.DeclarationParams{
-			InitiatorEscrow:         initiator.Escrow.FromAddress(),
-			StartSequence:           s,
-			IterationNumber:         i,
-			IterationNumberExecuted: e,
-		})
-		require.NoError(t, err)
-		di, err = di.Sign(networkPassphrase, initiator.KP, responder.KP)
-		require.NoError(t, err)
-		declarationTxs = append(declarationTxs, di)
+	// Open
+	t.Log("Open...")
+	open, err := initiatorChannel.OpenPropose()
+	require.NoError(t, err)
+	for {
+		var errR error
+		open, errR = responderChannel.OpenConfirm(open)
+		if errR != nil && !errors.Is(errR, state.ErrNotSigned{}) {
+			t.Fatal(errR)
+		}
+		var errI error
+		open, errI = initiatorChannel.OpenConfirm(open)
+		if errI != nil && !errors.Is(errI, state.ErrNotSigned{}) {
+			t.Fatal(errI)
+		}
+		if errR == nil && errI == nil {
+			break
+		}
 	}
 
-	t.Log("Iteration", i, "Declarations:", declarationTxs)
-	t.Log("Iteration", i, "Closes:", closeTxs)
-
-	// Perform formation.
-	t.Log("Formation...")
 	{
-		f, err := txbuild.Formation(txbuild.FormationParams{
-			InitiatorSigner: initiator.KP.FromAddress(),
-			ResponderSigner: responder.KP.FromAddress(),
-			InitiatorEscrow: initiator.Escrow.FromAddress(),
-			ResponderEscrow: responder.Escrow.FromAddress(),
-			StartSequence:   s,
-		})
+		ci, di, fi, err := initiatorChannel.OpenTxs()
 		require.NoError(t, err)
-		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)
+
+		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
 		require.NoError(t, err)
+		closeTxs = append(closeTxs, ci)
+
+		di, err = di.AddSignatureDecorated(open.DeclarationSignatures...)
+		require.NoError(t, err)
+		declarationTxs = append(declarationTxs, di)
+
+		fi, err = fi.AddSignatureDecorated(open.FormationSignatures...)
+		require.NoError(t, err)
+
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      f,
+			Inner:      fi,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
@@ -185,6 +218,9 @@ func Test(t *testing.T) {
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 	}
+
+	t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
+	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
 	// Owing tracks how much each participant owes the other particiant.
 	// A positive amount = I owes R.
@@ -243,8 +279,8 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
 
-		t.Log("Iteration", i, "Declarations:", declarationTxs)
-		t.Log("Iteration", i, "Closes:", closeTxs)
+		t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
+		t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 	}
 
 	// Confused participant attempts to close channel at old iteration.
@@ -279,7 +315,7 @@ func Test(t *testing.T) {
 					t.Log("Submitting:", oldC.SourceAccount().Sequence, "Success")
 					break
 				}
-				t.Log("Submitting:", oldC.SourceAccount().Sequence, "Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+				t.Log("Submitting:", oldC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 5)
 			}
 		}()
@@ -320,7 +356,7 @@ func Test(t *testing.T) {
 					t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Success")
 					break
 				}
-				t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Error:", err.(*horizonclient.Error).Problem.Extras["result_codes"])
+				t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -396,4 +432,12 @@ func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, st
 		return err
 	}
 	return nil
+}
+
+func txSeqs(txs []*txnbuild.Transaction) []int64 {
+	seqs := make([]int64, len(txs))
+	for i := range txs {
+		seqs[i] = txs[i].SequenceNumber()
+	}
+	return seqs
 }
