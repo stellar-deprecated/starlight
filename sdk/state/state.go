@@ -15,7 +15,7 @@ type (
 	CreditAsset = txnbuild.CreditAsset
 )
 
-type Balance struct {
+type Amount struct {
 	Asset  Asset
 	Amount int64
 }
@@ -23,7 +23,7 @@ type Balance struct {
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
-	Balances       []Balance
+	Balances       []Amount
 }
 
 type Channel struct {
@@ -39,7 +39,7 @@ type Channel struct {
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
 	// TODO - use Balance struct
-	balance Balance
+	amount Amount
 
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
@@ -49,7 +49,7 @@ type Channel struct {
 	remoteSigner *keypair.FromAddress
 }
 
-type ChannelConfig struct {
+type Config struct {
 	NetworkPassphrase          string
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -64,7 +64,7 @@ type ChannelConfig struct {
 	RemoteSigner *keypair.FromAddress
 }
 
-func NewChannel(c ChannelConfig) *Channel {
+func NewChannel(c Config) *Channel {
 	channel := &Channel{
 		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,

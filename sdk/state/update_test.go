@@ -55,7 +55,7 @@ func TestUpdate(t *testing.T) {
 	t.Log("Initiator:", initiator.KP.Address())
 	t.Log("Initiator Escrow:", initiator.Escrow.Address())
 	{
-		err := fund(client, initiator.KP.FromAddress(), 10_000_0000000)
+		err := retry(2, func() error { return fund(client, initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
 		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.KP.Address()})
 		require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestUpdate(t *testing.T) {
 	t.Log("Responder:", responder.KP.Address())
 	t.Log("Responder Escrow:", responder.Escrow.Address())
 	{
-		err := fund(client, responder.KP.FromAddress(), 10_000_0000000)
+		err := retry(2, func() error { return fund(client, responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
 		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.KP.Address()})
 		require.NoError(t, err)
@@ -196,7 +196,7 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	initiatorChannel := NewChannel(ChannelConfig{
+	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase: networkPassphrase,
 		// TODO - increase these params
 		ObservationPeriodTime:      0,
@@ -206,18 +206,18 @@ func TestUpdate(t *testing.T) {
 		LocalEscrowAccount: &EscrowAccount{
 			Address:        initiator.Escrow.FromAddress(),
 			SequenceNumber: initiator.EscrowSequenceNumber,
-			Balances:       []Balance{},
+			Balances:       []Amount{},
 		},
 		RemoteEscrowAccount: &EscrowAccount{
 			Address:        responder.Escrow.FromAddress(),
 			SequenceNumber: responder.EscrowSequenceNumber,
-			Balances:       []Balance{},
+			Balances:       []Amount{},
 		},
 		LocalSigner:  initiator.KP,
 		RemoteSigner: responder.KP.FromAddress(),
 	})
 
-	responderChannel := NewChannel(ChannelConfig{
+	responderChannel := NewChannel(Config{
 		NetworkPassphrase:          networkPassphrase,
 		ObservationPeriodTime:      0,
 		ObservationPeriodLedgerGap: 0,
@@ -226,12 +226,12 @@ func TestUpdate(t *testing.T) {
 		LocalEscrowAccount: &EscrowAccount{
 			Address:        responder.Escrow.FromAddress(),
 			SequenceNumber: responder.EscrowSequenceNumber,
-			Balances:       []Balance{},
+			Balances:       []Amount{},
 		},
 		RemoteEscrowAccount: &EscrowAccount{
 			Address:        initiator.Escrow.FromAddress(),
 			SequenceNumber: initiator.EscrowSequenceNumber,
-			Balances:       []Balance{},
+			Balances:       []Amount{},
 		},
 		LocalSigner:  responder.KP,
 		RemoteSigner: initiator.KP.FromAddress(),
@@ -263,7 +263,7 @@ func TestUpdate(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", initiatorChannel.balance.Amount/1_000_0000, "R: ", responderChannel.balance.Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", initiatorChannel.amount.Amount/1_000_0000, "R: ", responderChannel.amount.Amount/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// Sender: creates new Payment, sends to other party
@@ -295,7 +295,7 @@ func TestUpdate(t *testing.T) {
 	//// INITIATOR: closes channel by submitting latest proposal
 
 	t.Log("Initiator Closing Channel at i: ", initiatorChannel.iterationNumber)
-	t.Log("Final channel balances: I: ", initiatorChannel.balance.Amount/1_000_0000, "R: ", responderChannel.balance.Amount/1_000_0000)
+	t.Log("Final channel balances: I: ", initiatorChannel.amount.Amount/1_000_0000, "R: ", responderChannel.amount.Amount/1_000_0000)
 
 	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         initiatorChannel.localEscrowAccount.Address,
@@ -325,10 +325,10 @@ func TestUpdate(t *testing.T) {
 
 	amountToInitiator := int64(0)
 	amountToResponder := int64(0)
-	if initiatorChannel.balance.Amount > 0 {
-		amountToResponder = initiatorChannel.balance.Amount
+	if initiatorChannel.amount.Amount > 0 {
+		amountToResponder = initiatorChannel.amount.Amount
 	} else {
-		amountToInitiator = initiatorChannel.balance.Amount * -1
+		amountToInitiator = initiatorChannel.amount.Amount * -1
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      initiatorChannel.observationPeriodTime,
@@ -411,6 +411,16 @@ func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, st
 		return err
 	}
 	return nil
+}
+
+func retry(maxAttempts int, f func() error) (err error) {
+	for i := 0; i < maxAttempts; i++ {
+		err = f()
+		if err == nil {
+			return
+		}
+	}
+	return err
 }
 
 func randomBool(t *testing.T) bool {

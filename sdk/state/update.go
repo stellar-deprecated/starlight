@@ -22,9 +22,9 @@ func (c *Channel) NewPayment(amount int64) (*Payment, error) {
 	}
 	newBalance := int64(0)
 	if c.initiator {
-		newBalance = c.balance.Amount + amount
+		newBalance = c.amount.Amount + amount
 	} else {
-		newBalance = c.balance.Amount - amount
+		newBalance = c.amount.Amount - amount
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
@@ -60,7 +60,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 	} else {
 		amountFromResponder = p.Amount
 	}
-	newBalance := c.balance.Amount + amountFromInitiator - amountFromResponder
+	newBalance := c.amount.Amount + amountFromInitiator - amountFromResponder
 
 	// validate txC, should always be signed correctly
 	txC, err := txbuild.Close(txbuild.CloseParams{
@@ -112,7 +112,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 
 	p.CloseSignatures = append(p.CloseSignatures, newCloseSignatures...)
 	p.DeclarationSignatures = append(p.DeclarationSignatures, newDeclarationSignatures...)
-	c.balance.Amount = newBalance
+	c.amount.Amount = newBalance
 	return p, nil
 }
 
