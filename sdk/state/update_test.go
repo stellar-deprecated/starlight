@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -239,6 +241,8 @@ func TestUpdate(t *testing.T) {
 
 	//// NEW PROPOSALS
 	payment := &Payment{}
+	rBalanceCheck := responder.Contribution
+	iBalanceCheck := initiator.Contribution
 	for i < 7 {
 		i++
 		amount := randomPositiveInt64(t, 100_0000000)
@@ -250,10 +254,14 @@ func TestUpdate(t *testing.T) {
 			paymentLog = "I payment to R of: "
 			sendingChannel = initiatorChannel
 			receivingChannel = responderChannel
+			rBalanceCheck += amount
+			iBalanceCheck -= amount
 		} else {
 			paymentLog = "R payment to I of: "
 			sendingChannel = responderChannel
 			receivingChannel = initiatorChannel
+			rBalanceCheck -= amount
+			iBalanceCheck += amount
 		}
 		t.Log("Current channel balances: I: ", initiatorChannel.balance.Amount/1_000_0000, "R: ", responderChannel.balance.Amount/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
@@ -356,7 +364,16 @@ func TestUpdate(t *testing.T) {
 	}
 	require.NoError(t, err)
 
-	// TODO - check final escrow fund amounts are correct
+	// check final escrow fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
+	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	require.NoError(t, err)
+	assert.EqualValues(t, responderEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)))
+
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
+	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	require.NoError(t, err)
+	assert.EqualValues(t, initiatorEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)))
 }
 
 func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, startingBalance int64) error {

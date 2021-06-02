@@ -16,7 +16,6 @@ type Payment struct {
 	FromInitiator         bool
 }
 
-// TODO - payments to be in Amount struct
 func (c *Channel) NewPayment(amount int64) (*Payment, error) {
 	if amount <= 0 {
 		return nil, errors.New("payment amount must be greater than 0")
