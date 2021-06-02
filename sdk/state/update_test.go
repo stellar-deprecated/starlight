@@ -268,7 +268,7 @@ func TestUpdate(t *testing.T) {
 
 		//// Sender: creates new Payment, sends to other party
 		sendingChannel.iterationNumber = i
-		payment, err = sendingChannel.NewPayment(amount)
+		payment, err = sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 		j, err := json.Marshal(payment)
 		require.NoError(t, err)

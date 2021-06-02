@@ -174,16 +174,16 @@ func Test(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	open, err := initiatorChannel.OpenPropose()
+	open, err := initiatorChannel.ProposeOpen()
 	require.NoError(t, err)
 	for {
 		var errR error
-		open, errR = responderChannel.OpenConfirm(open)
+		open, errR = responderChannel.ConfirmOpen(open)
 		if errR != nil && !errors.Is(errR, state.ErrNotSigned{}) {
 			t.Fatal(errR)
 		}
 		var errI error
-		open, errI = initiatorChannel.OpenConfirm(open)
+		open, errI = initiatorChannel.ConfirmOpen(open)
 		if errI != nil && !errors.Is(errI, state.ErrNotSigned{}) {
 			t.Fatal(errI)
 		}

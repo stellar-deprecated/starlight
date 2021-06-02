@@ -16,7 +16,7 @@ type Payment struct {
 	FromInitiator         bool
 }
 
-func (c *Channel) NewPayment(amount int64) (*Payment, error) {
+func (c *Channel) ProposePayment(amount int64) (*Payment, error) {
 	if amount <= 0 {
 		return nil, errors.New("payment amount must be greater than 0")
 	}
