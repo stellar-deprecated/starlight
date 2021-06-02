@@ -32,7 +32,14 @@ type Channel struct {
 	observationPeriodLedgerGap int64
 
 	startingSequence int64
-	// TODO: balances         []Amount
+	iterationNumber  int64
+	// TODO - leave execution out for now
+	// iterationNumberExecuted int64
+
+	// The balance owing from the initiator to the responder, if positive, or
+	// the balance owing from the responder to the initiator, if negative.
+	// TODO - use Balance struct
+	amount Amount
 
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
@@ -46,6 +53,7 @@ type Config struct {
 	NetworkPassphrase          string
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
+	StartingSequence           int64
 
 	Initiator bool
 
@@ -61,6 +69,7 @@ func NewChannel(c Config) *Channel {
 		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,
 		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		startingSequence:           c.StartingSequence,
 		initiator:                  c.Initiator,
 		localEscrowAccount:         c.LocalEscrowAccount,
 		remoteEscrowAccount:        c.RemoteEscrowAccount,
@@ -148,10 +157,6 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 		Hash:   hex.EncodeToString(hash[:]),
 		Signer: signer.Address(),
 	}
-}
-
-func (c *Channel) Payment(sendAmount int) error {
-	return nil
 }
 
 func (c *Channel) CloseStart(iterationNumber int) error {

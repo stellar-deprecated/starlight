@@ -27,8 +27,9 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorEscrow.Address(),
 			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 1, // Close is the second transaction in an iteration's transaction set.
 		},
-		BaseFee:              0,
-		Timebounds:           txnbuild.NewTimeout(300),
+		BaseFee: 0,
+		// TODO - Timebounds needs to be explicit
+		Timebounds:           txnbuild.NewInfiniteTimeout(),
 		MinSequenceAge:       int64(p.ObservationPeriodTime.Seconds()),
 		MinSequenceLedgerGap: p.ObservationPeriodLedgerGap,
 		Operations: []txnbuild.Operation{
