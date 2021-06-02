@@ -3,7 +3,9 @@ package state_test
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -222,60 +225,66 @@ func Test(t *testing.T) {
 	t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
 	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
-	// Owing tracks how much each participant owes the other particiant.
-	// A positive amount = I owes R.
-	// A negative amount = R owes I.
-	owing := int64(0)
-
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
 	t.Log("Subsequent agreements...")
+	rBalanceCheck := responder.Contribution
+	iBalanceCheck := initiator.Contribution
 	for i < 20 {
 		i++
-		t.Log("Vars: s:", s, "i:", i, "e:", e)
+		amount := randomPositiveInt64(t, 100_0000000)
+
+		var sendingChannel *state.Channel
+		var receivingChannel *state.Channel
+		paymentLog := ""
 		if randomBool(t) {
-			amount := randomPositiveInt64(t, initiator.Contribution-owing)
-			t.Log("Iteration", i, "I pays R", amount)
-			owing += amount
+			paymentLog = "I payment to R of: "
+			sendingChannel = initiatorChannel
+			receivingChannel = responderChannel
+			rBalanceCheck += amount
+			iBalanceCheck -= amount
 		} else {
-			amount := randomPositiveInt64(t, responder.Contribution+owing)
-			t.Log("Iteration", i, "R pays I", amount)
-			owing -= amount
+			paymentLog = "R payment to I of: "
+			sendingChannel = responderChannel
+			receivingChannel = initiatorChannel
+			rBalanceCheck -= amount
+			iBalanceCheck += amount
 		}
-		rOwesI := int64(0)
-		iOwesR := int64(0)
-		if owing > 0 {
-			iOwesR = owing
-		} else if owing < 0 {
-			rOwesI = -owing
-		}
-		t.Log("Iteration", i, "I owes R", iOwesR)
-		t.Log("Iteration", i, "R owes I", rOwesI)
-		closeParams := txbuild.CloseParams{
-			ObservationPeriodTime:      observationPeriodTime,
-			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-			InitiatorSigner:            initiator.KP.FromAddress(),
-			ResponderSigner:            responder.KP.FromAddress(),
-			InitiatorEscrow:            initiator.Escrow.FromAddress(),
-			ResponderEscrow:            responder.Escrow.FromAddress(),
-			StartSequence:              s,
-			IterationNumber:            i,
-			AmountToInitiator:          rOwesI,
-			AmountToResponder:          iOwesR,
-		}
-		ci, err := txbuild.Close(closeParams)
+		t.Log("Current channel balances: I: ", initiatorChannel.Amount().Amount/1_000_0000, "R: ", responderChannel.Amount().Amount/1_000_0000)
+		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
+
+		//// Sender: creates new Payment, sends to other party
+		sendingChannel.SetIterationNumber(i)
+		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
-		ci, err = ci.Sign(networkPassphrase, initiator.KP, responder.KP)
+		j, err := json.Marshal(payment)
+		require.NoError(t, err)
+
+		ci, di, err := sendingChannel.PaymentTxs(payment)
+		require.NoError(t, err)
+
+		//// Receiver: receives new payment proposal, validates, then confirms by signing both
+		receivingChannel.SetIterationNumber(i)
+		payment = &state.Payment{}
+		err = json.Unmarshal(j, payment)
+		require.NoError(t, err)
+
+		payment, err = receivingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		j, err = json.Marshal(payment)
+		require.NoError(t, err)
+
+		//// Sender: re-confirms P_i by signing D_i and sending back
+		payment = &state.Payment{}
+		err = json.Unmarshal(j, payment)
+		require.NoError(t, err)
+		payment, err = sendingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+
+		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
 		closeTxs = append(closeTxs, ci)
-		di, err := txbuild.Declaration(txbuild.DeclarationParams{
-			InitiatorEscrow:         initiator.Escrow.FromAddress(),
-			StartSequence:           s,
-			IterationNumber:         i,
-			IterationNumberExecuted: e,
-		})
-		require.NoError(t, err)
-		di, err = di.Sign(networkPassphrase, initiator.KP, responder.KP)
+		di, err = di.AddSignatureDecorated(payment.DeclarationSignatures...)
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
 
@@ -351,12 +360,16 @@ func Test(t *testing.T) {
 				require.NoError(t, err)
 				fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
 				require.NoError(t, err)
+				lastCHash, err := lastC.HashHex(networkPassphrase)
+				require.NoError(t, err)
 				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
-					t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Success")
+					t.Log("Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Success")
 					break
 				}
-				t.Log("Submitting Close:", lastC.SourceAccount().Sequence, "Error:", err)
+				hErr := horizonclient.GetError(err)
+				t.Log(hErr.ResultString())
+				t.Log("Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -368,6 +381,17 @@ func Test(t *testing.T) {
 	case <-time.After(1 * time.Minute):
 		t.Fatal("Channel close timed out after waiting 1 minute.")
 	}
+
+	// check final escrow fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
+	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	require.NoError(t, err)
+	assert.EqualValues(t, responderEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)))
+
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
+	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	require.NoError(t, err)
+	assert.EqualValues(t, initiatorEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)))
 }
 
 func randomBool(t *testing.T) bool {

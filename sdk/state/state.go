@@ -53,7 +53,6 @@ type Config struct {
 	NetworkPassphrase          string
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
-	StartingSequence           int64
 
 	Initiator bool
 
@@ -69,7 +68,6 @@ func NewChannel(c Config) *Channel {
 		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,
 		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
-		startingSequence:           c.StartingSequence,
 		initiator:                  c.Initiator,
 		localEscrowAccount:         c.LocalEscrowAccount,
 		remoteEscrowAccount:        c.RemoteEscrowAccount,
@@ -77,6 +75,16 @@ func NewChannel(c Config) *Channel {
 		remoteSigner:               c.RemoteSigner,
 	}
 	return channel
+}
+
+// TODO: Remove
+func (c *Channel) SetIterationNumber(i int64) {
+	c.iterationNumber = i
+}
+
+// TODO: Remove
+func (c *Channel) Amount() Amount {
+	return c.amount
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
