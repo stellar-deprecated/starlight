@@ -114,12 +114,21 @@ func (c *Channel) sign(tx *txnbuild.Transaction) (xdr.DecoratedSignature, error)
 	return sig, nil
 }
 
-type errNotSigned struct {
-	hash   string
-	signer string
+type ErrNotSigned struct {
+	Hash   string
+	Signer string
 }
 
-func (e errNotSigned) Error() string { return "tx " + e.hash + " not signed by signer " + e.signer }
+func (e ErrNotSigned) Is(target error) bool {
+	t, ok := target.(ErrNotSigned)
+	if !ok {
+		return false
+	}
+	return (t.Hash == "" || e.Hash == t.Hash) &&
+		(t.Signer == "" || e.Signer == t.Signer)
+}
+
+func (e ErrNotSigned) Error() string { return "tx " + e.Hash + " not signed by signer " + e.Signer }
 
 func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) error {
 	hash, err := tx.Hash(c.networkPassphrase)
@@ -135,9 +144,9 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 			return nil
 		}
 	}
-	return errNotSigned{
-		hash:   hex.EncodeToString(hash[:]),
-		signer: signer.Address(),
+	return ErrNotSigned{
+		Hash:   hex.EncodeToString(hash[:]),
+		Signer: signer.Address(),
 	}
 }
 
