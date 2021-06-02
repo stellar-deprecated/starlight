@@ -1,7 +1,8 @@
 package state
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/xdr"
@@ -79,7 +80,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 		return nil, err
 	}
 	if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
-		return nil, errors.Wrap(err, "incorrect closing transaction, the one given may have different data")
+		return nil, fmt.Errorf("incorrect closing transaction, the one given may have different data: %w", err)
 	}
 	// validate txD, may or may not be signed depending where in the payment step we are
 	signedTxD := false
