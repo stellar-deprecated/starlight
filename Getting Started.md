@@ -8,7 +8,7 @@ docker build -t stellar/quickstart:cap21 https://github.com/leighmcculloch/stell
 ```
 
 ```
-docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21 --standalone
+docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21 --standalone --enable-core-artificially-accelerate-time-for-testing
 ```
 
 The root account of the network will be:

@@ -17,6 +17,11 @@ import (
 )
 
 func Test(t *testing.T) {
+	// A pause between tests is required to wait for the effects of other tests
+	// that have run to be ingested and for the state of root account to be
+	// updated.
+	time.Sleep(2*time.Second)
+
 	const horizonURL = "http://localhost:8000"
 	client := &horizonclient.Client{HorizonURL: horizonURL}
 	networkDetails, err := client.Root()
