@@ -204,12 +204,12 @@ func TestUpdate(t *testing.T) {
 		LocalEscrowAccount: &EscrowAccount{
 			Address:        initiator.Escrow.FromAddress(),
 			SequenceNumber: initiator.EscrowSequenceNumber,
-			Balances:       []Amount{},
+			Balances:       []Balance{},
 		},
 		RemoteEscrowAccount: &EscrowAccount{
 			Address:        responder.Escrow.FromAddress(),
 			SequenceNumber: responder.EscrowSequenceNumber,
-			Balances:       []Amount{},
+			Balances:       []Balance{},
 		},
 		LocalSigner:  initiator.KP,
 		RemoteSigner: responder.KP.FromAddress(),
@@ -224,12 +224,12 @@ func TestUpdate(t *testing.T) {
 		LocalEscrowAccount: &EscrowAccount{
 			Address:        responder.Escrow.FromAddress(),
 			SequenceNumber: responder.EscrowSequenceNumber,
-			Balances:       []Amount{},
+			Balances:       []Balance{},
 		},
 		RemoteEscrowAccount: &EscrowAccount{
 			Address:        initiator.Escrow.FromAddress(),
 			SequenceNumber: initiator.EscrowSequenceNumber,
-			Balances:       []Amount{},
+			Balances:       []Balance{},
 		},
 		LocalSigner:  responder.KP,
 		RemoteSigner: initiator.KP.FromAddress(),
@@ -255,7 +255,7 @@ func TestUpdate(t *testing.T) {
 			sendingChannel = responderChannel
 			receivingChannel = initiatorChannel
 		}
-		t.Log("Current channel balances: I: ", initiatorChannel.Balance/1_000_0000, "R: ", responderChannel.Balance/1_000_0000)
+		t.Log("Current channel balances: I: ", initiatorChannel.balance.Amount/1_000_0000, "R: ", responderChannel.balance.Amount/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// Sender: creates new Payment, sends to other party
@@ -288,7 +288,7 @@ func TestUpdate(t *testing.T) {
 	//// INITIATOR: closes channel by submitting latest proposal
 
 	t.Log("Initiator Closing Channel at i: ", initiatorChannel.iterationNumber)
-	t.Log("Final channel balances: I: ", initiatorChannel.Balance/1_000_0000, "R: ", responderChannel.Balance/1_000_0000)
+	t.Log("Final channel balances: I: ", initiatorChannel.balance.Amount/1_000_0000, "R: ", responderChannel.balance.Amount/1_000_0000)
 
 	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         initiatorChannel.localEscrowAccount.Address,
@@ -318,10 +318,10 @@ func TestUpdate(t *testing.T) {
 
 	amountToInitiator := int64(0)
 	amountToResponder := int64(0)
-	if initiatorChannel.Balance > 0 {
-		amountToResponder = initiatorChannel.Balance
+	if initiatorChannel.balance.Amount > 0 {
+		amountToResponder = initiatorChannel.balance.Amount
 	} else {
-		amountToInitiator = initiatorChannel.Balance * -1
+		amountToInitiator = initiatorChannel.balance.Amount * -1
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      initiatorChannel.observationPeriodTime,

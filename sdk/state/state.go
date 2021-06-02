@@ -15,7 +15,7 @@ type (
 	CreditAsset = txnbuild.CreditAsset
 )
 
-type Amount struct {
+type Balance struct {
 	Asset  Asset
 	Amount int64
 }
@@ -23,7 +23,7 @@ type Amount struct {
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
-	Balances       []Amount
+	Balances       []Balance
 }
 
 type Channel struct {
@@ -40,8 +40,7 @@ type Channel struct {
 	// The balance owing from the initiator to the responder, if positive, or
 	// the balance owing from the responder to the initiator, if negative.
 	// TODO - use Balance struct
-	Balance int64
-	Asset   Asset
+	balance Balance
 
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
