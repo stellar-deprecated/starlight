@@ -9,35 +9,34 @@ import (
 
 type Payment struct {
 	IterationNumber       int64
-	AmountToInitiator     int64
-	AmountToResponder     int64
+	Amount                int64
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
+	FromInitiator         bool
 }
 
-// TODO - validate inputs? (eg. no negative amounts)
 // TODO - payments to be in Amount struct
-// initiator will only call this
-func (c *Channel) NewPayment(payToInitiator int64, payToResponder int64) (*Payment, error) {
-	newBalance := c.Balance + payToResponder - payToInitiator
-	amountToInitiator := int64(0)
-	amountToResponder := int64(0)
-	if newBalance > 0 {
-		amountToResponder = newBalance
+func (c *Channel) NewPayment(amount int64) (*Payment, error) {
+	if amount <= 0 {
+		return nil, errors.New("payment amount must be greater than 0")
+	}
+	newBalance := int64(0)
+	if c.initiator {
+		newBalance = c.Balance + amount
 	} else {
-		amountToInitiator = newBalance * -1
+		newBalance = c.Balance - amount
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.localSigner.FromAddress(),
-		ResponderSigner:            c.remoteSigner,
-		InitiatorEscrow:            c.localEscrowAccount.Address,
-		ResponderEscrow:            c.remoteEscrowAccount.Address,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
 		IterationNumber:            c.iterationNumber,
-		AmountToInitiator:          amountToInitiator,
-		AmountToResponder:          amountToResponder,
+		AmountToInitiator:          maxInt64(0, newBalance*-1),
+		AmountToResponder:          maxInt64(0, newBalance),
 	})
 	if err != nil {
 		return nil, err
@@ -46,69 +45,46 @@ func (c *Channel) NewPayment(payToInitiator int64, payToResponder int64) (*Payme
 	if err != nil {
 		return nil, err
 	}
-	c.Balance = newBalance
 	return &Payment{
-		AmountToInitiator: payToInitiator,
-		AmountToResponder: payToResponder,
-		CloseSignatures:   txC.Signatures(),
+		Amount:          amount,
+		CloseSignatures: txC.Signatures(),
+		FromInitiator:   c.initiator,
 	}, nil
 }
 
 func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
-	if !c.initiator {
-		newBalance := c.Balance + p.AmountToResponder - p.AmountToInitiator
-		// TODO - better var names to differentiate from C_i fields?
-		amountToInitiator := int64(0)
-		amountToResponder := int64(0)
-		if newBalance > 0 {
-			amountToResponder = newBalance
-		} else {
-			amountToInitiator = newBalance * -1
-		}
-		txC, err := txbuild.Close(txbuild.CloseParams{
-			ObservationPeriodTime:      c.observationPeriodTime,
-			ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-			InitiatorSigner:            c.remoteSigner,
-			ResponderSigner:            c.localSigner.FromAddress(),
-			InitiatorEscrow:            c.remoteEscrowAccount.Address,
-			ResponderEscrow:            c.localEscrowAccount.Address,
-			StartSequence:              c.startingSequence,
-			IterationNumber:            c.iterationNumber,
-			AmountToInitiator:          amountToInitiator,
-			AmountToResponder:          amountToResponder,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
-			return nil, errors.Wrap(err, "the signed transaction may have different data")
-		}
-		// TODO - why is signing here bad?
-		txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return nil, err
-		}
-		txD, err := txbuild.Declaration(txbuild.DeclarationParams{
-			InitiatorEscrow:         c.remoteEscrowAccount.Address,
-			StartSequence:           c.startingSequence,
-			IterationNumber:         c.iterationNumber,
-			IterationNumberExecuted: 0,
-		})
-		if err != nil {
-			return nil, err
-		}
-		txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return nil, err
-		}
-		c.Balance = newBalance
-		p.CloseSignatures = append(p.CloseSignatures, txC.Signatures()...)
-		p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
-		return p, nil
+	var newCloseSignatures, newDeclarationSignatures []xdr.DecoratedSignature
+	var amountFromInitiator, amountFromResponder int64
+	if p.FromInitiator {
+		amountFromInitiator = p.Amount
+	} else {
+		amountFromResponder = p.Amount
 	}
-	// TODO - split up function better
+	newBalance := c.Balance + amountFromInitiator - amountFromResponder
+
+	// validate txC, should always be signed correctly
+	txC, err := txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      c.observationPeriodTime,
+		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            c.iterationNumber,
+		AmountToInitiator:          maxInt64(0, newBalance*-1),
+		AmountToResponder:          maxInt64(0, newBalance),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
+		return nil, errors.Wrap(err, "incorrect closing transaction, the one given may have different data")
+	}
+	// validate txD, may or may not be signed depending where in the payment step we are
+	signedTxD := false
 	txD, err := txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.localEscrowAccount.Address,
+		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
 		IterationNumber:         c.iterationNumber,
 		IterationNumberExecuted: 0,
@@ -116,12 +92,33 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO - add sign verification here as well?
+	if err := c.verifySigned(txD, p.DeclarationSignatures, c.remoteSigner); err == nil {
+		signedTxD = true
+	}
+	// sign C_i if given a signed C_i with no D_i
+	if !signedTxD {
+		txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
+		if err != nil {
+			return nil, err
+		}
+		newCloseSignatures = txC.Signatures()
+	}
+	// sign D_i always if above passes
 	txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return nil, err
 	}
+	newDeclarationSignatures = txD.Signatures()
 
-	p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
+	p.CloseSignatures = append(p.CloseSignatures, newCloseSignatures...)
+	p.DeclarationSignatures = append(p.DeclarationSignatures, newDeclarationSignatures...)
+	c.Balance = newBalance
 	return p, nil
+}
+
+func maxInt64(x int64, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
 }

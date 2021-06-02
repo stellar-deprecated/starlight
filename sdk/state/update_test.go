@@ -242,42 +242,45 @@ func TestUpdate(t *testing.T) {
 	for i < 7 {
 		i++
 		amount := randomPositiveInt64(t, 100_0000000)
-		amountToResponder := int64(0)
-		amountToInitiator := int64(0)
+
+		var sendingChannel *Channel
+		var receivingChannel *Channel
 		paymentLog := ""
 		if randomBool(t) {
-			amountToResponder = amount
 			paymentLog = "I payment to R of: "
+			sendingChannel = initiatorChannel
+			receivingChannel = responderChannel
 		} else {
-			amountToInitiator = amount
 			paymentLog = "R payment to I of: "
+			sendingChannel = responderChannel
+			receivingChannel = initiatorChannel
 		}
 		t.Log("Current channel balances: I: ", initiatorChannel.Balance/1_000_0000, "R: ", responderChannel.Balance/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		//// INITIATOR: creates new Payment, sends to R
+		//// Sender: creates new Payment, sends to other party
 		// TODO - when/where should channel.iterationNumber be incremented
-		initiatorChannel.iterationNumber = i
-		payment, err = initiatorChannel.NewPayment(amountToInitiator, amountToResponder)
+		sendingChannel.iterationNumber = i
+		payment, err = sendingChannel.NewPayment(amount)
 		require.NoError(t, err)
 		j, err := json.Marshal(payment)
 		require.NoError(t, err)
 
-		//// RESPONDER: receives new payment proposal, validates, then confirms by signing both
-		responderChannel.iterationNumber = i
+		//// Receiver: receives new payment proposal, validates, then confirms by signing both
+		receivingChannel.iterationNumber = i
 		payment = &Payment{}
 		err = json.Unmarshal(j, payment)
 		require.NoError(t, err)
 
-		payment, err = responderChannel.ConfirmPayment(payment)
+		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 		j, err = json.Marshal(payment)
 		require.NoError(t, err)
 
-		//// INITIATOR: re-confirms P_i by signing D_i and sending back
+		//// Sender: re-confirms P_i by signing D_i and sending back
 		payment = &Payment{}
 		err = json.Unmarshal(j, payment)
-		payment, err = initiatorChannel.ConfirmPayment(payment)
+		payment, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 	}
 
@@ -352,6 +355,8 @@ func TestUpdate(t *testing.T) {
 		t.Log("Error submitting fee bumpbed txC", err.(*horizonclient.Error).Problem.Extras["result_codes"])
 	}
 	require.NoError(t, err)
+
+	// TODO - check final escrow fund amounts are correct
 }
 
 func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, startingBalance int64) error {
