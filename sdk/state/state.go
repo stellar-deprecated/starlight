@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/hex"
 	"time"
 
 	"github.com/stellar/go/keypair"
@@ -137,26 +136,10 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
-type ErrNotSigned struct {
-	Hash   string
-	Signer string
-}
-
-func (e ErrNotSigned) Is(target error) bool {
-	t, ok := target.(ErrNotSigned)
-	if !ok {
-		return false
-	}
-	return (t.Hash == "" || e.Hash == t.Hash) &&
-		(t.Signer == "" || e.Signer == t.Signer)
-}
-
-func (e ErrNotSigned) Error() string { return "tx " + e.Hash + " not signed by signer " + e.Signer }
-
-func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) error {
+func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) (bool, error) {
 	hash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, sig := range sigs {
 		if sig.Hint != signer.Hint() {
@@ -164,13 +147,10 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 		}
 		err := signer.Verify(hash[:], sig.Signature)
 		if err == nil {
-			return nil
+			return true, nil
 		}
 	}
-	return ErrNotSigned{
-		Hash:   hex.EncodeToString(hash[:]),
-		Signer: signer.Address(),
-	}
+	return false, nil
 }
 
 func (c *Channel) CloseStart(iterationNumber int) error {
