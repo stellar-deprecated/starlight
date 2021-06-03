@@ -15,7 +15,13 @@ type Payment struct {
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FromInitiator         bool
-	NewBalance            Amount
+}
+
+type CloseAgreement struct {
+	IterationNumber       int64
+	Balance               Amount
+	CloseSignatures       []xdr.DecoratedSignature
+	DeclarationSignatures []xdr.DecoratedSignature
 }
 
 func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
@@ -51,22 +57,12 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		Amount:          amount,
 		CloseSignatures: txClose.Signatures(),
 		FromInitiator:   c.initiator,
-		NewBalance: Amount{
-			Asset:  amount.Asset,
-			Amount: newBalance,
-		},
 	}
 	return p, nil
 }
 
 func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err error) {
-	var amountFromInitiator, amountFromResponder int64
-	if p.FromInitiator {
-		amountFromInitiator = p.Amount.Amount
-	} else {
-		amountFromResponder = p.Amount.Amount
-	}
-	newBalance := c.Balance().Amount + amountFromInitiator - amountFromResponder
+	newBalance := c.newBalance(p)
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
@@ -76,8 +72,8 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
 		IterationNumber:            c.iterationNumber,
-		AmountToInitiator:          maxInt64(0, newBalance*-1),
-		AmountToResponder:          maxInt64(0, newBalance),
+		AmountToInitiator:          maxInt64(0, newBalance.Amount*-1),
+		AmountToResponder:          maxInt64(0, newBalance.Amount),
 	})
 	if err != nil {
 		return
@@ -121,7 +117,8 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 
 	p.CloseSignatures = append(p.CloseSignatures, txClose.Signatures()...)
 	p.DeclarationSignatures = append(p.DeclarationSignatures, txDecl.Signatures()...)
-	c.lastConfirmedPayment = p
+	newBalance := c.newBalance(p)
+	c.latestCloseAgreement = &CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
 	return p, nil
 }
 
