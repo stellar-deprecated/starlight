@@ -11,21 +11,22 @@ import (
 
 type Payment struct {
 	IterationNumber       int64
-	Amount                int64
+	Amount                Amount
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FromInitiator         bool
+	NewBalance            Amount
 }
 
-func (c *Channel) ProposePayment(amount int64) (*Payment, error) {
-	if amount <= 0 {
+func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
+	if amount.Amount <= 0 {
 		return nil, errors.New("payment amount must be greater than 0")
 	}
 	newBalance := int64(0)
 	if c.initiator {
-		newBalance = c.amount.Amount + amount
+		newBalance = c.Amount().Amount + amount.Amount
 	} else {
-		newBalance = c.amount.Amount - amount
+		newBalance = c.Amount().Amount - amount.Amount
 	}
 	txC, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
@@ -46,21 +47,26 @@ func (c *Channel) ProposePayment(amount int64) (*Payment, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Payment{
+	p := &Payment{
 		Amount:          amount,
 		CloseSignatures: txC.Signatures(),
 		FromInitiator:   c.initiator,
-	}, nil
+		NewBalance: Amount{
+			Asset:  amount.Asset,
+			Amount: newBalance,
+		},
+	}
+	return p, nil
 }
 
 func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err error) {
 	var amountFromInitiator, amountFromResponder int64
 	if p.FromInitiator {
-		amountFromInitiator = p.Amount
+		amountFromInitiator = p.Amount.Amount
 	} else {
-		amountFromResponder = p.Amount
+		amountFromResponder = p.Amount.Amount
 	}
-	newBalance := c.amount.Amount + amountFromInitiator - amountFromResponder
+	newBalance := c.Amount().Amount + amountFromInitiator - amountFromResponder
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
@@ -89,24 +95,14 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 }
 
 func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
-	var amountFromInitiator, amountFromResponder int64
-	if p.FromInitiator {
-		amountFromInitiator = p.Amount
-	} else {
-		amountFromResponder = p.Amount
-	}
-	newBalance := c.amount.Amount + amountFromInitiator - amountFromResponder
-
 	txC, txD, err := c.PaymentTxs(p)
 	if err != nil {
 		return nil, err
 	}
-
 	// If remote has not signed close, error as is invalid.
 	if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
 		return nil, fmt.Errorf("incorrect closing transaction, the one given may have different data: %w", err)
 	}
-
 	// If local has not signed close, sign.
 	if err := c.verifySigned(txC, p.CloseSignatures, c.localSigner); err != nil {
 		// TODO - differentiate between wrong signature and missing one
@@ -115,7 +111,6 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 			return nil, err
 		}
 	}
-
 	// Local should always sign declaration if have not yet.
 	if err := c.verifySigned(txD, p.DeclarationSignatures, c.localSigner); err != nil {
 		txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
@@ -123,10 +118,9 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 			return nil, err
 		}
 	}
-
 	p.CloseSignatures = append(p.CloseSignatures, txC.Signatures()...)
 	p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
-	c.amount.Amount = newBalance
+	c.lastConfirmedPayment = p
 	return p, nil
 }
 

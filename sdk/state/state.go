@@ -36,17 +36,16 @@ type Channel struct {
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
 
-	// The balance owing from the initiator to the responder, if positive, or
-	// the balance owing from the responder to the initiator, if negative.
-	// TODO - use Balance struct
-	amount Amount
-
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
 	remoteEscrowAccount *EscrowAccount
 
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
+
+	lastConfirmedPayment *Payment
+	// TODO - need to store this too?
+	// lastUnConfirmedPayment *Payment
 }
 
 type Config struct {
@@ -82,9 +81,13 @@ func (c *Channel) SetIterationNumber(i int64) {
 	c.iterationNumber = i
 }
 
-// TODO: Remove
+// Amount returns the amount owing from the initiator to the responder, if positive, or
+// the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Amount() Amount {
-	return c.amount
+	if c.lastConfirmedPayment == nil {
+		return Amount{NativeAsset{}, 0}
+	}
+	return c.lastConfirmedPayment.NewBalance
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
