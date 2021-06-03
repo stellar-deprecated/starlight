@@ -249,7 +249,7 @@ func Test(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", initiatorChannel.Amount().Amount/1_000_0000, "R: ", responderChannel.Amount().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", initiatorChannel.Balance().Amount/1_000_0000, "R: ", responderChannel.Balance().Amount/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// Sender: creates new Payment, sends to other party

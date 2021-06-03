@@ -24,9 +24,9 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 	}
 	newBalance := int64(0)
 	if c.initiator {
-		newBalance = c.Amount().Amount + amount.Amount
+		newBalance = c.Balance().Amount + amount.Amount
 	} else {
-		newBalance = c.Amount().Amount - amount.Amount
+		newBalance = c.Balance().Amount - amount.Amount
 	}
 	txClose, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
@@ -66,7 +66,7 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	} else {
 		amountFromResponder = p.Amount.Amount
 	}
-	newBalance := c.Amount().Amount + amountFromInitiator - amountFromResponder
+	newBalance := c.Balance().Amount + amountFromInitiator - amountFromResponder
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,

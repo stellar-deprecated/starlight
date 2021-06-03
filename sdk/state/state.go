@@ -81,9 +81,9 @@ func (c *Channel) SetIterationNumber(i int64) {
 	c.iterationNumber = i
 }
 
-// Amount returns the amount owing from the initiator to the responder, if positive, or
+// Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
-func (c *Channel) Amount() Amount {
+func (c *Channel) Balance() Amount {
 	if c.lastConfirmedPayment == nil {
 		return Amount{NativeAsset{}, 0}
 	}
