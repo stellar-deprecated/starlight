@@ -264,7 +264,6 @@ func Test(t *testing.T) {
 		var fullySigned bool
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		receivingChannel.SetIterationNumber(i)
 		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 		require.False(t, fullySigned)
