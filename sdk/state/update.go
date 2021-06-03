@@ -91,40 +91,66 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	return
 }
 
-func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
+func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool, err error) {
 	if p.IterationNumber != c.IterationNumber() {
 		return nil, errors.New("invalid payment iteration number")
 	}
-
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
-		return nil, err
-	}
-	// If remote has not signed close, error as is invalid.
-	if err := c.verifySigned(txClose, p.CloseSignatures, c.remoteSigner); err != nil {
-		return nil, fmt.Errorf("incorrect closing transaction, the one given may have different data: %w", err)
-	}
-	// If local has not signed close, sign.
-	if err := c.verifySigned(txClose, p.CloseSignatures, c.localSigner); err != nil {
-		// TODO - differentiate between wrong signature and missing one
-		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return nil, err
-		}
-	}
-	// Local should always sign declaration if have not yet.
-	if err := c.verifySigned(txDecl, p.DeclarationSignatures, c.localSigner); err != nil {
-		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return nil, err
-		}
+		return p, fullySigned, err
 	}
 
-	p.CloseSignatures = append(p.CloseSignatures, txClose.Signatures()...)
-	p.DeclarationSignatures = append(p.DeclarationSignatures, txDecl.Signatures()...)
+	// If remote has not signed close, error as is invalid.
+	signed, err := c.verifySigned(txClose, p.CloseSignatures, c.remoteSigner)
+	if err != nil {
+		return p, fullySigned, fmt.Errorf("verifying close signed by remote: %w", err)
+	}
+	if !signed {
+		return p, fullySigned, fmt.Errorf("verifying close signed by remote: not signed by remote")
+	}
+
+	// If local has not signed close, sign.
+	signed, err = c.verifySigned(txClose, p.CloseSignatures, c.localSigner)
+	if err != nil {
+		return p, fullySigned, fmt.Errorf("verifying close signed by local: %w", err)
+	}
+	if !signed {
+		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
+		if err != nil {
+			return p, fullySigned, fmt.Errorf("signing close with local: %w", err)
+		}
+		p.CloseSignatures = append(p.CloseSignatures, txClose.Signatures()...)
+	}
+
+	// Local should always sign declaration if have not yet.
+	signed, err = c.verifySigned(txDecl, p.DeclarationSignatures, c.localSigner)
+	if err != nil {
+		return p, fullySigned, fmt.Errorf("verifying declaration signed by local: %w", err)
+	}
+	if !signed {
+		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
+		if err != nil {
+			return p, fullySigned, err
+		}
+		p.DeclarationSignatures = append(p.DeclarationSignatures, txDecl.Signatures()...)
+	}
+
+	// If remote has not signed declaration, it is incomplete.
+	signed, err = c.verifySigned(txDecl, p.DeclarationSignatures, c.remoteSigner)
+	if err != nil {
+		return p, fullySigned, fmt.Errorf("verifying declaration signed by remote: %w", err)
+	}
+	if !signed {
+		return p, fullySigned, nil
+	}
+
+	// All signatures are present that would be required to submit all
+	// transactions in the payment.
+	fullySigned = true
 	newBalance := c.newBalance(p)
 	c.latestCloseAgreement = &CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
-	return p, nil
+
+	return p, fullySigned, nil
 }
 
 func maxInt64(x int64, y int64) int64 {

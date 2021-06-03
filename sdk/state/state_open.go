@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -83,74 +82,91 @@ func (c *Channel) ProposeOpen() (Open, error) {
 //
 // If there are close, declaration, and formation signatures for all
 // participants, the channel will be considered open.
-func (c *Channel) ConfirmOpen(m Open) (Open, error) {
+//
+// If after confirming the open has all the signatures it needs to be fully and
+// completely signed, fully signed will be true, otherwise it will be false.
+func (c *Channel) ConfirmOpen(m Open) (open Open, fullySigned bool, err error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, txDecl, formation, err := c.OpenTxs()
 	if err != nil {
-		return m, err
+		return m, fullySigned, err
 	}
 
 	// If remote has not signed close, error as is invalid.
-	err = c.verifySigned(txClose, m.CloseSignatures, c.remoteSigner)
+	signed, err := c.verifySigned(txClose, m.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return m, fmt.Errorf("open confirm: close invalid %w", err)
+		return m, fullySigned, fmt.Errorf("verifying close signed by remote: %w", err)
+	}
+	if !signed {
+		return m, fullySigned, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
 	// If local has not signed close, sign it.
-	err = c.verifySigned(txClose, m.CloseSignatures, c.localSigner)
-	if errors.Is(err, ErrNotSigned{}) {
+	signed, err = c.verifySigned(txClose, m.CloseSignatures, c.localSigner)
+	if err != nil {
+		return m, fullySigned, fmt.Errorf("verifying close signed by local: %w", err)
+	}
+	if !signed {
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return m, fmt.Errorf("open confirm: close incomplete: %w", err)
+			return m, fullySigned, fmt.Errorf("signing close with local: %w", err)
 		}
 		m.CloseSignatures = append(m.CloseSignatures, txClose.Signatures()...)
-	} else if err != nil {
-		return m, fmt.Errorf("open confirm: close error: %w", err)
 	}
 
 	// If local has not signed declaration, sign it.
-	err = c.verifySigned(txDecl, m.DeclarationSignatures, c.localSigner)
-	if errors.Is(err, ErrNotSigned{}) {
+	signed, err = c.verifySigned(txDecl, m.DeclarationSignatures, c.localSigner)
+	if err != nil {
+		return m, fullySigned, fmt.Errorf("verifying declaration with local: %w", err)
+	}
+	if !signed {
 		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return m, fmt.Errorf("open confirm: decl %w", err)
+			return m, fullySigned, fmt.Errorf("signing declaration with local: decl %w", err)
 		}
 		m.DeclarationSignatures = append(m.DeclarationSignatures, txDecl.Signatures()...)
-	} else if err != nil {
-		return m, fmt.Errorf("open confirm: decl incomplete: %w", err)
 	}
 
-	// If remote has not signed declaration, error as is incomplete.
-	err = c.verifySigned(txDecl, m.DeclarationSignatures, c.remoteSigner)
+	// If remote has not signed declaration, don't perform any others signing.
+	signed, err = c.verifySigned(txDecl, m.DeclarationSignatures, c.remoteSigner)
 	if err != nil {
-		return m, fmt.Errorf("open confirm: decl incomplete: %w", err)
+		return m, fullySigned, fmt.Errorf("verifying declaration with remote: decl: %w", err)
+	}
+	if !signed {
+		return m, fullySigned, nil
 	}
 
 	// If local has not signed formation, sign it.
-	err = c.verifySigned(formation, m.FormationSignatures, c.localSigner)
-	if errors.Is(err, ErrNotSigned{}) {
+	signed, err = c.verifySigned(formation, m.FormationSignatures, c.localSigner)
+	if err != nil {
+		return m, fullySigned, fmt.Errorf("verifying formation with local: %w", err)
+	}
+	if !signed {
 		formation, err = formation.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return m, fmt.Errorf("open confirm: formation local error %w", err)
+			return m, fullySigned, fmt.Errorf("signing formation with local: %w", err)
 		}
 		m.FormationSignatures = append(m.FormationSignatures, formation.Signatures()...)
-	} else if err != nil {
-		return m, fmt.Errorf("open confirm: formation local %w", err)
 	}
 
-	// If remote has not signed formation, error as is incomplete.
-	err = c.verifySigned(formation, m.FormationSignatures, c.remoteSigner)
+	// If remote has not signed formation, it is incomplete.
+	signed, err = c.verifySigned(formation, m.FormationSignatures, c.remoteSigner)
 	if err != nil {
-		return m, fmt.Errorf("open confirm: formation remote %w", err)
+		return m, fullySigned, fmt.Errorf("open confirm: formation remote %w", err)
+	}
+	if !signed {
+		return m, fullySigned, nil
 	}
 
-	// TODO: channel status = open
+	// All signatures are present that would be required to submit all
+	// transactions in the open.
+	fullySigned = true
 	c.latestCloseAgreement = &CloseAgreement{
 		IterationNumber:       1,
 		Balance:               Amount{},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,
 	}
-	return m, nil
+	return m, fullySigned, nil
 }

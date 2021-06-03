@@ -3,7 +3,6 @@ package state_test
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -179,17 +178,17 @@ func Test(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen()
 	require.NoError(t, err)
 	for {
-		var errR error
-		open, errR = responderChannel.ConfirmOpen(open)
-		if errR != nil && !errors.Is(errR, state.ErrNotSigned{}) {
-			t.Fatal(errR)
+		var fullySignedR bool
+		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		if err != nil {
+			t.Fatal(err)
 		}
-		var errI error
-		open, errI = initiatorChannel.ConfirmOpen(open)
-		if errI != nil && !errors.Is(errI, state.ErrNotSigned{}) {
-			t.Fatal(errI)
+		var fullySignedI bool
+		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if errR == nil && errI == nil {
+		if fullySignedI && fullySignedR {
 			break
 		}
 	}
@@ -255,20 +254,30 @@ func Test(t *testing.T) {
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.IterationNumber(), "R: ", receivingChannel.IterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		//// Sender: creates new Payment, sends to other party
+		// Sender: creates new Payment, sends to other party
 		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
 		require.NoError(t, err)
 
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
 
-		//// Receiver: receives new payment proposal, validates, then confirms by signing both
-		payment, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
+		var fullySigned bool
 
-		//// Sender: re-confirms P_i by signing D_i and sending back
-		payment, err = sendingChannel.ConfirmPayment(payment)
+		// Receiver: receives new payment, validates, then confirms by signing both
+		receivingChannel.SetIterationNumber(i)
+		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
+		require.False(t, fullySigned)
+
+		// Sender: re-confirms P_i by signing D_i and sending back
+		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.True(t, fullySigned)
+
+		// Receiver: receives new payment, validates, then confirms by signing both
+		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.True(t, fullySigned)
 
 		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
