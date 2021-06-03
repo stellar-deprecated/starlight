@@ -251,7 +251,7 @@ func Test(t *testing.T) {
 		t.Log("Current channel balances: I: ", initiatorChannel.Balance().Amount/1_000_0000, "R: ", responderChannel.Balance().Amount/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		//// Sender: creates new Payment, sends to other party
+		// Sender: creates new Payment, sends to other party
 		sendingChannel.SetIterationNumber(i)
 		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
 		require.NoError(t, err)
@@ -259,14 +259,23 @@ func Test(t *testing.T) {
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
 
-		//// Receiver: receives new payment proposal, validates, then confirms by signing both
-		receivingChannel.SetIterationNumber(i)
-		payment, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
+		var fullySigned bool
 
-		//// Sender: re-confirms P_i by signing D_i and sending back
-		payment, err = sendingChannel.ConfirmPayment(payment)
+		// Receiver: receives new payment, validates, then confirms by signing both
+		receivingChannel.SetIterationNumber(i)
+		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
+		require.False(t, fullySigned)
+
+		// Sender: re-confirms P_i by signing D_i and sending back
+		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.True(t, fullySigned)
+
+		// Receiver: receives new payment, validates, then confirms by signing both
+		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.True(t, fullySigned)
 
 		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
