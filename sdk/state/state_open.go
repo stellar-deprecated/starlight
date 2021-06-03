@@ -15,8 +15,8 @@ type Open struct {
 	FormationSignatures   []xdr.DecoratedSignature
 }
 
-func (c *Channel) OpenTxs() (close, decl, formation *txnbuild.Transaction, err error) {
-	close, err = txbuild.Close(txbuild.CloseParams{
+func (c *Channel) OpenTxs() (txClose, txDecl, formation *txnbuild.Transaction, err error) {
+	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
@@ -31,7 +31,7 @@ func (c *Channel) OpenTxs() (close, decl, formation *txnbuild.Transaction, err e
 	if err != nil {
 		return
 	}
-	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
+	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
 		IterationNumber:         1,
@@ -55,16 +55,16 @@ func (c *Channel) OpenTxs() (close, decl, formation *txnbuild.Transaction, err e
 func (c *Channel) ProposeOpen() (Open, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	close, _, _, err := c.OpenTxs()
+	txClose, _, _, err := c.OpenTxs()
 	if err != nil {
 		return Open{}, err
 	}
-	close, err = close.Sign(c.networkPassphrase, c.localSigner)
+	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return Open{}, err
 	}
 	open := Open{
-		CloseSignatures: close.Signatures(),
+		CloseSignatures: txClose.Signatures(),
 	}
 	return open, nil
 }
@@ -86,43 +86,43 @@ func (c *Channel) ProposeOpen() (Open, error) {
 func (c *Channel) ConfirmOpen(m Open) (Open, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	close, decl, formation, err := c.OpenTxs()
+	txClose, txDecl, formation, err := c.OpenTxs()
 	if err != nil {
 		return m, err
 	}
 
 	// If remote has not signed close, error as is invalid.
-	err = c.verifySigned(close, m.CloseSignatures, c.remoteSigner)
+	err = c.verifySigned(txClose, m.CloseSignatures, c.remoteSigner)
 	if err != nil {
 		return m, fmt.Errorf("open confirm: close invalid %w", err)
 	}
 
 	// If local has not signed close, sign it.
-	err = c.verifySigned(close, m.CloseSignatures, c.localSigner)
+	err = c.verifySigned(txClose, m.CloseSignatures, c.localSigner)
 	if errors.Is(err, ErrNotSigned{}) {
-		close, err = close.Sign(c.networkPassphrase, c.localSigner)
+		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: close incomplete: %w", err)
 		}
-		m.CloseSignatures = append(m.CloseSignatures, close.Signatures()...)
+		m.CloseSignatures = append(m.CloseSignatures, txClose.Signatures()...)
 	} else if err != nil {
 		return m, fmt.Errorf("open confirm: close error: %w", err)
 	}
 
 	// If local has not signed declaration, sign it.
-	err = c.verifySigned(decl, m.DeclarationSignatures, c.localSigner)
+	err = c.verifySigned(txDecl, m.DeclarationSignatures, c.localSigner)
 	if errors.Is(err, ErrNotSigned{}) {
-		decl, err = decl.Sign(c.networkPassphrase, c.localSigner)
+		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return m, fmt.Errorf("open confirm: decl %w", err)
 		}
-		m.DeclarationSignatures = append(m.DeclarationSignatures, decl.Signatures()...)
+		m.DeclarationSignatures = append(m.DeclarationSignatures, txDecl.Signatures()...)
 	} else if err != nil {
 		return m, fmt.Errorf("open confirm: decl incomplete: %w", err)
 	}
 
 	// If remote has not signed declaration, error as is incomplete.
-	err = c.verifySigned(decl, m.DeclarationSignatures, c.remoteSigner)
+	err = c.verifySigned(txDecl, m.DeclarationSignatures, c.remoteSigner)
 	if err != nil {
 		return m, fmt.Errorf("open confirm: decl incomplete: %w", err)
 	}

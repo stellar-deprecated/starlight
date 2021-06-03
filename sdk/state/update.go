@@ -28,7 +28,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 	} else {
 		newBalance = c.Amount().Amount - amount.Amount
 	}
-	txC, err := txbuild.Close(txbuild.CloseParams{
+	txClose, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
@@ -43,13 +43,13 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 	if err != nil {
 		return nil, err
 	}
-	txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
+	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return nil, err
 	}
 	p := &Payment{
 		Amount:          amount,
-		CloseSignatures: txC.Signatures(),
+		CloseSignatures: txClose.Signatures(),
 		FromInitiator:   c.initiator,
 		NewBalance: Amount{
 			Asset:  amount.Asset,
@@ -95,29 +95,30 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 }
 
 func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
-	txC, txD, err := c.PaymentTxs(p)
+	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
 		return nil, err
 	}
 	// If remote has not signed close, error as is invalid.
-	if err := c.verifySigned(txC, p.CloseSignatures, c.remoteSigner); err != nil {
+	if err := c.verifySigned(txClose, p.CloseSignatures, c.remoteSigner); err != nil {
 		return nil, fmt.Errorf("incorrect closing transaction, the one given may have different data: %w", err)
 	}
 	// If local has not signed close, sign.
-	if err := c.verifySigned(txC, p.CloseSignatures, c.localSigner); err != nil {
+	if err := c.verifySigned(txClose, p.CloseSignatures, c.localSigner); err != nil {
 		// TODO - differentiate between wrong signature and missing one
-		txC, err = txC.Sign(c.networkPassphrase, c.localSigner)
+		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return nil, err
 		}
 	}
 	// Local should always sign declaration if have not yet.
-	if err := c.verifySigned(txD, p.DeclarationSignatures, c.localSigner); err != nil {
-		txD, err = txD.Sign(c.networkPassphrase, c.localSigner)
+	if err := c.verifySigned(txDecl, p.DeclarationSignatures, c.localSigner); err != nil {
+		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	p.CloseSignatures = append(p.CloseSignatures, txC.Signatures()...)
 	p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
 	c.lastConfirmedPayment = p
