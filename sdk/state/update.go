@@ -131,7 +131,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool
 		p.DeclarationSignatures = append(p.DeclarationSignatures, txDecl.Signatures()...)
 	}
 
-	// If remote has not signed close, error as is incomplete.
+	// If remote has not signed declaration, it is incomplete.
 	signed, err = c.verifySigned(txDecl, p.DeclarationSignatures, c.remoteSigner)
 	if err != nil {
 		return p, fullySigned, fmt.Errorf("verifying declaration signed by remote: %w", err)
