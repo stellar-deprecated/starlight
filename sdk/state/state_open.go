@@ -146,6 +146,11 @@ func (c *Channel) ConfirmOpen(m Open) (Open, error) {
 	}
 
 	// TODO: channel status = open
-
+	c.latestCloseAgreement = &CloseAgreement{
+		IterationNumber:       1,
+		Balance:               Amount{},
+		CloseSignatures:       m.CloseSignatures,
+		DeclarationSignatures: m.DeclarationSignatures,
+	}
 	return m, nil
 }

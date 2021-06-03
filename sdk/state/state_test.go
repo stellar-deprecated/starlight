@@ -231,6 +231,8 @@ func Test(t *testing.T) {
 	iBalanceCheck := initiator.Contribution
 	for i < 20 {
 		i++
+		require.Equal(t, i, initiatorChannel.IterationNumber())
+		require.Equal(t, i, responderChannel.IterationNumber())
 		amount := randomPositiveInt64(t, 100_0000000)
 
 		var sendingChannel *state.Channel
@@ -249,11 +251,11 @@ func Test(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", initiatorChannel.Balance().Amount/1_000_0000, "R: ", responderChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", sendingChannel.Balance().Amount/1_000_0000, "R: ", receivingChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel iteration numbers: I: ", sendingChannel.IterationNumber(), "R: ", receivingChannel.IterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// Sender: creates new Payment, sends to other party
-		sendingChannel.SetIterationNumber(i)
 		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
 		require.NoError(t, err)
 
@@ -261,7 +263,6 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 
 		//// Receiver: receives new payment proposal, validates, then confirms by signing both
-		receivingChannel.SetIterationNumber(i)
 		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 

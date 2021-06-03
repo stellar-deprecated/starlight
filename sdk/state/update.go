@@ -42,7 +42,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.iterationNumber,
+		IterationNumber:            c.IterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance*-1),
 		AmountToResponder:          maxInt64(0, newBalance),
 	})
@@ -54,6 +54,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		return nil, err
 	}
 	p := &Payment{
+		IterationNumber: c.IterationNumber(),
 		Amount:          amount,
 		CloseSignatures: txClose.Signatures(),
 		FromInitiator:   c.initiator,
@@ -71,7 +72,7 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.iterationNumber,
+		IterationNumber:            c.IterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance.Amount*-1),
 		AmountToResponder:          maxInt64(0, newBalance.Amount),
 	})
@@ -81,7 +82,7 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
-		IterationNumber:         c.iterationNumber,
+		IterationNumber:         c.IterationNumber(),
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
@@ -91,6 +92,10 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 }
 
 func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
+	if p.IterationNumber != c.IterationNumber() {
+		return nil, errors.New("invalid payment iteration number")
+	}
+
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
 		return nil, err
