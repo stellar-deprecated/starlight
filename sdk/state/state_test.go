@@ -3,7 +3,6 @@ package state_test
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -250,14 +249,12 @@ func Test(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", initiatorChannel.Amount().Amount/1_000_0000, "R: ", responderChannel.Amount().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", initiatorChannel.Balance().Amount/1_000_0000, "R: ", responderChannel.Balance().Amount/1_000_0000)
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		//// Sender: creates new Payment, sends to other party
 		sendingChannel.SetIterationNumber(i)
-		payment, err := sendingChannel.ProposePayment(amount)
-		require.NoError(t, err)
-		j, err := json.Marshal(payment)
+		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
 		require.NoError(t, err)
 
 		ci, di, err := sendingChannel.PaymentTxs(payment)
@@ -265,19 +262,10 @@ func Test(t *testing.T) {
 
 		//// Receiver: receives new payment proposal, validates, then confirms by signing both
 		receivingChannel.SetIterationNumber(i)
-		payment = &state.Payment{}
-		err = json.Unmarshal(j, payment)
-		require.NoError(t, err)
-
 		payment, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
-		j, err = json.Marshal(payment)
 		require.NoError(t, err)
 
 		//// Sender: re-confirms P_i by signing D_i and sending back
-		payment = &state.Payment{}
-		err = json.Unmarshal(j, payment)
-		require.NoError(t, err)
 		payment, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 

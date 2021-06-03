@@ -36,17 +36,16 @@ type Channel struct {
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
 
-	// The balance owing from the initiator to the responder, if positive, or
-	// the balance owing from the responder to the initiator, if negative.
-	// TODO - use Balance struct
-	amount Amount
-
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
 	remoteEscrowAccount *EscrowAccount
 
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
+
+	latestCloseAgreement *CloseAgreement
+	// TODO - need to store this too?
+	// lastUnConfirmedPayment *Payment
 }
 
 type Config struct {
@@ -82,9 +81,28 @@ func (c *Channel) SetIterationNumber(i int64) {
 	c.iterationNumber = i
 }
 
-// TODO: Remove
-func (c *Channel) Amount() Amount {
-	return c.amount
+// Balance returns the amount owing from the initiator to the responder, if positive, or
+// the amount owing from the responder to the initiator, if negative.
+func (c *Channel) Balance() Amount {
+	if c.latestCloseAgreement == nil {
+		return Amount{NativeAsset{}, 0}
+	}
+	return c.latestCloseAgreement.Balance
+}
+
+// newBalance is a hlper method for computing what the new channel balance will be if
+// the input payment is submitted successfully.
+func (c *Channel) newBalance(p *Payment) Amount {
+	var amountFromInitiator, amountFromResponder int64
+	if p.FromInitiator {
+		amountFromInitiator = p.Amount.Amount
+	} else {
+		amountFromResponder = p.Amount.Amount
+	}
+	return Amount{
+		Asset:  p.Amount.Asset,
+		Amount: c.Balance().Amount + amountFromInitiator - amountFromResponder,
+	}
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
