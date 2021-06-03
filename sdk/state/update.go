@@ -119,8 +119,8 @@ func (c *Channel) ConfirmPayment(p *Payment) (*Payment, error) {
 		}
 	}
 
-	p.CloseSignatures = append(p.CloseSignatures, txC.Signatures()...)
-	p.DeclarationSignatures = append(p.DeclarationSignatures, txD.Signatures()...)
+	p.CloseSignatures = append(p.CloseSignatures, txClose.Signatures()...)
+	p.DeclarationSignatures = append(p.DeclarationSignatures, txDecl.Signatures()...)
 	c.lastConfirmedPayment = p
 	return p, nil
 }
