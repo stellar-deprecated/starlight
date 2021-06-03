@@ -3,7 +3,6 @@ package state_test
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -179,17 +178,17 @@ func Test(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen()
 	require.NoError(t, err)
 	for {
-		var errR error
-		open, errR = responderChannel.ConfirmOpen(open)
-		if errR != nil && !errors.Is(errR, state.ErrNotSigned{}) {
-			t.Fatal(errR)
+		var fullySignedR bool
+		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		if err != nil {
+			t.Fatal(err)
 		}
-		var errI error
-		open, errI = initiatorChannel.ConfirmOpen(open)
-		if errI != nil && !errors.Is(errI, state.ErrNotSigned{}) {
-			t.Fatal(errI)
+		var fullySignedI bool
+		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if errR == nil && errI == nil {
+		if fullySignedI && fullySignedR {
 			break
 		}
 	}
