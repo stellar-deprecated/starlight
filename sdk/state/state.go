@@ -74,7 +74,7 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
-func (c *Channel) IterationNumber() int64 {
+func (c *Channel) NextIterationNumber() int64 {
 	var latestI int64
 	if c.latestUnconfirmedPayment != nil {
 		latestI = c.latestUnconfirmedPayment.IterationNumber
