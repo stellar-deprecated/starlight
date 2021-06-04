@@ -8,8 +8,8 @@ Track: Standard
 Status: Draft
 Discussion: https://github.com/stellar/experimental-payment-channels/issues
 Created: 2021-04-21
-Updated: 2021-05-05
-Version: 0.1.0
+Updated: 2021-06-03
+Version: 0.2.0
 ```
 
 ## Summary
@@ -116,14 +116,6 @@ channel close according to the final close transactions submitted.  Created by
 R.  Jointly controlled by I and R while the channel is open.  Control is
 returned to R at close.  Does not provide sequence numbers for the channel in anyway.
 
-### Constants
-
-The two participants agree on the following constants:
-
-- m, the _maximum transaction count for an iteration's transaction set_, is
-defined as 2, the maximum number of transactions that can be signed in any
-process between the increments of iteration number i.
-
 ### Variables
 
 The two participants maintain the following variables during the lifetime of
@@ -144,6 +136,12 @@ on-chain, such as a setup, or withdrawal.
 ### Computed Values
 
 The two participants frequently use the following computed values:
+
+- n, the _number of assets the channel supports_, is the count of assets the channel supports, including the native asset. It has a minimum value of 1.
+
+- m, the _maximum transaction count for an iteration's transaction set_, is
+defined as the n + 2, and is the maximum number of transactions that can be
+signed in any process between the increments of iteration number i.
 
 - s_i, the _iteration sequence number_, is the sequence number that iteration
 i's transaction set starts at. Assuming the history of the payment channel has a
@@ -166,8 +164,7 @@ To setup the payment channel:
    - i to 0.
    - e to 0.
 4. Increment i.
-5. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the initial contributions.
+5. Sign and exchange a closing transaction C_i.
 6. Sign and exchange a declaration transaction D_i.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
@@ -229,44 +226,57 @@ payments to one another within the channel.
 For example, if the channel initial state is $30 of which $10 belongs to I and
 $20 belongs to R, the first closing transaction will disburse $10 to I and $20
 to R. If I makes a payment of $2 to R, this update process will involve I and R
-agreeing on a new declaration and aclosing transaction that supersedes all
-previous declaration and closing transaction and that will disburse $8 to I and
-$22 to R.
+agreeing on new declaration, payment, and closing transactions that supersede
+all previous declaration, payment, and closing transaction and that will
+disburse $8 to I and $22 to R.
 
 To update the payment channel state, the participants:
 
 1. Increment i.
 2. Sign and exchange a closing transaction C_i.
-3. Sign and exchange a declaration transaction D_i.
+3. Sign and exchange zero or more payment transactions P_{i,a}.
+4. Sign and exchange a declaration transaction D_i.
 
-It is important that D_i is signed after C_i because D_i will invalidate any
-previously signed C_i. If I and R signed and exchanged D_i first either party
-could prevent the channel from closing without coordination by submitting D_i
-and refusing to sign C_i.  The participants would not be able to close the
-channel, or regain control of the accounts, and the assets within without
-coordinating with each other.
+It is important that D_i is signed after C_i and P_i because D_i will invalidate
+any previously signed C_i and P_i. If I and R signed and exchanged D_i first
+either party could prevent the channel from closing without coordination by
+submitting D_i and refusing to sign C_i.  The participants would not be able to
+close the channel, or regain control of the accounts, and the assets within
+without coordinating with each other.
 
 The transactions are constructed as follows:
 
-- C_i, the _closing transaction_, disburses funds from EI to ER and/or from ER
-to EI, and changes the signing weights on EI such that I unilaterally controls
-EI, and the signing weights on ER such that R unilaterally controls ER.  C_i has
-source account EI, sequence number s_i+1, a `minSeqAge` of O (the observation
-period time duration), and a `minSeqLedgerGap` of O (the observation period
-ledger count).
+- C_i, the _closing transaction_, changes the signing weights on EI such that I
+unilaterally controls EI, and the signing weights on ER such that R unilaterally
+controls ER.  C_i has source account EI, sequence number s_i+1+n.
 
   The `minSeqAge` and `minSeqLedgerGap` prevents a misbehaving party from
   executing C_i when the channel state has already progressed to a later
-  iteration number, as the other party has the period O to invalidate C_i by
+  iteration number, as the other party has the period 2O to invalidate C_i by
   submitting D_i' for some i' > i.
   
   C_i contains operations:
-  - One `PAYMENT` operation for each trustline that is disbursing funds from EI
-  to ER, or from ER to EI.
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
   to give I full control of EI, and removing R's signers.
   - One or more `SET_OPTIONS` operation adjusting reserve account ER's
   thresholds to give R full control of ER, and removing I's signers.
+
+- P_{i,a}, the _payment transaction_, disburses a single asset a from EI to ER
+or from ER to EI. P_{i,a} has source account EI, sequence number s_i+1+a, where
+a is the zero index of the asset where each asset in the channel is assigned an
+index. P_{i,0}, the first payment, is assigned a `minSeqAge` of O (the
+observation period time duration), and a `minSeqLedgerGap` of O (the observation
+period ledger count).
+
+  The `minSeqAge` and `minSeqLedgerGap` prevents a misbehaving party from
+  executing the first payment when the channel state has already progressed to a
+  later iteration number, as the other party has the period O to invalidate P_i
+  by submitting D_i' for some i' > i. Subsequent payments and the closing
+  transaction cannot be executed until first payment is executed.
+  
+  P_i contains operations:
+  - One `PAYMENT` operation for the asset being disbursed from EI to ER, or from
+  ER to EI.
 
 - D_i, the _declaration transaction_, declares an intent to execute the
 corresponding closing transaction C_i.  D_i has source account EI, sequence
@@ -286,9 +296,12 @@ resigning the most recently signed confirmation transaction. The participants
 change `minSeqAge` and `minSeqLedgerGap` to zero.
 
 1. Submit most recent D_i
-2. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero
-3. Resign and exchange the modified confirmation transaction C_i
-4. Submit modified C_i
+2. Modify the most recent P_i `minSeqAge` and `minSeqLedgerGap` to zero
+3. Resign and exchange the modified P_i
+4. Submit modified P_i
+5. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero
+6. Resign and exchange the modified C_i
+7. Submit modified C_i
 
 #### Uncoordinated Close
 
@@ -299,7 +312,9 @@ transaction.
 
 1. Submit most recent D_i
 2. Wait observation period O
-3. Submit C_i
+3. Submit P_i
+4. Wait observation period O
+5. Submit C_i
 
 #### Contesting a Close
 
@@ -326,11 +341,13 @@ submitted. The more recent declaration transaction prevents the malicious actor
 from submitting the older closing transaction because it has a lower sequence
 number making that transaction invalid.
 
-1. Get EI's sequence number n
-2. If s_{e+1} >= n < s_i, go to step 3, else go to step 1
+1. Get EI's sequence number z
+2. If s_{e+1} >= z < s_i, go to step 3, else go to step 1
 3. Submit most recent D_i
 4. Wait observation period O
-5. Submit C_i
+5. Submit P_i
+6. Wait observation period O
+7. Submit C_i
 
 #### Changing the Channel Setup
 
@@ -444,17 +461,18 @@ withdrawing:
 3. Set e' to the value of e.
 4. Set e to i.
 5. Increment i.
-6. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the most recent agreed state, but reducing W's disbursed
-amount by W's withdrawal amount.
-7. Sign and exchange a declaration transaction D_i.
-8. I and R sign and exchange signatures for withdrawal transaction W_i.
-9. I or R submit W.
+6. Sign and exchange a closing transaction C_i.
+7. Sign and exchange a payment transactions P_i, with disbursements matching the
+most recent agreed state, but reducing W's disbursed amount by W's withdrawal
+amount.
+8. Sign and exchange a declaration transaction D_i.
+9. I and R sign and exchange signatures for withdrawal transaction W_i.
+10. I or R submit W.
 
-If the withdrawal transaction W_i fails or is never submitted, the C_i and D_i
-are not executable because escrow account EI's sequence number was not bumped to
-s_i.  The participants should take the following steps since the withdrawal did
-not succeed:
+If the withdrawal transaction W_i fails or is never submitted, the C_i, P_i and
+D_i are not executable because escrow account EI's sequence number was not
+bumped to s_i.  The participants should take the following steps since the
+withdrawal did not succeed:
 
 10. Set e to the value of e'.
 
@@ -494,11 +512,12 @@ The participants:
 1. Increment i.
 2. I and R build the bump transaction B_i.
 3. Increment i.
-4. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the most recent agreed state.
-5. Sign and exchange a declaration transaction D_i.
-6. I and R sign and exchange signatures for bump transaction B_i.
-7. I or R submit B_i.
+4. Sign and exchange a closing transaction C_i.
+5. Sign and exchange a closing transaction P_i, with disbursements matching the
+most recent agreed state.
+6. Sign and exchange a declaration transaction D_i.
+7. I and R sign and exchange signatures for bump transaction B_i.
+8. I or R submit B_i.
 9. Set e to B_i's iteration number.
 
 The transactions are constructed as follows:
@@ -627,16 +646,18 @@ Any trustlines on the escrow accounts that have clawback enabled could
 compromise the payment channels ability to close successfully.
 
 If the issuer of any clawback enabled trustline submits a clawback operation for
-amounts in either escrow account, the close transaction may fail to process if
-its payment operations are dependent on amounts clawed back.
+amounts in either escrow account, the payment transaction for that specific
+asset may fail to process if its payment operation is dependent on amounts
+clawed back. Any other payment transactions for other assets will not be
+affected. The closing transaction will be unaffected.
 
 Participants can inspect the state of trustlines before and after formation to
 check if either participant has clawback enabled. Checking the state after
 formation is critical because there is no way for participants to guarantee
 trustline state until after formation has completed because the state can change
 prior to formation. For this reason participants should perform their initial
-deposit after formation, unless they trust the asset issuer not to clawback from
-payment channel escrow accounts, or unless the asset is auth immutable. 
+deposit after formation, unless they trust the asset issuer, or unless the asset
+is auth immutable.
 
 ## Limitations
 
