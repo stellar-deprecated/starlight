@@ -300,12 +300,14 @@ resigning the most recently signed confirmation transaction. The participants
 change `minSeqAge` and `minSeqLedgerGap` to zero.
 
 1. Submit most recent D_i
-2. Modify the most recent P_i `minSeqAge` and `minSeqLedgerGap` to zero
-3. Resign and exchange the modified P_i
-4. Submit modified P_i
-5. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero
-6. Resign and exchange the modified C_i
-7. Submit modified C_i
+2. Modify the most recent P_{i,0}, or C_i*, `minSeqAge` and `minSeqLedgerGap`
+   to zero
+4. Resign and exchange the modified P_{i,0} or C_i
+5. Submit P_{i,a} transactions
+7. Submit C_i
+
+\* If the most recent transaction set contains no payments, C_i must be
+modified instead.
 
 #### Uncoordinated Close
 
@@ -316,8 +318,7 @@ transaction.
 
 1. Submit most recent D_i
 2. Wait observation period O
-3. Submit P_i
-4. Wait observation period O
+3. Submit P_{i,a} transactions
 5. Submit C_i
 
 #### Contesting a Close
@@ -349,8 +350,7 @@ number making that transaction invalid.
 2. If s_{e+1} >= z < s_i, go to step 3, else go to step 1
 3. Submit most recent D_i
 4. Wait observation period O
-5. Submit P_i
-6. Wait observation period O
+5. Submit P_{i,a} transactions
 7. Submit C_i
 
 #### Changing the Channel Setup
@@ -466,9 +466,9 @@ withdrawing:
 4. Set e to i.
 5. Increment i.
 6. Sign and exchange a closing transaction C_i.
-7. Sign and exchange a payment transactions P_i, with disbursements matching the
-most recent agreed state, but reducing W's disbursed amount by W's withdrawal
-amount.
+7. Sign and exchange payment transactions P_{i,a}, with disbursements matching 
+the most recent agreed state, but reducing W's disbursed amount by W's
+withdrawal amount.
 8. Sign and exchange a declaration transaction D_i.
 9. I and R sign and exchange signatures for withdrawal transaction W_i.
 10. I or R submit W.
@@ -517,8 +517,8 @@ The participants:
 2. I and R build the bump transaction B_i.
 3. Increment i.
 4. Sign and exchange a closing transaction C_i.
-5. Sign and exchange a closing transaction P_i, with disbursements matching the
-most recent agreed state.
+5. Sign and exchange payment transactions P_{i,a}, with disbursements matching 
+the most recent agreed state.
 6. Sign and exchange a declaration transaction D_i.
 7. I and R sign and exchange signatures for bump transaction B_i.
 8. I or R submit B_i.
