@@ -137,7 +137,8 @@ on-chain, such as a setup, or withdrawal.
 
 The two participants frequently use the following computed values:
 
-- n, the _number of assets the channel supports_, is the count of assets the channel supports, including the native asset. It has a minimum value of 1.
+- n, the _number of assets the channel supports_, is the count of assets the
+channel supports, including the native asset. It has a minimum value of 1.
 
 - m, the _maximum transaction count for an iteration's transaction set_, is
 defined as the n + 2, and is the maximum number of transactions that can be
