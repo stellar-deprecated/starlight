@@ -248,11 +248,16 @@ The transactions are constructed as follows:
 
 - C_i, the _closing transaction_, changes the signing weights on EI such that I
 unilaterally controls EI, and the signing weights on ER such that R unilaterally
-controls ER.  C_i has source account EI, sequence number s_i+1+n.
+controls ER.  C_i has source account EI, sequence number s_i+1+p, where p is the
+number of payments in this transaction set.
 
-  C_i can only execute after all P_i transactions have executed, and is
+  C_i can only execute after all P_i payment transactions have executed, and is
   therefore prevented from executing until O has passed.
-  
+
+  If the number of payments in this transaction set is zero, C_i must be
+  assigned a `minSeqAge` and `minSeqLedgerGap` that the first payment would be
+  assigned.
+
   C_i contains operations:
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
   to give I full control of EI, and removing R's signers.
@@ -271,7 +276,7 @@ period ledger count).
   later iteration number, as the other party has the period O to invalidate P_i
   by submitting D_i' for some i' > i. Subsequent payments and the closing
   transaction cannot be executed until first payment is executed.
-  
+
   P_i contains operations:
   - One `PAYMENT` operation for the asset being disbursed from EI to ER, or from
   ER to EI.
