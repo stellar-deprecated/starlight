@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -93,7 +94,8 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 
 func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool, err error) {
 	if p.IterationNumber != c.NextIterationNumber() {
-		return nil, fullySigned, errors.New("invalid payment iteration number")
+		return nil, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
+			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
 	}
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
