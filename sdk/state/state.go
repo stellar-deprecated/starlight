@@ -43,7 +43,7 @@ type Channel struct {
 
 	latestCloseAgreement *CloseAgreement
 	// TODO - set this, probably use different name
-	lastUnConfirmedPayment *Payment
+	latestUnconfirmedPayment *Payment
 }
 
 type Config struct {
@@ -76,8 +76,8 @@ func NewChannel(c Config) *Channel {
 
 func (c *Channel) IterationNumber() int64 {
 	var latestI int64
-	if c.lastUnConfirmedPayment != nil {
-		latestI = c.lastUnConfirmedPayment.IterationNumber
+	if c.latestUnconfirmedPayment != nil {
+		latestI = c.latestUnconfirmedPayment.IterationNumber
 	} else if c.latestCloseAgreement != nil {
 		latestI = c.latestCloseAgreement.IterationNumber
 	} else {
