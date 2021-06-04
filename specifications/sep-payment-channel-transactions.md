@@ -250,10 +250,8 @@ The transactions are constructed as follows:
 unilaterally controls EI, and the signing weights on ER such that R unilaterally
 controls ER.  C_i has source account EI, sequence number s_i+1+n.
 
-  The `minSeqAge` and `minSeqLedgerGap` prevents a misbehaving party from
-  executing C_i when the channel state has already progressed to a later
-  iteration number, as the other party has the period 2O to invalidate C_i by
-  submitting D_i' for some i' > i.
+  C_i can only execute after all P_i transactions have executed, and is
+  therefore prevented from executing until O has passed.
   
   C_i contains operations:
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
