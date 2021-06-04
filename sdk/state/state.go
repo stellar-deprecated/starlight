@@ -31,7 +31,6 @@ type Channel struct {
 	observationPeriodLedgerGap int64
 
 	startingSequence int64
-	iterationNumber  int64
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
 
@@ -43,8 +42,8 @@ type Channel struct {
 	remoteSigner *keypair.FromAddress
 
 	latestCloseAgreement *CloseAgreement
-	// TODO - need to store this too?
-	// lastUnConfirmedPayment *Payment
+	// TODO - set this, probably use different name
+	latestUnconfirmedPayment *Payment
 }
 
 type Config struct {
@@ -75,9 +74,16 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
-// TODO: Remove
-func (c *Channel) SetIterationNumber(i int64) {
-	c.iterationNumber = i
+func (c *Channel) NextIterationNumber() int64 {
+	var latestI int64
+	if c.latestUnconfirmedPayment != nil {
+		latestI = c.latestUnconfirmedPayment.IterationNumber
+	} else if c.latestCloseAgreement != nil {
+		latestI = c.latestCloseAgreement.IterationNumber
+	} else {
+		latestI = 0
+	}
+	return latestI + 1
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or

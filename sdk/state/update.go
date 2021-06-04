@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -42,7 +43,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.iterationNumber,
+		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance*-1),
 		AmountToResponder:          maxInt64(0, newBalance),
 	})
@@ -54,6 +55,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		return nil, err
 	}
 	p := &Payment{
+		IterationNumber: c.NextIterationNumber(),
 		Amount:          amount,
 		CloseSignatures: txClose.Signatures(),
 		FromInitiator:   c.initiator,
@@ -71,7 +73,7 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.iterationNumber,
+		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance.Amount*-1),
 		AmountToResponder:          maxInt64(0, newBalance.Amount),
 	})
@@ -81,7 +83,7 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
-		IterationNumber:         c.iterationNumber,
+		IterationNumber:         c.NextIterationNumber(),
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
@@ -91,6 +93,10 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 }
 
 func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool, err error) {
+	if p.IterationNumber != c.NextIterationNumber() {
+		return nil, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
+			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
+	}
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
 		return p, fullySigned, err
