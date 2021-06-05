@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -60,6 +61,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		CloseSignatures: txClose.Signatures(),
 		FromInitiator:   c.initiator,
 	}
+	c.latestUnconfirmedPayment = p
 	return p, nil
 }
 
@@ -97,6 +99,10 @@ func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool
 		return nil, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
 	}
+	if c.latestUnconfirmedPayment != nil && !reflect.DeepEqual(c.latestUnconfirmedPayment, p) {
+		return nil, fullySigned, errors.New("a different unconfirmed payment exists")
+	}
+
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
 		return p, fullySigned, err
@@ -143,6 +149,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool
 		return p, fullySigned, fmt.Errorf("verifying declaration signed by remote: %w", err)
 	}
 	if !signed {
+		c.latestUnconfirmedPayment = p
 		return p, fullySigned, nil
 	}
 
@@ -151,7 +158,7 @@ func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool
 	fullySigned = true
 	newBalance := c.newBalance(p)
 	c.latestCloseAgreement = &CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
-
+	c.latestUnconfirmedPayment = nil
 	return p, fullySigned, nil
 }
 

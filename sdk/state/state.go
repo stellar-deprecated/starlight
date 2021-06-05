@@ -41,8 +41,7 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	latestCloseAgreement *CloseAgreement
-	// TODO - set this, probably use different name
+	latestCloseAgreement     *CloseAgreement
 	latestUnconfirmedPayment *Payment
 }
 
@@ -75,15 +74,12 @@ func NewChannel(c Config) *Channel {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	var latestI int64
 	if c.latestUnconfirmedPayment != nil {
-		latestI = c.latestUnconfirmedPayment.IterationNumber
+		return c.latestUnconfirmedPayment.IterationNumber
 	} else if c.latestCloseAgreement != nil {
-		latestI = c.latestCloseAgreement.IterationNumber
-	} else {
-		latestI = 0
+		return c.latestCloseAgreement.IterationNumber + 1
 	}
-	return latestI + 1
+	return 1
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
