@@ -104,6 +104,9 @@ func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err 
 }
 
 func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, err error) {
+	// at the end of this method if a fully signed payment, create a close agreement and clear latest latestUnconfirmedPayment to
+	// prepare for the next update. If not fully signed, save latestUnconfirmedPayment, as we are still in the process of confirming.
+	// If an error occurred during this process don't save any new state, as something went wrong.
 	defer func() {
 		if err != nil {
 			return
