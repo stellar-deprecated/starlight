@@ -332,8 +332,8 @@ func Test(t *testing.T) {
 	// Good participant closes channel at latest iteration.
 	t.Log("Good participant (initiator) closes channel at latest iteration...")
 	{
-		lastIteration := len(declarationTxs) - 1
-		lastD := declarationTxs[lastIteration]
+		lastD, err := initiatorChannel.StartClose()
+		require.NoError(t, err)
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      lastD,
 			FeeAccount: initiator.KP.Address(),
