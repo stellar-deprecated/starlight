@@ -18,7 +18,9 @@ type Payment struct {
 	FromInitiator         bool
 }
 
-func (p Payment) isEqual(p2 Payment) bool {
+// isEquivalent returns true if all fields for the Payments are equal not including signatures, else false.
+// Two payments that are equal may have different signatures depending on who and when this method is called.
+func (p Payment) isEquivalent(p2 Payment) bool {
 	return p.IterationNumber == p2.IterationNumber && p.Amount == p2.Amount && p.FromInitiator == p2.FromInitiator
 }
 
@@ -119,7 +121,7 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 		return p, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
 	}
-	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEqual(p) {
+	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEquivalent(p) {
 		return p, fullySigned, errors.New("a different unconfirmed payment exists")
 	}
 
