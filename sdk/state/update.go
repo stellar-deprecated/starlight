@@ -10,12 +10,29 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// The high level steps for creating a channel update should be as follows, where the returned payments
+// flow to the next step:
+// 1. Sender calls ProposePayment()
+// 2. Receiver calls ConfirmPayment
+// 3. Sender calls ConfirmPayment
+// 4. Receiver calls ConfirmPayment
+
 type Payment struct {
 	IterationNumber       int64
 	Amount                Amount
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FromInitiator         bool
+}
+
+// isEquivalent returns true if all fields for the Payments are equal not including signatures, else false.
+// Two payments that are equal may have different signatures depending on who and when this method is called.
+func (p Payment) isEquivalent(p2 Payment) bool {
+	return p.IterationNumber == p2.IterationNumber && p.Amount == p2.Amount && p.FromInitiator == p2.FromInitiator
+}
+
+func (p Payment) isEmpty() bool {
+	return p.IterationNumber == 0 && p.Amount == (Amount{}) && p.FromInitiator == false && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
 }
 
 type CloseAgreement struct {
@@ -25,9 +42,9 @@ type CloseAgreement struct {
 	DeclarationSignatures []xdr.DecoratedSignature
 }
 
-func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
+func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 	if amount.Amount <= 0 {
-		return nil, errors.New("payment amount must be greater than 0")
+		return Payment{}, errors.New("payment amount must be greater than 0")
 	}
 	newBalance := int64(0)
 	if c.initiator {
@@ -48,22 +65,23 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		AmountToResponder:          maxInt64(0, newBalance),
 	})
 	if err != nil {
-		return nil, err
+		return Payment{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return nil, err
+		return Payment{}, err
 	}
-	p := &Payment{
+	p := Payment{
 		IterationNumber: c.NextIterationNumber(),
 		Amount:          amount,
 		CloseSignatures: txClose.Signatures(),
 		FromInitiator:   c.initiator,
 	}
+	c.latestUnconfirmedPayment = p
 	return p, nil
 }
 
-func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err error) {
+func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err error) {
 	newBalance := c.newBalance(p)
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
@@ -92,11 +110,34 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	return
 }
 
-func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool, err error) {
+// ConfirmPayment confirms a payment. The original proposer should only have to call this once, and the
+// receiver should call twice. First to sign the payments and store signatures, second to just store the new signatures
+// from the other party's confirmation.
+func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, err error) {
+	// at the end of this method if a fully signed payment, create a close agreement and clear latest latestUnconfirmedPayment to
+	// prepare for the next update. If not fully signed, save latestUnconfirmedPayment, as we are still in the process of confirming.
+	// If an error occurred during this process don't save any new state, as something went wrong.
+	defer func() {
+		if err != nil {
+			return
+		}
+		if fullySigned {
+			c.latestUnconfirmedPayment = Payment{}
+			newBalance := c.newBalance(p)
+			c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
+		} else {
+			c.latestUnconfirmedPayment = p
+		}
+	}()
+
 	if p.IterationNumber != c.NextIterationNumber() {
-		return nil, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
+		return p, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
 	}
+	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEquivalent(p) {
+		return p, fullySigned, errors.New("a different unconfirmed payment exists")
+	}
+
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
 		return p, fullySigned, err
@@ -149,9 +190,6 @@ func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
 	fullySigned = true
-	newBalance := c.newBalance(p)
-	c.latestCloseAgreement = &CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
-
 	return p, fullySigned, nil
 }
 
