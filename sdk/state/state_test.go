@@ -80,7 +80,7 @@ func Test(t *testing.T) {
 
 	// Setup responder.
 	responder := Participant{
-		Name:         "Initiator",
+		Name:         "Responder",
 		KP:           keypair.MustRandom(),
 		Escrow:       keypair.MustRandom(),
 		Contribution: 1_000_0000000,
