@@ -62,6 +62,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "a different unconfirmed payment exists", err.Error())
 	assert.Equal(t, p, receiverChannel.latestUnconfirmedPayment)
+	assert.Equal(t, CloseAgreement{}, receiverChannel.latestCloseAgreement)
 
 	// Confirming a payment with same sequence number and same amount should pass
 	p, fullySigned, err = sendingChannel.ConfirmPayment(p)
