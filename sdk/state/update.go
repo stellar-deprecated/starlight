@@ -102,6 +102,19 @@ func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err 
 }
 
 func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, err error) {
+	defer func() {
+		if err != nil {
+			return
+		}
+		if fullySigned {
+			c.latestUnconfirmedPayment = Payment{}
+			newBalance := c.newBalance(p)
+			c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
+		} else {
+			c.latestUnconfirmedPayment = p
+		}
+	}()
+
 	if p.IterationNumber != c.NextIterationNumber() {
 		return p, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
@@ -156,16 +169,12 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 		return p, fullySigned, fmt.Errorf("verifying declaration signed by remote: %w", err)
 	}
 	if !signed {
-		c.latestUnconfirmedPayment = p
 		return p, fullySigned, nil
 	}
 
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
 	fullySigned = true
-	newBalance := c.newBalance(p)
-	c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
-	c.latestUnconfirmedPayment = Payment{}
 	return p, fullySigned, nil
 }
 
