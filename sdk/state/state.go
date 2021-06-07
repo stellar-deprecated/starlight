@@ -159,18 +159,6 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 	return false, nil
 }
 
-func (c *Channel) CloseStart(iterationNumber int) error {
-	return nil
-}
-
-func (c *Channel) CloseCoordinated(id string) (newStatus string, err error) {
-	return "", nil
-}
-
-func (c *Channel) CloseUncoordinated(id string) error {
-	return nil
-}
-
 func (c *Channel) GetLatestDeclarationTx() (*TxInfo, error) {
 	return nil, nil
 }
