@@ -12,7 +12,7 @@ import (
 
 // The high level steps for creating a channel update should be as follows, where the returned payments
 // flow to the next step:
-// 1. Sender calls ProposePayment()
+// 1. Sender calls ProposePayment
 // 2. Receiver calls ConfirmPayment
 // 3. Sender calls ConfirmPayment
 // 4. Receiver calls ConfirmPayment
