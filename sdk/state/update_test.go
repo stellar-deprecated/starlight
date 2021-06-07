@@ -49,7 +49,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	assert.Equal(t, p, receiverChannel.latestUnconfirmedPayment)
 
 	// Confirming a payment with same sequence number but different Amount should error
-	pDifferent := &Payment{
+	pDifferent := Payment{
 		IterationNumber: 1,
 		Amount: Amount{
 			Asset:  NativeAsset{},
@@ -66,10 +66,10 @@ func TestLastConfirmedPayment(t *testing.T) {
 	p, fullySigned, err = sendingChannel.ConfirmPayment(p)
 	assert.True(t, fullySigned)
 	require.NoError(t, err)
-	assert.Nil(t, sendingChannel.latestUnconfirmedPayment)
+	assert.Equal(t, Payment{}, sendingChannel.latestUnconfirmedPayment)
 
 	p, fullySigned, err = receiverChannel.ConfirmPayment(p)
 	assert.True(t, fullySigned)
 	require.NoError(t, err)
-	assert.Nil(t, receiverChannel.latestUnconfirmedPayment)
+	assert.Equal(t, Payment{}, receiverChannel.latestUnconfirmedPayment)
 }

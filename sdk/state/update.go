@@ -3,7 +3,6 @@ package state
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -19,6 +18,14 @@ type Payment struct {
 	FromInitiator         bool
 }
 
+func (p Payment) isEqual(p2 Payment) bool {
+	return p.IterationNumber == p2.IterationNumber && p.Amount == p2.Amount && p.FromInitiator == p2.FromInitiator
+}
+
+func (p Payment) isEmpty() bool {
+	return p.IterationNumber == 0 && p.Amount == (Amount{}) && p.FromInitiator == false && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
+}
+
 type CloseAgreement struct {
 	IterationNumber       int64
 	Balance               Amount
@@ -26,9 +33,9 @@ type CloseAgreement struct {
 	DeclarationSignatures []xdr.DecoratedSignature
 }
 
-func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
+func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 	if amount.Amount <= 0 {
-		return nil, errors.New("payment amount must be greater than 0")
+		return Payment{}, errors.New("payment amount must be greater than 0")
 	}
 	newBalance := int64(0)
 	if c.initiator {
@@ -49,13 +56,13 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		AmountToResponder:          maxInt64(0, newBalance),
 	})
 	if err != nil {
-		return nil, err
+		return Payment{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return nil, err
+		return Payment{}, err
 	}
-	p := &Payment{
+	p := Payment{
 		IterationNumber: c.NextIterationNumber(),
 		Amount:          amount,
 		CloseSignatures: txClose.Signatures(),
@@ -65,7 +72,7 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 	return p, nil
 }
 
-func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err error) {
+func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err error) {
 	newBalance := c.newBalance(p)
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
@@ -94,13 +101,13 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	return
 }
 
-func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool, err error) {
+func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, err error) {
 	if p.IterationNumber != c.NextIterationNumber() {
-		return nil, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
+		return p, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
 	}
-	if c.latestUnconfirmedPayment != nil && !reflect.DeepEqual(c.latestUnconfirmedPayment, p) {
-		return nil, fullySigned, errors.New("a different unconfirmed payment exists")
+	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEqual(p) {
+		return p, fullySigned, errors.New("a different unconfirmed payment exists")
 	}
 
 	txClose, txDecl, err := c.PaymentTxs(p)
@@ -157,8 +164,8 @@ func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool
 	// transactions in the payment.
 	fullySigned = true
 	newBalance := c.newBalance(p)
-	c.latestCloseAgreement = &CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
-	c.latestUnconfirmedPayment = nil
+	c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
+	c.latestUnconfirmedPayment = Payment{}
 	return p, fullySigned, nil
 }
 
