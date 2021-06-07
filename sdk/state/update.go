@@ -10,6 +10,13 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// The high level steps for creating a channel update should be as follows, where the returned payments
+// flow to the next step:
+// 1. Sender calls ProposePayment()
+// 2. Receiver calls ConfirmPayment
+// 3. Sender calls ConfirmPayment
+// 4. Receiver calls ConfirmPayment
+
 type Payment struct {
 	IterationNumber       int64
 	Amount                Amount
@@ -103,6 +110,9 @@ func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err 
 	return
 }
 
+// ConfirmPayment confirms a payment. The original proposer should only have to call this once, and the
+// receiver should call twice. First to sign the payments and store signatures, second to just store the new signatures
+// from the other party's confirmation.
 func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, err error) {
 	// at the end of this method if a fully signed payment, create a close agreement and clear latest latestUnconfirmedPayment to
 	// prepare for the next update. If not fully signed, save latestUnconfirmedPayment, as we are still in the process of confirming.
