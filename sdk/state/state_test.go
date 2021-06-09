@@ -252,6 +252,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		i++
 		require.Equal(t, i, initiatorChannel.NextIterationNumber())
 		require.Equal(t, i, responderChannel.NextIterationNumber())
+		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
 		var sendingChannel *state.Channel
@@ -479,6 +480,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		i++
 		require.Equal(t, i, initiatorChannel.NextIterationNumber())
 		require.Equal(t, i, responderChannel.NextIterationNumber())
+		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
 		paymentLog := ""
