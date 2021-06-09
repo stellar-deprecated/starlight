@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -17,29 +18,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test(t *testing.T) {
-	const horizonURL = "http://localhost:8000"
-	client := &horizonclient.Client{HorizonURL: horizonURL}
+const horizonURL = "http://localhost:8000"
+
+var networkPassphrase string
+var client *horizonclient.Client
+
+type Participant struct {
+	Name                 string
+	KP                   *keypair.Full
+	Escrow               *keypair.Full
+	EscrowSequenceNumber int64
+	Contribution         int64
+}
+
+// Setup
+func TestMain(m *testing.M) {
+	client = &horizonclient.Client{HorizonURL: horizonURL}
 	networkDetails, err := client.Root()
-	require.NoError(t, err)
-	networkPassphrase := networkDetails.NetworkPassphrase
-
-	// Channel constants.
-	const observationPeriodTime = 20 * time.Second
-	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-
-	// Common data both participants will have during the test.
-	type Participant struct {
-		Name                 string
-		KP                   *keypair.Full
-		Escrow               *keypair.Full
-		EscrowSequenceNumber int64
-		Contribution         int64
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
+	networkPassphrase = networkDetails.NetworkPassphrase
 
-	// Setup initiator.
-	initiator := Participant{
+	os.Exit(m.Run())
+}
+
+func initAccounts(t *testing.T) (initiator Participant, responder Participant) {
+	initiator = Participant{
 		Name:         "Initiator",
 		KP:           keypair.MustRandom(),
 		Escrow:       keypair.MustRandom(),
@@ -79,7 +85,7 @@ func Test(t *testing.T) {
 	t.Log("Initiator Contribution:", initiator.Contribution)
 
 	// Setup responder.
-	responder := Participant{
+	responder = Participant{
 		Name:         "Responder",
 		KP:           keypair.MustRandom(),
 		Escrow:       keypair.MustRandom(),
@@ -117,9 +123,16 @@ func Test(t *testing.T) {
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution)
+	return initiator, responder
+}
 
-	// Create channels with escrow accounts.
-	initiatorChannel := state.NewChannel(state.Config{
+func initChannels(t *testing.T, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
+	// Channel constants.
+	const observationPeriodTime = 20 * time.Second
+	const averageLedgerDuration = 5 * time.Second
+	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+
+	initiatorChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:          networkPassphrase,
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -141,7 +154,7 @@ func Test(t *testing.T) {
 		LocalSigner:  initiator.KP,
 		RemoteSigner: responder.KP.FromAddress(),
 	})
-	responderChannel := state.NewChannel(state.Config{
+	responderChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:          networkPassphrase,
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -163,6 +176,12 @@ func Test(t *testing.T) {
 		LocalSigner:  responder.KP,
 		RemoteSigner: initiator.KP.FromAddress(),
 	})
+	return initiatorChannel, responderChannel
+}
+
+func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
+	initiator, responder := initAccounts(t)
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
@@ -228,10 +247,12 @@ func Test(t *testing.T) {
 	t.Log("Subsequent agreements...")
 	rBalanceCheck := responder.Contribution
 	iBalanceCheck := initiator.Contribution
-	for i < 20 {
+	endingIterationNumber := int64(20)
+	for i < endingIterationNumber {
 		i++
 		require.Equal(t, i, initiatorChannel.NextIterationNumber())
 		require.Equal(t, i, responderChannel.NextIterationNumber())
+		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
 		var sendingChannel *state.Channel
@@ -290,7 +311,7 @@ func Test(t *testing.T) {
 	}
 
 	// Confused participant attempts to close channel at old iteration.
-	t.Log("Confused participant (responder) closes channel at old iteration...")
+	t.Log("Confused participant (responder) closing channel at old iteration...")
 	{
 		oldIteration := len(declarationTxs) - 4
 		oldD := declarationTxs[oldIteration]
@@ -303,7 +324,7 @@ func Test(t *testing.T) {
 		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
 		require.NoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		t.Log("Submitting Declaration:", oldD.SourceAccount().Sequence)
+		t.Log("Responder - Submitting Declaration:", oldD.SourceAccount().Sequence)
 		require.NoError(t, err)
 		go func() {
 			oldC := closeTxs[oldIteration]
@@ -318,10 +339,10 @@ func Test(t *testing.T) {
 				require.NoError(t, err)
 				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
-					t.Log("Submitting:", oldC.SourceAccount().Sequence, "Success")
+					t.Log("Responder - Submitting:", oldC.SourceAccount().Sequence, "Success")
 					break
 				}
-				t.Log("Submitting:", oldC.SourceAccount().Sequence, "Error:", err)
+				t.Log("Responder - Submitting:", oldC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 5)
 			}
 		}()
@@ -330,10 +351,15 @@ func Test(t *testing.T) {
 	done := make(chan struct{})
 
 	// Good participant closes channel at latest iteration.
-	t.Log("Good participant (initiator) closes channel at latest iteration...")
+	t.Log("Good participant (initiator) closing channel at latest iteration...")
 	{
-		lastIteration := len(declarationTxs) - 1
-		lastD := declarationTxs[lastIteration]
+		lastD, lastC, err := initiatorChannel.CloseTxs()
+		require.NoError(t, err)
+		lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
+		require.NoError(t, err)
+		lastC, err = lastC.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
+		require.NoError(t, err)
+
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      lastD,
 			FeeAccount: initiator.KP.Address(),
@@ -343,11 +369,10 @@ func Test(t *testing.T) {
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
 		require.NoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		t.Log("Submitting Declaration:", lastD.SourceAccount().Sequence)
+		t.Log("Initiator - Submitting Declaration:", lastD.SourceAccount().Sequence)
 		require.NoError(t, err)
 		go func() {
 			defer close(done)
-			lastC := closeTxs[lastIteration]
 			for {
 				fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 					Inner:      lastC,
@@ -361,12 +386,12 @@ func Test(t *testing.T) {
 				require.NoError(t, err)
 				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
-					t.Log("Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Success")
+					t.Log("Initiator - Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Success")
 					break
 				}
 				hErr := horizonclient.GetError(err)
+				t.Log("Initiator - Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Error:", err)
 				t.Log(hErr.ResultString())
-				t.Log("Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Error:", err)
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -389,6 +414,180 @@ func Test(t *testing.T) {
 	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
 	assert.EqualValues(t, initiatorEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)))
+}
+
+func TestOpenUpdatesCoordinatedClose(t *testing.T) {
+	initiator, responder := initAccounts(t)
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
+
+	s := initiator.EscrowSequenceNumber + 1
+	i := int64(1)
+	e := int64(0)
+	t.Log("Vars: s:", s, "i:", i, "e:", e)
+
+	// Open
+	t.Log("Open...")
+	open, err := initiatorChannel.ProposeOpen()
+	require.NoError(t, err)
+	for {
+		var fullySignedR bool
+		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fullySignedI bool
+		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fullySignedI && fullySignedR {
+			break
+		}
+	}
+
+	{
+		ci, di, fi, err := initiatorChannel.OpenTxs()
+		require.NoError(t, err)
+
+		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
+		require.NoError(t, err)
+
+		di, err = di.AddSignatureDecorated(open.DeclarationSignatures...)
+		require.NoError(t, err)
+
+		fi, err = fi.AddSignatureDecorated(open.FormationSignatures...)
+		require.NoError(t, err)
+
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      fi,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
+		require.NoError(t, err)
+	}
+
+	// Perform a number of iterations, much like two participants may.
+	// Exchange signed C_i and D_i for each
+	t.Log("Subsequent agreements...")
+	rBalanceCheck := responder.Contribution
+	iBalanceCheck := initiator.Contribution
+	endingIterationNumber := int64(20)
+	for i < endingIterationNumber {
+		i++
+		require.Equal(t, i, initiatorChannel.NextIterationNumber())
+		require.Equal(t, i, responderChannel.NextIterationNumber())
+		// get a random payment amount from 0 to 100 lumens
+		amount := randomPositiveInt64(t, 100_0000000)
+
+		paymentLog := ""
+		var sendingChannel, receivingChannel *state.Channel
+		if randomBool(t) {
+			paymentLog = "I payment to R of: "
+			sendingChannel = initiatorChannel
+			receivingChannel = responderChannel
+			rBalanceCheck += amount
+			iBalanceCheck -= amount
+		} else {
+			paymentLog = "R payment to I of: "
+			sendingChannel = responderChannel
+			receivingChannel = initiatorChannel
+			rBalanceCheck -= amount
+			iBalanceCheck += amount
+		}
+		t.Log("Current channel balances: I: ", sendingChannel.Balance().Amount/1_000_0000, "R: ", receivingChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
+		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
+
+		// Sender: creates new Payment, sends to other party
+		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
+		require.NoError(t, err)
+
+		var fullySigned bool
+
+		// Receiver: receives new payment, validates, then confirms by signing both
+		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.False(t, fullySigned)
+
+		// Sender: re-confirms P_i by signing D_i and sending back
+		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.True(t, fullySigned)
+
+		// Receiver: receives new payment, validates, then confirms by signing both
+		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		require.True(t, fullySigned)
+		ci, di, err := sendingChannel.PaymentTxs(payment)
+		require.NoError(t, err)
+		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
+		require.NoError(t, err)
+		di, err = di.AddSignatureDecorated(payment.DeclarationSignatures...)
+		require.NoError(t, err)
+	}
+
+	// Coordinated Close
+	t.Log("Begin coordinated close process ...")
+	t.Log("Initiator submitting latest declaration transaction")
+	lastD, _, err := initiatorChannel.CloseTxs()
+	require.NoError(t, err)
+	lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
+	require.NoError(t, err)
+
+	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      lastD,
+		FeeAccount: initiator.KP.Address(),
+		BaseFee:    txnbuild.MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+	require.NoError(t, err)
+	_, err = client.SubmitFeeBumpTransaction(fbtx)
+	require.NoError(t, err)
+
+	t.Log("Initiator proposes a coordinated close")
+	cc, err := initiatorChannel.ProposeCoordinatedClose(0, 0)
+	require.NoError(t, err)
+	cc, err = responderChannel.ConfirmCoordinatedClose(cc)
+	require.NoError(t, err)
+	cc, err = initiatorChannel.ConfirmCoordinatedClose(cc)
+	require.NoError(t, err)
+
+	t.Log("Initiator closing channel with new coordinated close transaction")
+	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
+	require.NoError(t, err)
+	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.CoordinatedClose().CloseSignatures()...)
+	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      txCoordinated,
+		FeeAccount: initiator.KP.Address(),
+		BaseFee:    txnbuild.MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+	require.NoError(t, err)
+	_, err = client.SubmitFeeBumpTransaction(fbtx)
+	if err != nil {
+		hErr := horizonclient.GetError(err)
+		t.Log("Submitting Close:", txCoordinated.SourceAccount().Sequence, "Error:", err)
+		t.Log(hErr.ResultString())
+		require.NoError(t, err)
+	}
+	t.Log("Coordinated close successful")
+
+	// check final escrow fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
+	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	require.NoError(t, err)
+	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)), responderEscrowResponse.Balances[0].Balance)
+
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
+	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	require.NoError(t, err)
+	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)), initiatorEscrowResponse.Balances[0].Balance)
 }
 
 func randomBool(t *testing.T) bool {
