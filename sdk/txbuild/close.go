@@ -17,8 +17,8 @@ type CloseParams struct {
 	ResponderEscrow            *keypair.FromAddress
 	StartSequence              int64
 	IterationNumber            int64
-	AmountToInitiator          int64
-	AmountToResponder          int64
+	AmountToInitiator          Amount
+	AmountToResponder          Amount
 }
 
 func Close(p CloseParams) (*txnbuild.Transaction, error) {
@@ -51,20 +51,20 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 			},
 		},
 	}
-	if p.AmountToInitiator != 0 {
+	if p.AmountToInitiator.Amount != 0 {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
 			SourceAccount: p.ResponderEscrow.Address(),
 			Destination:   p.InitiatorEscrow.Address(),
-			Asset:         txnbuild.NativeAsset{},
-			Amount:        amount.StringFromInt64(p.AmountToInitiator),
+			Asset:         p.AmountToInitiator.Asset,
+			Amount:        amount.StringFromInt64(p.AmountToInitiator.Amount),
 		})
 	}
-	if p.AmountToResponder != 0 {
+	if p.AmountToResponder.Amount != 0 {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
 			SourceAccount: p.InitiatorEscrow.Address(),
 			Destination:   p.ResponderEscrow.Address(),
-			Asset:         txnbuild.NativeAsset{},
-			Amount:        amount.StringFromInt64(p.AmountToResponder),
+			Asset:         p.AmountToResponder.Asset,
+			Amount:        amount.StringFromInt64(p.AmountToResponder.Amount),
 		})
 	}
 	tx, err := txnbuild.NewTransaction(tp)
