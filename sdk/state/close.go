@@ -26,8 +26,8 @@ func (cc CoordinatedClose) CloseSignatures() []xdr.DecoratedSignature {
 	return cc.closeSignatures
 }
 
-func (c *Channel) CloseTxs() (*txnbuild.Transaction, *txnbuild.Transaction, error) {
-	txDecl, err := txbuild.Declaration(txbuild.DeclarationParams{
+func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
+	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
 		IterationNumber:         c.latestCloseAgreement.IterationNumber,
@@ -36,7 +36,7 @@ func (c *Channel) CloseTxs() (*txnbuild.Transaction, *txnbuild.Transaction, erro
 	if err != nil {
 		return nil, nil, err
 	}
-	txClose, err := txbuild.Close(txbuild.CloseParams{
+	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
