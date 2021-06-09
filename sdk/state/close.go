@@ -36,18 +36,7 @@ func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Tr
 	if err != nil {
 		return nil, nil, err
 	}
-	txClose, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestCloseAgreement.IterationNumber,
-		AmountToInitiator:          c.initiatorClaimAmount(),
-		AmountToResponder:          c.responderClaimAmount(),
-	})
+	txClose, err = c.makeCloseTx(c.observationPeriodTime, c.observationPeriodLedgerGap)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -55,18 +44,7 @@ func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Tr
 }
 
 func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
-	txClose, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.coordinatedClose.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.coordinatedClose.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestCloseAgreement.IterationNumber,
-		AmountToInitiator:          c.initiatorClaimAmount(),
-		AmountToResponder:          c.responderClaimAmount(),
-	})
+	txClose, err := c.makeCloseTx(c.coordinatedClose.observationPeriodTime, c.coordinatedClose.observationPeriodLedgerGap)
 	if err != nil {
 		return nil, err
 	}
@@ -77,18 +55,7 @@ func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
 // This should be used when participants are in agreement on the final txClose parameters, but would
 // like to submit earlier than the original observation time.
 func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (CoordinatedClose, error) {
-	txCoordinatedClose, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestCloseAgreement.IterationNumber,
-		AmountToInitiator:          c.initiatorClaimAmount(),
-		AmountToResponder:          c.responderClaimAmount(),
-	})
+	txCoordinatedClose, err := c.makeCloseTx(observationPeriodTime, observationPeriodLedgerGap)
 	if err != nil {
 		return CoordinatedClose{}, err
 	}
@@ -104,18 +71,7 @@ func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, o
 }
 
 func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose, error) {
-	txCoordinatedClose, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      cc.observationPeriodTime,
-		ObservationPeriodLedgerGap: cc.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestCloseAgreement.IterationNumber,
-		AmountToInitiator:          c.initiatorClaimAmount(),
-		AmountToResponder:          c.responderClaimAmount(),
-	})
+	txCoordinatedClose, err := c.makeCloseTx(cc.observationPeriodTime, cc.observationPeriodLedgerGap)
 	if err != nil {
 		return CoordinatedClose{}, err
 	}
@@ -145,4 +101,20 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose
 	// TODO - merge instead of overwrite, similar to ConfirmProposal
 	c.coordinatedClose = cc
 	return cc, nil
+}
+
+// makeCloseTx is a helper method for creating a close transaction with custom observation values.
+func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (*txnbuild.Transaction, error) {
+	return txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            c.latestCloseAgreement.IterationNumber,
+		AmountToInitiator:          c.initiatorClaimAmount(),
+		AmountToResponder:          c.responderClaimAmount(),
+	})
 }
