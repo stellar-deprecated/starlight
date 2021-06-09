@@ -43,6 +43,8 @@ type Channel struct {
 
 	latestCloseAgreement     CloseAgreement
 	latestUnconfirmedPayment Payment
+
+	coordinatedClose CoordinatedClose
 }
 
 type Config struct {
@@ -84,6 +86,14 @@ func (c *Channel) NextIterationNumber() int64 {
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() Amount {
 	return c.latestCloseAgreement.Balance
+}
+
+func (c *Channel) LatestCloseAgreement() CloseAgreement {
+	return c.latestCloseAgreement
+}
+
+func (c *Channel) CoordinatedClose() CoordinatedClose {
+	return c.coordinatedClose
 }
 
 // newBalance is a hlper method for computing what the new channel balance will be if
@@ -133,6 +143,20 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
+func (c *Channel) initiatorClaimAmount() int64 {
+	if c.latestCloseAgreement.Balance.Amount < 0 {
+		return c.latestCloseAgreement.Balance.Amount * -1
+	}
+	return 0
+}
+
+func (c *Channel) responderClaimAmount() int64 {
+	if c.latestCloseAgreement.Balance.Amount > 0 {
+		return c.latestCloseAgreement.Balance.Amount
+	}
+	return 0
+}
+
 func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) (bool, error) {
 	hash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
@@ -148,24 +172,6 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 		}
 	}
 	return false, nil
-}
-
-func (c *Channel) GetLatestDeclarationTx() (*TxInfo, error) {
-	return nil, nil
-}
-
-func (c *Channel) GetLatestCloseTx(id string) (*TxInfo, error) {
-	return nil, nil
-}
-
-// helper method
-func (c *Channel) MyClaimAmount() error {
-	return nil
-}
-
-// helper method
-func (c *Channel) OtherClaimAmount() error {
-	return nil
 }
 
 type TxInfo struct {
