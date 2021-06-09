@@ -9,6 +9,12 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// The steps for a channel coordinated close are as followed (initiator and responder are interchangeable):
+// 1. Initiator submits latest declaration tx
+// 2. Initiator calls ProposeCoordinatedClose
+// 3. Responder calls ConfirmCoordinatedClose
+// 4. Initiator calls ConfirmCoordinatedClose
+
 type CoordinatedClose struct {
 	observationPeriodTime      time.Duration
 	observationPeriodLedgerGap int64
