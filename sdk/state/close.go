@@ -73,7 +73,7 @@ func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
 	return txClose, nil
 }
 
-// ProposeClose proposes parameters for a close transaction to be submitted earlier.
+// ProposeCoordinatedClose proposes parameters for a close transaction to be submitted earlier.
 // This should be used when participants are in agreement on the final txClose parameters, but would
 // like to submit earlier than the original observation time.
 func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (CoordinatedClose, error) {
