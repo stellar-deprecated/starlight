@@ -574,6 +574,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		hErr := horizonclient.GetError(err)
 		t.Log("Submitting Close:", txCoordinated.SourceAccount().Sequence, "Error:", err)
 		t.Log(hErr.ResultString())
+		require.NoError(t, err)
 	}
 	t.Log("Coordinated close successful")
 
