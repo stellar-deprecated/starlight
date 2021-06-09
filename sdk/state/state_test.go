@@ -247,7 +247,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Subsequent agreements...")
 	rBalanceCheck := responder.Contribution
 	iBalanceCheck := initiator.Contribution
-	endingIterationNumber := 20
+	endingIterationNumber := int64(20)
 	for i < endingIterationNumber {
 		i++
 		require.Equal(t, i, initiatorChannel.NextIterationNumber())
@@ -475,7 +475,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	t.Log("Subsequent agreements...")
 	rBalanceCheck := responder.Contribution
 	iBalanceCheck := initiator.Contribution
-	endingIterationNumber := 20
+	endingIterationNumber := int64(20)
 	for i < endingIterationNumber {
 		i++
 		require.Equal(t, i, initiatorChannel.NextIterationNumber())
