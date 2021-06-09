@@ -82,7 +82,7 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose
 		return CoordinatedClose{}, err
 	}
 	if !signed {
-		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close signed by remote: not signed by remote")
+		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close: not signed by remote")
 	}
 
 	// If local has not signed, sign.
