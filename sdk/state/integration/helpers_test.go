@@ -8,7 +8,7 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
-	"github.com/stellar/go/amount"
+	stellarAmount "github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -197,7 +197,7 @@ func fund(client horizonclient.ClientInterface, account *keypair.FromAddress, st
 			Operations: []txnbuild.Operation{
 				&txnbuild.CreateAccount{
 					Destination: account.Address(),
-					Amount:      amount.StringFromInt64(startingBalance),
+					Amount:      stellarAmount.StringFromInt64(startingBalance),
 				},
 			},
 		},
