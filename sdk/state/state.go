@@ -22,7 +22,6 @@ type Amount struct {
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
-	Balances       []Amount
 }
 
 type Channel struct {
