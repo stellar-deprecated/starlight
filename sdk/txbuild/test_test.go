@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
+	stellarAmount "github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -52,10 +53,10 @@ func Test(t *testing.T) {
 		seqNum, err := account.GetSequenceNumber()
 		require.NoError(t, err)
 		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
-			Creator:             initiator.KP.FromAddress(),
-			Escrow:              initiator.Escrow.FromAddress(),
-			SequenceNumber:      seqNum + 1,
-			InitialContribution: initiator.Contribution,
+			Creator:        initiator.KP.FromAddress(),
+			Escrow:         initiator.Escrow.FromAddress(),
+			SequenceNumber: seqNum + 1,
+			Asset:          txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, initiator.KP, initiator.Escrow)
@@ -71,6 +72,28 @@ func Test(t *testing.T) {
 		txResp, err := client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 		initiator.EscrowSequenceNumber = int64(txResp.Ledger) << 32
+
+		// add initial contribution
+		_, err = account.IncrementSequenceNumber()
+		require.NoError(t, err)
+
+		tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+			SourceAccount:        &account,
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: initiator.Escrow.Address(),
+					Amount:      stellarAmount.StringFromInt64(initiator.Contribution),
+					Asset:       txnbuild.NativeAsset{},
+				},
+			},
+		})
+		tx, err = tx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitTransaction(tx)
+		require.NoError(t, err)
 	}
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
 	t.Log("Initiator Contribution:", initiator.Contribution)
@@ -92,10 +115,10 @@ func Test(t *testing.T) {
 		seqNum, err := account.GetSequenceNumber()
 		require.NoError(t, err)
 		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
-			Creator:             responder.KP.FromAddress(),
-			Escrow:              responder.Escrow.FromAddress(),
-			SequenceNumber:      seqNum + 1,
-			InitialContribution: responder.Contribution,
+			Creator:        responder.KP.FromAddress(),
+			Escrow:         responder.Escrow.FromAddress(),
+			SequenceNumber: seqNum + 1,
+			Asset:          txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, responder.KP, responder.Escrow)
@@ -111,6 +134,24 @@ func Test(t *testing.T) {
 		txResp, err := client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 		responder.EscrowSequenceNumber = int64(txResp.Ledger) << 32
+
+		// add initial contribution
+		_, err = account.IncrementSequenceNumber()
+		require.NoError(t, err)
+
+		tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+			SourceAccount:        &account,
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: responder.Escrow.Address(),
+					Amount:      stellarAmount.StringFromInt64(responder.Contribution),
+					Asset:       txnbuild.NativeAsset{},
+				},
+			},
+		})
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution)
@@ -141,6 +182,7 @@ func Test(t *testing.T) {
 			IterationNumber:            i,
 			AmountToInitiator:          0,
 			AmountToResponder:          0,
+			Asset:                      txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		ci, err = ci.Sign(networkPassphrase, initiator.KP, responder.KP)
@@ -170,6 +212,7 @@ func Test(t *testing.T) {
 			InitiatorEscrow: initiator.Escrow.FromAddress(),
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
+			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)
@@ -226,6 +269,7 @@ func Test(t *testing.T) {
 			IterationNumber:            i,
 			AmountToInitiator:          rOwesI,
 			AmountToResponder:          iOwesR,
+			Asset:                      txnbuild.NativeAsset{},
 		}
 		ci, err := txbuild.Close(closeParams)
 		require.NoError(t, err)
