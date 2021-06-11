@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -58,6 +59,11 @@ func (c *Channel) OpenTxs(asset Asset, assetLimit string) (txClose, txDecl, form
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) ProposeOpen(asset Asset, assetLimit string) (Open, error) {
+	if !asset.IsNative() {
+		if _, err := strconv.Atoi(assetLimit); err != nil {
+			return Open{}, fmt.Errorf("proposing asset limit for non native asset: %w", err)
+		}
+	}
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, _, _, err := c.OpenTxs(asset, assetLimit)
