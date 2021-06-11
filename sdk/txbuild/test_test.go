@@ -152,6 +152,10 @@ func Test(t *testing.T) {
 				},
 			},
 		})
+		tx, err = tx.Sign(networkPassphrase, responder.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitTransaction(tx)
+		require.NoError(t, err)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution)
