@@ -196,9 +196,9 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 	issuerKP := keypair.MustRandom()
 	distributorKP := keypair.MustRandom()
 
-	err := createAccount(client, issuerKP.FromAddress(), 1_000_0000000)
+	err := retry(2, func() error { return createAccount(client, issuerKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
-	err = createAccount(client, distributorKP.FromAddress(), 1_000_0000000)
+	err = retry(2, func() error { return createAccount(client, distributorKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
 
 	issuer, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: issuerKP.Address()})
