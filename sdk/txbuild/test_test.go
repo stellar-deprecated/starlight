@@ -404,6 +404,7 @@ func retry(maxAttempts int, f func() error) (err error) {
 		if err == nil {
 			return
 		}
+		time.Sleep(2 * time.Second)
 	}
 	return err
 }

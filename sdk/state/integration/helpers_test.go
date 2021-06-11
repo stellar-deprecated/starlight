@@ -29,7 +29,8 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 	{
 		err := retry(2, func() error { return createAccount(client, initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		fundAsset(t, client, asset, initiator.Contribution, initiator.KP, distributorKP)
+		err = retry(2, func() error { return fundAsset(client, asset, initiator.Contribution, initiator.KP, distributorKP) })
+		require.NoError(t, err)
 
 		// create escrow account
 		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.KP.Address()})
@@ -97,7 +98,8 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 	{
 		err := retry(2, func() error { return createAccount(client, responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		fundAsset(t, client, asset, responder.Contribution, responder.KP, distributorKP)
+		err = retry(2, func() error { return fundAsset(client, asset, responder.Contribution, responder.KP, distributorKP) })
+		require.NoError(t, err)
 
 		// create escrow account
 		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.KP.Address()})
@@ -270,13 +272,16 @@ func retry(maxAttempts int, f func() error) (err error) {
 		if err == nil {
 			return
 		}
+		time.Sleep(2 * time.Second)
 	}
 	return err
 }
 
-func fundAsset(t *testing.T, client horizonclient.ClientInterface, asset txnbuild.Asset, amount int64, accountKP *keypair.Full, distributorKP *keypair.Full) {
+func fundAsset(client horizonclient.ClientInterface, asset txnbuild.Asset, amount int64, accountKP *keypair.Full, distributorKP *keypair.Full) error {
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
 
 	ops := []txnbuild.Operation{}
 	if !asset.IsNative() {
@@ -298,15 +303,24 @@ func fundAsset(t *testing.T, client horizonclient.ClientInterface, asset txnbuil
 		Timebounds:           txnbuild.NewTimeout(300),
 		Operations:           ops,
 	})
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
 	if !asset.IsNative() {
 		tx, err = tx.Sign(networkPassphrase, accountKP)
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 	}
 	tx, err = tx.Sign(networkPassphrase, distributorKP)
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
 	_, err = client.SubmitTransaction(tx)
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func createAccount(client horizonclient.ClientInterface, account *keypair.FromAddress, startingBalance int64) error {
