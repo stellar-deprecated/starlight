@@ -31,56 +31,7 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 		require.NoError(t, err)
 		err = retry(2, func() error { return fundAsset(client, asset, initiator.Contribution, initiator.KP, distributorKP) })
 		require.NoError(t, err)
-
-		// create escrow account
-		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.KP.Address()})
-		require.NoError(t, err)
-		seqNum, err := account.GetSequenceNumber()
-		require.NoError(t, err)
-
-		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
-			Creator:        initiator.KP.FromAddress(),
-			Escrow:         initiator.Escrow.FromAddress(),
-			SequenceNumber: seqNum + 1,
-			Asset:          asset,
-			AssetLimit:     assetLimit,
-		})
-		require.NoError(t, err)
-		tx, err = tx.Sign(networkPassphrase, initiator.KP, initiator.Escrow)
-		require.NoError(t, err)
-		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      tx,
-			FeeAccount: initiator.KP.Address(),
-			BaseFee:    txnbuild.MinBaseFee,
-		})
-		require.NoError(t, err)
-		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
-		txResp, err := client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
-		initiator.EscrowSequenceNumber = int64(txResp.Ledger) << 32
-
-		// add initial contribution
-		_, err = account.IncrementSequenceNumber()
-		require.NoError(t, err)
-
-		tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
-			SourceAccount:        &account,
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimeout(300),
-			IncrementSequenceNum: true,
-			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{
-					Destination: initiator.Escrow.Address(),
-					Amount:      stellarAmount.StringFromInt64(initiator.Contribution),
-					Asset:       asset,
-				},
-			},
-		})
-		tx, err = tx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
-		_, err = client.SubmitTransaction(tx)
-		require.NoError(t, err)
+		initEscrowAccount(t, client, &initiator, asset, assetLimit)
 	}
 
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
@@ -100,60 +51,63 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 		require.NoError(t, err)
 		err = retry(2, func() error { return fundAsset(client, asset, responder.Contribution, responder.KP, distributorKP) })
 		require.NoError(t, err)
-
-		// create escrow account
-		account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.KP.Address()})
-		require.NoError(t, err)
-		seqNum, err := account.GetSequenceNumber()
-		require.NoError(t, err)
-		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
-			Creator:        responder.KP.FromAddress(),
-			Escrow:         responder.Escrow.FromAddress(),
-			SequenceNumber: seqNum + 1,
-			Asset:          asset,
-			AssetLimit:     assetLimit,
-		})
-		require.NoError(t, err)
-		tx, err = tx.Sign(networkPassphrase, responder.KP, responder.Escrow)
-		require.NoError(t, err)
-		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      tx,
-			FeeAccount: responder.KP.Address(),
-			BaseFee:    txnbuild.MinBaseFee,
-		})
-		require.NoError(t, err)
-		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-		require.NoError(t, err)
-		txResp, err := client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
-		responder.EscrowSequenceNumber = int64(txResp.Ledger) << 32
-
-		// add initial contribution
-		_, err = account.IncrementSequenceNumber()
-		require.NoError(t, err)
-
-		tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
-			SourceAccount:        &account,
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimeout(300),
-			IncrementSequenceNum: true,
-			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{
-					Destination: responder.Escrow.Address(),
-					Amount:      stellarAmount.StringFromInt64(responder.Contribution),
-					Asset:       asset,
-				},
-			},
-		})
-
-		tx, err = tx.Sign(networkPassphrase, responder.KP)
-		require.NoError(t, err)
-		_, err = client.SubmitTransaction(tx)
-		require.NoError(t, err)
+		initEscrowAccount(t, client, &responder, asset, assetLimit)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.GetCode(), "issuer: ", asset.GetIssuer())
 	return initiator, responder
+}
+
+func initEscrowAccount(t *testing.T, client horizonclient.ClientInterface, participant *Participant, asset txnbuild.Asset, assetLimit string) {
+	// create escrow account
+	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
+	require.NoError(t, err)
+	seqNum, err := account.GetSequenceNumber()
+	require.NoError(t, err)
+	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
+		Creator:        participant.KP.FromAddress(),
+		Escrow:         participant.Escrow.FromAddress(),
+		SequenceNumber: seqNum + 1,
+		Asset:          asset,
+		AssetLimit:     assetLimit,
+	})
+	require.NoError(t, err)
+	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)
+	require.NoError(t, err)
+	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: participant.KP.Address(),
+		BaseFee:    txnbuild.MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtx, err = fbtx.Sign(networkPassphrase, participant.KP)
+	require.NoError(t, err)
+	txResp, err := client.SubmitFeeBumpTransaction(fbtx)
+	require.NoError(t, err)
+	participant.EscrowSequenceNumber = int64(txResp.Ledger) << 32
+
+	// add initial contribution
+	_, err = account.IncrementSequenceNumber()
+	require.NoError(t, err)
+
+	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount:        &account,
+		BaseFee:              txnbuild.MinBaseFee,
+		Timebounds:           txnbuild.NewTimeout(300),
+		IncrementSequenceNum: true,
+		Operations: []txnbuild.Operation{
+			&txnbuild.Payment{
+				Destination: participant.Escrow.Address(),
+				Amount:      stellarAmount.StringFromInt64(participant.Contribution),
+				Asset:       asset,
+			},
+		},
+	})
+
+	tx, err = tx.Sign(networkPassphrase, participant.KP)
+	require.NoError(t, err)
+	_, err = client.SubmitTransaction(tx)
+	require.NoError(t, err)
 }
 
 func initChannels(t *testing.T, client horizonclient.ClientInterface, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
@@ -203,8 +157,6 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 	err = retry(2, func() error { return createAccount(client, distributorKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
 
-	// issuer, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: issuerKP.Address()})
-	// require.NoError(t, err)
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
 	require.NoError(t, err)
 
