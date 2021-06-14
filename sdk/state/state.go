@@ -174,6 +174,20 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 	return false, nil
 }
 
+func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) []xdr.DecoratedSignature {
+	m := make(map[string]bool)
+	for _, os := range oldSignatures {
+		m[string(os.Signature)] = true
+	}
+
+	for _, ns := range newSignatures {
+		if _, found := m[string(ns.Signature)]; !found {
+			oldSignatures = append(oldSignatures, ns)
+		}
+	}
+	return oldSignatures
+}
+
 type TxInfo struct {
 	ID        string
 	Iteration int

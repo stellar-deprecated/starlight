@@ -35,9 +35,16 @@ func (p Payment) isEmpty() bool {
 	return p.IterationNumber == 0 && p.Amount == (Amount{}) && p.FromInitiator == false && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
 }
 
-// addSignatures adds new signatures to the payment. If the signature already exists, it is skipped.
-func (p Payment) addNewSignatures(closeSignatures []xdr.DecoratedSignature declarationSignatures []xdr.DecoratedSignature) {
-
+// mergePaymentData merges the data from a new payment into an existing one. The signatures of the existing
+// payment are appended to so that existing signatures are not lost.
+func mergePaymentData(p Payment, newPayment Payment) Payment {
+	return Payment{
+		IterationNumber:       newPayment.IterationNumber,
+		Amount:                newPayment.Amount,
+		FromInitiator:         newPayment.FromInitiator,
+		CloseSignatures:       appendNewSignatures(p.CloseSignatures, newPayment.CloseSignatures),
+		DeclarationSignatures: appendNewSignatures(p.DeclarationSignatures, newPayment.DeclarationSignatures),
+	}
 }
 
 type CloseAgreement struct {
@@ -131,7 +138,7 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 			newBalance := c.newBalance(p)
 			c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
 		} else {
-			c.latestUnconfirmedPayment = p
+			c.latestUnconfirmedPayment = mergePaymentData(c.latestUnconfirmedPayment, p)
 		}
 	}()
 

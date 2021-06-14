@@ -26,6 +26,16 @@ func (cc CoordinatedClose) CloseSignatures() []xdr.DecoratedSignature {
 	return cc.closeSignatures
 }
 
+// mergeCoordinatedCloseData merges the data from a new coordinated close into an existing one. The signatures of the existing
+// coordinated close are appended to so that existing signatures are not lost.
+func mergeCoordinatedCloseData(cc CoordinatedClose, newCoordinatedClose CoordinatedClose) CoordinatedClose {
+	return CoordinatedClose{
+		observationPeriodTime:      newCoordinatedClose.observationPeriodTime,
+		observationPeriodLedgerGap: newCoordinatedClose.observationPeriodLedgerGap,
+		closeSignatures:            appendNewSignatures(cc.closeSignatures, newCoordinatedClose.closeSignatures),
+	}
+}
+
 func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -98,8 +108,7 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose
 		cc.closeSignatures = append(cc.closeSignatures, txCoordinatedClose.Signatures()...)
 	}
 
-	// TODO - merge instead of overwrite, similar to ConfirmProposal
-	c.coordinatedClose = cc
+	c.coordinatedClose = mergeCoordinatedCloseData(c.coordinatedClose, cc)
 	return cc, nil
 }
 

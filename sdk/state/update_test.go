@@ -1,10 +1,12 @@
 package state
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,4 +76,66 @@ func TestLastConfirmedPayment(t *testing.T) {
 	assert.True(t, fullySigned)
 	require.NoError(t, err)
 	assert.Equal(t, Payment{}, receiverChannel.latestUnconfirmedPayment)
+}
+
+func TestAppendNewSignature(t *testing.T) {
+	// TODO - put this code somewhere for re-use (use the integration function code?)
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	sendingChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	rand1, err := randomByteArray(10)
+	require.NoError(t, err)
+	rand2, err := randomByteArray(10)
+	require.NoError(t, err)
+	newCloseSignatures := []xdr.DecoratedSignature{
+		xdr.DecoratedSignature{
+			Signature: rand1,
+		},
+		xdr.DecoratedSignature{
+			Signature: rand2,
+		},
+	}
+
+	sendingChannel.latestUnconfirmedPayment.CloseSignatures = appendNewSignatures(sendingChannel.latestUnconfirmedPayment.CloseSignatures, newCloseSignatures)
+	assert.Equal(t, 2, len(sendingChannel.latestUnconfirmedPayment.CloseSignatures))
+	assert.Equal(t, newCloseSignatures[0], sendingChannel.latestUnconfirmedPayment.CloseSignatures[0])
+	assert.Equal(t, newCloseSignatures[1], sendingChannel.latestUnconfirmedPayment.CloseSignatures[1])
+
+	// 1 new signature is introduced
+	rand3, err := randomByteArray(10)
+	require.NoError(t, err)
+	newCloseSignatures = append(newCloseSignatures, xdr.DecoratedSignature{
+		Signature: rand3,
+	})
+	sendingChannel.latestUnconfirmedPayment.CloseSignatures = appendNewSignatures(sendingChannel.latestUnconfirmedPayment.CloseSignatures, newCloseSignatures)
+	assert.Equal(t, 3, len(sendingChannel.latestUnconfirmedPayment.CloseSignatures))
+	for i, ncs := range newCloseSignatures {
+		assert.Equal(t, ncs, sendingChannel.latestUnconfirmedPayment.CloseSignatures[i])
+	}
+}
+
+// TODO - move to another folder for helper methods?
+func randomByteArray(length int) ([]byte, error) {
+	arr := make([]byte, length)
+	_, err := rand.Read(arr)
+	if err != nil {
+		return nil, err
+	}
+	return arr, nil
 }
