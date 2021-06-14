@@ -203,8 +203,8 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 	err = retry(2, func() error { return createAccount(client, distributorKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
 
-	issuer, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: issuerKP.Address()})
-	require.NoError(t, err)
+	// issuer, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: issuerKP.Address()})
+	// require.NoError(t, err)
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
 	require.NoError(t, err)
 
@@ -221,28 +221,16 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 					Line:  abcdAsset,
 					Limit: "5000",
 				},
+				&txnbuild.Payment{
+					Destination:   distributorKP.Address(),
+					Asset:         abcdAsset,
+					Amount:        "5000",
+					SourceAccount: issuerKP.Address(),
+				},
 			},
 		},
 	)
-	tx, err = tx.Sign(networkPassphrase, distributorKP)
-	require.NoError(t, err)
-	_, err = client.SubmitTransaction(tx)
-	require.NoError(t, err)
-
-	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount:        &issuer,
-		IncrementSequenceNum: true,
-		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewInfiniteTimeout(),
-		Operations: []txnbuild.Operation{
-			&txnbuild.Payment{
-				Destination: distributorKP.Address(),
-				Asset:       abcdAsset,
-				Amount:      "5000",
-			},
-		},
-	})
-	tx, err = tx.Sign(networkPassphrase, issuerKP)
+	tx, err = tx.Sign(networkPassphrase, distributorKP, issuerKP)
 	require.NoError(t, err)
 	_, err = client.SubmitTransaction(tx)
 	require.NoError(t, err)
