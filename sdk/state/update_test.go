@@ -1,7 +1,7 @@
 package state
 
 import (
-	"crypto/rand"
+	"math/rand"
 	"testing"
 
 	"github.com/stellar/go/keypair"
