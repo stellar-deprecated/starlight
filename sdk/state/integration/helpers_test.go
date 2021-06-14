@@ -84,7 +84,7 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 	}
 
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
-	t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", asset.GetCode())
+	t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", asset.GetCode(), "issuer: ", asset.GetIssuer())
 
 	// Setup responder.
 	responder = Participant{
@@ -152,7 +152,7 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 		require.NoError(t, err)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
-	t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.GetCode())
+	t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.GetCode(), "issuer: ", asset.GetIssuer())
 	return initiator, responder
 }
 
