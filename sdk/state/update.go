@@ -35,6 +35,11 @@ func (p Payment) isEmpty() bool {
 	return p.IterationNumber == 0 && p.Amount == (Amount{}) && p.FromInitiator == false && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
 }
 
+// addSignatures adds new signatures to the payment. If the signature already exists, it is skipped.
+func (p Payment) addNewSignatures(closeSignatures []xdr.DecoratedSignature declarationSignatures []xdr.DecoratedSignature) {
+
+}
+
 type CloseAgreement struct {
 	IterationNumber       int64
 	Balance               Amount
