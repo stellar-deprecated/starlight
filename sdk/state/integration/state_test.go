@@ -41,8 +41,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
-	initiator, responder := initAccounts(t)
-	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
+	asset := txnbuild.NativeAsset{}
+	assetLimit := ""
+	rootResp, err := client.Root()
+	require.NoError(t, err)
+	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
+	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
+	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
 
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
@@ -278,8 +283,14 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 }
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
-	initiator, responder := initAccounts(t)
-	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
+	// TODO - test nonnative asset
+	asset := txnbuild.NativeAsset{}
+	assetLimit := ""
+	rootResp, err := client.Root()
+	require.NoError(t, err)
+	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
+	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
+	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
 	i := int64(1)
