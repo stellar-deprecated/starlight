@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	})
 
 	p, err := sendingChannel.ProposePayment(Amount{
-		Asset:  NativeAsset{},
+		Asset:  txnbuild.NativeAsset{},
 		Amount: 200,
 	})
 	require.NoError(t, err)
@@ -52,7 +53,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	pDifferent := Payment{
 		IterationNumber: 1,
 		Amount: Amount{
-			Asset:  NativeAsset{},
+			Asset:  txnbuild.NativeAsset{},
 			Amount: 400,
 		},
 		CloseSignatures: p.CloseSignatures,

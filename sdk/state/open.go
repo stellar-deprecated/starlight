@@ -26,6 +26,8 @@ func (c *Channel) OpenTxs() (txClose, txDecl, formation *txnbuild.Transaction, e
 		IterationNumber:            1,
 		AmountToInitiator:          0,
 		AmountToResponder:          0,
+		// TODO - change to non native
+		Asset: NativeAsset{},
 	})
 	if err != nil {
 		return
@@ -45,6 +47,8 @@ func (c *Channel) OpenTxs() (txClose, txDecl, formation *txnbuild.Transaction, e
 		InitiatorEscrow: c.initiatorEscrowAccount().Address,
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
+		// TODO - change to non native
+		Asset: NativeAsset{},
 	})
 	return
 }

@@ -141,6 +141,7 @@ func Test(t *testing.T) {
 			IterationNumber:            i,
 			AmountToInitiator:          0,
 			AmountToResponder:          0,
+			Asset:                      txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		ci, err = ci.Sign(networkPassphrase, initiator.KP, responder.KP)
@@ -170,6 +171,7 @@ func Test(t *testing.T) {
 			InitiatorEscrow: initiator.Escrow.FromAddress(),
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
+			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)
@@ -226,6 +228,7 @@ func Test(t *testing.T) {
 			IterationNumber:            i,
 			AmountToInitiator:          rOwesI,
 			AmountToResponder:          iOwesR,
+			Asset:                      txnbuild.NativeAsset{},
 		}
 		ci, err := txbuild.Close(closeParams)
 		require.NoError(t, err)
