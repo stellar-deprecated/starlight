@@ -63,6 +63,7 @@ func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance*-1),
 		AmountToResponder:          maxInt64(0, newBalance),
+		Asset:                      amount.Asset,
 	})
 	if err != nil {
 		return Payment{}, err
@@ -94,6 +95,7 @@ func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err 
 		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance.Amount*-1),
 		AmountToResponder:          maxInt64(0, newBalance.Amount),
+		Asset:                      p.Amount.Asset,
 	})
 	if err != nil {
 		return
