@@ -9,12 +9,12 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TODO - should store on channel like Update and Close proposals?
 type Open struct {
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FormationSignatures   []xdr.DecoratedSignature
 
-	// TODO - should store on channel or pull from channel?
 	Asset      Asset
 	AssetLimit string
 }
