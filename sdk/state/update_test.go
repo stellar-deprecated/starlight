@@ -38,8 +38,12 @@ func TestLastConfirmedPayment(t *testing.T) {
 		RemoteEscrowAccount: localEscrowAccount,
 	})
 
+	// latest close agreement should be set during open steps
+	sendingChannel.latestCloseAgreement.Balance = Amount{Asset: NativeAsset{}}
+	receiverChannel.latestCloseAgreement.Balance = Amount{Asset: NativeAsset{}}
+
 	p, err := sendingChannel.ProposePayment(Amount{
-		Asset:  txnbuild.NativeAsset{},
+		Asset:  NativeAsset{},
 		Amount: 200,
 	})
 	require.NoError(t, err)
@@ -63,7 +67,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "a different unconfirmed payment exists", err.Error())
 	assert.Equal(t, p, receiverChannel.latestUnconfirmedPayment)
-	assert.Equal(t, CloseAgreement{}, receiverChannel.LatestCloseAgreement())
+	assert.Equal(t, CloseAgreement{Balance: Amount{Asset: NativeAsset{}}}, receiverChannel.LatestCloseAgreement())
 
 	// Confirming a payment with same sequence number and same amount should pass
 	p, fullySigned, err = sendingChannel.ConfirmPayment(p)

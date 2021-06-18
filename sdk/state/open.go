@@ -2,19 +2,30 @@ package state
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
+// TODO - should store on channel like Update and Close proposals?
 type Open struct {
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FormationSignatures   []xdr.DecoratedSignature
+
+	Asset      Asset
+	AssetLimit string
 }
 
-func (c *Channel) OpenTxs() (txClose, txDecl, formation *txnbuild.Transaction, err error) {
+// OpenParams are the parameters selected by the participant proposing an open channel.
+type OpenParams struct {
+	Asset      Asset
+	AssetLimit string
+}
+
+func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
@@ -26,8 +37,7 @@ func (c *Channel) OpenTxs() (txClose, txDecl, formation *txnbuild.Transaction, e
 		IterationNumber:            1,
 		AmountToInitiator:          0,
 		AmountToResponder:          0,
-		// TODO - change to non native
-		Asset: NativeAsset{},
+		Asset:                      p.Asset,
 	})
 	if err != nil {
 		return
@@ -47,18 +57,23 @@ func (c *Channel) OpenTxs() (txClose, txDecl, formation *txnbuild.Transaction, e
 		InitiatorEscrow: c.initiatorEscrowAccount().Address,
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
-		// TODO - change to non native
-		Asset: NativeAsset{},
+		Asset:           p.Asset,
+		AssetLimit:      p.AssetLimit,
 	})
 	return
 }
 
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
-func (c *Channel) ProposeOpen() (Open, error) {
+func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
+	if !p.Asset.IsNative() {
+		if _, err := strconv.Atoi(p.AssetLimit); err != nil {
+			return Open{}, fmt.Errorf("parsing asset limit: %w", err)
+		}
+	}
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, _, _, err := c.OpenTxs()
+	txClose, _, _, err := c.OpenTxs(p)
 	if err != nil {
 		return Open{}, err
 	}
@@ -68,6 +83,8 @@ func (c *Channel) ProposeOpen() (Open, error) {
 	}
 	open := Open{
 		CloseSignatures: txClose.Signatures(),
+		Asset:           p.Asset,
+		AssetLimit:      p.AssetLimit,
 	}
 	return open, nil
 }
@@ -92,7 +109,7 @@ func (c *Channel) ProposeOpen() (Open, error) {
 func (c *Channel) ConfirmOpen(m Open) (open Open, fullySigned bool, err error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs()
+	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Asset, m.AssetLimit})
 	if err != nil {
 		return m, fullySigned, err
 	}
@@ -168,7 +185,7 @@ func (c *Channel) ConfirmOpen(m Open) (open Open, fullySigned bool, err error) {
 	fullySigned = true
 	c.latestCloseAgreement = CloseAgreement{
 		IterationNumber:       1,
-		Balance:               Amount{},
+		Balance:               Amount{Asset: m.Asset},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,
 	}

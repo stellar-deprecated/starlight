@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ type Participant struct {
 	KP                   *keypair.Full
 	Escrow               *keypair.Full
 	EscrowSequenceNumber int64
-	Contribution         int64
+	Contribution         int64 // The contribution of the asset that will be used for payments
 }
 
 // Setup
@@ -42,6 +43,7 @@ func TestMain(m *testing.M) {
 
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	asset := txnbuild.NativeAsset{}
+	// native asset has no asset limit
 	assetLimit := ""
 	rootResp, err := client.Root()
 	require.NoError(t, err)
@@ -60,7 +62,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	open, err := initiatorChannel.ProposeOpen()
+	open, err := initiatorChannel.ProposeOpen(state.OpenParams{asset, assetLimit})
 	require.NoError(t, err)
 	for {
 		var fullySignedR bool
@@ -79,7 +81,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs()
+		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{asset, assetLimit})
 		require.NoError(t, err)
 
 		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
@@ -283,12 +285,8 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 }
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
-	// TODO - test nonnative asset
-	asset := txnbuild.NativeAsset{}
-	assetLimit := ""
-	rootResp, err := client.Root()
-	require.NoError(t, err)
-	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
+	asset, distributor := initAsset(t, client)
+	assetLimit := "5000"
 	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
 	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
 
@@ -299,7 +297,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	open, err := initiatorChannel.ProposeOpen()
+	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
 	for {
 		var fullySignedR bool
@@ -318,7 +316,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs()
+		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 		require.NoError(t, err)
 
 		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
@@ -375,7 +373,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, sends to other party
-		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
+		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: asset, Amount: amount})
 		require.NoError(t, err)
 
 		var fullySigned bool
@@ -454,10 +452,19 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
 	responderEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)), responderEscrowResponse.Balances[0].Balance)
+	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)), assetBalance(asset, responderEscrowResponse))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
 	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)), initiatorEscrowResponse.Balances[0].Balance)
+	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)), assetBalance(asset, initiatorEscrowResponse))
+}
+
+func assetBalance(asset txnbuild.Asset, account horizon.Account) string {
+	for _, b := range account.Balances {
+		if b.Asset.Code == asset.GetCode() {
+			return b.Balance
+		}
+	}
+	return "0"
 }
