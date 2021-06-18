@@ -11,6 +11,8 @@ type FormationParams struct {
 	InitiatorEscrow *keypair.FromAddress
 	ResponderEscrow *keypair.FromAddress
 	StartSequence   int64
+	Asset           txnbuild.Asset
+	AssetLimit      string
 }
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
@@ -35,6 +37,13 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		SourceAccount: p.InitiatorEscrow.Address(),
 		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
+	if !p.Asset.IsNative() {
+		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
+			Line:          p.Asset,
+			Limit:         p.AssetLimit,
+			SourceAccount: p.InitiatorEscrow.Address(),
+		})
+	}
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
@@ -49,6 +58,13 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		SourceAccount: p.ResponderEscrow.Address(),
 		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
+	if !p.Asset.IsNative() {
+		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
+			Line:          p.Asset,
+			Limit:         p.AssetLimit,
+			SourceAccount: p.ResponderEscrow.Address(),
+		})
+	}
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
 	tx, err := txnbuild.NewTransaction(tp)
 	if err != nil {
