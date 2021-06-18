@@ -19,6 +19,7 @@ type Open struct {
 	AssetLimit string
 }
 
+// OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
 	Asset      Asset
 	AssetLimit string
