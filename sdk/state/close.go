@@ -57,11 +57,11 @@ func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
 func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (CoordinatedClose, error) {
 	txCoordinatedClose, err := c.makeCloseTx(observationPeriodTime, observationPeriodLedgerGap)
 	if err != nil {
-		return CoordinatedClose{}, err
+		return CoordinatedClose{}, fmt.Errorf("making coordianted close transactions: %w", err)
 	}
 	txCoordinatedClose, err = txCoordinatedClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return CoordinatedClose{}, nil
+		return CoordinatedClose{}, fmt.Errorf("signing coordinated close transaction: %w", err)
 	}
 	return CoordinatedClose{
 		observationPeriodTime:      observationPeriodTime,
@@ -73,13 +73,13 @@ func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, o
 func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose, error) {
 	txCoordinatedClose, err := c.makeCloseTx(cc.observationPeriodTime, cc.observationPeriodLedgerGap)
 	if err != nil {
-		return CoordinatedClose{}, err
+		return CoordinatedClose{}, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
 
 	// If remote has not signed coordinated close, error as is invalid.
 	signed, err := c.verifySigned(txCoordinatedClose, cc.closeSignatures, c.remoteSigner)
 	if err != nil {
-		return CoordinatedClose{}, err
+		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
 	}
 	if !signed {
 		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close: not signed by remote")
@@ -88,12 +88,12 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose
 	// If local has not signed, sign.
 	signed, err = c.verifySigned(txCoordinatedClose, cc.closeSignatures, c.localSigner)
 	if err != nil {
-		return CoordinatedClose{}, err
+		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close signature with local: %w", err)
 	}
 	if !signed {
 		txCoordinatedClose, err = txCoordinatedClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return CoordinatedClose{}, err
+			return CoordinatedClose{}, fmt.Errorf("signing coordinated close transaction: %w", err)
 		}
 		cc.closeSignatures = append(cc.closeSignatures, txCoordinatedClose.Signatures()...)
 	}
