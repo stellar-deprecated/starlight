@@ -58,6 +58,10 @@ func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 	if amount.Amount <= 0 {
 		return Payment{}, errors.New("payment amount must be greater than 0")
 	}
+	if amount.Asset != c.latestCloseAgreement.Balance.Asset {
+		return Payment{}, errors.New(fmt.Sprintf("payment asset type is invalid, got: %s want: %s",
+			amount.Asset, c.latestCloseAgreement.Balance.Asset))
+	}
 	newBalance := int64(0)
 	if c.initiator {
 		newBalance = c.Balance().Amount + amount.Amount
@@ -75,6 +79,7 @@ func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance*-1),
 		AmountToResponder:          maxInt64(0, newBalance),
+		Asset:                      amount.Asset,
 	})
 	if err != nil {
 		return Payment{}, err
@@ -106,6 +111,7 @@ func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err 
 		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance.Amount*-1),
 		AmountToResponder:          maxInt64(0, newBalance.Amount),
+		Asset:                      p.Amount.Asset,
 	})
 	if err != nil {
 		return
@@ -142,6 +148,7 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 		}
 	}()
 
+	// validate payment
 	if p.IterationNumber != c.NextIterationNumber() {
 		return p, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
@@ -149,7 +156,12 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEquivalent(p) {
 		return p, fullySigned, errors.New("a different unconfirmed payment exists")
 	}
+	if p.Amount.Asset != c.latestCloseAgreement.Balance.Asset {
+		return Payment{}, fullySigned, errors.New(fmt.Sprintf("payment asset type is invalid, got: %s want: %s",
+			p.Amount.Asset, c.latestCloseAgreement.Balance.Asset))
+	}
 
+	// create payment transactions
 	txClose, txDecl, err := c.PaymentTxs(p)
 	if err != nil {
 		return p, fullySigned, err
