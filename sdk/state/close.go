@@ -11,8 +11,8 @@ import (
 
 // The steps for a channel coordinated close are as followed:
 // 1. Initiator or Responder submits latest declaration tx
-// (in steps 2-4 Initiator and Responder are interchangeable, as long as they alternate)
-// 2. Initiator calls ProposeCoordinatedClose
+// 2. Initiator calls ProposeCoordinatedClose (in steps 2-4 Initiator and Responder are interchangeable,
+//    as long as they alternate)
 // 3. Responder calls ConfirmCoordinatedClose
 // 4. Initiator calls ConfirmCoordinatedClose
 
