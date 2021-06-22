@@ -422,7 +422,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	t.Log("Initiator proposes a coordinated close")
 	cc, err := initiatorChannel.ProposeCoordinatedClose(0, 0)
 	require.NoError(t, err)
-	cc, fullySigned, err = responderChannel.ConfirmCoordinatedClose(cc)
+	cc, fullySigned, err := responderChannel.ConfirmCoordinatedClose(cc)
 	require.NoError(t, err)
 	require.False(t, fullySigned)
 	cc, fullySigned, err = initiatorChannel.ConfirmCoordinatedClose(cc)
@@ -432,7 +432,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	t.Log("Initiator closing channel with new coordinated close transaction")
 	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
 	require.NoError(t, err)
-	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.CoordinatedClose().CloseSignatures()...)
+	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.CoordinatedClose().CloseSignatures...)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
 		FeeAccount: initiator.KP.Address(),
