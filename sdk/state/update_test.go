@@ -84,7 +84,6 @@ func TestLastConfirmedPayment(t *testing.T) {
 }
 
 func TestAppendNewSignature(t *testing.T) {
-	// TODO - put this code somewhere for re-use (use the integration function code?)
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
@@ -135,7 +134,6 @@ func TestAppendNewSignature(t *testing.T) {
 	}
 }
 
-// TODO - move to another folder for helper methods?
 func randomByteArray(length int) ([]byte, error) {
 	arr := make([]byte, length)
 	_, err := rand.Read(arr)
