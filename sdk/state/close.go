@@ -19,7 +19,7 @@ import (
 type CoordinatedClose struct {
 	observationPeriodTime      time.Duration
 	observationPeriodLedgerGap int64
-	closeSignatures            []xdr.DecoratedSignature
+	CloseSignatures            []xdr.DecoratedSignature
 }
 
 func (cc CoordinatedClose) CloseSignatures() []xdr.DecoratedSignature {
