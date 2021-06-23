@@ -139,14 +139,14 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 	// validate payment
 	if p.IterationNumber != c.NextIterationNumber() {
 		return p, fullySigned, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
-			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
+			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
 	}
 	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEquivalent(p) {
 		return p, fullySigned, errors.New("a different unconfirmed payment exists")
 	}
 	if p.Amount.Asset != c.latestCloseAgreement.Balance.Asset {
 		return Payment{}, fullySigned, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			p.Amount.Asset, c.latestCloseAgreement.Balance.Asset))
+			p.Amount.Asset, c.latestCloseAgreement.Balance.Asset)
 	}
 
 	// create payment transactions
