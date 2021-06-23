@@ -111,8 +111,8 @@ func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPe
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
 		IterationNumber:            c.latestCloseAgreement.IterationNumber,
-		AmountToInitiator:          c.initiatorClaimAmount(),
-		AmountToResponder:          c.responderClaimAmount(),
+		AmountToInitiator:          c.initiatorBalanceAmount(),
+		AmountToResponder:          c.responderBalanceAmount(),
 		Asset:                      c.latestCloseAgreement.Balance.Asset,
 	})
 }
