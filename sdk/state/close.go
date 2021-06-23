@@ -17,9 +17,7 @@ import (
 // 4. Initiator calls ConfirmCoordinatedClose
 
 type CoordinatedClose struct {
-	observationPeriodTime      time.Duration
-	observationPeriodLedgerGap int64
-	CloseSignatures            []xdr.DecoratedSignature
+	CloseSignatures []xdr.DecoratedSignature
 }
 
 func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
@@ -40,7 +38,7 @@ func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Tr
 }
 
 func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
-	txClose, err := c.makeCloseTx(c.coordinatedClose.observationPeriodTime, c.coordinatedClose.observationPeriodLedgerGap)
+	txClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +48,8 @@ func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
 // ProposeCoordinatedClose proposes parameters for a close transaction to be submitted earlier.
 // This should be used when participants are in agreement on the final txClose parameters, but would
 // like to submit earlier than the original observation time.
-func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (CoordinatedClose, error) {
-	txCoordinatedClose, err := c.makeCloseTx(observationPeriodTime, observationPeriodLedgerGap)
+func (c *Channel) ProposeCoordinatedClose() (CoordinatedClose, error) {
+	txCoordinatedClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
 		return CoordinatedClose{}, fmt.Errorf("making coordianted close transactions: %w", err)
 	}
@@ -60,14 +58,12 @@ func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, o
 		return CoordinatedClose{}, fmt.Errorf("signing coordinated close transaction: %w", err)
 	}
 	return CoordinatedClose{
-		observationPeriodTime:      observationPeriodTime,
-		observationPeriodLedgerGap: observationPeriodLedgerGap,
-		CloseSignatures:            txCoordinatedClose.Signatures(),
+		CloseSignatures: txCoordinatedClose.Signatures(),
 	}, nil
 }
 
 func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose CoordinatedClose, fullySigned bool, err error) {
-	txCoordinatedClose, err := c.makeCloseTx(cc.observationPeriodTime, cc.observationPeriodLedgerGap)
+	txCoordinatedClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
 		return CoordinatedClose{}, fullySigned, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
