@@ -103,6 +103,7 @@ func initEscrowAccount(t *testing.T, client horizonclient.ClientInterface, parti
 			},
 		},
 	})
+	require.NoError(t, err)
 
 	tx, err = tx.Sign(networkPassphrase, participant.KP)
 	require.NoError(t, err)
@@ -182,6 +183,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 			},
 		},
 	)
+	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, distributorKP, issuerKP)
 	require.NoError(t, err)
 	_, err = client.SubmitTransaction(tx)
