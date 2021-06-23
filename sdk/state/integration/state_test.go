@@ -424,7 +424,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	require.NoError(t, err)
 	cc, fullySigned, err := responderChannel.ConfirmCoordinatedClose(cc)
 	require.NoError(t, err)
-	require.False(t, fullySigned)
+	require.True(t, fullySigned)
 	cc, fullySigned, err = initiatorChannel.ConfirmCoordinatedClose(cc)
 	require.NoError(t, err)
 	require.True(t, fullySigned)

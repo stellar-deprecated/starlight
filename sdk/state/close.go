@@ -22,10 +22,6 @@ type CoordinatedClose struct {
 	CloseSignatures            []xdr.DecoratedSignature
 }
 
-func (cc CoordinatedClose) CloseSignatures() []xdr.DecoratedSignature {
-	return cc.closeSignatures
-}
-
 func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -66,41 +62,42 @@ func (c *Channel) ProposeCoordinatedClose(observationPeriodTime time.Duration, o
 	return CoordinatedClose{
 		observationPeriodTime:      observationPeriodTime,
 		observationPeriodLedgerGap: observationPeriodLedgerGap,
-		closeSignatures:            txCoordinatedClose.Signatures(),
+		CloseSignatures:            txCoordinatedClose.Signatures(),
 	}, nil
 }
 
-func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (CoordinatedClose, error) {
+func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose CoordinatedClose, fullySigned bool, err error) {
 	txCoordinatedClose, err := c.makeCloseTx(cc.observationPeriodTime, cc.observationPeriodLedgerGap)
 	if err != nil {
-		return CoordinatedClose{}, fmt.Errorf("making coordinated close transactions: %w", err)
+		return CoordinatedClose{}, fullySigned, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
 
 	// If remote has not signed coordinated close, error as is invalid.
-	signed, err := c.verifySigned(txCoordinatedClose, cc.closeSignatures, c.remoteSigner)
+	signed, err := c.verifySigned(txCoordinatedClose, cc.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
+		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
 	}
 	if !signed {
-		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close: not signed by remote")
+		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close: not signed by remote")
 	}
 
 	// If local has not signed, sign.
-	signed, err = c.verifySigned(txCoordinatedClose, cc.closeSignatures, c.localSigner)
+	signed, err = c.verifySigned(txCoordinatedClose, cc.CloseSignatures, c.localSigner)
 	if err != nil {
-		return CoordinatedClose{}, fmt.Errorf("verifying coordinated close signature with local: %w", err)
+		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close signature with local: %w", err)
 	}
 	if !signed {
 		txCoordinatedClose, err = txCoordinatedClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return CoordinatedClose{}, fmt.Errorf("signing coordinated close transaction: %w", err)
+			return CoordinatedClose{}, fullySigned, fmt.Errorf("signing coordinated close transaction: %w", err)
 		}
-		cc.closeSignatures = append(cc.closeSignatures, txCoordinatedClose.Signatures()...)
+		cc.CloseSignatures = append(cc.CloseSignatures, txCoordinatedClose.Signatures()...)
 	}
+	fullySigned = true
 
 	// TODO - merge instead of overwrite, similar to ConfirmProposal
 	c.coordinatedClose = cc
-	return cc, nil
+	return cc, fullySigned, nil
 }
 
 // makeCloseTx is a helper method for creating a close transaction with custom observation values.
