@@ -32,7 +32,7 @@ func (p Payment) isEquivalent(p2 Payment) bool {
 }
 
 func (p Payment) isEmpty() bool {
-	return p.IterationNumber == 0 && p.Amount == (Amount{}) && p.FromInitiator == false && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
+	return p.IterationNumber == 0 && p.Amount == (Amount{}) && !p.FromInitiator && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
 }
 
 type CloseAgreement struct {
@@ -47,8 +47,8 @@ func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 		return Payment{}, errors.New("payment amount must be greater than 0")
 	}
 	if amount.Asset != c.latestCloseAgreement.Balance.Asset {
-		return Payment{}, errors.New(fmt.Sprintf("payment asset type is invalid, got: %s want: %s",
-			amount.Asset, c.latestCloseAgreement.Balance.Asset))
+		return Payment{}, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+			amount.Asset, c.latestCloseAgreement.Balance.Asset)
 	}
 	newBalance := int64(0)
 	if c.initiator {
