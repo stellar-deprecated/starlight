@@ -84,61 +84,45 @@ func TestLastConfirmedPayment(t *testing.T) {
 }
 
 func TestAppendNewSignature(t *testing.T) {
-	localSigner := keypair.MustRandom()
-	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
+	closeSignatures := []xdr.DecoratedSignature{
+		{Signature: randomByteArray(t, 10)},
+		{Signature: randomByteArray(t, 10)},
 	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
-	sendingChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-	})
 
-	rand1, err := randomByteArray(10)
-	require.NoError(t, err)
-	rand2, err := randomByteArray(10)
-	require.NoError(t, err)
-	newCloseSignatures := []xdr.DecoratedSignature{
-		xdr.DecoratedSignature{
-			Signature: rand1,
+	closeSignaturesToAppend := []xdr.DecoratedSignature{
+		closeSignatures[0], // A duplicate signature is included.
+		{Signature: randomByteArray(t, 10)},
+	}
+
+	newCloseSignatures := appendNewSignatures(closeSignatures, closeSignaturesToAppend)
+
+	// Check that the final slice of signatures does not contain the duplicate.
+	assert.ElementsMatch(
+		t,
+		newCloseSignatures,
+		[]xdr.DecoratedSignature{
+			closeSignatures[0],
+			closeSignatures[1],
+			closeSignaturesToAppend[1],
 		},
-		xdr.DecoratedSignature{
-			Signature: rand2,
+	)
+
+	// Check existing signatures are not lost.
+	newCloseSignatures = appendNewSignatures(closeSignatures, []xdr.DecoratedSignature{})
+
+	assert.ElementsMatch(
+		t,
+		newCloseSignatures,
+		[]xdr.DecoratedSignature{
+			closeSignatures[0],
+			closeSignatures[1],
 		},
-	}
-
-	sendingChannel.latestUnconfirmedPayment.CloseSignatures = appendNewSignatures(sendingChannel.latestUnconfirmedPayment.CloseSignatures, newCloseSignatures)
-	assert.Equal(t, 2, len(sendingChannel.latestUnconfirmedPayment.CloseSignatures))
-	assert.Equal(t, newCloseSignatures[0], sendingChannel.latestUnconfirmedPayment.CloseSignatures[0])
-	assert.Equal(t, newCloseSignatures[1], sendingChannel.latestUnconfirmedPayment.CloseSignatures[1])
-
-	// 1 new signature is introduced
-	rand3, err := randomByteArray(10)
-	require.NoError(t, err)
-	newCloseSignatures = append(newCloseSignatures, xdr.DecoratedSignature{
-		Signature: rand3,
-	})
-	sendingChannel.latestUnconfirmedPayment.CloseSignatures = appendNewSignatures(sendingChannel.latestUnconfirmedPayment.CloseSignatures, newCloseSignatures)
-	assert.Equal(t, 3, len(sendingChannel.latestUnconfirmedPayment.CloseSignatures))
-	for i, ncs := range newCloseSignatures {
-		assert.Equal(t, ncs, sendingChannel.latestUnconfirmedPayment.CloseSignatures[i])
-	}
+	)
 }
 
-func randomByteArray(length int) ([]byte, error) {
+func randomByteArray(t *testing.T, length int) []byte {
 	arr := make([]byte, length)
 	_, err := rand.Read(arr)
-	if err != nil {
-		return nil, err
-	}
-	return arr, nil
+	require.NoError(t, err)
+	return arr
 }
