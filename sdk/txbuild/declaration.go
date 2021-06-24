@@ -20,7 +20,6 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 0, // Declaration is the first transaction in an iteration's transaction set.
 		},
 		BaseFee: 0,
-		// TODO - Timebounds needs to be explicit
 		Timebounds:        txnbuild.NewInfiniteTimeout(),
 		MinSequenceNumber: &minSequenceNumber,
 		Operations: []txnbuild.Operation{

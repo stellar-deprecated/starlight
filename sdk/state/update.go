@@ -39,8 +39,8 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
 	}
 	if amount.Asset != c.latestCloseAgreement.Balance.Asset {
-		return CloseAgreement{}, errors.New(fmt.Sprintf("payment asset type is invalid, got: %s want: %s",
-			amount.Asset, c.latestCloseAgreement.Balance.Asset))
+		return CloseAgreement{}, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+			amount.Asset, c.latestCloseAgreement.Balance.Asset)
 	}
 	newBalance := int64(0)
 	if c.initiator {

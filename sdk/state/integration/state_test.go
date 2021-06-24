@@ -62,7 +62,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	open, err := initiatorChannel.ProposeOpen(state.OpenParams{asset, assetLimit})
+	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
 	for {
 		var fullySignedR bool
@@ -81,7 +81,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{asset, assetLimit})
+		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 		require.NoError(t, err)
 
 		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
@@ -319,10 +319,10 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 		require.NoError(t, err)
 
-		ci, err = ci.AddSignatureDecorated(open.CloseSignatures...)
+		_, err = ci.AddSignatureDecorated(open.CloseSignatures...)
 		require.NoError(t, err)
 
-		di, err = di.AddSignatureDecorated(open.DeclarationSignatures...)
+		_, err = di.AddSignatureDecorated(open.DeclarationSignatures...)
 		require.NoError(t, err)
 
 		fi, err = fi.AddSignatureDecorated(open.FormationSignatures...)
@@ -394,9 +394,9 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		require.True(t, fullySigned)
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
-		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
+		_, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
-		di, err = di.AddSignatureDecorated(payment.DeclarationSignatures...)
+		_, err = di.AddSignatureDecorated(payment.DeclarationSignatures...)
 		require.NoError(t, err)
 	}
 
@@ -437,6 +437,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
 	require.NoError(t, err)
 	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.CoordinatedClose().CloseSignatures...)
+	require.NoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
 		FeeAccount: initiator.KP.Address(),
