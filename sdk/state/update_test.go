@@ -1,11 +1,13 @@
 package state
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,4 +81,48 @@ func TestLastConfirmedPayment(t *testing.T) {
 	assert.True(t, fullySigned)
 	require.NoError(t, err)
 	assert.Equal(t, Payment{}, receiverChannel.latestUnconfirmedPayment)
+}
+
+func TestAppendNewSignature(t *testing.T) {
+	closeSignatures := []xdr.DecoratedSignature{
+		{Signature: randomByteArray(t, 10)},
+		{Signature: randomByteArray(t, 10)},
+	}
+
+	closeSignaturesToAppend := []xdr.DecoratedSignature{
+		closeSignatures[0], // A duplicate signature is included.
+		{Signature: randomByteArray(t, 10)},
+	}
+
+	newCloseSignatures := appendNewSignatures(closeSignatures, closeSignaturesToAppend)
+
+	// Check that the final slice of signatures does not contain the duplicate.
+	assert.ElementsMatch(
+		t,
+		newCloseSignatures,
+		[]xdr.DecoratedSignature{
+			closeSignatures[0],
+			closeSignatures[1],
+			closeSignaturesToAppend[1],
+		},
+	)
+
+	// Check existing signatures are not lost.
+	newCloseSignatures = appendNewSignatures(closeSignatures, []xdr.DecoratedSignature{})
+
+	assert.ElementsMatch(
+		t,
+		newCloseSignatures,
+		[]xdr.DecoratedSignature{
+			closeSignatures[0],
+			closeSignatures[1],
+		},
+	)
+}
+
+func randomByteArray(t *testing.T, length int) []byte {
+	arr := make([]byte, length)
+	_, err := rand.Read(arr)
+	require.NoError(t, err)
+	return arr
 }

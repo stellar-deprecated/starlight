@@ -91,9 +91,8 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose
 	}
 	fullySigned = true
 
-	// TODO - merge instead of overwrite, similar to ConfirmProposal
-	c.coordinatedClose = cc
-	return cc, fullySigned, nil
+	c.coordinatedClose = CoordinatedClose{CloseSignatures: appendNewSignatures(c.coordinatedClose.CloseSignatures, cc.CloseSignatures)}
+	return c.coordinatedClose, fullySigned, nil
 }
 
 // makeCloseTx is a helper method for creating a close transaction with custom observation values.

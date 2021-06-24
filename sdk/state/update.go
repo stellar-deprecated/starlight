@@ -132,7 +132,13 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 			newBalance := c.newBalance(p)
 			c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
 		} else {
-			c.latestUnconfirmedPayment = p
+			c.latestUnconfirmedPayment = Payment{
+				IterationNumber:       p.IterationNumber,
+				Amount:                p.Amount,
+				FromInitiator:         p.FromInitiator,
+				CloseSignatures:       appendNewSignatures(c.latestUnconfirmedPayment.CloseSignatures, p.CloseSignatures),
+				DeclarationSignatures: appendNewSignatures(c.latestUnconfirmedPayment.DeclarationSignatures, p.DeclarationSignatures),
+			}
 		}
 	}()
 
