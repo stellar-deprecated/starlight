@@ -142,14 +142,14 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
-func (c *Channel) initiatorClaimAmount() int64 {
+func (c *Channel) initiatorBalanceAmount() int64 {
 	if c.latestCloseAgreement.Balance.Amount < 0 {
 		return c.latestCloseAgreement.Balance.Amount * -1
 	}
 	return 0
 }
 
-func (c *Channel) responderClaimAmount() int64 {
+func (c *Channel) responderBalanceAmount() int64 {
 	if c.latestCloseAgreement.Balance.Amount > 0 {
 		return c.latestCloseAgreement.Balance.Amount
 	}

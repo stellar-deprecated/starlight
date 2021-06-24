@@ -89,6 +89,7 @@ func Test(t *testing.T) {
 				},
 			},
 		})
+		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, initiator.KP)
 		require.NoError(t, err)
 		_, err = client.SubmitTransaction(tx)
@@ -151,6 +152,7 @@ func Test(t *testing.T) {
 				},
 			},
 		})
+		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, responder.KP)
 		require.NoError(t, err)
 		_, err = client.SubmitTransaction(tx)
