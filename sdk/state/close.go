@@ -91,7 +91,7 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose
 	}
 	fullySigned = true
 
-	c.coordinatedClose.CloseSignatures = appendNewSignatures(c.coordinatedClose.CloseSignatures, cc.CloseSignatures)
+	c.coordinatedClose = CoordinatedClose{CloseSignatures: appendNewSignatures(c.coordinatedClose.CloseSignatures, cc.CloseSignatures)}
 	return c.coordinatedClose, fullySigned, nil
 }
 
