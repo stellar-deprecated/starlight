@@ -17,24 +17,6 @@ import (
 // 3. Sender calls ConfirmPayment
 // 4. Receiver calls ConfirmPayment
 
-type Payment struct {
-	IterationNumber       int64
-	Amount                Amount
-	CloseSignatures       []xdr.DecoratedSignature
-	DeclarationSignatures []xdr.DecoratedSignature
-	FromInitiator         bool
-}
-
-// isEquivalent returns true if all fields for the Payments are equal not including signatures, else false.
-// Two payments that are equal may have different signatures depending on who and when this method is called.
-func (p Payment) isEquivalent(p2 Payment) bool {
-	return p.IterationNumber == p2.IterationNumber && p.Amount == p2.Amount && p.FromInitiator == p2.FromInitiator
-}
-
-func (p Payment) isEmpty() bool {
-	return p.IterationNumber == 0 && p.Amount == (Amount{}) && p.FromInitiator == false && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
-}
-
 type CloseAgreement struct {
 	IterationNumber       int64
 	Balance               Amount
@@ -42,12 +24,22 @@ type CloseAgreement struct {
 	DeclarationSignatures []xdr.DecoratedSignature
 }
 
-func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
+// isEquivalent returns true if all fields for the close agreements are equal not including signatures, else false.
+// Two close agreements that are equal may have different signatures depending on who and when this method is called.
+func (ca CloseAgreement) isEquivalent(ca2 CloseAgreement) bool {
+	return ca.IterationNumber == ca2.IterationNumber && ca.Balance == ca2.Balance
+}
+
+func (ca CloseAgreement) isEmpty() bool {
+	return ca.IterationNumber == 0 && ca.Amount == (Amount{}) && len(p.CloseSignatures) == 0 && len(p.DeclarationSignatures) == 0
+}
+
+func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	if amount.Amount <= 0 {
-		return Payment{}, errors.New("payment amount must be greater than 0")
+		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
 	}
 	if amount.Asset != c.latestCloseAgreement.Balance.Asset {
-		return Payment{}, errors.New(fmt.Sprintf("payment asset type is invalid, got: %s want: %s",
+		return CloseAgreement{}, errors.New(fmt.Sprintf("payment asset type is invalid, got: %s want: %s",
 			amount.Asset, c.latestCloseAgreement.Balance.Asset))
 	}
 	newBalance := int64(0)
@@ -70,20 +62,19 @@ func (c *Channel) ProposePayment(amount Amount) (Payment, error) {
 		Asset:                      amount.Asset,
 	})
 	if err != nil {
-		return Payment{}, err
+		return CloseAgreement{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return Payment{}, err
+		return CloseAgreement{}, err
 	}
-	p := Payment{
+
+	c.latestUnconfirmedCloseAgreement = CloseAgreement{
 		IterationNumber: c.NextIterationNumber(),
-		Amount:          amount,
-		CloseSignatures: txClose.Signatures(),
-		FromInitiator:   c.initiator,
+		Balance:         newBalance,
+		CloseSignatures: p.CloseSignatures,
 	}
-	c.latestUnconfirmedPayment = p
-	return p, nil
+	return c.latestUnconfirmedCloseAgreement, nil
 }
 
 func (c *Channel) PaymentTxs(p Payment) (close, decl *txnbuild.Transaction, err error) {
@@ -127,12 +118,14 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 		if err != nil {
 			return
 		}
+		// TODO - need to not overwrite here?
+		ca := CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
 		if fullySigned {
-			c.latestUnconfirmedPayment = Payment{}
+			c.latestUnconfirmedCloseAgreement = CloseAgreement{}
 			newBalance := c.newBalance(p)
-			c.latestCloseAgreement = CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
+			c.latestCloseAgreement = ca
 		} else {
-			c.latestUnconfirmedPayment = p
+			c.latestUnconfirmedCloseAgreement = ca
 		}
 	}()
 
@@ -141,7 +134,7 @@ func (c *Channel) ConfirmPayment(p Payment) (payment Payment, fullySigned bool, 
 		return p, fullySigned, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
 	}
-	if !c.latestUnconfirmedPayment.isEmpty() && !c.latestUnconfirmedPayment.isEquivalent(p) {
+	if !c.latestUnconfirmedCloseAgreement.isEmpty() && !c.latestUnconfirmedCloseAgreement.isEquivalent(ca) {
 		return p, fullySigned, errors.New("a different unconfirmed payment exists")
 	}
 	if p.Amount.Asset != c.latestCloseAgreement.Balance.Asset {

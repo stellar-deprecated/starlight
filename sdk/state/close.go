@@ -45,31 +45,33 @@ func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
 	return txClose, nil
 }
 
-// ProposeCoordinatedClose proposes parameters for a close transaction to be submitted earlier.
+// ProposeCoordinatedClose proposes a close transaction to be submitted immediately.
 // This should be used when participants are in agreement on the final txClose parameters, but would
 // like to submit earlier than the original observation time.
-func (c *Channel) ProposeCoordinatedClose() (CoordinatedClose, error) {
+func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 	txCoordinatedClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
-		return CoordinatedClose{}, fmt.Errorf("making coordianted close transactions: %w", err)
+		return CloseAgreement{}, fmt.Errorf("making coordianted close transactions: %w", err)
 	}
 	txCoordinatedClose, err = txCoordinatedClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return CoordinatedClose{}, fmt.Errorf("signing coordinated close transaction: %w", err)
+		return CloseAgreement{}, fmt.Errorf("signing coordinated close transaction: %w", err)
 	}
-	return CoordinatedClose{
-		CloseSignatures: txCoordinatedClose.Signatures(),
-	}, nil
+
+	// store an unconfirmed close agreement with new close signatures
+	c.latestUnconfirmedCloseAgreement = c.latestCloseAgreement
+	c.latestUnconfirmedCloseAgreement.CloseSignatures = txCoordinatedClose.CloseSignatures()
+	return c.latestUnconfirmedCloseAgreement, nil
 }
 
-func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose CoordinatedClose, fullySigned bool, err error) {
+func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement CloseAgreement, fullySigned bool, err error) {
 	txCoordinatedClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
 		return CoordinatedClose{}, fullySigned, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
 
-	// If remote has not signed coordinated close, error as is invalid.
-	signed, err := c.verifySigned(txCoordinatedClose, cc.CloseSignatures, c.remoteSigner)
+	// If remote has not signed, error as is invalid.
+	signed, err := c.verifySigned(txCoordinatedClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
 		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
 	}
@@ -78,7 +80,7 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose
 	}
 
 	// If local has not signed, sign.
-	signed, err = c.verifySigned(txCoordinatedClose, cc.CloseSignatures, c.localSigner)
+	signed, err = c.verifySigned(txCoordinatedClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
 		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close signature with local: %w", err)
 	}
@@ -87,13 +89,15 @@ func (c *Channel) ConfirmCoordinatedClose(cc CoordinatedClose) (coordinatedClose
 		if err != nil {
 			return CoordinatedClose{}, fullySigned, fmt.Errorf("signing coordinated close transaction: %w", err)
 		}
-		cc.CloseSignatures = append(cc.CloseSignatures, txCoordinatedClose.Signatures()...)
+		ca.CloseSignatures = append(ca.CloseSignatures, txCoordinatedClose.Signatures()...)
 	}
 	fullySigned = true
 
-	// TODO - merge instead of overwrite, similar to ConfirmProposal
-	c.coordinatedClose = cc
-	return cc, fullySigned, nil
+	// new close agreement is valid and fully signed, store it as latestCloseAgreement
+	c.latestUnconfirmedCloseAgreement = CloseAgreement{}
+	// TODO - merge signatures instead of overwriting
+	c.latestCloseAgreement = ca
+	return c.latestCloseAgreement, fullySigned, nil
 }
 
 // makeCloseTx is a helper method for creating a close transaction with custom observation values.

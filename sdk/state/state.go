@@ -40,10 +40,8 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	latestCloseAgreement     CloseAgreement
-	latestUnconfirmedPayment Payment
-
-	coordinatedClose CoordinatedClose
+	latestCloseAgreement            CloseAgreement
+	latestUnconfirmedCloseAgreement CloseAgreement
 }
 
 type Config struct {
