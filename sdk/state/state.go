@@ -180,7 +180,7 @@ func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures [
 	}
 
 	for _, ns := range newSignatures {
-		if _, found := m[string(ns.Signature)]; !found {
+		if !m[string(ns.Signature)] {
 			oldSignatures = append(oldSignatures, ns)
 		}
 	}
