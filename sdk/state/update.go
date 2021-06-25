@@ -109,7 +109,7 @@ func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transacti
 // ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
-func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, fullySigned bool, err error) {
+func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
 	// If the agreement is signed by all participants at the end of this method,
 	// promote the agreement to authorized. If not signed by all participants,
 	// save it as the latest unauthorized agreement, as we are still in the
@@ -125,7 +125,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 			CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
 			DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
 		}
-		if fullySigned {
+		if authorized {
 			c.latestUnauthorizedCloseAgreement = CloseAgreement{}
 			c.latestAuthorizedCloseAgreement = updatedCA
 		} else {
@@ -135,42 +135,42 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 
 	// validate payment
 	if ca.IterationNumber != c.NextIterationNumber() {
-		return ca, fullySigned, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
+		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(ca.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && !c.latestUnauthorizedCloseAgreement.isEquivalent(ca) {
-		return ca, fullySigned, errors.New("close agreement does not match the close agreement already in progress")
+		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
 	}
 
 	if ca.Balance.Asset != c.latestAuthorizedCloseAgreement.Balance.Asset {
-		return ca, fullySigned, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
 			ca.Balance.Asset, c.latestAuthorizedCloseAgreement.Balance.Asset)
 	}
 
 	// create payment transactions
 	txClose, txDecl, err := c.PaymentTxs(ca)
 	if err != nil {
-		return ca, fullySigned, err
+		return ca, authorized, err
 	}
 
 	// If remote has not signed close, error as is invalid.
 	signed, err := c.verifySigned(txClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return ca, fullySigned, fmt.Errorf("verifying close signed by remote: %w", err)
+		return ca, authorized, fmt.Errorf("verifying close signed by remote: %w", err)
 	}
 	if !signed {
-		return ca, fullySigned, fmt.Errorf("verifying close signed by remote: not signed by remote")
+		return ca, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
 	// If local has not signed close, sign.
 	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
-		return ca, fullySigned, fmt.Errorf("verifying close signed by local: %w", err)
+		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return ca, fullySigned, fmt.Errorf("signing close with local: %w", err)
+			return ca, authorized, fmt.Errorf("signing close with local: %w", err)
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
 	}
@@ -178,12 +178,12 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// Local should always sign declaration if have not yet.
 	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.localSigner)
 	if err != nil {
-		return ca, fullySigned, fmt.Errorf("verifying declaration signed by local: %w", err)
+		return ca, authorized, fmt.Errorf("verifying declaration signed by local: %w", err)
 	}
 	if !signed {
 		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return ca, fullySigned, err
+			return ca, authorized, err
 		}
 		ca.DeclarationSignatures = append(ca.DeclarationSignatures, txDecl.Signatures()...)
 	}
@@ -191,16 +191,16 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// If remote has not signed declaration, it is incomplete.
 	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.remoteSigner)
 	if err != nil {
-		return ca, fullySigned, fmt.Errorf("verifying declaration signed by remote: %w", err)
+		return ca, authorized, fmt.Errorf("verifying declaration signed by remote: %w", err)
 	}
 	if !signed {
-		return ca, fullySigned, nil
+		return ca, authorized, nil
 	}
 
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
-	fullySigned = true
-	return ca, fullySigned, nil
+	authorized = true
+	return ca, authorized, nil
 }
 
 func maxInt64(x int64, y int64) int64 {

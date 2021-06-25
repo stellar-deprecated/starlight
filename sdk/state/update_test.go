@@ -50,8 +50,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ca, fullySigned, err := receiverChannel.ConfirmPayment(ca)
-	assert.False(t, fullySigned)
+	ca, authorized, err := receiverChannel.ConfirmPayment(ca)
+	assert.False(t, authorized)
 	require.NoError(t, err)
 	assert.Equal(t, ca, receiverChannel.latestUnauthorizedCloseAgreement)
 
@@ -64,19 +64,19 @@ func TestLastConfirmedPayment(t *testing.T) {
 		},
 		CloseSignatures: ca.CloseSignatures,
 	}
-	_, fullySigned, err = receiverChannel.ConfirmPayment(caDifferent)
-	assert.False(t, fullySigned)
+	_, authorized, err = receiverChannel.ConfirmPayment(caDifferent)
+	assert.False(t, authorized)
 	require.EqualError(t, err, "close agreement does not match the close agreement already in progress")
 	assert.Equal(t, CloseAgreement{Balance: Amount{Asset: NativeAsset{}}}, receiverChannel.LatestCloseAgreement())
 
 	// Confirming a payment with same sequence number and same amount should pass
-	ca, fullySigned, err = sendingChannel.ConfirmPayment(ca)
-	assert.True(t, fullySigned)
+	ca, authorized, err = sendingChannel.ConfirmPayment(ca)
+	assert.True(t, authorized)
 	require.NoError(t, err)
 	assert.Equal(t, CloseAgreement{}, sendingChannel.latestUnauthorizedCloseAgreement)
 
-	ca, fullySigned, err = receiverChannel.ConfirmPayment(ca)
-	assert.True(t, fullySigned)
+	ca, authorized, err = receiverChannel.ConfirmPayment(ca)
+	assert.True(t, authorized)
 	require.NoError(t, err)
 	assert.Equal(t, CloseAgreement{}, receiverChannel.latestUnauthorizedCloseAgreement)
 }

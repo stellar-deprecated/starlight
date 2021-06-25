@@ -65,17 +65,17 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
 	for {
-		var fullySignedR bool
-		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		var authorizedR bool
+		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var fullySignedI bool
-		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		var authorizedI bool
+		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if fullySignedI && fullySignedR {
+		if authorizedI && authorizedR {
 			break
 		}
 	}
@@ -150,22 +150,22 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
 
-		var fullySigned bool
+		var authorized bool
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, fullySigned)
+		require.False(t, authorized)
 
 		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 
 		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
@@ -300,17 +300,17 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
 	for {
-		var fullySignedR bool
-		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		var authorizedR bool
+		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var fullySignedI bool
-		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		var authorizedI bool
+		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if fullySignedI && fullySignedR {
+		if authorizedI && authorizedR {
 			break
 		}
 	}
@@ -376,22 +376,22 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: asset, Amount: amount})
 		require.NoError(t, err)
 
-		var fullySigned bool
+		var authorized bool
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, fullySigned)
+		require.False(t, authorized)
 
 		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
 		_, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
@@ -423,13 +423,13 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	ca, err := initiatorChannel.ProposeCoordinatedClose()
 	require.NoError(t, err)
 
-	ca, fullySigned, err := responderChannel.ConfirmCoordinatedClose(ca)
+	ca, authorized, err := responderChannel.ConfirmCoordinatedClose(ca)
 	require.NoError(t, err)
-	require.True(t, fullySigned)
+	require.True(t, authorized)
 
-	_, fullySigned, err = initiatorChannel.ConfirmCoordinatedClose(ca)
+	_, authorized, err = initiatorChannel.ConfirmCoordinatedClose(ca)
 	require.NoError(t, err)
-	require.True(t, fullySigned)
+	require.True(t, authorized)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
 	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
