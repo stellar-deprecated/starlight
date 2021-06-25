@@ -140,7 +140,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(ca.Details.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
 	}
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnconfirmedCloseAgreement.Details != ca.Details {
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
 	}
 
