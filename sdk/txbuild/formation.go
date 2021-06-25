@@ -1,8 +1,6 @@
 package txbuild
 
 import (
-	"strconv"
-
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
