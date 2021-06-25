@@ -183,7 +183,7 @@ func (c *Channel) ConfirmOpen(m Open) (open Open, fullySigned bool, err error) {
 	// All signatures are present that would be required to submit all
 	// transactions in the open.
 	fullySigned = true
-	c.latestCloseAgreement = CloseAgreement{
+	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		IterationNumber:       1,
 		Balance:               Amount{Asset: m.Asset},
 		CloseSignatures:       m.CloseSignatures,

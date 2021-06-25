@@ -38,9 +38,9 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	if amount.Amount <= 0 {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
 	}
-	if amount.Asset != c.latestCloseAgreement.Balance.Asset {
+	if amount.Asset != c.latestAuthorizedCloseAgreement.Balance.Asset {
 		return CloseAgreement{}, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			amount.Asset, c.latestCloseAgreement.Balance.Asset)
+			amount.Asset, c.latestAuthorizedCloseAgreement.Balance.Asset)
 	}
 	newBalance := int64(0)
 	if c.initiator {
@@ -69,12 +69,12 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 		return CloseAgreement{}, err
 	}
 
-	c.latestUnconfirmedCloseAgreement = CloseAgreement{
+	c.latestUnauthorizedCloseAgreement = CloseAgreement{
 		IterationNumber: c.NextIterationNumber(),
 		Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
 		CloseSignatures: txClose.Signatures(),
 	}
-	return c.latestUnconfirmedCloseAgreement, nil
+	return c.latestUnauthorizedCloseAgreement, nil
 }
 
 func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
@@ -110,26 +110,26 @@ func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transacti
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, fullySigned bool, err error) {
-	// at the end of this method if a fully signed close agreement, create a close agreement and clear latest
-	// latestUnconfirmedCloseAgreement to prepare for the next update. If not fully signed, save latestUnconfirmedCloseAgreement,
-	// as we are still in the process of confirming. If an error occurred during this process don't save any new state,
-	// as something went wrong.
+	// If the agreement is signed by all participants at the end of this method,
+	// promote the agreement to authorized. If not signed by all participants,
+	// save it as the latest unauthorized agreement, as we are still in the
+	// process of collecting signatures for it. If an error occurred during this
+	// process don't save any new state, as something went wrong.
 	defer func() {
 		if err != nil {
 			return
 		}
-		// update channel state with updated close agreement
 		updatedCA := CloseAgreement{
 			IterationNumber:       ca.IterationNumber,
 			Balance:               ca.Balance,
-			CloseSignatures:       appendNewSignatures(c.latestUnconfirmedCloseAgreement.CloseSignatures, ca.CloseSignatures),
-			DeclarationSignatures: appendNewSignatures(c.latestUnconfirmedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
+			CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
+			DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
 		}
 		if fullySigned {
-			c.latestUnconfirmedCloseAgreement = CloseAgreement{}
-			c.latestCloseAgreement = updatedCA
+			c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+			c.latestAuthorizedCloseAgreement = updatedCA
 		} else {
-			c.latestUnconfirmedCloseAgreement = updatedCA
+			c.latestUnauthorizedCloseAgreement = updatedCA
 		}
 	}()
 
@@ -138,13 +138,13 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		return ca, fullySigned, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
 			strconv.FormatInt(ca.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
 	}
-	if !c.latestUnconfirmedCloseAgreement.isEmpty() && !c.latestUnconfirmedCloseAgreement.isEquivalent(ca) {
-		return ca, fullySigned, errors.New("a different unconfirmed payment exists")
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && !c.latestUnauthorizedCloseAgreement.isEquivalent(ca) {
+		return ca, fullySigned, errors.New("close agreement does not match the close agreement already in progress")
 	}
 
-	if ca.Balance.Asset != c.latestCloseAgreement.Balance.Asset {
+	if ca.Balance.Asset != c.latestAuthorizedCloseAgreement.Balance.Asset {
 		return ca, fullySigned, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			ca.Balance.Asset, c.latestCloseAgreement.Balance.Asset)
+			ca.Balance.Asset, c.latestAuthorizedCloseAgreement.Balance.Asset)
 	}
 
 	// create payment transactions
