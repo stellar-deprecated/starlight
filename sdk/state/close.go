@@ -6,7 +6,6 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 // The steps for a channel coordinated close are as followed:
@@ -15,10 +14,6 @@ import (
 //    as long as they alternate)
 // 3. Responder calls ConfirmCoordinatedClose
 // 4. Initiator calls ConfirmCoordinatedClose
-
-type CoordinatedClose struct {
-	CloseSignatures []xdr.DecoratedSignature
-}
 
 func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
@@ -59,44 +54,51 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 	}
 
 	// store an unconfirmed close agreement with new close signatures
-	c.latestUnconfirmedCloseAgreement = c.latestCloseAgreement
-	c.latestUnconfirmedCloseAgreement.CloseSignatures = txCoordinatedClose.CloseSignatures()
+	c.latestUnconfirmedCloseAgreement = CloseAgreement{
+		IterationNumber: c.latestCloseAgreement.IterationNumber,
+		Balance:         c.latestCloseAgreement.Balance,
+		CloseSignatures: txCoordinatedClose.Signatures(),
+	}
 	return c.latestUnconfirmedCloseAgreement, nil
 }
 
 func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement CloseAgreement, fullySigned bool, err error) {
 	txCoordinatedClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
-		return CoordinatedClose{}, fullySigned, fmt.Errorf("making coordinated close transactions: %w", err)
+		return CloseAgreement{}, fullySigned, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
 
 	// If remote has not signed, error as is invalid.
 	signed, err := c.verifySigned(txCoordinatedClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
+		return CloseAgreement{}, fullySigned, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
 	}
 	if !signed {
-		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close: not signed by remote")
+		return CloseAgreement{}, fullySigned, fmt.Errorf("verifying coordinated close: not signed by remote")
 	}
 
 	// If local has not signed, sign.
 	signed, err = c.verifySigned(txCoordinatedClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
-		return CoordinatedClose{}, fullySigned, fmt.Errorf("verifying coordinated close signature with local: %w", err)
+		return CloseAgreement{}, fullySigned, fmt.Errorf("verifying coordinated close signature with local: %w", err)
 	}
 	if !signed {
 		txCoordinatedClose, err = txCoordinatedClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return CoordinatedClose{}, fullySigned, fmt.Errorf("signing coordinated close transaction: %w", err)
+			return CloseAgreement{}, fullySigned, fmt.Errorf("signing coordinated close transaction: %w", err)
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txCoordinatedClose.Signatures()...)
 	}
 	fullySigned = true
 
-	// new close agreement is valid and fully signed, store it as latestCloseAgreement
+	// new close agreement is valid and fully signed, store it as latestCloseAgreement and clear latestUnconfirmedCloseAgreement
+	c.latestCloseAgreement = CloseAgreement{
+		IterationNumber:       ca.IterationNumber,
+		Balance:               ca.Balance,
+		CloseSignatures:       appendNewSignatures(c.latestUnconfirmedCloseAgreement.CloseSignatures, ca.CloseSignatures),
+		DeclarationSignatures: c.latestUnconfirmedCloseAgreement.DeclarationSignatures,
+	}
 	c.latestUnconfirmedCloseAgreement = CloseAgreement{}
-	// TODO - merge signatures instead of overwriting
-	c.latestCloseAgreement = ca
 	return c.latestCloseAgreement, fullySigned, nil
 }
 

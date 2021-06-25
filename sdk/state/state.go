@@ -73,8 +73,8 @@ func NewChannel(c Config) *Channel {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	if !c.latestUnconfirmedPayment.isEmpty() {
-		return c.latestUnconfirmedPayment.IterationNumber
+	if !c.latestUnconfirmedCloseAgreement.isEmpty() {
+		return c.latestUnconfirmedCloseAgreement.IterationNumber
 	}
 	return c.latestCloseAgreement.IterationNumber + 1
 }
@@ -87,25 +87,6 @@ func (c *Channel) Balance() Amount {
 
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestCloseAgreement
-}
-
-func (c *Channel) CoordinatedClose() CoordinatedClose {
-	return c.coordinatedClose
-}
-
-// newBalance is a hlper method for computing what the new channel balance will be if
-// the input payment is submitted successfully.
-func (c *Channel) newBalance(p Payment) Amount {
-	var amountFromInitiator, amountFromResponder int64
-	if p.FromInitiator {
-		amountFromInitiator = p.Amount.Amount
-	} else {
-		amountFromResponder = p.Amount.Amount
-	}
-	return Amount{
-		Asset:  p.Amount.Asset,
-		Amount: c.Balance().Amount + amountFromInitiator - amountFromResponder,
-	}
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
