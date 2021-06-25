@@ -19,7 +19,7 @@ func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Tr
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
-		IterationNumber:         c.latestCloseAgreement.IterationNumber,
+		IterationNumber:         c.latestCloseAgreement.Details.IterationNumber,
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
@@ -55,8 +55,7 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 
 	// store an unconfirmed close agreement with new close signatures
 	c.latestUnconfirmedCloseAgreement = CloseAgreement{
-		IterationNumber: c.latestCloseAgreement.IterationNumber,
-		Balance:         c.latestCloseAgreement.Balance,
+		Details:         c.latestCloseAgreement.Details,
 		CloseSignatures: txCoordinatedClose.Signatures(),
 	}
 	return c.latestUnconfirmedCloseAgreement, nil
@@ -93,8 +92,7 @@ func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement Clo
 
 	// new close agreement is valid and fully signed, store it as latestCloseAgreement and clear latestUnconfirmedCloseAgreement
 	c.latestCloseAgreement = CloseAgreement{
-		IterationNumber:       ca.IterationNumber,
-		Balance:               ca.Balance,
+		Details:               ca.Details,
 		CloseSignatures:       appendNewSignatures(c.latestUnconfirmedCloseAgreement.CloseSignatures, ca.CloseSignatures),
 		DeclarationSignatures: c.latestUnconfirmedCloseAgreement.DeclarationSignatures,
 	}
@@ -112,9 +110,9 @@ func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPe
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestCloseAgreement.IterationNumber,
+		IterationNumber:            c.latestCloseAgreement.Details.IterationNumber,
 		AmountToInitiator:          c.initiatorBalanceAmount(),
 		AmountToResponder:          c.responderBalanceAmount(),
-		Asset:                      c.latestCloseAgreement.Balance.Asset,
+		Asset:                      c.latestCloseAgreement.Details.Balance.Asset,
 	})
 }

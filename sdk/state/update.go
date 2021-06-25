@@ -17,30 +17,31 @@ import (
 // 3. Sender calls ConfirmPayment
 // 4. Receiver calls ConfirmPayment
 
+// CloseAgreementDetails contains the details that the participants agree on.
+type CloseAgreementDetails struct {
+	IterationNumber int64
+	Balance         Amount
+}
+
+// CloseAgreement contains everything a participant needs to execute the close
+// agreement on the Stellar network.
 type CloseAgreement struct {
-	IterationNumber       int64
-	Balance               Amount
+	Details               CloseAgreementDetails
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 }
 
-// isEquivalent returns true if all fields for the close agreements are equal not including signatures, else false.
-// Two close agreements that are equal may have different signatures depending on who and when this method is called.
-func (ca CloseAgreement) isEquivalent(ca2 CloseAgreement) bool {
-	return ca.IterationNumber == ca2.IterationNumber && ca.Balance == ca2.Balance
-}
-
 func (ca CloseAgreement) isEmpty() bool {
-	return ca.IterationNumber == 0 && ca.Balance == (Amount{}) && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
+	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
 }
 
 func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	if amount.Amount <= 0 {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
 	}
-	if amount.Asset != c.latestCloseAgreement.Balance.Asset {
+	if amount.Asset != c.latestCloseAgreement.Details.Balance.Asset {
 		return CloseAgreement{}, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			amount.Asset, c.latestCloseAgreement.Balance.Asset)
+			amount.Asset, c.latestCloseAgreement.Details.Balance.Asset)
 	}
 	newBalance := int64(0)
 	if c.initiator {
@@ -70,8 +71,10 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	}
 
 	c.latestUnconfirmedCloseAgreement = CloseAgreement{
-		IterationNumber: c.NextIterationNumber(),
-		Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
+		Details: CloseAgreementDetails{
+			IterationNumber: c.NextIterationNumber(),
+			Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
+		},
 		CloseSignatures: txClose.Signatures(),
 	}
 	return c.latestUnconfirmedCloseAgreement, nil
@@ -87,9 +90,9 @@ func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transacti
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
 		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, ca.Balance.Amount*-1),
-		AmountToResponder:          maxInt64(0, ca.Balance.Amount),
-		Asset:                      ca.Balance.Asset,
+		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
+		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
+		Asset:                      ca.Details.Balance.Asset,
 	})
 	if err != nil {
 		return
@@ -120,8 +123,10 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		}
 		// update channel state with updated close agreement
 		updatedCA := CloseAgreement{
-			IterationNumber:       ca.IterationNumber,
-			Balance:               ca.Balance,
+			Details: CloseAgreementDetails{
+				IterationNumber: ca.Details.IterationNumber,
+				Balance:         ca.Details.Balance,
+			},
 			CloseSignatures:       appendNewSignatures(c.latestUnconfirmedCloseAgreement.CloseSignatures, ca.CloseSignatures),
 			DeclarationSignatures: appendNewSignatures(c.latestUnconfirmedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
 		}
@@ -134,17 +139,17 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}()
 
 	// validate payment
-	if ca.IterationNumber != c.NextIterationNumber() {
+	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return ca, fullySigned, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
-			strconv.FormatInt(ca.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
+			strconv.FormatInt(ca.Details.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
 	}
-	if !c.latestUnconfirmedCloseAgreement.isEmpty() && !c.latestUnconfirmedCloseAgreement.isEquivalent(ca) {
+	if !c.latestUnconfirmedCloseAgreement.isEmpty() && c.latestUnconfirmedCloseAgreement.Details != ca.Details {
 		return ca, fullySigned, errors.New("a different unconfirmed payment exists")
 	}
 
-	if ca.Balance.Asset != c.latestCloseAgreement.Balance.Asset {
+	if ca.Details.Balance.Asset != c.latestCloseAgreement.Details.Balance.Asset {
 		return ca, fullySigned, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			ca.Balance.Asset, c.latestCloseAgreement.Balance.Asset)
+			ca.Details.Balance.Asset, c.latestCloseAgreement.Details.Balance.Asset)
 	}
 
 	// create payment transactions

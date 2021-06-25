@@ -41,8 +41,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 	})
 
 	// latest close agreement should be set during open steps
-	sendingChannel.latestCloseAgreement.Balance = Amount{Asset: NativeAsset{}}
-	receiverChannel.latestCloseAgreement.Balance = Amount{Asset: NativeAsset{}}
+	sendingChannel.latestCloseAgreement.Details.Balance = Amount{Asset: NativeAsset{}}
+	receiverChannel.latestCloseAgreement.Details.Balance = Amount{Asset: NativeAsset{}}
 
 	ca, err := sendingChannel.ProposePayment(Amount{
 		Asset:  NativeAsset{},
@@ -57,10 +57,12 @@ func TestLastConfirmedPayment(t *testing.T) {
 
 	// Confirming a close agreement with same sequence number but different Amount should error
 	caDifferent := CloseAgreement{
-		IterationNumber: 1,
-		Balance: Amount{
-			Asset:  txnbuild.NativeAsset{},
-			Amount: 400,
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance: Amount{
+				Asset:  txnbuild.NativeAsset{},
+				Amount: 400,
+			},
 		},
 		CloseSignatures: ca.CloseSignatures,
 	}
@@ -69,7 +71,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "a different unconfirmed payment exists", err.Error())
 	assert.Equal(t, ca, receiverChannel.latestUnconfirmedCloseAgreement)
-	assert.Equal(t, CloseAgreement{Balance: Amount{Asset: NativeAsset{}}}, receiverChannel.LatestCloseAgreement())
+	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: Amount{Asset: NativeAsset{}}}}, receiverChannel.LatestCloseAgreement())
 
 	// Confirming a payment with same sequence number and same amount should pass
 	ca, fullySigned, err = sendingChannel.ConfirmPayment(ca)
