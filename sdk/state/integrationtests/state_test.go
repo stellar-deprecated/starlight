@@ -267,7 +267,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	asset, distributor := initAsset(t, client)
-	assetLimit := int64(5000)
+	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
