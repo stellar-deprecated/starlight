@@ -420,19 +420,21 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("Initiator proposes a coordinated close")
-	cc, err := initiatorChannel.ProposeCoordinatedClose()
+	ca, err := initiatorChannel.ProposeCoordinatedClose()
 	require.NoError(t, err)
-	cc, fullySigned, err := responderChannel.ConfirmCoordinatedClose(cc)
+
+	ca, fullySigned, err := responderChannel.ConfirmCoordinatedClose(ca)
 	require.NoError(t, err)
 	require.True(t, fullySigned)
-	_, fullySigned, err = initiatorChannel.ConfirmCoordinatedClose(cc)
+
+	_, fullySigned, err = initiatorChannel.ConfirmCoordinatedClose(ca)
 	require.NoError(t, err)
 	require.True(t, fullySigned)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
 	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
 	require.NoError(t, err)
-	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.CoordinatedClose().CloseSignatures...)
+	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
 	require.NoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
