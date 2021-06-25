@@ -29,18 +29,14 @@ func TestProposePayment_validAsset(t *testing.T) {
 	})
 
 	native := NativeAsset{}
-	_, err := sendingChannel.ProposeOpen(OpenParams{Asset: native, AssetLimit: ""})
+	_, err := sendingChannel.ProposeOpen(OpenParams{Asset: native})
 	require.NoError(t, err)
 
 	invalidCredit := CreditAsset{}
-	_, err = sendingChannel.ProposeOpen(OpenParams{Asset: invalidCredit, AssetLimit: "100"})
+	_, err = sendingChannel.ProposeOpen(OpenParams{Asset: invalidCredit, AssetLimit: 100})
 	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
 
 	validCredit := CreditAsset{Code: "ABCD", Issuer: "GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P"}
-	_, err = sendingChannel.ProposeOpen(OpenParams{Asset: validCredit, AssetLimit: ""})
-	require.EqualError(t, err, `parsing asset limit: strconv.Atoi: parsing "": invalid syntax`)
-
-	validCredit = CreditAsset{Code: "ABCD", Issuer: "GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P"}
-	_, err = sendingChannel.ProposeOpen(OpenParams{Asset: validCredit, AssetLimit: "100"})
+	_, err = sendingChannel.ProposeOpen(OpenParams{Asset: validCredit, AssetLimit: 100})
 	require.NoError(t, err)
 }

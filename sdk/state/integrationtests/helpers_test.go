@@ -3,6 +3,7 @@ package integrationtests
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 
 // functions to be used in the state_test integration tests
 
-func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit string, distributorKP *keypair.Full) (initiator Participant, responder Participant) {
+func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit int64, distributorKP *keypair.Full) (initiator Participant, responder Participant) {
 	initiator = Participant{
 		Name:         "Initiator",
 		KP:           keypair.MustRandom(),
@@ -58,7 +59,7 @@ func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit string, distrib
 	return initiator, responder
 }
 
-func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.Asset, assetLimit string) {
+func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.Asset, assetLimit int64) {
 	// create escrow account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
@@ -69,7 +70,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.As
 		Escrow:         participant.Escrow.FromAddress(),
 		SequenceNumber: seqNum + 1,
 		Asset:          asset,
-		AssetLimit:     assetLimit,
+		AssetLimit:     strconv.FormatInt(assetLimit, 10),
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)

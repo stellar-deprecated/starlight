@@ -25,7 +25,7 @@ type Participant struct {
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	asset := txnbuild.NativeAsset{}
 	// native asset has no asset limit
-	assetLimit := ""
+	assetLimit := int64(0)
 	rootResp, err := client.Root()
 	require.NoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
@@ -267,7 +267,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	asset, distributor := initAsset(t, client)
-	assetLimit := "5000"
+	assetLimit := int64(5000)
 	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
