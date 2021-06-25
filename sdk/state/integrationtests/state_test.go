@@ -1,8 +1,7 @@
-package integration
+package integrationtests
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -15,30 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const horizonURL = "http://localhost:8000"
-
-var networkPassphrase string
-var client *horizonclient.Client
-
 type Participant struct {
 	Name                 string
 	KP                   *keypair.Full
 	Escrow               *keypair.Full
 	EscrowSequenceNumber int64
 	Contribution         int64 // The contribution of the asset that will be used for payments
-}
-
-// Setup
-func TestMain(m *testing.M) {
-	client = &horizonclient.Client{HorizonURL: horizonURL}
-	networkDetails, err := client.Root()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	networkPassphrase = networkDetails.NetworkPassphrase
-
-	os.Exit(m.Run())
 }
 
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
@@ -48,8 +29,8 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	rootResp, err := client.Root()
 	require.NoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
-	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
-	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
+	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
@@ -287,8 +268,8 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	asset, distributor := initAsset(t, client)
 	assetLimit := "5000"
-	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
-	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
+	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
 	i := int64(1)
