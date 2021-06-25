@@ -19,7 +19,7 @@ func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Tr
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
-		IterationNumber:         c.latestAuthorizedCloseAgreement.IterationNumber,
+		IterationNumber:         c.latestAuthorizedCloseAgreement.Details.IterationNumber,
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
@@ -55,8 +55,7 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		IterationNumber: c.latestAuthorizedCloseAgreement.IterationNumber,
-		Balance:         c.latestAuthorizedCloseAgreement.Balance,
+		Details:         c.latestAuthorizedCloseAgreement.Details,
 		CloseSignatures: txCoordinatedClose.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
@@ -93,8 +92,7 @@ func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement Clo
 	// The new close agreement is valid and fully signed, store and promote it.
 	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		IterationNumber:       ca.IterationNumber,
-		Balance:               ca.Balance,
+		Details:       ca.Details,
 		CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
 		DeclarationSignatures: c.latestUnauthorizedCloseAgreement.DeclarationSignatures,
 	}
@@ -112,9 +110,9 @@ func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPe
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestAuthorizedCloseAgreement.IterationNumber,
+		IterationNumber:            c.latestAuthorizedCloseAgreement.Details.IterationNumber,
 		AmountToInitiator:          c.initiatorBalanceAmount(),
 		AmountToResponder:          c.responderBalanceAmount(),
-		Asset:                      c.latestAuthorizedCloseAgreement.Balance.Asset,
+		Asset:                      c.latestAuthorizedCloseAgreement.Details.Balance.Asset,
 	})
 }

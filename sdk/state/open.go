@@ -184,8 +184,10 @@ func (c *Channel) ConfirmOpen(m Open) (open Open, authorized bool, err error) {
 	// transactions in the open.
 	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		IterationNumber:       1,
-		Balance:               Amount{Asset: m.Asset},
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance:         Amount{Asset: m.Asset},
+		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,
 	}
