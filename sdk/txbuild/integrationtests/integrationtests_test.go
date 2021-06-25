@@ -1,4 +1,4 @@
-package txbuild_test
+package integrationtests
 
 import (
 	"crypto/rand"
@@ -15,12 +15,6 @@ import (
 )
 
 func Test(t *testing.T) {
-	const horizonURL = "http://localhost:8000"
-	client := &horizonclient.Client{HorizonURL: horizonURL}
-	networkDetails, err := client.Root()
-	require.NoError(t, err)
-	networkPassphrase := networkDetails.NetworkPassphrase
-
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
