@@ -40,8 +40,8 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	latestCloseAgreement            CloseAgreement
-	latestUnconfirmedCloseAgreement CloseAgreement
+	latestAuthorizedCloseAgreement   CloseAgreement
+	latestUnauthorizedCloseAgreement CloseAgreement
 }
 
 type Config struct {
@@ -73,20 +73,20 @@ func NewChannel(c Config) *Channel {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	if !c.latestUnconfirmedCloseAgreement.isEmpty() {
-		return c.latestUnconfirmedCloseAgreement.Details.IterationNumber
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return c.latestUnauthorizedCloseAgreement.Details.IterationNumber
 	}
-	return c.latestCloseAgreement.Details.IterationNumber + 1
+	return c.latestAuthorizedCloseAgreement.Details.IterationNumber + 1
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() Amount {
-	return c.latestCloseAgreement.Details.Balance
+	return c.latestAuthorizedCloseAgreement.Details.Balance
 }
 
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
-	return c.latestCloseAgreement
+	return c.latestAuthorizedCloseAgreement
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
@@ -122,15 +122,15 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 }
 
 func (c *Channel) initiatorBalanceAmount() int64 {
-	if c.latestCloseAgreement.Details.Balance.Amount < 0 {
-		return c.latestCloseAgreement.Details.Balance.Amount * -1
+	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount < 0 {
+		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount * -1
 	}
 	return 0
 }
 
 func (c *Channel) responderBalanceAmount() int64 {
-	if c.latestCloseAgreement.Details.Balance.Amount > 0 {
-		return c.latestCloseAgreement.Details.Balance.Amount
+	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount > 0 {
+		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount
 	}
 	return 0
 }

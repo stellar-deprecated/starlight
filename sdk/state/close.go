@@ -19,7 +19,7 @@ func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Tr
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
-		IterationNumber:         c.latestCloseAgreement.Details.IterationNumber,
+		IterationNumber:         c.latestAuthorizedCloseAgreement.Details.IterationNumber,
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
@@ -53,51 +53,51 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 		return CloseAgreement{}, fmt.Errorf("signing coordinated close transaction: %w", err)
 	}
 
-	// store an unconfirmed close agreement with new close signatures
-	c.latestUnconfirmedCloseAgreement = CloseAgreement{
-		Details:         c.latestCloseAgreement.Details,
+	// Store the close agreement while participants iterate on signatures.
+	c.latestUnauthorizedCloseAgreement = CloseAgreement{
+		Details:         c.latestAuthorizedCloseAgreement.Details,
 		CloseSignatures: txCoordinatedClose.Signatures(),
 	}
-	return c.latestUnconfirmedCloseAgreement, nil
+	return c.latestUnauthorizedCloseAgreement, nil
 }
 
-func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement CloseAgreement, fullySigned bool, err error) {
+func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
 	txCoordinatedClose, err := c.makeCloseTx(0, 0)
 	if err != nil {
-		return CloseAgreement{}, fullySigned, fmt.Errorf("making coordinated close transactions: %w", err)
+		return CloseAgreement{}, authorized, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
 
 	// If remote has not signed, error as is invalid.
 	signed, err := c.verifySigned(txCoordinatedClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return CloseAgreement{}, fullySigned, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
+		return CloseAgreement{}, authorized, fmt.Errorf("verifying coordinated close signature with remote: %w", err)
 	}
 	if !signed {
-		return CloseAgreement{}, fullySigned, fmt.Errorf("verifying coordinated close: not signed by remote")
+		return CloseAgreement{}, authorized, fmt.Errorf("verifying coordinated close: not signed by remote")
 	}
 
 	// If local has not signed, sign.
 	signed, err = c.verifySigned(txCoordinatedClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
-		return CloseAgreement{}, fullySigned, fmt.Errorf("verifying coordinated close signature with local: %w", err)
+		return CloseAgreement{}, authorized, fmt.Errorf("verifying coordinated close signature with local: %w", err)
 	}
 	if !signed {
 		txCoordinatedClose, err = txCoordinatedClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return CloseAgreement{}, fullySigned, fmt.Errorf("signing coordinated close transaction: %w", err)
+			return CloseAgreement{}, authorized, fmt.Errorf("signing coordinated close transaction: %w", err)
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txCoordinatedClose.Signatures()...)
 	}
-	fullySigned = true
 
-	// new close agreement is valid and fully signed, store it as latestCloseAgreement and clear latestUnconfirmedCloseAgreement
-	c.latestCloseAgreement = CloseAgreement{
-		Details:               ca.Details,
-		CloseSignatures:       appendNewSignatures(c.latestUnconfirmedCloseAgreement.CloseSignatures, ca.CloseSignatures),
-		DeclarationSignatures: c.latestUnconfirmedCloseAgreement.DeclarationSignatures,
+	// The new close agreement is valid and fully signed, store and promote it.
+	authorized = true
+	c.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details:       ca.Details,
+		CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
+		DeclarationSignatures: c.latestUnauthorizedCloseAgreement.DeclarationSignatures,
 	}
-	c.latestUnconfirmedCloseAgreement = CloseAgreement{}
-	return c.latestCloseAgreement, fullySigned, nil
+	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+	return c.latestAuthorizedCloseAgreement, authorized, nil
 }
 
 // makeCloseTx is a helper method for creating a close transaction with custom observation values.
@@ -110,9 +110,9 @@ func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPe
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestCloseAgreement.Details.IterationNumber,
+		IterationNumber:            c.latestAuthorizedCloseAgreement.Details.IterationNumber,
 		AmountToInitiator:          c.initiatorBalanceAmount(),
 		AmountToResponder:          c.responderBalanceAmount(),
-		Asset:                      c.latestCloseAgreement.Details.Balance.Asset,
+		Asset:                      c.latestAuthorizedCloseAgreement.Details.Balance.Asset,
 	})
 }
