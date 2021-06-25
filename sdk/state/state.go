@@ -74,15 +74,15 @@ func NewChannel(c Config) *Channel {
 
 func (c *Channel) NextIterationNumber() int64 {
 	if !c.latestUnconfirmedCloseAgreement.isEmpty() {
-		return c.latestUnconfirmedCloseAgreement.IterationNumber
+		return c.latestUnconfirmedCloseAgreement.Details.IterationNumber
 	}
-	return c.latestCloseAgreement.IterationNumber + 1
+	return c.latestCloseAgreement.Details.IterationNumber + 1
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() Amount {
-	return c.latestCloseAgreement.Balance
+	return c.latestCloseAgreement.Details.Balance
 }
 
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
@@ -122,15 +122,15 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 }
 
 func (c *Channel) initiatorBalanceAmount() int64 {
-	if c.latestCloseAgreement.Balance.Amount < 0 {
-		return c.latestCloseAgreement.Balance.Amount * -1
+	if c.latestCloseAgreement.Details.Balance.Amount < 0 {
+		return c.latestCloseAgreement.Details.Balance.Amount * -1
 	}
 	return 0
 }
 
 func (c *Channel) responderBalanceAmount() int64 {
-	if c.latestCloseAgreement.Balance.Amount > 0 {
-		return c.latestCloseAgreement.Balance.Amount
+	if c.latestCloseAgreement.Details.Balance.Amount > 0 {
+		return c.latestCloseAgreement.Details.Balance.Amount
 	}
 	return 0
 }
