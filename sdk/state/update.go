@@ -3,7 +3,6 @@ package state
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -123,7 +122,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 			return
 		}
 		updatedCA := CloseAgreement{
-			Details:       ca.Details,
+			Details:               ca.Details,
 			CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
 			DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
 		}
@@ -137,8 +136,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 
 	// validate payment
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
-		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %s want: %s",
-			strconv.FormatInt(ca.Details.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10))
+		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
