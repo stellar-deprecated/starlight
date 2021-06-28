@@ -9,8 +9,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TODO - should store on channel like Update and Close proposals?
-type Open struct {
+type OpenAgreement struct {
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FormationSignatures   []xdr.DecoratedSignature
@@ -65,27 +64,28 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
-func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
+func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	if !p.Asset.IsNative() {
 		if _, err := strconv.Atoi(p.AssetLimit); err != nil {
-			return Open{}, fmt.Errorf("parsing asset limit: %w", err)
+			return OpenAgreement{}, fmt.Errorf("parsing asset limit: %w", err)
 		}
 	}
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, _, _, err := c.OpenTxs(p)
 	if err != nil {
-		return Open{}, err
+		return OpenAgreement{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return Open{}, err
+		return OpenAgreement{}, err
 	}
-	open := Open{
+	open := OpenAgreement{
 		CloseSignatures: txClose.Signatures(),
 		Asset:           p.Asset,
 		AssetLimit:      p.AssetLimit,
 	}
+	c.openAgreement = open
 	return open, nil
 }
 
@@ -106,7 +106,31 @@ func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
 //
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
-func (c *Channel) ConfirmOpen(m Open) (open Open, fullySigned bool, err error) {
+func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, fullySigned bool, err error) {
+	// at the end of this method if no error then save a new channel openAgreement. Use the
+	// channel's saved open agreement details if present, to prevent other party trying to change.
+	defer func() {
+		if err != nil {
+			return
+		}
+		asset := m.Asset
+		assetLimit := m.AssetLimit
+		if c.openAgreement.Asset != nil {
+			asset = c.openAgreement.Asset
+		}
+		if c.openAgreement.AssetLimit != 0 {
+			assetLimit = c.openAgreement.AssetLimit
+		}
+
+		c.openAgreement = OpenAgreement{
+			CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
+			DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
+			FormationSignatures:   appendNewSignatures(c.openAgreement.FormationSignatures, m.FormationSignatures),
+			Asset:                 asset,
+			AssetLimit:            assetLimit,
+		}
+	}()
+
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Asset, m.AssetLimit})

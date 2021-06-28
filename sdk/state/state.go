@@ -40,6 +40,9 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
+	// TODO - OpenAgreement?
+	openAgreement OpenAgreement
+
 	latestCloseAgreement            CloseAgreement
 	latestUnconfirmedCloseAgreement CloseAgreement
 }
