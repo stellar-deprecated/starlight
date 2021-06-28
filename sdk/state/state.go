@@ -22,7 +22,6 @@ type Amount struct {
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
-	Balances       []Amount
 }
 
 type Channel struct {
@@ -41,9 +40,8 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	latestCloseAgreement *CloseAgreement
-	// TODO - set this, probably use different name
-	latestUnconfirmedPayment *Payment
+	latestAuthorizedCloseAgreement   CloseAgreement
+	latestUnauthorizedCloseAgreement CloseAgreement
 }
 
 type Config struct {
@@ -75,39 +73,20 @@ func NewChannel(c Config) *Channel {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	var latestI int64
-	if c.latestUnconfirmedPayment != nil {
-		latestI = c.latestUnconfirmedPayment.IterationNumber
-	} else if c.latestCloseAgreement != nil {
-		latestI = c.latestCloseAgreement.IterationNumber
-	} else {
-		latestI = 0
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return c.latestUnauthorizedCloseAgreement.Details.IterationNumber
 	}
-	return latestI + 1
+	return c.latestAuthorizedCloseAgreement.Details.IterationNumber + 1
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() Amount {
-	if c.latestCloseAgreement == nil {
-		return Amount{NativeAsset{}, 0}
-	}
-	return c.latestCloseAgreement.Balance
+	return c.latestAuthorizedCloseAgreement.Details.Balance
 }
 
-// newBalance is a hlper method for computing what the new channel balance will be if
-// the input payment is submitted successfully.
-func (c *Channel) newBalance(p *Payment) Amount {
-	var amountFromInitiator, amountFromResponder int64
-	if p.FromInitiator {
-		amountFromInitiator = p.Amount.Amount
-	} else {
-		amountFromResponder = p.Amount.Amount
-	}
-	return Amount{
-		Asset:  p.Amount.Asset,
-		Amount: c.Balance().Amount + amountFromInitiator - amountFromResponder,
-	}
+func (c *Channel) LatestCloseAgreement() CloseAgreement {
+	return c.latestAuthorizedCloseAgreement
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
@@ -142,6 +121,20 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
+func (c *Channel) initiatorBalanceAmount() int64 {
+	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount < 0 {
+		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount * -1
+	}
+	return 0
+}
+
+func (c *Channel) responderBalanceAmount() int64 {
+	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount > 0 {
+		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount
+	}
+	return 0
+}
+
 func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) (bool, error) {
 	hash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
@@ -159,34 +152,18 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 	return false, nil
 }
 
-func (c *Channel) CloseStart(iterationNumber int) error {
-	return nil
-}
+func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) []xdr.DecoratedSignature {
+	m := make(map[string]bool)
+	for _, os := range oldSignatures {
+		m[string(os.Signature)] = true
+	}
 
-func (c *Channel) CloseCoordinated(id string) (newStatus string, err error) {
-	return "", nil
-}
-
-func (c *Channel) CloseUncoordinated(id string) error {
-	return nil
-}
-
-func (c *Channel) GetLatestDeclarationTx() (*TxInfo, error) {
-	return nil, nil
-}
-
-func (c *Channel) GetLatestCloseTx(id string) (*TxInfo, error) {
-	return nil, nil
-}
-
-// helper method
-func (c *Channel) MyClaimAmount() error {
-	return nil
-}
-
-// helper method
-func (c *Channel) OtherClaimAmount() error {
-	return nil
+	for _, ns := range newSignatures {
+		if !m[string(ns.Signature)] {
+			oldSignatures = append(oldSignatures, ns)
+		}
+	}
+	return oldSignatures
 }
 
 type TxInfo struct {

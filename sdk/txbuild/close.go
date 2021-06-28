@@ -19,6 +19,7 @@ type CloseParams struct {
 	IterationNumber            int64
 	AmountToInitiator          int64
 	AmountToResponder          int64
+	Asset                      txnbuild.Asset
 }
 
 func Close(p CloseParams) (*txnbuild.Transaction, error) {
@@ -28,7 +29,6 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 1, // Close is the second transaction in an iteration's transaction set.
 		},
 		BaseFee: 0,
-		// TODO - Timebounds needs to be explicit
 		Timebounds:           txnbuild.NewInfiniteTimeout(),
 		MinSequenceAge:       int64(p.ObservationPeriodTime.Seconds()),
 		MinSequenceLedgerGap: p.ObservationPeriodLedgerGap,
@@ -55,7 +55,7 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
 			SourceAccount: p.ResponderEscrow.Address(),
 			Destination:   p.InitiatorEscrow.Address(),
-			Asset:         txnbuild.NativeAsset{},
+			Asset:         p.Asset,
 			Amount:        amount.StringFromInt64(p.AmountToInitiator),
 		})
 	}
@@ -63,7 +63,7 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
 			SourceAccount: p.InitiatorEscrow.Address(),
 			Destination:   p.ResponderEscrow.Address(),
-			Asset:         txnbuild.NativeAsset{},
+			Asset:         p.Asset,
 			Amount:        amount.StringFromInt64(p.AmountToResponder),
 		})
 	}

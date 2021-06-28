@@ -3,31 +3,44 @@ package state
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
-type Payment struct {
-	IterationNumber       int64
-	Amount                Amount
-	CloseSignatures       []xdr.DecoratedSignature
-	DeclarationSignatures []xdr.DecoratedSignature
-	FromInitiator         bool
+// The high level steps for creating a channel update should be as follows, where the returned payments
+// flow to the next step:
+// 1. Sender calls ProposePayment
+// 2. Receiver calls ConfirmPayment
+// 3. Sender calls ConfirmPayment
+// 4. Receiver calls ConfirmPayment
+
+// CloseAgreementDetails contains the details that the participants agree on.
+type CloseAgreementDetails struct {
+	IterationNumber int64
+	Balance         Amount
 }
 
+// CloseAgreement contains everything a participant needs to execute the close
+// agreement on the Stellar network.
 type CloseAgreement struct {
-	IterationNumber       int64
-	Balance               Amount
+	Details               CloseAgreementDetails
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 }
 
-func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
+func (ca CloseAgreement) isEmpty() bool {
+	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
+}
+
+func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	if amount.Amount <= 0 {
-		return nil, errors.New("payment amount must be greater than 0")
+		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
+	}
+	if amount.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
+		return CloseAgreement{}, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+			amount.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
 	}
 	newBalance := int64(0)
 	if c.initiator {
@@ -46,25 +59,27 @@ func (c *Channel) ProposePayment(amount Amount) (*Payment, error) {
 		IterationNumber:            c.NextIterationNumber(),
 		AmountToInitiator:          maxInt64(0, newBalance*-1),
 		AmountToResponder:          maxInt64(0, newBalance),
+		Asset:                      amount.Asset,
 	})
 	if err != nil {
-		return nil, err
+		return CloseAgreement{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return nil, err
+		return CloseAgreement{}, err
 	}
-	p := &Payment{
-		IterationNumber: c.NextIterationNumber(),
-		Amount:          amount,
+
+	c.latestUnauthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: c.NextIterationNumber(),
+			Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
+		},
 		CloseSignatures: txClose.Signatures(),
-		FromInitiator:   c.initiator,
 	}
-	return p, nil
+	return c.latestUnauthorizedCloseAgreement, nil
 }
 
-func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err error) {
-	newBalance := c.newBalance(p)
+func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
 	close, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
@@ -74,8 +89,9 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
 		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, newBalance.Amount*-1),
-		AmountToResponder:          maxInt64(0, newBalance.Amount),
+		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
+		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
+		Asset:                      ca.Details.Balance.Asset,
 	})
 	if err != nil {
 		return
@@ -92,67 +108,99 @@ func (c *Channel) PaymentTxs(p *Payment) (close, decl *txnbuild.Transaction, err
 	return
 }
 
-func (c *Channel) ConfirmPayment(p *Payment) (payment *Payment, fullySigned bool, err error) {
-	if p.IterationNumber != c.NextIterationNumber() {
-		return nil, fullySigned, errors.New(fmt.Sprintf("invalid payment iteration number, got: %s want: %s",
-			strconv.FormatInt(p.IterationNumber, 10), strconv.FormatInt(c.NextIterationNumber(), 10)))
+// ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
+// receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
+// from the other party's confirmation.
+func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+	// If the agreement is signed by all participants at the end of this method,
+	// promote the agreement to authorized. If not signed by all participants,
+	// save it as the latest unauthorized agreement, as we are still in the
+	// process of collecting signatures for it. If an error occurred during this
+	// process don't save any new state, as something went wrong.
+	defer func() {
+		if err != nil {
+			return
+		}
+		updatedCA := CloseAgreement{
+			Details:               ca.Details,
+			CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
+			DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
+		}
+		if authorized {
+			c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+			c.latestAuthorizedCloseAgreement = updatedCA
+		} else {
+			c.latestUnauthorizedCloseAgreement = updatedCA
+		}
+	}()
+
+	// validate payment
+	if ca.Details.IterationNumber != c.NextIterationNumber() {
+		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
 	}
-	txClose, txDecl, err := c.PaymentTxs(p)
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
+		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
+	}
+
+	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
+		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
+	}
+
+	// create payment transactions
+	txClose, txDecl, err := c.PaymentTxs(ca)
 	if err != nil {
-		return p, fullySigned, err
+		return ca, authorized, err
 	}
 
 	// If remote has not signed close, error as is invalid.
-	signed, err := c.verifySigned(txClose, p.CloseSignatures, c.remoteSigner)
+	signed, err := c.verifySigned(txClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return p, fullySigned, fmt.Errorf("verifying close signed by remote: %w", err)
+		return ca, authorized, fmt.Errorf("verifying close signed by remote: %w", err)
 	}
 	if !signed {
-		return p, fullySigned, fmt.Errorf("verifying close signed by remote: not signed by remote")
+		return ca, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
 	// If local has not signed close, sign.
-	signed, err = c.verifySigned(txClose, p.CloseSignatures, c.localSigner)
+	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
-		return p, fullySigned, fmt.Errorf("verifying close signed by local: %w", err)
+		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return p, fullySigned, fmt.Errorf("signing close with local: %w", err)
+			return ca, authorized, fmt.Errorf("signing close with local: %w", err)
 		}
-		p.CloseSignatures = append(p.CloseSignatures, txClose.Signatures()...)
+		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
 	}
 
 	// Local should always sign declaration if have not yet.
-	signed, err = c.verifySigned(txDecl, p.DeclarationSignatures, c.localSigner)
+	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.localSigner)
 	if err != nil {
-		return p, fullySigned, fmt.Errorf("verifying declaration signed by local: %w", err)
+		return ca, authorized, fmt.Errorf("verifying declaration signed by local: %w", err)
 	}
 	if !signed {
 		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return p, fullySigned, err
+			return ca, authorized, err
 		}
-		p.DeclarationSignatures = append(p.DeclarationSignatures, txDecl.Signatures()...)
+		ca.DeclarationSignatures = append(ca.DeclarationSignatures, txDecl.Signatures()...)
 	}
 
 	// If remote has not signed declaration, it is incomplete.
-	signed, err = c.verifySigned(txDecl, p.DeclarationSignatures, c.remoteSigner)
+	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.remoteSigner)
 	if err != nil {
-		return p, fullySigned, fmt.Errorf("verifying declaration signed by remote: %w", err)
+		return ca, authorized, fmt.Errorf("verifying declaration signed by remote: %w", err)
 	}
 	if !signed {
-		return p, fullySigned, nil
+		return ca, authorized, nil
 	}
 
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
-	fullySigned = true
-	newBalance := c.newBalance(p)
-	c.latestCloseAgreement = &CloseAgreement{p.IterationNumber, newBalance, p.CloseSignatures, p.DeclarationSignatures}
-
-	return p, fullySigned, nil
+	authorized = true
+	return ca, authorized, nil
 }
 
 func maxInt64(x int64, y int64) int64 {
