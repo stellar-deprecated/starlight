@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -16,13 +15,13 @@ type Open struct {
 	FormationSignatures   []xdr.DecoratedSignature
 
 	Asset      Asset
-	AssetLimit string
+	AssetLimit int64
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
 	Asset      Asset
-	AssetLimit string
+	AssetLimit int64
 }
 
 func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
@@ -66,11 +65,6 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
-	if !p.Asset.IsNative() {
-		if _, err := strconv.Atoi(p.AssetLimit); err != nil {
-			return Open{}, fmt.Errorf("parsing asset limit: %w", err)
-		}
-	}
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, _, _, err := c.OpenTxs(p)
