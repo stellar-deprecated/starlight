@@ -73,15 +73,15 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 		require.NoError(t, err)
 
-		ci, err = ci.AddSignatureDecorated(initiatorChannel.openAgreement.CloseSignatures...)
+		ci, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
 		require.NoError(t, err)
 		closeTxs = append(closeTxs, ci)
 
-		di, err = di.AddSignatureDecorated(initiatorChannel.openAgreement.DeclarationSignatures...)
+		di, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
 
-		fi, err = fi.AddSignatureDecorated(initiatorChannel.openAgreement.FormationSignatures...)
+		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -317,13 +317,13 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 		require.NoError(t, err)
 
-		_, err = ci.AddSignatureDecorated(open.CloseSignatures...)
+		_, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
 		require.NoError(t, err)
 
-		_, err = di.AddSignatureDecorated(open.DeclarationSignatures...)
+		_, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
 		require.NoError(t, err)
 
-		fi, err = fi.AddSignatureDecorated(open.FormationSignatures...)
+		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{

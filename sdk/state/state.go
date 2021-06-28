@@ -87,6 +87,10 @@ func (c *Channel) Balance() Amount {
 	return c.latestAuthorizedCloseAgreement.Details.Balance
 }
 
+func (c *Channel) OpenAgreement() OpenAgreement {
+	return c.openAgreement
+}
+
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestAuthorizedCloseAgreement
 }
