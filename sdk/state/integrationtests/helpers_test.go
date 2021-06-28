@@ -11,6 +11,7 @@ import (
 	stellarAmount "github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/require"
 )
@@ -214,6 +215,7 @@ func retry(maxAttempts int, f func() error) (err error) {
 		if err == nil {
 			return
 		}
+		time.Sleep(time.Second)
 	}
 	return err
 }
@@ -308,4 +310,13 @@ func txSeqs(txs []*txnbuild.Transaction) []int64 {
 		seqs[i] = txs[i].SequenceNumber()
 	}
 	return seqs
+}
+
+func assetBalance(asset txnbuild.Asset, account horizon.Account) string {
+	for _, b := range account.Balances {
+		if b.Asset.Code == asset.GetCode() {
+			return b.Balance
+		}
+	}
+	return "0"
 }
