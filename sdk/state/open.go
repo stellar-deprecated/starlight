@@ -101,8 +101,8 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
-	// at the end of this method if no error then save a new channel openAgreement. Use the
-	// channel's saved open agreement details if present, to prevent other party trying to change.
+	// at the end of this method, if no error, then save a new channel openAgreement. Use the
+	// channel's saved open agreement details if present, to prevent other party from changing.
 	defer func() {
 		if err != nil {
 			return
