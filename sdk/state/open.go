@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -15,13 +14,13 @@ type OpenAgreement struct {
 	FormationSignatures   []xdr.DecoratedSignature
 
 	Asset      Asset
-	AssetLimit string
+	AssetLimit int64
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
 	Asset      Asset
-	AssetLimit string
+	AssetLimit int64
 }
 
 func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
@@ -65,11 +64,6 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
-	if !p.Asset.IsNative() {
-		if _, err := strconv.Atoi(p.AssetLimit); err != nil {
-			return OpenAgreement{}, fmt.Errorf("parsing asset limit: %w", err)
-		}
-	}
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, _, _, err := c.OpenTxs(p)
@@ -106,7 +100,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 //
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
-func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, fullySigned bool, err error) {
+func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
 	// at the end of this method if no error then save a new channel openAgreement. Use the
 	// channel's saved open agreement details if present, to prevent other party trying to change.
 	defer func() {
@@ -135,27 +129,27 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, fullySigned 
 
 	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Asset, m.AssetLimit})
 	if err != nil {
-		return m, fullySigned, err
+		return m, authorized, err
 	}
 
 	// If remote has not signed close, error as is invalid.
 	signed, err := c.verifySigned(txClose, m.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return m, fullySigned, fmt.Errorf("verifying close signed by remote: %w", err)
+		return m, authorized, fmt.Errorf("verifying close signed by remote: %w", err)
 	}
 	if !signed {
-		return m, fullySigned, fmt.Errorf("verifying close signed by remote: not signed by remote")
+		return m, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
 	// If local has not signed close, sign it.
 	signed, err = c.verifySigned(txClose, m.CloseSignatures, c.localSigner)
 	if err != nil {
-		return m, fullySigned, fmt.Errorf("verifying close signed by local: %w", err)
+		return m, authorized, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return m, fullySigned, fmt.Errorf("signing close with local: %w", err)
+			return m, authorized, fmt.Errorf("signing close with local: %w", err)
 		}
 		m.CloseSignatures = append(m.CloseSignatures, txClose.Signatures()...)
 	}
@@ -163,12 +157,12 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, fullySigned 
 	// If local has not signed declaration, sign it.
 	signed, err = c.verifySigned(txDecl, m.DeclarationSignatures, c.localSigner)
 	if err != nil {
-		return m, fullySigned, fmt.Errorf("verifying declaration with local: %w", err)
+		return m, authorized, fmt.Errorf("verifying declaration with local: %w", err)
 	}
 	if !signed {
 		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return m, fullySigned, fmt.Errorf("signing declaration with local: decl %w", err)
+			return m, authorized, fmt.Errorf("signing declaration with local: decl %w", err)
 		}
 		m.DeclarationSignatures = append(m.DeclarationSignatures, txDecl.Signatures()...)
 	}
@@ -176,21 +170,21 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, fullySigned 
 	// If remote has not signed declaration, don't perform any others signing.
 	signed, err = c.verifySigned(txDecl, m.DeclarationSignatures, c.remoteSigner)
 	if err != nil {
-		return m, fullySigned, fmt.Errorf("verifying declaration with remote: decl: %w", err)
+		return m, authorized, fmt.Errorf("verifying declaration with remote: decl: %w", err)
 	}
 	if !signed {
-		return m, fullySigned, nil
+		return m, authorized, nil
 	}
 
 	// If local has not signed formation, sign it.
 	signed, err = c.verifySigned(formation, m.FormationSignatures, c.localSigner)
 	if err != nil {
-		return m, fullySigned, fmt.Errorf("verifying formation with local: %w", err)
+		return m, authorized, fmt.Errorf("verifying formation with local: %w", err)
 	}
 	if !signed {
 		formation, err = formation.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return m, fullySigned, fmt.Errorf("signing formation with local: %w", err)
+			return m, authorized, fmt.Errorf("signing formation with local: %w", err)
 		}
 		m.FormationSignatures = append(m.FormationSignatures, formation.Signatures()...)
 	}
@@ -198,20 +192,22 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, fullySigned 
 	// If remote has not signed formation, it is incomplete.
 	signed, err = c.verifySigned(formation, m.FormationSignatures, c.remoteSigner)
 	if err != nil {
-		return m, fullySigned, fmt.Errorf("open confirm: formation remote %w", err)
+		return m, authorized, fmt.Errorf("open confirm: formation remote %w", err)
 	}
 	if !signed {
-		return m, fullySigned, nil
+		return m, authorized, nil
 	}
 
 	// All signatures are present that would be required to submit all
 	// transactions in the open.
-	fullySigned = true
-	c.latestCloseAgreement = CloseAgreement{
-		IterationNumber:       1,
-		Balance:               Amount{Asset: m.Asset},
+	authorized = true
+	c.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance:         Amount{Asset: m.Asset},
+		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,
 	}
-	return m, fullySigned, nil
+	return m, authorized, nil
 }

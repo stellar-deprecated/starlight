@@ -1,6 +1,7 @@
 package txbuild
 
 import (
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
@@ -12,7 +13,7 @@ type FormationParams struct {
 	ResponderEscrow *keypair.FromAddress
 	StartSequence   int64
 	Asset           txnbuild.Asset
-	AssetLimit      string
+	AssetLimit      int64
 }
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
@@ -40,7 +41,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	if !p.Asset.IsNative() {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 			Line:          p.Asset,
-			Limit:         p.AssetLimit,
+			Limit:         amount.StringFromInt64(p.AssetLimit),
 			SourceAccount: p.InitiatorEscrow.Address(),
 		})
 	}
@@ -61,7 +62,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	if !p.Asset.IsNative() {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 			Line:          p.Asset,
-			Limit:         p.AssetLimit,
+			Limit:         amount.StringFromInt64(p.AssetLimit),
 			SourceAccount: p.ResponderEscrow.Address(),
 		})
 	}

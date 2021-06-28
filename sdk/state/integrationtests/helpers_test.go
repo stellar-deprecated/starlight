@@ -1,4 +1,4 @@
-package integration
+package integrationtests
 
 import (
 	"crypto/rand"
@@ -11,13 +11,14 @@ import (
 	stellarAmount "github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/require"
 )
 
 // functions to be used in the state_test integration tests
 
-func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnbuild.Asset, assetLimit string, distributorKP *keypair.Full) (initiator Participant, responder Participant) {
+func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit int64, distributorKP *keypair.Full) (initiator Participant, responder Participant) {
 	initiator = Participant{
 		Name:         "Initiator",
 		KP:           keypair.MustRandom(),
@@ -27,11 +28,11 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 	t.Log("Initiator:", initiator.KP.Address())
 	t.Log("Initiator Escrow:", initiator.Escrow.Address())
 	{
-		err := retry(2, func() error { return createAccount(client, initiator.KP.FromAddress(), 10_000_0000000) })
+		err := retry(2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		err = retry(2, func() error { return fundAsset(client, asset, initiator.Contribution, initiator.KP, distributorKP) })
+		err = retry(2, func() error { return fundAsset(asset, initiator.Contribution, initiator.KP, distributorKP) })
 		require.NoError(t, err)
-		initEscrowAccount(t, client, &initiator, asset, assetLimit)
+		initEscrowAccount(t, &initiator, asset, assetLimit)
 	}
 
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
@@ -47,18 +48,18 @@ func initAccounts(t *testing.T, client horizonclient.ClientInterface, asset txnb
 	t.Log("Responder:", responder.KP.Address())
 	t.Log("Responder Escrow:", responder.Escrow.Address())
 	{
-		err := retry(2, func() error { return createAccount(client, responder.KP.FromAddress(), 10_000_0000000) })
+		err := retry(2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		err = retry(2, func() error { return fundAsset(client, asset, responder.Contribution, responder.KP, distributorKP) })
+		err = retry(2, func() error { return fundAsset(asset, responder.Contribution, responder.KP, distributorKP) })
 		require.NoError(t, err)
-		initEscrowAccount(t, client, &responder, asset, assetLimit)
+		initEscrowAccount(t, &responder, asset, assetLimit)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 	t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.GetCode(), "issuer: ", asset.GetIssuer())
 	return initiator, responder
 }
 
-func initEscrowAccount(t *testing.T, client horizonclient.ClientInterface, participant *Participant, asset txnbuild.Asset, assetLimit string) {
+func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.Asset, assetLimit int64) {
 	// create escrow account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
@@ -111,7 +112,7 @@ func initEscrowAccount(t *testing.T, client horizonclient.ClientInterface, parti
 	require.NoError(t, err)
 }
 
-func initChannels(t *testing.T, client horizonclient.ClientInterface, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
+func initChannels(t *testing.T, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
@@ -153,9 +154,9 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 	issuerKP := keypair.MustRandom()
 	distributorKP := keypair.MustRandom()
 
-	err := retry(2, func() error { return createAccount(client, issuerKP.FromAddress(), 1_000_0000000) })
+	err := retry(2, func() error { return createAccount(issuerKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
-	err = retry(2, func() error { return createAccount(client, distributorKP.FromAddress(), 1_000_0000000) })
+	err = retry(2, func() error { return createAccount(distributorKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
 
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
@@ -214,11 +215,12 @@ func retry(maxAttempts int, f func() error) (err error) {
 		if err == nil {
 			return
 		}
+		time.Sleep(time.Second)
 	}
 	return err
 }
 
-func fundAsset(client horizonclient.ClientInterface, asset txnbuild.Asset, amount int64, accountKP *keypair.Full, distributorKP *keypair.Full) error {
+func fundAsset(asset txnbuild.Asset, amount int64, accountKP *keypair.Full, distributorKP *keypair.Full) error {
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
 	if err != nil {
 		return err
@@ -264,7 +266,7 @@ func fundAsset(client horizonclient.ClientInterface, asset txnbuild.Asset, amoun
 	return nil
 }
 
-func createAccount(client horizonclient.ClientInterface, account *keypair.FromAddress, startingBalance int64) error {
+func createAccount(account *keypair.FromAddress, startingBalance int64) error {
 	rootResp, err := client.Root()
 	if err != nil {
 		return err
@@ -308,4 +310,13 @@ func txSeqs(txs []*txnbuild.Transaction) []int64 {
 		seqs[i] = txs[i].SequenceNumber()
 	}
 	return seqs
+}
+
+func assetBalance(asset txnbuild.Asset, account horizon.Account) string {
+	for _, b := range account.Balances {
+		if b.Asset.Code == asset.GetCode() {
+			return b.Balance
+		}
+	}
+	return "0"
 }

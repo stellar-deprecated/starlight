@@ -24,7 +24,36 @@ jobs:
           working-directory: sdk
           skip-go-installation: true
 
-  test:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1
+    - name: Build SDK
+      working-directory: sdk
+      run: go build ./...
+    - name: Build SDK Tests
+      working-directory: sdk
+      run: go test -exec=echo ./...
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1
+    - name: Run SDK Unit Tests
+      working-directory: sdk
+      run: go test -v ./...
+
+  integration-tests:
     runs-on: ubuntu-latest
     steps:
     - name: "Stellar Quickstart w/ CAP-21: Build"
@@ -39,9 +68,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1
-    - name: Build SDK
+    - name: Run SDK Integration Tests
       working-directory: sdk
-      run: go build -v ./...
-    - name: Test SDK
-      working-directory: sdk
-      run: go test -v ./...
+      run: for p in ./**/integrationtests; do go test -v $p; done
+      env:
+        INTEGRATION_TESTS: 1

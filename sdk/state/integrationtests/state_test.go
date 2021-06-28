@@ -1,24 +1,17 @@
-package integration
+package integrationtests
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const horizonURL = "http://localhost:8000"
-
-var networkPassphrase string
-var client *horizonclient.Client
 
 type Participant struct {
 	Name                 string
@@ -28,28 +21,15 @@ type Participant struct {
 	Contribution         int64 // The contribution of the asset that will be used for payments
 }
 
-// Setup
-func TestMain(m *testing.M) {
-	client = &horizonclient.Client{HorizonURL: horizonURL}
-	networkDetails, err := client.Root()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	networkPassphrase = networkDetails.NetworkPassphrase
-
-	os.Exit(m.Run())
-}
-
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	asset := txnbuild.NativeAsset{}
 	// native asset has no asset limit
-	assetLimit := ""
+	assetLimit := int64(0)
 	rootResp, err := client.Root()
 	require.NoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
-	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
-	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
+	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	// Tx history.
 	closeTxs := []*txnbuild.Transaction{}
@@ -66,27 +46,27 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
 	{
-		var fullySignedR bool
+		var authorizedR bool
 		// R signs txClose and txDecl
-		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, fullySignedR)
+		require.False(t, authorizedR)
 
-		var fullySignedI bool
+		var authorizedI bool
 		// I signs txDecl and F
-		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, fullySignedI)
+		require.False(t, authorizedI)
 
 		// R signs F, R is done
-		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, fullySignedR)
+		require.True(t, authorizedR)
 
 		// I is done
-		_, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, fullySignedI)
+		require.True(t, authorizedI)
 	}
 
 	{
@@ -159,22 +139,22 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
 
-		var fullySigned bool
+		var authorized bool
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, fullySigned)
+		require.False(t, authorized)
 
 		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 
 		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
@@ -295,9 +275,9 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	asset, distributor := initAsset(t, client)
-	assetLimit := "5000"
-	initiator, responder := initAccounts(t, client, asset, assetLimit, distributor)
-	initiatorChannel, responderChannel := initChannels(t, client, initiator, responder)
+	assetLimit := int64(5_000_0000000)
+	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
 	i := int64(1)
@@ -310,27 +290,27 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
 	{
-		var fullySignedR bool
+		var authorizedR bool
 		// R signs txClose and txDecl
-		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, fullySignedR)
+		require.False(t, authorizedR)
 
-		var fullySignedI bool
+		var authorizedI bool
 		// I signs txDecl and F
-		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, fullySignedI)
+		require.False(t, authorizedI)
 
 		// R signs F, R is done
-		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, fullySignedR)
+		require.True(t, authorizedR)
 
 		// I is done
-		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, fullySignedI)
+		require.True(t, authorizedI)
 	}
 
 	{
@@ -394,22 +374,22 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: asset, Amount: amount})
 		require.NoError(t, err)
 
-		var fullySigned bool
+		var authorized bool
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, fullySigned)
+		require.False(t, authorized)
 
 		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, fullySigned, err = sendingChannel.ConfirmPayment(payment)
+		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, fullySigned, err = receivingChannel.ConfirmPayment(payment)
+		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, fullySigned)
+		require.True(t, authorized)
 		ci, di, err := sendingChannel.PaymentTxs(payment)
 		require.NoError(t, err)
 		_, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
@@ -441,13 +421,13 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	ca, err := initiatorChannel.ProposeCoordinatedClose()
 	require.NoError(t, err)
 
-	ca, fullySigned, err := responderChannel.ConfirmCoordinatedClose(ca)
+	ca, authorized, err := responderChannel.ConfirmCoordinatedClose(ca)
 	require.NoError(t, err)
-	require.True(t, fullySigned)
+	require.True(t, authorized)
 
-	_, fullySigned, err = initiatorChannel.ConfirmCoordinatedClose(ca)
+	_, authorized, err = initiatorChannel.ConfirmCoordinatedClose(ca)
 	require.NoError(t, err)
-	require.True(t, fullySigned)
+	require.True(t, authorized)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
 	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
@@ -481,13 +461,4 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
 	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)), assetBalance(asset, initiatorEscrowResponse))
-}
-
-func assetBalance(asset txnbuild.Asset, account horizon.Account) string {
-	for _, b := range account.Balances {
-		if b.Asset.Code == asset.GetCode() {
-			return b.Balance
-		}
-	}
-	return "0"
 }
