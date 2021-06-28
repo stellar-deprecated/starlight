@@ -63,7 +63,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, authorizedR)
 
-		// I is done
+		// I receives the last signatures for F, I is done
 		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedI)
@@ -307,7 +307,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, authorizedR)
 
-		// I is done
+		// I receives the last signatures for F, I is done
 		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedI)
