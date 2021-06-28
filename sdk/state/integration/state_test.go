@@ -62,22 +62,31 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
+	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
-	for {
+	{
 		var fullySignedR bool
+		// R signs txClose and txDecl
 		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+		require.False(t, fullySignedR)
+
 		var fullySignedI bool
+		// I signs txDecl and F
 		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fullySignedI && fullySignedR {
-			break
-		}
+		require.NoError(t, err)
+		require.False(t, fullySignedI)
+
+		// R signs F, R is done
+		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		require.NoError(t, err)
+		require.True(t, fullySignedR)
+
+		// I is done
+		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		require.NoError(t, err)
+		require.True(t, fullySignedI)
 	}
 
 	{
@@ -297,22 +306,31 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
+	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
-	for {
+	{
 		var fullySignedR bool
+		// R signs txClose and txDecl
 		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+		require.False(t, fullySignedR)
+
 		var fullySignedI bool
+		// I signs txDecl and F
 		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fullySignedI && fullySignedR {
-			break
-		}
+		require.NoError(t, err)
+		require.False(t, fullySignedI)
+
+		// R signs F, R is done
+		open, fullySignedR, err = responderChannel.ConfirmOpen(open)
+		require.NoError(t, err)
+		require.True(t, fullySignedR)
+
+		// I is done
+		open, fullySignedI, err = initiatorChannel.ConfirmOpen(open)
+		require.NoError(t, err)
+		require.True(t, fullySignedI)
 	}
 
 	{
