@@ -445,12 +445,3 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)), assetBalance(asset, initiatorEscrowResponse))
 }
-
-func assetBalance(asset txnbuild.Asset, account horizon.Account) string {
-	for _, b := range account.Balances {
-		if b.Asset.Code == asset.GetCode() {
-			return b.Balance
-		}
-	}
-	return "0"
-}
