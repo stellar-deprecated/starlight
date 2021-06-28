@@ -17,6 +17,14 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -33,6 +41,14 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Build SDK
       working-directory: sdk
       run: go build ./...
@@ -49,6 +65,14 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Run SDK Unit Tests
       working-directory: sdk
       run: go test -v ./...
@@ -68,6 +92,14 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Run SDK Integration Tests
       working-directory: sdk
       run: go test -v -p=1 ./**/integrationtests
