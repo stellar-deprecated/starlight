@@ -3,7 +3,6 @@ package integrationtests
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"strconv"
 	"testing"
 	"time"
 
@@ -70,7 +69,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.As
 		Escrow:         participant.Escrow.FromAddress(),
 		SequenceNumber: seqNum + 1,
 		Asset:          asset,
-		AssetLimit:     strconv.FormatInt(assetLimit, 10),
+		AssetLimit:     assetLimit,
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)
