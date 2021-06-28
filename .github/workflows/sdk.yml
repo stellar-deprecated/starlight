@@ -70,6 +70,6 @@ jobs:
         go-version: 1
     - name: Run SDK Integration Tests
       working-directory: sdk
-      run: for p in ./**/integrationtests; do go test -v $p; done
+      run: go test -v -p=1 ./**/integrationtests
       env:
         INTEGRATION_TESTS: 1
