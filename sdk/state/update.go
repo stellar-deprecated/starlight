@@ -112,6 +112,18 @@ func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transacti
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+	// If the close agreement details don't match the close agreement in progress, error.
+	if ca.Details.IterationNumber != c.NextIterationNumber() {
+		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	}
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
+		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
+	}
+	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
+		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
+	}
+
 	// If the agreement is signed by all participants at the end of this method,
 	// promote the agreement to authorized. If not signed by all participants,
 	// save it as the latest unauthorized agreement, as we are still in the
@@ -133,19 +145,6 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 			c.latestUnauthorizedCloseAgreement = updatedCA
 		}
 	}()
-
-	// validate payment
-	if ca.Details.IterationNumber != c.NextIterationNumber() {
-		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
-	}
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
-		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
-	}
-
-	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
-		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
-	}
 
 	// create payment transactions
 	txClose, txDecl, err := c.PaymentTxs(ca)
