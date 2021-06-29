@@ -1,11 +1,11 @@
 package integrationtests
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -268,12 +268,12 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
 	responderEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.EqualValues(t, responderEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)))
+	assert.Equal(t, responderEscrowResponse.Balances[0].Balance, amount.StringFromInt64(rBalanceCheck))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
 	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.EqualValues(t, initiatorEscrowResponse.Balances[0].Balance, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)))
+	assert.Equal(t, initiatorEscrowResponse.Balances[0].Balance, amount.StringFromInt64(iBalanceCheck))
 }
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
@@ -461,10 +461,10 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
 	responderEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(rBalanceCheck)/float64(1_000_0000)), assetBalance(asset, responderEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderEscrowResponse))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
 	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.EqualValues(t, fmt.Sprintf("%.7f", float64(iBalanceCheck)/float64(1_000_0000)), assetBalance(asset, initiatorEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
 }
