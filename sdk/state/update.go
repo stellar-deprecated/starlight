@@ -119,7 +119,6 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
 	}
-
 	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
 		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
 			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
