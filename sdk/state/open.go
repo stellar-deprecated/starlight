@@ -8,14 +8,20 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TODO - should store on channel like Update and Close proposals?
-type Open struct {
+type OpenAgreementDetails struct {
+	Asset      Asset
+	AssetLimit int64
+}
+
+type OpenAgreement struct {
+	Details               OpenAgreementDetails
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FormationSignatures   []xdr.DecoratedSignature
+}
 
-	Asset      Asset
-	AssetLimit int64
+func (oa OpenAgreement) isEmpty() bool {
+	return oa.Details.Asset == nil && oa.Details.AssetLimit == 0
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
@@ -64,22 +70,22 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
-func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
+func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txClose, _, _, err := c.OpenTxs(p)
 	if err != nil {
-		return Open{}, err
+		return OpenAgreement{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return Open{}, err
+		return OpenAgreement{}, err
 	}
-	open := Open{
+	open := OpenAgreement{
 		CloseSignatures: txClose.Signatures(),
-		Asset:           p.Asset,
-		AssetLimit:      p.AssetLimit,
+		Details:         OpenAgreementDetails(p),
 	}
+	c.openAgreement = open
 	return open, nil
 }
 
@@ -100,10 +106,32 @@ func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
 //
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
-func (c *Channel) ConfirmOpen(m Open) (open Open, authorized bool, err error) {
+func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
+	// If the open agreement details don't match the open agreement in progress, error.
+	if !c.openAgreement.isEmpty() && m.Details != c.openAgreement.Details {
+		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
+	}
+
+	// at the end of this method, if no error, then save a new channel openAgreement. Use the
+	// channel's saved open agreement details if present, to prevent other party from changing.
+	defer func() {
+		if err != nil {
+			return
+		}
+		c.openAgreement = OpenAgreement{
+			CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
+			DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
+			FormationSignatures:   appendNewSignatures(c.openAgreement.FormationSignatures, m.FormationSignatures),
+			Details: OpenAgreementDetails{
+				Asset:      m.Details.Asset,
+				AssetLimit: m.Details.AssetLimit,
+			},
+		}
+	}()
+
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Asset, m.AssetLimit})
+	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Details.Asset, m.Details.AssetLimit})
 	if err != nil {
 		return m, authorized, err
 	}
@@ -180,7 +208,7 @@ func (c *Channel) ConfirmOpen(m Open) (open Open, authorized bool, err error) {
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance:         Amount{Asset: m.Asset},
+			Balance:         Amount{Asset: m.Details.Asset},
 		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,

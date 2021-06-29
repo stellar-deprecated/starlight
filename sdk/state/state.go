@@ -40,6 +40,8 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
+	openAgreement OpenAgreement
+
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
 }
@@ -83,6 +85,10 @@ func (c *Channel) NextIterationNumber() int64 {
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() Amount {
 	return c.latestAuthorizedCloseAgreement.Details.Balance
+}
+
+func (c *Channel) OpenAgreement() OpenAgreement {
+	return c.openAgreement
 }
 
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
