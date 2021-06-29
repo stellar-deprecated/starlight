@@ -83,10 +83,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	}
 	open := OpenAgreement{
 		CloseSignatures: txClose.Signatures(),
-		Details: OpenAgreementDetails{
-			Asset:      p.Asset,
-			AssetLimit: p.AssetLimit,
-		},
+		Details:         OpenAgreementDetails(p),
 	}
 	c.openAgreement = open
 	return open, nil
