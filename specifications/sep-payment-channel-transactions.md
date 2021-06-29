@@ -174,10 +174,10 @@ Participants should defer deposits of initial contributions till after formation
 for channels that will hold trustlines to issuers that are not auth immutable,
 and could be clawback enabled. See [Security](#Security).
 
-It is important that F is signed after C_i and D_i because F will make the
-accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R would not be
-able to close the channel, or regain control of the accounts and the assets
-within, without coordinating with each other.
+It is critical that signatures for F are exchanged after C_i and D_i because F
+will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
+would not be able to close the channel, or regain control of the accounts and
+the assets within, without coordinating with each other.
 
 The transactions are constructed as follows:
 
@@ -238,12 +238,12 @@ To update the payment channel state, the participants:
 3. Sign and exchange zero or more payment transactions P_{i,a}.
 4. Sign and exchange a declaration transaction D_i.
 
-It is important that D_i is signed after C_i and P_i because D_i will invalidate
-any previously signed C_i and P_i. If I and R signed and exchanged D_i first
-either party could prevent the channel from closing without coordination by
-submitting D_i and refusing to sign C_i.  The participants would not be able to
-close the channel, or regain control of the accounts, and the assets within
-without coordinating with each other.
+It is critical that signatures for D_i are exchanged after C_i and P_i because
+D_i will invalidate any previously signed C_i and P_i. If I and R signed and
+exchanged D_i first either party could prevent the channel from closing without
+coordination by submitting D_i and refusing to sign C_i.  The participants would
+not be able to close the channel, or regain control of the accounts, and the
+assets within without coordinating with each other.
 
 The transactions are constructed as follows:
 
