@@ -45,28 +45,48 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]int{1, 0, 0},
+		[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+	)
 	{
 		var authorizedR bool
 		// R signs txClose and txDecl
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedR)
+		assert.ElementsMatch(t,
+			[]int{2, 1, 0},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 
 		var authorizedI bool
 		// I signs txDecl and F
 		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedI)
+		assert.ElementsMatch(t,
+			[]int{2, 2, 1},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 
 		// R signs F, R is done
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedR)
+		assert.ElementsMatch(t,
+			[]int{2, 2, 2},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 
 		// I receives the last signatures for F, I is done
-		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
+		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedI)
+		assert.ElementsMatch(t,
+			[]int{2, 2, 2},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 	}
 
 	{
@@ -292,28 +312,48 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]int{1, 0, 0},
+		[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+	)
 	{
 		var authorizedR bool
 		// R signs txClose and txDecl
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedR)
+		assert.ElementsMatch(t,
+			[]int{2, 1, 0},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 
 		var authorizedI bool
 		// I signs txDecl and F
 		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedI)
+		assert.ElementsMatch(t,
+			[]int{2, 2, 1},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 
 		// R signs F, R is done
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedR)
+		assert.ElementsMatch(t,
+			[]int{2, 2, 2},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 
 		// I receives the last signatures for F, I is done
-		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
+		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedI)
+		assert.ElementsMatch(t,
+			[]int{2, 2, 2},
+			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
+		)
 	}
 
 	{
