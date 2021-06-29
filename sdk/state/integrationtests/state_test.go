@@ -45,48 +45,43 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
-	assert.ElementsMatch(t,
-		[]int{1, 0, 0},
-		[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-	)
+	assert.Len(t, open.CloseSignatures, 1)
+	assert.Len(t, open.DeclarationSignatures, 0)
+	assert.Len(t, open.FormationSignatures, 0)
 	{
 		var authorizedR bool
 		// R signs txClose and txDecl
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedR)
-		assert.ElementsMatch(t,
-			[]int{2, 1, 0},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 1)
+		assert.Len(t, open.FormationSignatures, 0)
 
 		var authorizedI bool
 		// I signs txDecl and F
 		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedI)
-		assert.ElementsMatch(t,
-			[]int{2, 2, 1},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 2)
+		assert.Len(t, open.FormationSignatures, 1)
 
 		// R signs F, R is done
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedR)
-		assert.ElementsMatch(t,
-			[]int{2, 2, 2},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 2)
+		assert.Len(t, open.FormationSignatures, 2)
 
 		// I receives the last signatures for F, I is done
 		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedI)
-		assert.ElementsMatch(t,
-			[]int{2, 2, 2},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 2)
+		assert.Len(t, open.FormationSignatures, 2)
 	}
 
 	{
@@ -312,48 +307,43 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
 	require.NoError(t, err)
-	assert.ElementsMatch(t,
-		[]int{1, 0, 0},
-		[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-	)
+	assert.Len(t, open.CloseSignatures, 1)
+	assert.Len(t, open.DeclarationSignatures, 0)
+	assert.Len(t, open.FormationSignatures, 0)
 	{
 		var authorizedR bool
 		// R signs txClose and txDecl
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedR)
-		assert.ElementsMatch(t,
-			[]int{2, 1, 0},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 1)
+		assert.Len(t, open.FormationSignatures, 0)
 
 		var authorizedI bool
 		// I signs txDecl and F
 		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.False(t, authorizedI)
-		assert.ElementsMatch(t,
-			[]int{2, 2, 1},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 2)
+		assert.Len(t, open.FormationSignatures, 1)
 
 		// R signs F, R is done
 		open, authorizedR, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedR)
-		assert.ElementsMatch(t,
-			[]int{2, 2, 2},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 2)
+		assert.Len(t, open.FormationSignatures, 2)
 
 		// I receives the last signatures for F, I is done
 		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		require.True(t, authorizedI)
-		assert.ElementsMatch(t,
-			[]int{2, 2, 2},
-			[]int{len(open.CloseSignatures), len(open.DeclarationSignatures), len(open.FormationSignatures)},
-		)
+		assert.Len(t, open.CloseSignatures, 2)
+		assert.Len(t, open.DeclarationSignatures, 2)
+		assert.Len(t, open.FormationSignatures, 2)
 	}
 
 	{
