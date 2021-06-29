@@ -34,6 +34,35 @@ func (ca CloseAgreement) isEmpty() bool {
 	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
 }
 
+func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
+	close, err = txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      c.observationPeriodTime,
+		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            c.NextIterationNumber(),
+		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
+		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
+		Asset:                      ca.Details.Balance.Asset,
+	})
+	if err != nil {
+		return
+	}
+	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
+		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
+		StartSequence:           c.startingSequence,
+		IterationNumber:         c.NextIterationNumber(),
+		IterationNumberExecuted: 0,
+	})
+	if err != nil {
+		return
+	}
+	return
+}
+
 func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	if amount.Amount <= 0 {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
@@ -77,35 +106,6 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 		CloseSignatures: txClose.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
-}
-
-func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
-	close, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
-		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
-		Asset:                      ca.Details.Balance.Asset,
-	})
-	if err != nil {
-		return
-	}
-	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
-		IterationNumber:         c.NextIterationNumber(),
-		IterationNumberExecuted: 0,
-	})
-	if err != nil {
-		return
-	}
-	return
 }
 
 // ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
