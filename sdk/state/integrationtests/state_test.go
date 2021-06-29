@@ -70,7 +70,10 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
+		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{
+			Asset:      initiatorChannel.OpenAgreement().Details.Asset,
+			AssetLimit: initiatorChannel.OpenAgreement().Details.AssetLimit,
+		})
 		require.NoError(t, err)
 
 		ci, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
@@ -314,7 +317,10 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{Asset: asset, AssetLimit: assetLimit})
+		ci, di, fi, err := initiatorChannel.OpenTxs(state.OpenParams{
+			Asset:      initiatorChannel.OpenAgreement().Details.Asset,
+			AssetLimit: initiatorChannel.OpenAgreement().Details.AssetLimit,
+		})
 		require.NoError(t, err)
 
 		_, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
