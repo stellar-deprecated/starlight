@@ -107,6 +107,11 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
+	// If the open agreement details don't match the open agreement in progress, error.
+	if !c.openAgreement.isEmpty() && m.Details != c.openAgreement.Details {
+		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
+	}
+
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the
 	// channel's saved open agreement details if present, to prevent other party from changing.
 	defer func() {
@@ -123,11 +128,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 			},
 		}
 	}()
-
-	// validate openAgreement details
-	if !c.openAgreement.isEmpty() && m.Details != c.openAgreement.Details {
-		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
-	}
 
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
