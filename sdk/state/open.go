@@ -45,14 +45,12 @@ type OpenParams struct {
 	Assets                     []Trustline
 }
 
-func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
-	if len(p.Assets) == 0 {
+func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
+	if len(d.Assets) == 0 {
 		err = fmt.Errorf("invalid open params: trying to open a channel with no assets")
 		return
 	}
-}
 
-func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
@@ -152,7 +150,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{Assets: m.Details.Assets})
+	txClose, txDecl, formation, err := c.OpenTxs(m.Details)
 	if err != nil {
 		return m, authorized, err
 	}
