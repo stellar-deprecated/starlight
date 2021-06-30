@@ -12,6 +12,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	channel := NewChannel(Config{
+		NetworkPassphrase:          network.TestNetworkPassphrase,
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		Initiator:                  true,
+		LocalSigner:                localSigner,
+		RemoteSigner:               remoteSigner.FromAddress(),
+		LocalEscrowAccount:         localEscrowAccount,
+		RemoteEscrowAccount:        remoteEscrowAccount,
+	})
+
+	_, _, err := channel.ConfirmPayment(CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber:            1,
+			ObservationPeriodTime:      0,
+			ObservationPeriodLedgerGap: 0,
+		},
+		CloseSignatures: []xdr.DecoratedSignature{},
+	})
+	require.EqualError(t, err, "invalid payment observation period")
+}
+
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()

@@ -207,8 +207,10 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         Amount{Asset: m.Details.Asset},
+			IterationNumber:            1,
+			Balance:                    Amount{Asset: m.Details.Asset},
+			ObservationPeriodTime:      c.observationPeriodTime,
+			ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,

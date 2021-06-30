@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -15,23 +14,6 @@ import (
 // 3. Responder calls ConfirmCoordinatedClose
 // 4. Initiator calls ConfirmCoordinatedClose
 
-// makeCloseTx returns a close transaction with observation values.
-func (c *Channel) makeCloseTx(d CloseAgreementDetails, observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (*txnbuild.Transaction, error) {
-	return txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            d.IterationNumber,
-		AmountToInitiator:          amountToInitiator(d.Balance.Amount),
-		AmountToResponder:          amountToResponder(d.Balance.Amount),
-		Asset:                      d.Balance.Asset,
-	})
-}
-
 func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -42,7 +24,19 @@ func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transactio
 	if err != nil {
 		return nil, nil, err
 	}
-	txClose, err = c.makeCloseTx(d, c.observationPeriodTime, c.observationPeriodLedgerGap)
+	txClose, err = txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      d.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            d.IterationNumber,
+		AmountToInitiator:          amountToInitiator(d.Balance.Amount),
+		AmountToResponder:          amountToResponder(d.Balance.Amount),
+		Asset:                      d.Balance.Asset,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -63,21 +57,15 @@ func amountToResponder(balance int64) int64 {
 	return 0
 }
 
-func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
-	txClose, err := c.makeCloseTx(c.latestAuthorizedCloseAgreement.Details, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-	return txClose, nil
-}
-
 // ProposeCoordinatedClose proposes a close transaction to be submitted immediately.
 // This should be used when participants are in agreement on the final txClose parameters, but would
 // like to submit earlier than the original observation time.
 func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 	d := c.latestAuthorizedCloseAgreement.Details
+	d.ObservationPeriodTime = 0
+	d.ObservationPeriodLedgerGap = 0
 
-	txCoordinatedClose, err := c.makeCloseTx(d, 0, 0)
+	_, txCoordinatedClose, err := c.CloseTxs(d)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making coordianted close transactions: %w", err)
 	}
@@ -95,11 +83,15 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 }
 
 func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
-	if ca.Details != c.latestAuthorizedCloseAgreement.Details {
+	latestWithoutObservation := c.latestAuthorizedCloseAgreement.Details
+	latestWithoutObservation.ObservationPeriodTime = 0
+	latestWithoutObservation.ObservationPeriodLedgerGap = 0
+
+	if ca.Details != latestWithoutObservation {
 		return CloseAgreement{}, authorized, fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
 	}
 
-	txCoordinatedClose, err := c.makeCloseTx(ca.Details, 0, 0)
+	_, txCoordinatedClose, err := c.CloseTxs(ca.Details)
 	if err != nil {
 		return CloseAgreement{}, authorized, fmt.Errorf("making coordinated close transactions: %w", err)
 	}

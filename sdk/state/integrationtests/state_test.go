@@ -460,7 +460,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	require.True(t, authorized)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
-	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
+	_, txCoordinated, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
 	require.NoError(t, err)
 	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
 	require.NoError(t, err)
