@@ -23,6 +23,8 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		Address:        keypair.MustRandom().FromAddress(),
 		SequenceNumber: int64(202),
 	}
+
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:          network.TestNetworkPassphrase,
 		ObservationPeriodTime:      1,
@@ -34,15 +36,49 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		RemoteEscrowAccount:        remoteEscrowAccount,
 	})
 
-	_, _, err := channel.ConfirmPayment(CloseAgreement{
-		Details: CloseAgreementDetails{
+	// A close agreement from the remote participant should be accepted if the
+	// observation period matches the channels observation period.
+	{
+		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
+			IterationNumber:            1,
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+		})
+		require.NoError(t, err)
+		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
+		_, _, err = channel.ConfirmPayment(CloseAgreement{
+			Details: CloseAgreementDetails{
+				IterationNumber:            1,
+				ObservationPeriodTime:      1,
+				ObservationPeriodLedgerGap: 1,
+			},
+			CloseSignatures: txClose.Signatures(),
+		})
+		require.NoError(t, err)
+	}
+
+	// A close agreement from the remote participant should be rejected if the
+	// observation period doesn't match the channels observation period.
+	{
+		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
-		},
-		CloseSignatures: []xdr.DecoratedSignature{},
-	})
-	require.EqualError(t, err, "invalid payment observation period")
+		})
+		require.NoError(t, err)
+		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
+		_, _, err = channel.ConfirmPayment(CloseAgreement{
+			Details: CloseAgreementDetails{
+				IterationNumber:            1,
+				ObservationPeriodTime:      0,
+				ObservationPeriodLedgerGap: 0,
+			},
+			CloseSignatures: txClose.Signatures(),
+		})
+		require.EqualError(t, err, "invalid payment observation period")
+	}
 }
 
 func TestLastConfirmedPayment(t *testing.T) {
