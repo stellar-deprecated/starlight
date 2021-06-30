@@ -16,7 +16,7 @@ import (
 // 4. Initiator calls ConfirmCoordinatedClose
 
 // makeCloseTx returns a close transaction with observation values.
-func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (*txnbuild.Transaction, error) {
+func (c *Channel) makeCloseTx(d CloseAgreementDetails, observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (*txnbuild.Transaction, error) {
 	return txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -25,32 +25,46 @@ func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPe
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
 		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestAuthorizedCloseAgreement.Details.IterationNumber,
-		AmountToInitiator:          c.initiatorBalanceAmount(),
-		AmountToResponder:          c.responderBalanceAmount(),
-		Asset:                      c.latestAuthorizedCloseAgreement.Details.Balance.Asset,
+		IterationNumber:            d.IterationNumber,
+		AmountToInitiator:          amountToInitiator(d.Balance.Amount),
+		AmountToResponder:          amountToResponder(d.Balance.Amount),
+		Asset:                      d.Balance.Asset,
 	})
 }
 
-func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
+func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
-		IterationNumber:         c.latestAuthorizedCloseAgreement.Details.IterationNumber,
+		IterationNumber:         d.IterationNumber,
 		IterationNumberExecuted: 0,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-	txClose, err = c.makeCloseTx(c.observationPeriodTime, c.observationPeriodLedgerGap)
+	txClose, err = c.makeCloseTx(d, c.observationPeriodTime, c.observationPeriodLedgerGap)
 	if err != nil {
 		return nil, nil, err
 	}
 	return txDecl, txClose, nil
 }
 
+func amountToInitiator(balance int64) int64 {
+	if balance < 0 {
+		return balance * -1
+	}
+	return 0
+}
+
+func amountToResponder(balance int64) int64 {
+	if balance > 0 {
+		return balance
+	}
+	return 0
+}
+
 func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
-	txClose, err := c.makeCloseTx(0, 0)
+	txClose, err := c.makeCloseTx(c.latestAuthorizedCloseAgreement.Details, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +75,9 @@ func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
 // This should be used when participants are in agreement on the final txClose parameters, but would
 // like to submit earlier than the original observation time.
 func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
-	txCoordinatedClose, err := c.makeCloseTx(0, 0)
+	d := c.latestAuthorizedCloseAgreement.Details
+
+	txCoordinatedClose, err := c.makeCloseTx(d, 0, 0)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making coordianted close transactions: %w", err)
 	}
@@ -72,14 +88,18 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:         c.latestAuthorizedCloseAgreement.Details,
+		Details:         d,
 		CloseSignatures: txCoordinatedClose.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
 func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
-	txCoordinatedClose, err := c.makeCloseTx(0, 0)
+	if ca.Details != c.latestAuthorizedCloseAgreement.Details {
+		return CloseAgreement{}, authorized, fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
+	}
+
+	txCoordinatedClose, err := c.makeCloseTx(ca.Details, 0, 0)
 	if err != nil {
 		return CloseAgreement{}, authorized, fmt.Errorf("making coordinated close transactions: %w", err)
 	}
@@ -109,7 +129,7 @@ func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement Clo
 	// The new close agreement is valid and fully signed, store and promote it.
 	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details:       ca.Details,
+		Details:               ca.Details,
 		CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
 		DeclarationSignatures: c.latestUnauthorizedCloseAgreement.DeclarationSignatures,
 	}

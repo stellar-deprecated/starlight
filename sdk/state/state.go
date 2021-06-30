@@ -127,20 +127,6 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
-func (c *Channel) initiatorBalanceAmount() int64 {
-	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount < 0 {
-		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount * -1
-	}
-	return 0
-}
-
-func (c *Channel) responderBalanceAmount() int64 {
-	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount > 0 {
-		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount
-	}
-	return 0
-}
-
 func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) (bool, error) {
 	hash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {

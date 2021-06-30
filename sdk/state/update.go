@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
-	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -34,35 +32,6 @@ func (ca CloseAgreement) isEmpty() bool {
 	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
 }
 
-func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
-	close, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
-		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
-		Asset:                      ca.Details.Balance.Asset,
-	})
-	if err != nil {
-		return
-	}
-	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
-		IterationNumber:         c.NextIterationNumber(),
-		IterationNumberExecuted: 0,
-	})
-	if err != nil {
-		return
-	}
-	return
-}
-
 func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	if amount.Amount <= 0 {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
@@ -77,19 +46,11 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	} else {
 		newBalance = c.Balance().Amount - amount.Amount
 	}
-	txClose, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, newBalance*-1),
-		AmountToResponder:          maxInt64(0, newBalance),
-		Asset:                      amount.Asset,
-	})
+	d := CloseAgreementDetails{
+		IterationNumber: c.NextIterationNumber(),
+		Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
+	}
+	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -99,10 +60,7 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
-			IterationNumber: c.NextIterationNumber(),
-			Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
-		},
+		Details:         d,
 		CloseSignatures: txClose.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
@@ -147,7 +105,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}()
 
 	// create payment transactions
-	txClose, txDecl, err := c.PaymentTxs(ca)
+	txDecl, txClose, err := c.CloseTxs(ca.Details)
 	if err != nil {
 		return ca, authorized, err
 	}
@@ -200,11 +158,4 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// transactions in the payment.
 	authorized = true
 	return ca, authorized, nil
-}
-
-func maxInt64(x int64, y int64) int64 {
-	if x > y {
-		return x
-	}
-	return y
 }
