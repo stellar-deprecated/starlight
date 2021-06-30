@@ -81,7 +81,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 			},
 			CloseSignatures: txClose.Signatures(),
 		})
-		require.EqualError(t, err, "invalid payment observation period")
+		require.EqualError(t, err, "invalid payment observation period: different than channel state")
 	}
 }
 
