@@ -8,9 +8,19 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+type Trustline = txbuild.Trustline
+
 type OpenAgreementDetails struct {
-	Asset      Asset
-	AssetLimit int64
+	Assets []Trustline
+}
+
+func (d OpenAgreementDetails) isEqual(d2 OpenAgreementDetails) bool {
+	for i, a := range d.Assets {
+		if a != d2.Assets[i] {
+			return false
+		}
+	}
+	return true
 }
 
 type OpenAgreement struct {
@@ -21,16 +31,19 @@ type OpenAgreement struct {
 }
 
 func (oa OpenAgreement) isEmpty() bool {
-	return oa.Details.Asset == nil && oa.Details.AssetLimit == 0
+	return len(oa.Details.Assets) == 0
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
-	Asset      Asset
-	AssetLimit int64
+	Assets []Trustline
 }
 
 func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
+	if len(p.Assets) == 0 {
+		err = fmt.Errorf("invalid open params: trying to open a channel with no assets")
+		return
+	}
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      c.observationPeriodTime,
 		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
@@ -42,7 +55,8 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 		IterationNumber:            1,
 		AmountToInitiator:          0,
 		AmountToResponder:          0,
-		Asset:                      p.Asset,
+		// TODO - change to use all assets, simplifying for now
+		Asset: p.Assets[0].Asset,
 	})
 	if err != nil {
 		return
@@ -62,8 +76,7 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 		InitiatorEscrow: c.initiatorEscrowAccount().Address,
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
-		Asset:           p.Asset,
-		AssetLimit:      p.AssetLimit,
+		Assets:          p.Assets,
 	})
 	return
 }
@@ -108,7 +121,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 // completely signed, fully signed will be true, otherwise it will be false.
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
 	// If the open agreement details don't match the open agreement in progress, error.
-	if !c.openAgreement.isEmpty() && m.Details != c.openAgreement.Details {
+	if !c.openAgreement.isEmpty() && !m.Details.isEqual(c.openAgreement.Details) {
 		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
 	}
 
@@ -122,16 +135,13 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 			CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
 			DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
 			FormationSignatures:   appendNewSignatures(c.openAgreement.FormationSignatures, m.FormationSignatures),
-			Details: OpenAgreementDetails{
-				Asset:      m.Details.Asset,
-				AssetLimit: m.Details.AssetLimit,
-			},
+			Details:               m.Details,
 		}
 	}()
 
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Details.Asset, m.Details.AssetLimit})
+	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{Assets: m.Details.Assets})
 	if err != nil {
 		return m, authorized, err
 	}
@@ -208,7 +218,8 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance:         Amount{Asset: m.Details.Asset},
+			// TODO - change to use all assets, simplifying for now
+			Balance: Amount{Asset: m.Details.Assets[0].Asset},
 		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,
