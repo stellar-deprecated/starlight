@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/stellar/go/xdr"
 )
@@ -16,8 +17,10 @@ import (
 
 // CloseAgreementDetails contains the details that the participants agree on.
 type CloseAgreementDetails struct {
-	IterationNumber int64
-	Balance         Amount
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	IterationNumber            int64
+	Balance                    Amount
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -47,8 +50,10 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 		newBalance = c.Balance().Amount - amount.Amount
 	}
 	d := CloseAgreementDetails{
-		IterationNumber: c.NextIterationNumber(),
-		Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
+		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
+		IterationNumber:            c.NextIterationNumber(),
+		Balance:                    Amount{Asset: amount.Asset, Amount: newBalance},
 	}
 	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
@@ -73,6 +78,9 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// If the close agreement details don't match the close agreement in progress, error.
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	}
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
+		return ca, authorized, fmt.Errorf("invalid payment observation period: different than channel state")
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
