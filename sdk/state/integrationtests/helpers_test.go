@@ -113,11 +113,6 @@ func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.As
 }
 
 func initChannels(t *testing.T, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
-	// Channel constants.
-	const observationPeriodTime = 20 * time.Second
-	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-
 	initiatorEscrowAccount := state.EscrowAccount{
 		Address:        initiator.Escrow.FromAddress(),
 		SequenceNumber: initiator.EscrowSequenceNumber,
@@ -129,8 +124,6 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 
 	initiatorChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:          networkPassphrase,
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Initiator:                  true,
 		LocalEscrowAccount:         &initiatorEscrowAccount,
 		RemoteEscrowAccount:        &responderEscrowAccount,
@@ -139,8 +132,6 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 	})
 	responderChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:          networkPassphrase,
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Initiator:                  false,
 		LocalEscrowAccount:         &responderEscrowAccount,
 		RemoteEscrowAccount:        &initiatorEscrowAccount,

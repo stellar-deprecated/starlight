@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
@@ -9,8 +10,10 @@ import (
 )
 
 type OpenAgreementDetails struct {
-	Asset      Asset
-	AssetLimit int64
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	Asset                      Asset
+	AssetLimit                 int64
 }
 
 type OpenAgreement struct {
@@ -21,19 +24,21 @@ type OpenAgreement struct {
 }
 
 func (oa OpenAgreement) isEmpty() bool {
-	return oa.Details.Asset == nil && oa.Details.AssetLimit == 0
+	return oa.Details == OpenAgreementDetails{}
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
-	Asset      Asset
-	AssetLimit int64
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	Asset                      Asset
+	AssetLimit                 int64
 }
 
-func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
+func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
 	txClose, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+		ObservationPeriodTime:      d.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
 		ResponderSigner:            c.responderSigner(),
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
@@ -42,7 +47,7 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 		IterationNumber:            1,
 		AmountToInitiator:          0,
 		AmountToResponder:          0,
-		Asset:                      p.Asset,
+		Asset:                      d.Asset,
 	})
 	if err != nil {
 		return
@@ -62,8 +67,8 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 		InitiatorEscrow: c.initiatorEscrowAccount().Address,
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
-		Asset:           p.Asset,
-		AssetLimit:      p.AssetLimit,
+		Asset:           d.Asset,
+		AssetLimit:      d.AssetLimit,
 	})
 	return
 }
@@ -73,7 +78,9 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, _, _, err := c.OpenTxs(p)
+	d := OpenAgreementDetails(p)
+
+	txClose, _, _, err := c.OpenTxs(d)
 	if err != nil {
 		return OpenAgreement{}, err
 	}
@@ -82,8 +89,8 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 		return OpenAgreement{}, err
 	}
 	open := OpenAgreement{
+		Details:         d,
 		CloseSignatures: txClose.Signatures(),
-		Details:         OpenAgreementDetails(p),
 	}
 	c.openAgreement = open
 	return open, nil
@@ -119,19 +126,16 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 			return
 		}
 		c.openAgreement = OpenAgreement{
+			Details: m.Details,
 			CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
 			DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
 			FormationSignatures:   appendNewSignatures(c.openAgreement.FormationSignatures, m.FormationSignatures),
-			Details: OpenAgreementDetails{
-				Asset:      m.Details.Asset,
-				AssetLimit: m.Details.AssetLimit,
-			},
 		}
 	}()
 
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Details.Asset, m.Details.AssetLimit})
+	txClose, txDecl, formation, err := c.OpenTxs(m.Details)
 	if err != nil {
 		return m, authorized, err
 	}
@@ -209,8 +213,8 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 		Details: CloseAgreementDetails{
 			IterationNumber:            1,
 			Balance:                    Amount{Asset: m.Details.Asset},
-			ObservationPeriodTime:      c.observationPeriodTime,
-			ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
+			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
 		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,

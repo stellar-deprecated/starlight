@@ -17,10 +17,10 @@ import (
 
 // CloseAgreementDetails contains the details that the participants agree on.
 type CloseAgreementDetails struct {
-	IterationNumber            int64
-	Balance                    Amount
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
+	IterationNumber            int64
+	Balance                    Amount
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -50,10 +50,10 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 		newBalance = c.Balance().Amount - amount.Amount
 	}
 	d := CloseAgreementDetails{
+		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    Amount{Asset: amount.Asset, Amount: newBalance},
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
 	}
 	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
@@ -79,7 +79,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
 	}
-	if ca.Details.ObservationPeriodTime != c.observationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.observationPeriodLedgerGap {
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
 		return ca, authorized, fmt.Errorf("invalid payment observation period")
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {

@@ -24,17 +24,21 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		SequenceNumber: int64(202),
 	}
 
-	// Given a channel with observation periods set to 1.
+	// Given a channel with observation periods set to 1, that is already open.
 	channel := NewChannel(Config{
-		NetworkPassphrase:          network.TestNetworkPassphrase,
-		ObservationPeriodTime:      1,
-		ObservationPeriodLedgerGap: 1,
-		Initiator:                  true,
-		LocalSigner:                localSigner,
-		RemoteSigner:               remoteSigner.FromAddress(),
-		LocalEscrowAccount:         localEscrowAccount,
-		RemoteEscrowAccount:        remoteEscrowAccount,
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+		},
+	}
 
 	// A close agreement from the remote participant should be accepted if the
 	// observation period matches the channels observation period.
