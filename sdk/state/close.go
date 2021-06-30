@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 // The steps for a channel coordinated close are as followed:
@@ -78,6 +79,7 @@ func (c *Channel) ProposeCoordinatedClose() (CloseAgreement, error) {
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
 		Details:         d,
 		CloseSignatures: txCoordinatedClose.Signatures(),
+		DeclarationSignatures: append([]xdr.DecoratedSignature{}, c.latestAuthorizedCloseAgreement.DeclarationSignatures...),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
 }
