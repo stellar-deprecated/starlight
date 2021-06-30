@@ -127,12 +127,16 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		return ca, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
-	// If local has not signed close, sign.
+	// If local has not signed close, check that the payment is in locals favor, then sign.
 	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
 		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
+		if (c.initiator && ca.Details.Balance.Amount > c.latestAuthorizedCloseAgreement.Details.Balance.Amount) ||
+			(!c.initiator && ca.Details.Balance.Amount < c.latestAuthorizedCloseAgreement.Details.Balance.Amount) {
+			return ca, authorized, fmt.Errorf("close agreement from remote changes the balance in their favor")
+		}
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return ca, authorized, fmt.Errorf("signing close with local: %w", err)
