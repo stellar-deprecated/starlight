@@ -124,9 +124,8 @@ func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement Clo
 	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details:               ca.Details,
-		CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
-		DeclarationSignatures: c.latestUnauthorizedCloseAgreement.DeclarationSignatures,
+		CloseSignatures:       ca.CloseSignatures,
+		DeclarationSignatures: c.latestAuthorizedCloseAgreement.DeclarationSignatures,
 	}
-	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
 	return c.latestAuthorizedCloseAgreement, authorized, nil
 }
