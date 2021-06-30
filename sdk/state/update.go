@@ -3,9 +3,8 @@ package state
 import (
 	"errors"
 	"fmt"
+	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
-	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,8 +17,10 @@ import (
 
 // CloseAgreementDetails contains the details that the participants agree on.
 type CloseAgreementDetails struct {
-	IterationNumber int64
-	Balance         Amount
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	IterationNumber            int64
+	Balance                    Amount
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -32,35 +33,6 @@ type CloseAgreement struct {
 
 func (ca CloseAgreement) isEmpty() bool {
 	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
-}
-
-func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
-	close, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
-		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
-		Asset:                      ca.Details.Balance.Asset,
-	})
-	if err != nil {
-		return
-	}
-	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
-		IterationNumber:         c.NextIterationNumber(),
-		IterationNumberExecuted: 0,
-	})
-	if err != nil {
-		return
-	}
-	return
 }
 
 func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
@@ -77,19 +49,13 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	} else {
 		newBalance = c.Balance().Amount - amount.Amount
 	}
-	txClose, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
+	d := CloseAgreementDetails{
+		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, newBalance*-1),
-		AmountToResponder:          maxInt64(0, newBalance),
-		Asset:                      amount.Asset,
-	})
+		Balance:                    Amount{Asset: amount.Asset, Amount: newBalance},
+	}
+	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -99,10 +65,7 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
-			IterationNumber: c.NextIterationNumber(),
-			Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
-		},
+		Details:         d,
 		CloseSignatures: txClose.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
@@ -115,6 +78,9 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// If the close agreement details don't match the close agreement in progress, error.
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	}
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
+		return ca, authorized, fmt.Errorf("invalid payment observation period: different than channel state")
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
@@ -147,7 +113,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}()
 
 	// create payment transactions
-	txClose, txDecl, err := c.PaymentTxs(ca)
+	txDecl, txClose, err := c.CloseTxs(ca.Details)
 	if err != nil {
 		return ca, authorized, err
 	}
@@ -200,11 +166,4 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// transactions in the payment.
 	authorized = true
 	return ca, authorized, nil
-}
-
-func maxInt64(x int64, y int64) int64 {
-	if x > y {
-		return x
-	}
-	return y
 }

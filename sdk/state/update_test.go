@@ -12,6 +12,79 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	// Given a channel with observation periods set to 1, that is already open.
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+		},
+	}
+
+	// A close agreement from the remote participant should be accepted if the
+	// observation period matches the channels observation period.
+	{
+		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
+			IterationNumber:            1,
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+		})
+		require.NoError(t, err)
+		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
+		_, _, err = channel.ConfirmPayment(CloseAgreement{
+			Details: CloseAgreementDetails{
+				IterationNumber:            1,
+				ObservationPeriodTime:      1,
+				ObservationPeriodLedgerGap: 1,
+			},
+			CloseSignatures: txClose.Signatures(),
+		})
+		require.NoError(t, err)
+	}
+
+	// A close agreement from the remote participant should be rejected if the
+	// observation period doesn't match the channels observation period.
+	{
+		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
+			IterationNumber:            1,
+			ObservationPeriodTime:      0,
+			ObservationPeriodLedgerGap: 0,
+		})
+		require.NoError(t, err)
+		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
+		_, _, err = channel.ConfirmPayment(CloseAgreement{
+			Details: CloseAgreementDetails{
+				IterationNumber:            1,
+				ObservationPeriodTime:      0,
+				ObservationPeriodLedgerGap: 0,
+			},
+			CloseSignatures: txClose.Signatures(),
+		})
+		require.EqualError(t, err, "invalid payment observation period: different than channel state")
+	}
+}
+
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()

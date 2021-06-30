@@ -22,6 +22,11 @@ type Participant struct {
 }
 
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
+	// Channel constants.
+	const observationPeriodTime = 20 * time.Second
+	const averageLedgerDuration = 5 * time.Second
+	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+
 	asset := txnbuild.NativeAsset{}
 	// native asset has no asset limit
 	assetLimit := int64(0)
@@ -49,6 +54,8 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Open...")
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Assets: []state.Trustline{
 			state.Trustline{Asset: asset, AssetLimit: assetLimit},
 		},
@@ -162,9 +169,6 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
 		require.NoError(t, err)
 
-		ci, di, err := sendingChannel.PaymentTxs(payment)
-		require.NoError(t, err)
-
 		var authorized bool
 
 		// Receiver: receives new payment, validates, then confirms by signing both
@@ -182,6 +186,9 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, authorized)
 
+		// Record the close tx's at this point in time.
+		di, ci, err := sendingChannel.CloseTxs(sendingChannel.LatestCloseAgreement().Details)
+		require.NoError(t, err)
 		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
 		require.NoError(t, err)
 		closeTxs = append(closeTxs, ci)
@@ -236,7 +243,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	// Good participant closes channel at latest iteration.
 	t.Log("Good participant (initiator) closing channel at latest iteration...")
 	{
-		lastD, lastC, err := initiatorChannel.CloseTxs()
+		lastD, lastC, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
 		require.NoError(t, err)
 		lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
 		require.NoError(t, err)
@@ -300,6 +307,11 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 }
 
 func TestOpenUpdatesCoordinatedClose(t *testing.T) {
+	// Channel constants.
+	const observationPeriodTime = 20 * time.Second
+	const averageLedgerDuration = 5 * time.Second
+	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+
 	asset, distributor := initAsset(t, client, "ABDC")
 	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, []AssetParam{
@@ -319,6 +331,8 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	t.Log("Open...")
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Assets: []state.Trustline{
 			state.Trustline{Asset: asset, AssetLimit: assetLimit},
 		},
@@ -439,21 +453,15 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 		require.True(t, authorized)
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
+		_, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 		require.True(t, authorized)
-		ci, di, err := sendingChannel.PaymentTxs(payment)
-		require.NoError(t, err)
-		_, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
-		require.NoError(t, err)
-		_, err = di.AddSignatureDecorated(payment.DeclarationSignatures...)
-		require.NoError(t, err)
 	}
 
 	// Coordinated Close
 	t.Log("Begin coordinated close process ...")
 	t.Log("Initiator submitting latest declaration transaction")
-	lastD, _, err := initiatorChannel.CloseTxs()
+	lastD, _, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
 	require.NoError(t, err)
 	lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
 	require.NoError(t, err)
@@ -482,7 +490,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	require.True(t, authorized)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
-	txCoordinated, err := initiatorChannel.CoordinatedCloseTx()
+	_, txCoordinated, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
 	require.NoError(t, err)
 	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
 	require.NoError(t, err)
