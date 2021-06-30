@@ -75,7 +75,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("signing  close transaction: %w", err)
+		return CloseAgreement{}, fmt.Errorf("signing close transaction: %w", err)
 	}
 
 	// Store the close agreement while participants iterate on signatures.
