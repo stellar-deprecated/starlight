@@ -15,6 +15,23 @@ import (
 // 3. Responder calls ConfirmCoordinatedClose
 // 4. Initiator calls ConfirmCoordinatedClose
 
+// makeCloseTx returns a close transaction with observation values.
+func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (*txnbuild.Transaction, error) {
+	return txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            c.latestAuthorizedCloseAgreement.Details.IterationNumber,
+		AmountToInitiator:          c.initiatorBalanceAmount(),
+		AmountToResponder:          c.responderBalanceAmount(),
+		Asset:                      c.latestAuthorizedCloseAgreement.Details.Balance.Asset,
+	})
+}
+
 func (c *Channel) CloseTxs() (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -98,21 +115,4 @@ func (c *Channel) ConfirmCoordinatedClose(ca CloseAgreement) (closeAgreement Clo
 	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
 	return c.latestAuthorizedCloseAgreement, authorized, nil
-}
-
-// makeCloseTx is a helper method for creating a close transaction with custom observation values.
-func (c *Channel) makeCloseTx(observationPeriodTime time.Duration, observationPeriodLedgerGap int64) (*txnbuild.Transaction, error) {
-	return txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.latestAuthorizedCloseAgreement.Details.IterationNumber,
-		AmountToInitiator:          c.initiatorBalanceAmount(),
-		AmountToResponder:          c.responderBalanceAmount(),
-		Asset:                      c.latestAuthorizedCloseAgreement.Details.Balance.Asset,
-	})
 }
