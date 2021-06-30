@@ -32,20 +32,6 @@ func (c *Channel) closeTx(d CloseAgreementDetails, observationPeriodTime time.Du
 	})
 }
 
-func amountToInitiator(balance int64) int64 {
-	if balance < 0 {
-		return balance * -1
-	}
-	return 0
-}
-
-func amountToResponder(balance int64) int64 {
-	if balance > 0 {
-		return balance
-	}
-	return 0
-}
-
 func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -61,6 +47,20 @@ func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transactio
 		return nil, nil, err
 	}
 	return txDecl, txClose, nil
+}
+
+func amountToInitiator(balance int64) int64 {
+	if balance < 0 {
+		return balance * -1
+	}
+	return 0
+}
+
+func amountToResponder(balance int64) int64 {
+	if balance > 0 {
+		return balance
+	}
+	return 0
 }
 
 func (c *Channel) CoordinatedCloseTx() (*txnbuild.Transaction, error) {
