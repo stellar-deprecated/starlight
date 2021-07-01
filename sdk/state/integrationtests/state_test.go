@@ -56,7 +56,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Assets: []state.Trustline{
+		Trustlines: []state.Trustline{
 			state.Trustline{Asset: asset, AssetLimit: assetLimit},
 		},
 	})
@@ -331,7 +331,7 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Assets: []state.Trustline{
+		Trustlines: []state.Trustline{
 			state.Trustline{Asset: asset, AssetLimit: assetLimit},
 		},
 	})
@@ -548,7 +548,7 @@ func TestOpen_multipleAssets(t *testing.T) {
 	t.Log("Open...")
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
-		Assets: []state.Trustline{
+		Trustlines: []state.Trustline{
 			state.Trustline{Asset: asset1, AssetLimit: assetLimit1},
 			state.Trustline{Asset: asset2, AssetLimit: assetLimit2},
 		},

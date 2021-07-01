@@ -32,7 +32,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 
 	native := NativeAsset{}
 	_, err := sendingChannel.ProposeOpen(OpenParams{
-		Assets: []Trustline{Trustline{
+		Trustlines: []Trustline{Trustline{
 			Asset: native},
 		},
 	})
@@ -40,7 +40,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 
 	invalidCredit := CreditAsset{}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Assets: []Trustline{
+		Trustlines: []Trustline{
 			Trustline{Asset: invalidCredit, AssetLimit: 100},
 		},
 	})
@@ -48,7 +48,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 
 	validCredit := CreditAsset{Code: "ABCD", Issuer: "GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P"}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Assets: []Trustline{
+		Trustlines: []Trustline{
 			Trustline{Asset: validCredit, AssetLimit: 100},
 		},
 	})
@@ -79,7 +79,7 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
-			Assets: []Trustline{
+			Trustlines: []Trustline{
 				Trustline{Asset: NativeAsset{}},
 			},
 		},
@@ -100,13 +100,13 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 		AssetLimit: 200,
 	}
 	p = OpenParams{
-		Assets: []Trustline{ca1, ca2},
+		Trustlines: []Trustline{ca1, ca2},
 	}
 	oa, err := channel.ProposeOpen(p)
 	require.NoError(t, err)
 
 	wantDetails := OpenAgreementDetails{
-		Assets: []Trustline{ca1, ca2},
+		Trustlines: []Trustline{ca1, ca2},
 	}
 	assert.Equal(t, wantDetails, oa.Details)
 	assert.Len(t, oa.CloseSignatures, 1)
@@ -136,7 +136,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
-			Assets: []Trustline{
+			Trustlines: []Trustline{
 				Trustline{Asset: NativeAsset{}},
 			},
 		},
@@ -145,7 +145,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 	oa := OpenAgreementDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
-		Assets: []Trustline{
+		Trustlines: []Trustline{
 			Trustline{Asset: NativeAsset{}},
 		},
 	}
@@ -162,7 +162,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 	{
 		// invalid new asset
 		d := oa
-		d.Assets = append(d.Assets, Trustline{Asset: CreditAsset{Code: "abc"}})
+		d.Trustlines = append(d.Trustlines, Trustline{Asset: CreditAsset{Code: "abc"}})
 		_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: d})
 		require.False(t, authorized)
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")

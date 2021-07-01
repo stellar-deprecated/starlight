@@ -10,7 +10,7 @@ type CreateEscrowParams struct {
 	Creator        *keypair.FromAddress
 	Escrow         *keypair.FromAddress
 	SequenceNumber int64
-	Assets         []Trustline
+	Trustlines     []Trustline
 }
 
 func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
@@ -32,7 +32,7 @@ func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
 			Signer:          &txnbuild.Signer{Address: p.Creator.Address(), Weight: 1},
 		},
 	}
-	for _, a := range p.Assets {
+	for _, a := range p.Trustlines {
 		if !a.Asset.IsNative() {
 			ops = append(ops, &txnbuild.ChangeTrust{
 				Line:          a.Asset,

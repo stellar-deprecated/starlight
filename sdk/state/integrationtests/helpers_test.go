@@ -86,7 +86,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, assets []AssetPar
 		Creator:        participant.KP.FromAddress(),
 		Escrow:         participant.Escrow.FromAddress(),
 		SequenceNumber: seqNum + 1,
-		Assets:         tl,
+		Trustlines:     tl,
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)

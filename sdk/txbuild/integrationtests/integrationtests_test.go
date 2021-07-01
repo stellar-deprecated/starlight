@@ -47,7 +47,7 @@ func Test(t *testing.T) {
 			Creator:        initiator.KP.FromAddress(),
 			Escrow:         initiator.Escrow.FromAddress(),
 			SequenceNumber: seqNum + 1,
-			Assets: []txbuild.Trustline{
+			Trustlines: []txbuild.Trustline{
 				txbuild.Trustline{Asset: txnbuild.NativeAsset{}},
 			},
 		})
@@ -112,7 +112,7 @@ func Test(t *testing.T) {
 			Creator:        responder.KP.FromAddress(),
 			Escrow:         responder.Escrow.FromAddress(),
 			SequenceNumber: seqNum + 1,
-			Assets: []txbuild.Trustline{
+			Trustlines: []txbuild.Trustline{
 				txbuild.Trustline{Asset: txnbuild.NativeAsset{}},
 			},
 		})
@@ -213,7 +213,7 @@ func Test(t *testing.T) {
 			InitiatorEscrow: initiator.Escrow.FromAddress(),
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
-			Assets: []txbuild.Trustline{
+			Trustlines: []txbuild.Trustline{
 				txbuild.Trustline{Asset: txnbuild.NativeAsset{}},
 			},
 		})

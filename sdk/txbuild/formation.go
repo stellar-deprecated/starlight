@@ -17,7 +17,7 @@ type FormationParams struct {
 	InitiatorEscrow *keypair.FromAddress
 	ResponderEscrow *keypair.FromAddress
 	StartSequence   int64
-	Assets          []Trustline
+	Trustlines      []Trustline
 }
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
@@ -42,7 +42,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		SourceAccount: p.InitiatorEscrow.Address(),
 		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
-	for _, a := range p.Assets {
+	for _, a := range p.Trustlines {
 		if !a.Asset.IsNative() {
 			tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 				Line:          a.Asset,
@@ -65,7 +65,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		SourceAccount: p.ResponderEscrow.Address(),
 		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
-	for _, a := range p.Assets {
+	for _, a := range p.Trustlines {
 		if !a.Asset.IsNative() {
 			tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 				Line:          a.Asset,
