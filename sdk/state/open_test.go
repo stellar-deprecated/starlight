@@ -96,7 +96,7 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 		AssetLimit: 100,
 	}
 	ca2 := Trustline{
-		Asset:      txnbuild.CreditAsset{Code: "ABC", Issuer: "abcIssuer"},
+		Asset:      txnbuild.CreditAsset{Code: "ABC", Issuer: "GB3A5VJGUIXQ4X35NZQMVLO5DKSOTUFF6SLHLY7BWJLJYVQVCJM4IEAI"},
 		AssetLimit: 200,
 	}
 	p = OpenParams{
@@ -109,7 +109,7 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 		Assets: []Trustline{ca1, ca2},
 	}
 	assert.Equal(t, wantDetails, oa.Details)
-	assert.Len(t, 1, len(oa.CloseSignatures))
+	assert.Len(t, oa.CloseSignatures, 1)
 }
 
 func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
