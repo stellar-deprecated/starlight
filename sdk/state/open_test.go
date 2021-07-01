@@ -91,22 +91,22 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 	assert.EqualError(t, err, `invalid open params: trying to open a channel with no assets`)
 
 	// valid open params
-	ca1 := Trustline{
+	tl1 := Trustline{
 		Asset:      txnbuild.NativeAsset{},
 		AssetLimit: 100,
 	}
-	ca2 := Trustline{
+	tl2 := Trustline{
 		Asset:      txnbuild.CreditAsset{Code: "ABC", Issuer: "GB3A5VJGUIXQ4X35NZQMVLO5DKSOTUFF6SLHLY7BWJLJYVQVCJM4IEAI"},
 		AssetLimit: 200,
 	}
 	p = OpenParams{
-		Trustlines: []Trustline{ca1, ca2},
+		Trustlines: []Trustline{tl1, tl2},
 	}
 	oa, err := channel.ProposeOpen(p)
 	require.NoError(t, err)
 
 	wantDetails := OpenAgreementDetails{
-		Trustlines: []Trustline{ca1, ca2},
+		Trustlines: []Trustline{tl1, tl2},
 	}
 	assert.Equal(t, wantDetails, oa.Details)
 	assert.Len(t, oa.CloseSignatures, 1)
