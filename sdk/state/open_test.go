@@ -32,8 +32,10 @@ func TestProposeOpen_validAsset(t *testing.T) {
 
 	native := NativeAsset{}
 	_, err := sendingChannel.ProposeOpen(OpenParams{
-		Trustlines: []Trustline{Trustline{
-			Asset: native},
+		Trustlines: []Trustline{
+			Trustline{
+				Asset: native,
+			},
 		},
 	})
 	require.NoError(t, err)
@@ -163,5 +165,4 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		require.False(t, authorized)
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")
 	}
-
 }

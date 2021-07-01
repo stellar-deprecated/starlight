@@ -38,7 +38,8 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
-		}})
+		},
+	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	// Tx history.
@@ -317,7 +318,8 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
-		}})
+		},
+	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
@@ -638,7 +640,8 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
-		}})
+		},
+	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
