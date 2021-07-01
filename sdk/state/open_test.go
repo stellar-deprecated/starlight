@@ -33,7 +33,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 	native := NativeAsset{}
 	_, err := sendingChannel.ProposeOpen(OpenParams{
 		Trustlines: []Trustline{
-			Trustline{
+			{
 				Asset: native,
 			},
 		},
@@ -43,7 +43,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 	invalidCredit := CreditAsset{}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
 		Trustlines: []Trustline{
-			Trustline{Asset: invalidCredit, AssetLimit: 100},
+			{Asset: invalidCredit, AssetLimit: 100},
 		},
 	})
 	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
@@ -51,7 +51,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 	validCredit := CreditAsset{Code: "ABCD", Issuer: "GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P"}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
 		Trustlines: []Trustline{
-			Trustline{Asset: validCredit, AssetLimit: 100},
+			{Asset: validCredit, AssetLimit: 100},
 		},
 	})
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Trustlines: []Trustline{
-				Trustline{Asset: NativeAsset{}},
+				{Asset: NativeAsset{}},
 			},
 		},
 	}
@@ -135,7 +135,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 			ObservationPeriodLedgerGap: 1,
 			// TODO - remove explicit native asset trustline
 			Trustlines: []Trustline{
-				Trustline{Asset: NativeAsset{}},
+				{Asset: NativeAsset{}},
 			},
 		},
 	}
@@ -144,7 +144,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Trustlines: []Trustline{
-			Trustline{Asset: NativeAsset{}},
+			{Asset: NativeAsset{}},
 		},
 	}
 

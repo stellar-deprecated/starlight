@@ -34,7 +34,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	require.NoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
 	initiator, responder := initAccounts(t, []AssetParam{
-		AssetParam{
+		{
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
@@ -58,7 +58,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Trustlines: []state.Trustline{
-			state.Trustline{Asset: asset, AssetLimit: assetLimit},
+			{Asset: asset, AssetLimit: assetLimit},
 		},
 	})
 	require.NoError(t, err)
@@ -314,7 +314,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	asset, distributor := initAsset(t, client, "ABDC")
 	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, []AssetParam{
-		AssetParam{
+		{
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
@@ -334,7 +334,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Trustlines: []state.Trustline{
-			state.Trustline{Asset: asset, AssetLimit: assetLimit},
+			{Asset: asset, AssetLimit: assetLimit},
 		},
 	})
 	require.NoError(t, err)
@@ -551,8 +551,8 @@ func TestOpen_multipleAssets(t *testing.T) {
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		Trustlines: []state.Trustline{
-			state.Trustline{Asset: asset1, AssetLimit: assetLimit1},
-			state.Trustline{Asset: asset2, AssetLimit: assetLimit2},
+			{Asset: asset1, AssetLimit: assetLimit1},
+			{Asset: asset2, AssetLimit: assetLimit2},
 		},
 	})
 	require.NoError(t, err)
@@ -636,7 +636,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	asset, distributor := initAsset(t, client, "ABDC")
 	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, []AssetParam{
-		AssetParam{
+		{
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
@@ -656,7 +656,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Trustlines: []state.Trustline{
-			state.Trustline{Asset: asset, AssetLimit: assetLimit},
+			{Asset: asset, AssetLimit: assetLimit},
 		},
 	})
 

@@ -1,9 +1,12 @@
 linters:
   # Enable these linters in addition to the default linters that golangci-lint starts with.
   enable:
+    - gofmt
     - gofumpt
 
 linters-settings:
   govet:
     # TODO: Enable shadow checks, because stellar/go has them enabled, but they're a bit painful for us to enable now.
     # check-shadowing: true
+  gofmt:
+    simplify: true
