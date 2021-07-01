@@ -133,7 +133,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 		Details:         ca,
 		CloseSignatures: txClose.Signatures(),
 	})
-	require.EqualError(t, err, "close agreement from remote changes the balance in their favor")
+	require.EqualError(t, err, "close agreement is a payment to the proposer")
 }
 
 func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
@@ -184,7 +184,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 		Details:         ca,
 		CloseSignatures: txClose.Signatures(),
 	})
-	require.EqualError(t, err, "close agreement from remote changes the balance in their favor")
+	require.EqualError(t, err, "close agreement is a payment to the proposer")
 }
 
 func TestLastConfirmedPayment(t *testing.T) {

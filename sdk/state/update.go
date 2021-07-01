@@ -127,7 +127,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		return ca, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
-	// If local has not signed close, check that the payment is not from local to remote, then sign.
+	// If local has not signed close, check that the payment is not to the proposer, then sign.
 	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
 		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
