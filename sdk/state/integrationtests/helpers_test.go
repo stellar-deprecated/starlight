@@ -80,7 +80,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, assets []AssetPar
 
 	tl := []txbuild.Trustline{}
 	for _, a := range assets {
-		tl = append(tl, txbuild.Trustline{a.Asset, a.AssetLimit})
+		tl = append(tl, txbuild.Trustline{Asset: a.Asset, AssetLimit: a.AssetLimit})
 	}
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 		Creator:        participant.KP.FromAddress(),
@@ -142,20 +142,20 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 	}
 
 	initiatorChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:          networkPassphrase,
-		Initiator:                  true,
-		LocalEscrowAccount:         &initiatorEscrowAccount,
-		RemoteEscrowAccount:        &responderEscrowAccount,
-		LocalSigner:                initiator.KP,
-		RemoteSigner:               responder.KP.FromAddress(),
+		NetworkPassphrase:   networkPassphrase,
+		Initiator:           true,
+		LocalEscrowAccount:  &initiatorEscrowAccount,
+		RemoteEscrowAccount: &responderEscrowAccount,
+		LocalSigner:         initiator.KP,
+		RemoteSigner:        responder.KP.FromAddress(),
 	})
 	responderChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:          networkPassphrase,
-		Initiator:                  false,
-		LocalEscrowAccount:         &responderEscrowAccount,
-		RemoteEscrowAccount:        &initiatorEscrowAccount,
-		LocalSigner:                responder.KP,
-		RemoteSigner:               initiator.KP.FromAddress(),
+		NetworkPassphrase:   networkPassphrase,
+		Initiator:           false,
+		LocalEscrowAccount:  &responderEscrowAccount,
+		RemoteEscrowAccount: &initiatorEscrowAccount,
+		LocalSigner:         responder.KP,
+		RemoteSigner:        initiator.KP.FromAddress(),
 	})
 	return initiatorChannel, responderChannel
 }
