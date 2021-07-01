@@ -631,9 +631,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
-	asset, distributor := initAsset(t, client)
+	asset, distributor := initAsset(t, client, "ABDC")
 	assetLimit := int64(5_000_0000000)
-	initiator, responder := initAccounts(t, asset, assetLimit, distributor)
+	initiator, responder := initAccounts(t, []AssetParam{
+		AssetParam{
+			Asset:       asset,
+			AssetLimit:  assetLimit,
+			Distributor: distributor,
+		}})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
@@ -647,9 +652,11 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Asset:                      asset,
-		AssetLimit:                 assetLimit,
+		Trustlines: []state.Trustline{
+			state.Trustline{Asset: asset, AssetLimit: assetLimit},
+		},
 	})
+
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
 	assert.Len(t, open.DeclarationSignatures, 0)
