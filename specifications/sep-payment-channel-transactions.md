@@ -166,8 +166,7 @@ To setup the payment channel:
    - i to 0.
    - e to 0.
 4. Increment i.
-5. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the initial contributions.
+5. Sign and exchange a closing transaction C_i, that closes the channel.
 6. Sign and exchange a declaration transaction D_i.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
