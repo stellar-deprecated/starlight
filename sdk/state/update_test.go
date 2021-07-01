@@ -165,7 +165,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 			IterationNumber: 1,
 			Balance: Amount{
 				Asset:  NativeAsset{},
-				Amount: 100, // Local (responder) owes remote (initiator) 100.
+				Amount: 100, // Remote (initiator) owes local (responder) 100.
 			},
 		},
 	}
@@ -173,7 +173,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 		IterationNumber: 2,
 		Balance: Amount{
 			Asset:  NativeAsset{},
-			Amount: 90, // Local (responder) owes remote (initiator) 110, payment of 10 from ❌ local to remote.
+			Amount: 90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 		},
 	}
 	_, txClose, err := channel.CloseTxs(ca)
