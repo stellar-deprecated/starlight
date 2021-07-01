@@ -18,9 +18,12 @@ type OpenAgreementDetails struct {
 }
 
 func (d OpenAgreementDetails) isEqual(d2 OpenAgreementDetails) bool {
-	if d.ObservationPeriodTime != d2.ObservationPeriodTime || d.ObservationPeriodLedgerGap != d2.ObservationPeriodLedgerGap {
+	if d.ObservationPeriodTime != d2.ObservationPeriodTime ||
+		d.ObservationPeriodLedgerGap != d2.ObservationPeriodLedgerGap ||
+		len(d.Assets) != len(d2.Assets) {
 		return false
 	}
+
 	for i, a := range d.Assets {
 		if a != d2.Assets[i] {
 			return false
