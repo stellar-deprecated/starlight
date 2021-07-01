@@ -43,13 +43,14 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
 	for _, a := range p.Trustlines {
-		if !a.Asset.IsNative() {
-			tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-				Line:          a.Asset,
-				Limit:         amount.StringFromInt64(a.AssetLimit),
-				SourceAccount: p.InitiatorEscrow.Address(),
-			})
+		if a.Asset.IsNative() {
+			continue
 		}
+		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
+			Line:          a.Asset,
+			Limit:         amount.StringFromInt64(a.AssetLimit),
+			SourceAccount: p.InitiatorEscrow.Address(),
+		})
 	}
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
@@ -67,12 +68,13 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	})
 	for _, a := range p.Trustlines {
 		if !a.Asset.IsNative() {
-			tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-				Line:          a.Asset,
-				Limit:         amount.StringFromInt64(a.AssetLimit),
-				SourceAccount: p.ResponderEscrow.Address(),
-			})
+			continue
 		}
+		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
+			Line:          a.Asset,
+			Limit:         amount.StringFromInt64(a.AssetLimit),
+			SourceAccount: p.ResponderEscrow.Address(),
+		})
 	}
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
 	tx, err := txnbuild.NewTransaction(tp)
