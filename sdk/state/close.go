@@ -71,7 +71,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("making coordianted close transactions: %w", err)
+		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
