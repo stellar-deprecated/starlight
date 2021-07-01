@@ -17,7 +17,7 @@ type OpenAgreementDetails struct {
 	Assets                     []Trustline
 }
 
-func (d OpenAgreementDetails) isEqual(d2 OpenAgreementDetails) bool {
+func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 	if d.ObservationPeriodTime != d2.ObservationPeriodTime ||
 		d.ObservationPeriodLedgerGap != d2.ObservationPeriodLedgerGap ||
 		len(d.Assets) != len(d2.Assets) {
@@ -135,7 +135,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 // completely signed, fully signed will be true, otherwise it will be false.
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
 	// If the open agreement details don't match the open agreement in progress, error.
-	if !c.openAgreement.isEmpty() && !m.Details.isEqual(c.openAgreement.Details) {
+	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
 		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
 	}
 
