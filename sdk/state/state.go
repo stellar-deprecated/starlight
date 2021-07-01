@@ -23,7 +23,7 @@ type EscrowAccount struct {
 }
 
 type Channel struct {
-	networkPassphrase string
+	networkPassphrase          string
 
 	startingSequence int64
 	// TODO - leave execution out for now
@@ -43,7 +43,7 @@ type Channel struct {
 }
 
 type Config struct {
-	NetworkPassphrase string
+	NetworkPassphrase          string
 
 	Initiator bool
 
@@ -56,12 +56,12 @@ type Config struct {
 
 func NewChannel(c Config) *Channel {
 	channel := &Channel{
-		networkPassphrase:   c.NetworkPassphrase,
-		initiator:           c.Initiator,
-		localEscrowAccount:  c.LocalEscrowAccount,
-		remoteEscrowAccount: c.RemoteEscrowAccount,
-		localSigner:         c.LocalSigner,
-		remoteSigner:        c.RemoteSigner,
+		networkPassphrase:          c.NetworkPassphrase,
+		initiator:                  c.Initiator,
+		localEscrowAccount:         c.LocalEscrowAccount,
+		remoteEscrowAccount:        c.RemoteEscrowAccount,
+		localSigner:                c.LocalSigner,
+		remoteSigner:               c.RemoteSigner,
 	}
 	return channel
 }

@@ -49,10 +49,10 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Open...")
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
-		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodTime: observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Asset:                      asset,
-		AssetLimit:                 assetLimit,
+		Asset: asset,
+		AssetLimit: assetLimit,
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -318,10 +318,10 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	t.Log("Open...")
 	// I signs txClose
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
-		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodTime: observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Asset:                      asset,
-		AssetLimit:                 assetLimit,
+		Asset: asset,
+		AssetLimit: assetLimit,
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)

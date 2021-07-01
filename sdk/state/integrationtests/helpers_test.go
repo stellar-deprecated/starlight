@@ -123,20 +123,20 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 	}
 
 	initiatorChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:   networkPassphrase,
-		Initiator:           true,
-		LocalEscrowAccount:  &initiatorEscrowAccount,
-		RemoteEscrowAccount: &responderEscrowAccount,
-		LocalSigner:         initiator.KP,
-		RemoteSigner:        responder.KP.FromAddress(),
+		NetworkPassphrase:          networkPassphrase,
+		Initiator:                  true,
+		LocalEscrowAccount:         &initiatorEscrowAccount,
+		RemoteEscrowAccount:        &responderEscrowAccount,
+		LocalSigner:                initiator.KP,
+		RemoteSigner:               responder.KP.FromAddress(),
 	})
 	responderChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:   networkPassphrase,
-		Initiator:           false,
-		LocalEscrowAccount:  &responderEscrowAccount,
-		RemoteEscrowAccount: &initiatorEscrowAccount,
-		LocalSigner:         responder.KP,
-		RemoteSigner:        initiator.KP.FromAddress(),
+		NetworkPassphrase:          networkPassphrase,
+		Initiator:                  false,
+		LocalEscrowAccount:         &responderEscrowAccount,
+		RemoteEscrowAccount:        &initiatorEscrowAccount,
+		LocalSigner:                responder.KP,
+		RemoteSigner:               initiator.KP.FromAddress(),
 	})
 	return initiatorChannel, responderChannel
 }

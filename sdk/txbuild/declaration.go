@@ -19,7 +19,7 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorEscrow.Address(),
 			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 0, // Declaration is the first transaction in an iteration's transaction set.
 		},
-		BaseFee:           0,
+		BaseFee: 0,
 		Timebounds:        txnbuild.NewInfiniteTimeout(),
 		MinSequenceNumber: &minSequenceNumber,
 		Operations: []txnbuild.Operation{
