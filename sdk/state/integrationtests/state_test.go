@@ -474,14 +474,14 @@ func TestOpenUpdatesCoordinatedClose(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("Initiator proposes a coordinated close")
-	ca, err := initiatorChannel.ProposeCoordinatedClose()
+	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, authorized, err := responderChannel.ConfirmCoordinatedClose(ca)
+	ca, authorized, err := responderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
 	require.True(t, authorized)
 
-	_, authorized, err = initiatorChannel.ConfirmCoordinatedClose(ca)
+	_, authorized, err = initiatorChannel.ConfirmClose(ca)
 	require.NoError(t, err)
 	require.True(t, authorized)
 
