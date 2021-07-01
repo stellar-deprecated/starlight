@@ -854,11 +854,12 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	asset, distributor := initAsset(t, client, "ABDC")
 	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, []AssetParam{
-		AssetParam{
+		{
 			Asset:       asset,
 			AssetLimit:  assetLimit,
 			Distributor: distributor,
-		}})
+		},
+	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
 	s := initiator.EscrowSequenceNumber + 1
@@ -873,7 +874,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Trustlines: []state.Trustline{
-			state.Trustline{Asset: asset, AssetLimit: assetLimit},
+			{Asset: asset, AssetLimit: assetLimit},
 		},
 	})
 
