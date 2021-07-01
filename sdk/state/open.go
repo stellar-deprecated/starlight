@@ -2,32 +2,58 @@ package state
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
-// TODO - should store on channel like Update and Close proposals?
-type Open struct {
+type Trustline = txbuild.Trustline
+
+type OpenAgreementDetails struct {
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	Trustlines                 []Trustline
+}
+
+func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
+	if d.ObservationPeriodTime != d2.ObservationPeriodTime ||
+		d.ObservationPeriodLedgerGap != d2.ObservationPeriodLedgerGap ||
+		len(d.Trustlines) != len(d2.Trustlines) {
+		return false
+	}
+
+	for i, a := range d.Trustlines {
+		if a != d2.Trustlines[i] {
+			return false
+		}
+	}
+	return true
+}
+
+type OpenAgreement struct {
+	Details               OpenAgreementDetails
 	CloseSignatures       []xdr.DecoratedSignature
 	DeclarationSignatures []xdr.DecoratedSignature
 	FormationSignatures   []xdr.DecoratedSignature
+}
 
-	Asset      Asset
-	AssetLimit int64
+func (oa OpenAgreement) isEmpty() bool {
+	return len(oa.Details.Trustlines) == 0 && oa.Details.ObservationPeriodTime == 0 && oa.Details.ObservationPeriodLedgerGap == 0
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
-	Asset      Asset
-	AssetLimit int64
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	Trustlines                 []Trustline
 }
 
-func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
+func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
 	txClose, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
+		ObservationPeriodTime:      d.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
 		ResponderSigner:            c.responderSigner(),
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
@@ -36,7 +62,8 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 		IterationNumber:            1,
 		AmountToInitiator:          0,
 		AmountToResponder:          0,
-		Asset:                      p.Asset,
+		// TODO - change to use all assets, simplifying for now
+		Asset: d.Trustlines[0].Asset,
 	})
 	if err != nil {
 		return
@@ -56,30 +83,31 @@ func (c *Channel) OpenTxs(p OpenParams) (txClose, txDecl, formation *txnbuild.Tr
 		InitiatorEscrow: c.initiatorEscrowAccount().Address,
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
-		Asset:           p.Asset,
-		AssetLimit:      p.AssetLimit,
+		Trustlines:      d.Trustlines,
 	})
 	return
 }
 
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
-func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
+func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, _, _, err := c.OpenTxs(p)
+	d := OpenAgreementDetails(p)
+
+	txClose, _, _, err := c.OpenTxs(d)
 	if err != nil {
-		return Open{}, err
+		return OpenAgreement{}, err
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return Open{}, err
+		return OpenAgreement{}, err
 	}
-	open := Open{
+	open := OpenAgreement{
+		Details:         d,
 		CloseSignatures: txClose.Signatures(),
-		Asset:           p.Asset,
-		AssetLimit:      p.AssetLimit,
 	}
+	c.openAgreement = open
 	return open, nil
 }
 
@@ -100,10 +128,29 @@ func (c *Channel) ProposeOpen(p OpenParams) (Open, error) {
 //
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
-func (c *Channel) ConfirmOpen(m Open) (open Open, authorized bool, err error) {
+func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
+	// If the open agreement details don't match the open agreement in progress, error.
+	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
+		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
+	}
+
+	// at the end of this method, if no error, then save a new channel openAgreement. Use the
+	// channel's saved open agreement details if present, to prevent other party from changing.
+	defer func() {
+		if err != nil {
+			return
+		}
+		c.openAgreement = OpenAgreement{
+			Details:               m.Details,
+			CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
+			DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
+			FormationSignatures:   appendNewSignatures(c.openAgreement.FormationSignatures, m.FormationSignatures),
+		}
+	}()
+
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs(OpenParams{m.Asset, m.AssetLimit})
+	txClose, txDecl, formation, err := c.OpenTxs(m.Details)
 	if err != nil {
 		return m, authorized, err
 	}
@@ -180,7 +227,10 @@ func (c *Channel) ConfirmOpen(m Open) (open Open, authorized bool, err error) {
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance:         Amount{Asset: m.Asset},
+			// TODO - change to use all assets, simplifying for now
+			Balance:                    Amount{Asset: m.Details.Trustlines[0].Asset},
+			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
+			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
 		},
 		CloseSignatures:       m.CloseSignatures,
 		DeclarationSignatures: m.DeclarationSignatures,

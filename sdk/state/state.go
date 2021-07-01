@@ -1,8 +1,6 @@
 package state
 
 import (
-	"time"
-
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -26,8 +24,6 @@ type EscrowAccount struct {
 
 type Channel struct {
 	networkPassphrase          string
-	observationPeriodTime      time.Duration
-	observationPeriodLedgerGap int64
 
 	startingSequence int64
 	// TODO - leave execution out for now
@@ -40,14 +36,14 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
+	openAgreement OpenAgreement
+
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
 }
 
 type Config struct {
 	NetworkPassphrase          string
-	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
 
 	Initiator bool
 
@@ -61,8 +57,6 @@ type Config struct {
 func NewChannel(c Config) *Channel {
 	channel := &Channel{
 		networkPassphrase:          c.NetworkPassphrase,
-		observationPeriodTime:      c.ObservationPeriodTime,
-		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
 		initiator:                  c.Initiator,
 		localEscrowAccount:         c.LocalEscrowAccount,
 		remoteEscrowAccount:        c.RemoteEscrowAccount,
@@ -83,6 +77,10 @@ func (c *Channel) NextIterationNumber() int64 {
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() Amount {
 	return c.latestAuthorizedCloseAgreement.Details.Balance
+}
+
+func (c *Channel) OpenAgreement() OpenAgreement {
+	return c.openAgreement
 }
 
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
@@ -121,20 +119,6 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
-func (c *Channel) initiatorBalanceAmount() int64 {
-	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount < 0 {
-		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount * -1
-	}
-	return 0
-}
-
-func (c *Channel) responderBalanceAmount() int64 {
-	if c.latestAuthorizedCloseAgreement.Details.Balance.Amount > 0 {
-		return c.latestAuthorizedCloseAgreement.Details.Balance.Amount
-	}
-	return 0
-}
-
 func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) (bool, error) {
 	hash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
@@ -164,23 +148,4 @@ func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures [
 		}
 	}
 	return oldSignatures
-}
-
-type TxInfo struct {
-	ID        string
-	Iteration int
-	Type      string // declaration | close
-	Seq       int64
-}
-
-// helper method
-func (t *TxInfo) MyBalance() error {
-	return nil
-}
-
-type ChannelCheckResponse struct {
-	IsContestable   bool
-	Asset           Asset
-	TriggeredTxInfo TxInfo
-	LatestTxInfo    TxInfo
 }

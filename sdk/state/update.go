@@ -3,9 +3,8 @@ package state
 import (
 	"errors"
 	"fmt"
+	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
-	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,8 +17,10 @@ import (
 
 // CloseAgreementDetails contains the details that the participants agree on.
 type CloseAgreementDetails struct {
-	IterationNumber int64
-	Balance         Amount
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	IterationNumber            int64
+	Balance                    Amount
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -48,19 +49,13 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	} else {
 		newBalance = c.Balance().Amount - amount.Amount
 	}
-	txClose, err := txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
+	d := CloseAgreementDetails{
+		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, newBalance*-1),
-		AmountToResponder:          maxInt64(0, newBalance),
-		Asset:                      amount.Asset,
-	})
+		Balance:                    Amount{Asset: amount.Asset, Amount: newBalance},
+	}
+	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -70,48 +65,31 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
-			IterationNumber: c.NextIterationNumber(),
-			Balance:         Amount{Asset: amount.Asset, Amount: newBalance},
-		},
+		Details:         d,
 		CloseSignatures: txClose.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
-}
-
-func (c *Channel) PaymentTxs(ca CloseAgreement) (close, decl *txnbuild.Transaction, err error) {
-	close, err = txbuild.Close(txbuild.CloseParams{
-		ObservationPeriodTime:      c.observationPeriodTime,
-		ObservationPeriodLedgerGap: c.observationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
-		IterationNumber:            c.NextIterationNumber(),
-		AmountToInitiator:          maxInt64(0, ca.Details.Balance.Amount*-1),
-		AmountToResponder:          maxInt64(0, ca.Details.Balance.Amount),
-		Asset:                      ca.Details.Balance.Asset,
-	})
-	if err != nil {
-		return
-	}
-	decl, err = txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
-		IterationNumber:         c.NextIterationNumber(),
-		IterationNumberExecuted: 0,
-	})
-	if err != nil {
-		return
-	}
-	return
 }
 
 // ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+	// If the close agreement details don't match the close agreement in progress, error.
+	if ca.Details.IterationNumber != c.NextIterationNumber() {
+		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	}
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
+		return ca, authorized, fmt.Errorf("invalid payment observation period: different than channel state")
+	}
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
+		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
+	}
+	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
+		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
+			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
+	}
+
 	// If the agreement is signed by all participants at the end of this method,
 	// promote the agreement to authorized. If not signed by all participants,
 	// save it as the latest unauthorized agreement, as we are still in the
@@ -134,21 +112,8 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		}
 	}()
 
-	// validate payment
-	if ca.Details.IterationNumber != c.NextIterationNumber() {
-		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
-	}
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
-		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
-	}
-
-	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
-		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
-	}
-
 	// create payment transactions
-	txClose, txDecl, err := c.PaymentTxs(ca)
+	txDecl, txClose, err := c.CloseTxs(ca.Details)
 	if err != nil {
 		return ca, authorized, err
 	}
@@ -162,12 +127,16 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		return ca, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
 	}
 
-	// If local has not signed close, sign.
+	// If local has not signed close, check that the payment is not to the proposer, then sign.
 	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
 		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
+		if (c.initiator && ca.Details.Balance.Amount > c.latestAuthorizedCloseAgreement.Details.Balance.Amount) ||
+			(!c.initiator && ca.Details.Balance.Amount < c.latestAuthorizedCloseAgreement.Details.Balance.Amount) {
+			return ca, authorized, fmt.Errorf("close agreement is a payment to the proposer")
+		}
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return ca, authorized, fmt.Errorf("signing close with local: %w", err)
@@ -201,11 +170,4 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// transactions in the payment.
 	authorized = true
 	return ca, authorized, nil
-}
-
-func maxInt64(x int64, y int64) int64 {
-	if x > y {
-		return x
-	}
-	return y
 }
