@@ -149,22 +149,3 @@ func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures [
 	}
 	return oldSignatures
 }
-
-type TxInfo struct {
-	ID        string
-	Iteration int
-	Type      string // declaration | close
-	Seq       int64
-}
-
-// helper method
-func (t *TxInfo) MyBalance() error {
-	return nil
-}
-
-type ChannelCheckResponse struct {
-	IsContestable   bool
-	Asset           Asset
-	TriggeredTxInfo TxInfo
-	LatestTxInfo    TxInfo
-}
