@@ -5,6 +5,7 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 // The steps for a channel close are as follows:
@@ -80,8 +81,9 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:         d,
-		CloseSignatures: txClose.Signatures(),
+		Details:               d,
+		CloseSignatures:       txClose.Signatures(),
+		DeclarationSignatures: append([]xdr.DecoratedSignature{}, c.latestAuthorizedCloseAgreement.DeclarationSignatures...),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
 }
