@@ -625,7 +625,6 @@ func TestOpen_multipleAssets(t *testing.T) {
 	assert.Equal(t, "code2", initiatorEscrowResponse.Balances[1].Asset.Code)
 }
 
-
 func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
