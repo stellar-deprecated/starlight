@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TODO - check on this
 type Trustline = txbuild.Trustline
 
 type OpenAgreementDetails struct {
