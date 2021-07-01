@@ -131,6 +131,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
+			// TODO - remove explicit native asset trustline
 			Trustlines: []Trustline{
 				Trustline{Asset: NativeAsset{}},
 			},
