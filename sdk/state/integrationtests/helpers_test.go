@@ -18,7 +18,13 @@ import (
 
 // functions to be used in the state_test integration tests
 
-func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit int64, distributorKP *keypair.Full) (initiator Participant, responder Participant) {
+type AssetParam struct {
+	Asset       txnbuild.Asset
+	Distributor *keypair.Full
+	AssetLimit  int64
+}
+
+func initAccounts(t *testing.T, assets []AssetParam) (initiator Participant, responder Participant) {
 	initiator = Participant{
 		Name:         "Initiator",
 		KP:           keypair.MustRandom(),
@@ -30,13 +36,15 @@ func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit int64, distribu
 	{
 		err := retry(2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		err = retry(2, func() error { return fundAsset(asset, initiator.Contribution, initiator.KP, distributorKP) })
-		require.NoError(t, err)
-		initEscrowAccount(t, &initiator, asset, assetLimit)
-	}
+		for _, asset := range assets {
+			err = retry(2, func() error { return fundAsset(asset.Asset, initiator.Contribution, initiator.KP, asset.Distributor) })
+			require.NoError(t, err)
 
+			t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", asset.Asset.GetCode(), "issuer: ", asset.Asset.GetIssuer())
+		}
+		initEscrowAccount(t, &initiator, assets)
+	}
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
-	t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", asset.GetCode(), "issuer: ", asset.GetIssuer())
 
 	// Setup responder.
 	responder = Participant{
@@ -50,27 +58,35 @@ func initAccounts(t *testing.T, asset txnbuild.Asset, assetLimit int64, distribu
 	{
 		err := retry(2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		err = retry(2, func() error { return fundAsset(asset, responder.Contribution, responder.KP, distributorKP) })
-		require.NoError(t, err)
-		initEscrowAccount(t, &responder, asset, assetLimit)
+		for _, asset := range assets {
+			err = retry(2, func() error { return fundAsset(asset.Asset, responder.Contribution, responder.KP, asset.Distributor) })
+			require.NoError(t, err)
+
+			t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.Asset.GetCode(), "issuer: ", asset.Asset.GetIssuer())
+		}
+		initEscrowAccount(t, &responder, assets)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
-	t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.GetCode(), "issuer: ", asset.GetIssuer())
+
 	return initiator, responder
 }
 
-func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.Asset, assetLimit int64) {
+func initEscrowAccount(t *testing.T, participant *Participant, assets []AssetParam) {
 	// create escrow account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
 	seqNum, err := account.GetSequenceNumber()
 	require.NoError(t, err)
+
+	tl := []txbuild.Trustline{}
+	for _, a := range assets {
+		tl = append(tl, txbuild.Trustline{Asset: a.Asset, AssetLimit: a.AssetLimit})
+	}
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 		Creator:        participant.KP.FromAddress(),
 		Escrow:         participant.Escrow.FromAddress(),
 		SequenceNumber: seqNum + 1,
-		Asset:          asset,
-		AssetLimit:     assetLimit,
+		Trustlines:     tl,
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)
@@ -87,22 +103,25 @@ func initEscrowAccount(t *testing.T, participant *Participant, asset txnbuild.As
 	require.NoError(t, err)
 	participant.EscrowSequenceNumber = int64(txResp.Ledger) << 32
 
-	// add initial contribution
+	// add initial contribution, use the same contribution for each asset
 	_, err = account.IncrementSequenceNumber()
 	require.NoError(t, err)
+
+	payments := []txnbuild.Operation{}
+	for _, asset := range assets {
+		payments = append(payments, &txnbuild.Payment{
+			Destination: participant.Escrow.Address(),
+			Amount:      stellarAmount.StringFromInt64(participant.Contribution),
+			Asset:       asset.Asset,
+		})
+	}
 
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount:        &account,
 		BaseFee:              txnbuild.MinBaseFee,
 		Timebounds:           txnbuild.NewTimeout(300),
 		IncrementSequenceNum: true,
-		Operations: []txnbuild.Operation{
-			&txnbuild.Payment{
-				Destination: participant.Escrow.Address(),
-				Amount:      stellarAmount.StringFromInt64(participant.Contribution),
-				Asset:       asset,
-			},
-		},
+		Operations:           payments,
 	})
 	require.NoError(t, err)
 
@@ -123,25 +142,25 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 	}
 
 	initiatorChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:          networkPassphrase,
-		Initiator:                  true,
-		LocalEscrowAccount:         &initiatorEscrowAccount,
-		RemoteEscrowAccount:        &responderEscrowAccount,
-		LocalSigner:                initiator.KP,
-		RemoteSigner:               responder.KP.FromAddress(),
+		NetworkPassphrase:   networkPassphrase,
+		Initiator:           true,
+		LocalEscrowAccount:  &initiatorEscrowAccount,
+		RemoteEscrowAccount: &responderEscrowAccount,
+		LocalSigner:         initiator.KP,
+		RemoteSigner:        responder.KP.FromAddress(),
 	})
 	responderChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:          networkPassphrase,
-		Initiator:                  false,
-		LocalEscrowAccount:         &responderEscrowAccount,
-		RemoteEscrowAccount:        &initiatorEscrowAccount,
-		LocalSigner:                responder.KP,
-		RemoteSigner:               initiator.KP.FromAddress(),
+		NetworkPassphrase:   networkPassphrase,
+		Initiator:           false,
+		LocalEscrowAccount:  &responderEscrowAccount,
+		RemoteEscrowAccount: &initiatorEscrowAccount,
+		LocalSigner:         responder.KP,
+		RemoteSigner:        initiator.KP.FromAddress(),
 	})
 	return initiatorChannel, responderChannel
 }
 
-func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Asset, *keypair.Full) {
+func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) (txnbuild.Asset, *keypair.Full) {
 	issuerKP := keypair.MustRandom()
 	distributorKP := keypair.MustRandom()
 
@@ -153,7 +172,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
 	require.NoError(t, err)
 
-	abcdAsset := txnbuild.CreditAsset{Code: "ABCD", Issuer: issuerKP.Address()}
+	asset := txnbuild.CreditAsset{Code: code, Issuer: issuerKP.Address()}
 
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -163,12 +182,12 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 			Operations: []txnbuild.Operation{
 				&txnbuild.ChangeTrust{
-					Line:  abcdAsset,
+					Line:  asset,
 					Limit: "5000",
 				},
 				&txnbuild.Payment{
 					Destination:   distributorKP.Address(),
-					Asset:         abcdAsset,
+					Asset:         asset,
 					Amount:        "5000",
 					SourceAccount: issuerKP.Address(),
 				},
@@ -181,7 +200,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface) (txnbuild.Ass
 	_, err = client.SubmitTransaction(tx)
 	require.NoError(t, err)
 
-	return abcdAsset, distributorKP
+	return asset, distributorKP
 }
 
 func randomBool(t *testing.T) bool {

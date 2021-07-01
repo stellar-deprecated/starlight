@@ -6,14 +6,18 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
+type Trustline struct {
+	Asset      txnbuild.Asset
+	AssetLimit int64
+}
+
 type FormationParams struct {
 	InitiatorSigner *keypair.FromAddress
 	ResponderSigner *keypair.FromAddress
 	InitiatorEscrow *keypair.FromAddress
 	ResponderEscrow *keypair.FromAddress
 	StartSequence   int64
-	Asset           txnbuild.Asset
-	AssetLimit      int64
+	Trustlines      []Trustline
 }
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
@@ -38,10 +42,13 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		SourceAccount: p.InitiatorEscrow.Address(),
 		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
-	if !p.Asset.IsNative() {
+	for _, a := range p.Trustlines {
+		if a.Asset.IsNative() {
+			continue
+		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-			Line:          p.Asset,
-			Limit:         amount.StringFromInt64(p.AssetLimit),
+			Line:          a.Asset,
+			Limit:         amount.StringFromInt64(a.AssetLimit),
 			SourceAccount: p.InitiatorEscrow.Address(),
 		})
 	}
@@ -59,10 +66,13 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		SourceAccount: p.ResponderEscrow.Address(),
 		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
-	if !p.Asset.IsNative() {
+	for _, a := range p.Trustlines {
+		if a.Asset.IsNative() {
+			continue
+		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-			Line:          p.Asset,
-			Limit:         amount.StringFromInt64(p.AssetLimit),
+			Line:          a.Asset,
+			Limit:         amount.StringFromInt64(a.AssetLimit),
 			SourceAccount: p.ResponderEscrow.Address(),
 		})
 	}
