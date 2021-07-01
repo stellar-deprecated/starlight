@@ -51,11 +51,6 @@ type OpenParams struct {
 }
 
 func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
-	if len(d.Assets) == 0 {
-		err = fmt.Errorf("invalid open params: trying to open a channel with no assets")
-		return
-	}
-
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
