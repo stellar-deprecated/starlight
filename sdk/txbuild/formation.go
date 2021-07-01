@@ -67,7 +67,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
 	for _, a := range p.Trustlines {
-		if !a.Asset.IsNative() {
+		if a.Asset.IsNative() {
 			continue
 		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{

@@ -85,11 +85,6 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 		},
 	}
 
-	// invalid open params
-	p := OpenParams{}
-	_, err := channel.ProposeOpen(p)
-	assert.EqualError(t, err, `invalid open params: trying to open a channel with no assets`)
-
 	// valid open params
 	tl1 := Trustline{
 		Asset:      txnbuild.NativeAsset{},
@@ -99,7 +94,7 @@ func TestProposeOpen_multipleAssets(t *testing.T) {
 		Asset:      txnbuild.CreditAsset{Code: "ABC", Issuer: "GB3A5VJGUIXQ4X35NZQMVLO5DKSOTUFF6SLHLY7BWJLJYVQVCJM4IEAI"},
 		AssetLimit: 200,
 	}
-	p = OpenParams{
+	p := OpenParams{
 		Trustlines: []Trustline{tl1, tl2},
 	}
 	oa, err := channel.ProposeOpen(p)
