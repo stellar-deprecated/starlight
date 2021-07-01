@@ -135,7 +135,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	if !signed {
 		if (c.initiator && ca.Details.Balance.Amount > c.latestAuthorizedCloseAgreement.Details.Balance.Amount) ||
 			(!c.initiator && ca.Details.Balance.Amount < c.latestAuthorizedCloseAgreement.Details.Balance.Amount) {
-			return ca, authorized, fmt.Errorf("close agreement from remote changes the balance in their favor")
+			return ca, authorized, fmt.Errorf("close agreement is a payment to the proposer")
 		}
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
