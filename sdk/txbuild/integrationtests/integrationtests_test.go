@@ -48,7 +48,7 @@ func Test(t *testing.T) {
 			Escrow:         initiator.Escrow.FromAddress(),
 			SequenceNumber: seqNum + 1,
 			Trustlines: []txbuild.Trustline{
-				txbuild.Trustline{Asset: txnbuild.NativeAsset{}},
+				{Asset: txnbuild.NativeAsset{}},
 			},
 		})
 		require.NoError(t, err)
@@ -113,7 +113,7 @@ func Test(t *testing.T) {
 			Escrow:         responder.Escrow.FromAddress(),
 			SequenceNumber: seqNum + 1,
 			Trustlines: []txbuild.Trustline{
-				txbuild.Trustline{Asset: txnbuild.NativeAsset{}},
+				{Asset: txnbuild.NativeAsset{}},
 			},
 		})
 		require.NoError(t, err)
@@ -214,7 +214,7 @@ func Test(t *testing.T) {
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
 			Trustlines: []txbuild.Trustline{
-				txbuild.Trustline{Asset: txnbuild.NativeAsset{}},
+				{Asset: txnbuild.NativeAsset{}},
 			},
 		})
 		require.NoError(t, err)
