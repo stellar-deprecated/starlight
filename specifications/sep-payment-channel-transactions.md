@@ -216,6 +216,8 @@ multisig accounts. F has source account E, and sequence number set to s.
   trustline between escrow account setup and formation causing the presigned
   closing transaction to become invalid.
 
+  The `CHANGE_TRUST` operations configure the trustlines with the maximum limit, which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
+
 - C_i, see [Update](#Update) process.
 
 - D_i, see [Update](#Update) process.
@@ -620,6 +622,21 @@ process if its payment operations are dependent on amounts frozen.
 
 There is nothing participants can do to prevent this, other than using only auth
 immutable assets.
+
+### Trustline Limits
+
+Trustlines on the escrow accounts are defined as always having a maximum asset
+limit. This restriction makes the behavior of the closing transaction as
+predictable as possible and simplifies implementations that are designed for
+operating on common assets that do not have excessive supply.
+
+Implementations that allow lower asset limits may produce closing transactions
+that could fail if the final state makes a payment that would exceed the
+destination account's trustline limit.
+
+Implementations that are intended for use with assets that have excessive supply may also produce closing transactions that could fail if trustline limits would be exceeded because of excessive deposits.
+
+In both cases a party who is not a participant can deposit an amount into the escrow accounts to cause the closing transaction's payment to fail.
 
 ### Clawback
 
