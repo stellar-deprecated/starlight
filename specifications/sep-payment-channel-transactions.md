@@ -9,7 +9,7 @@ Status: Draft
 Discussion: https://github.com/stellar/experimental-payment-channels/issues
 Created: 2021-04-21
 Updated: 2021-05-05
-Version: 0.1.0
+Version: 0.2.0
 ```
 
 ## Summary
@@ -39,8 +39,8 @@ easier to do this.
 
 ## Abstract
 
-This protocol defines the Stellar transactions that two participants use to
-open and close a payment channel by using escrow accounts to holds funds.
+This protocol defines the Stellar transactions that two participants use to open
+and close a payment channel by using escrow accounts to hold a single asset.
 
 A payment channel has two participants, an initiator I and a responder R.
 
@@ -51,9 +51,9 @@ within any period of length O.
 The payment channel consists of two 2-of-2 multisig escrow accounts EI and ER,
 and a series of transaction sets that contain _declaration_ and _closing_
 transactions with EI as their source account, signed by both participants.  The
-closing transaction defines the final state of the channel that disburses assets
-from EI to ER and/or from ER to EI such that the final balances of EI and ER
-match the amounts belonging to I and R. The closing transaction also returns
+closing transaction defines the final state of the channel that disburses the
+asset from EI to ER and/or from ER to EI such that the final balances of EI and
+ER match the amounts belonging to I and R. The closing transaction also returns
 control of EI to I and control of ER to R.  Each generation of declaration and
 closing transaction sets in the series are an agreement on a new final state for
 the channel.
@@ -146,12 +146,11 @@ on-chain, such as a setup, or withdrawal.
 The two participants frequently use the following computed values:
 
 - s_i, the _iteration sequence number_, is the sequence number that iteration
-i's transaction set starts at. Assuming the history of the payment channel has a
-single value for m it is computable as, s+(m*i).
+i's transaction set starts at, and is computable as, s+(m*i).
 
 - s_e, the _executed iteration sequence number_, is the sequence number that the
-executed iteration e's transaction set starts at. Assuming the history of the
-payment channel has a single value for m it is computable as, s+(m*e).
+executed iteration e's transaction set starts at, and is computable as, s+(m*e).
+TODO: remove this?
 
 ### Processes
 
@@ -167,7 +166,7 @@ To setup the payment channel:
    - e to 0.
 4. Increment i.
 5. Sign and exchange a closing transaction C_i, that closes the channel
-without any disbursements.
+without any payment.
 6. Sign and exchange a declaration transaction D_i.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
@@ -175,6 +174,7 @@ without any disbursements.
 Participants should defer deposits of initial contributions till after formation
 for channels that will hold trustlines to issuers that are not auth immutable,
 and could be clawback enabled. See [Security](#Security).
+TODO: remove this?
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
 will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
@@ -191,7 +191,7 @@ multisig accounts. F has source account E, and sequence number set to s.
   - Operations sponsored by I:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
-    - One or more `CHANGE_TRUST` operations configuring trustlines on EI.
+    - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is not the native asset.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
     - One or more `SET_OPTIONS` operations adding I and R's signers to ER.
@@ -200,18 +200,18 @@ multisig accounts. F has source account E, and sequence number set to s.
   - Operations sponsored by R:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
-    - One or more `CHANGE_TRUST` operations configuring trustlines on ER.
+    - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is not the native asset.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
     - One or more `SET_OPTIONS` operations adding I and R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
-  
-  The escrow accounts EI and ER will likely have all the necessary trustlines
+
+  The escrow accounts EI and ER will likely have the necessary trustline
   before the formation transaction is built. This means the `CHANGE_TRUST`
-  operations will likely be no-ops. The `CHANGE_TRUST` operations must be
+  operation will likely be a no-op. The `CHANGE_TRUST` operation must be
   included in the formation transaction so that participants are guaranteed the
-  trustlines are still in the same state after formation. If the operations are
+  trustline is still in the same state after formation. If the operation is
   not included a participant could intentionally or accidentally remove a
   trustline between escrow account setup and formation causing the presigned
   closing transaction to become invalid.
@@ -261,8 +261,8 @@ ledger count).
   submitting D_i' for some i' > i.
   
   C_i contains operations:
-  - One `PAYMENT` operation for each trustline that is disbursing funds from EI
-  to ER, or from ER to EI.
+  - One `PAYMENT` operation that disburses funds from EI to ER, or from ER to
+  EI, that may be omitted if the final state at this update does not require the movement of funds.
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
   to give I full control of EI, and removing R's signers.
   - One or more `SET_OPTIONS` operation adjusting reserve account ER's
@@ -358,64 +358,10 @@ D_i executable.
 Operations where failure cannot occur or is of no consequence:
 
 - [Change the Observation Period](#Change-the-Observation-Period)
-- [Add Trustline](#Add-Trustline)
-- [Remove Trustline](#Remove-Trustline)
 - [Deposit / Top-up](#Deposit--Top-up)
 
 Operations that can fail and where the additional requirements apply:
 - [Withdraw](#Withdraw)
-
-##### Add Trustline
-
-Participants can add additional trustlines if they plan to make deposits of new balances.
-
-1. I and R sign and exchange signatures for trustline transaction TA_i.
-2. I or R submit TA_i.
-
-If the add trustline transaction TA_i fails or is never submitted, there is
-no consequence to the channel.
-
-The transactions are constructed as follows:
-
-- TA_i, the _add trustline transaction_, adds one or more trustlines on escrow
-accounts EI and ER. TA_i has any source account that is not EI, typically the
-participant proposing the change.
-
-  TA_i contains operations:
-
-  - Operations sponsored by I:
-    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
-    participant I as a sponsor of future reserves.
-    - One or more `CHANGE_TRUST` operations adding trustlines to EI.
-    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
-    future reserves of subsequent operations.
-  - Operations sponsored by R:
-    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
-    participant R as a sponsor of future reserves.
-    - One or more `CHANGE_TRUST` operations adding trustlines to ER.
-    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
-    future reserves of subsequent operations.
-
-##### Remove Trustline
-
-Participants can remove empty trustlines.
-
-1. I and R sign and exchange signatures for trustline transaction TR_i.
-2. I or R submit TR_i.
-
-If the remove trustline transaction TR_i fails or is never submitted, there is
-no consequence to the channel.
-
-The transactions are constructed as follows:
-
-- TR_i, the _remove trustline transaction_, removes one or more trustline on
-escrow accounts EI and ER. TR_i has any source account that is not EI, typically
-the participant proposing the change.
-
-  TR_i contains operations:
-
-  - One or more `CHANGE_TRUST` operations removing trustlines from EI.
-  - One or more `CHANGE_TRUST` operations removing trustlines from ER.
 
 ##### Deposit / Top-up
 
@@ -445,7 +391,7 @@ withdrawing:
 4. Set e to i.
 5. Increment i.
 6. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the most recent agreed state, but reducing W's disbursed
+disbursement matching the most recent agreed state, but reducing W's disbursed
 amount by W's withdrawal amount.
 7. Sign and exchange a declaration transaction D_i.
 8. I and R sign and exchange signatures for withdrawal transaction W_i.
@@ -466,11 +412,11 @@ not EI, typically the participant proposing the change.
 
   W_i contains operations:
 
-  - One or more `PAYMENT` operations withdrawing assets from escrow accounts EI
-  and/or ER.
+  - One `PAYMENT` operations withdrawing assets from escrow accounts EI and/or
+  ER.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
   EI to s_i.
-  
+
 - C_i, see [Update](#Update) process.
 
 - D_i, see [Update](#Update) process.
@@ -495,7 +441,7 @@ The participants:
 2. I and R build the bump transaction B_i.
 3. Increment i.
 4. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursements matching the most recent agreed state.
+disbursement matching the most recent agreed state.
 5. Sign and exchange a declaration transaction D_i.
 6. I and R sign and exchange signatures for bump transaction B_i.
 7. I or R submit B_i.
@@ -564,13 +510,13 @@ The total reserves required for each participant are:
 - Participant I
 
   - 1 (Escrow Account EI)
-  - \+ Number of Assets (for Trustlines on EI)
+  - \+ Number of Assets (for Trustlines on EI, always 0 or 1)
   - \+ 2 x Number of I's Signers
 
 - Participant R
 
   - 1 (Escrow Account ER)
-  - \+ Number of Assets (for Trustlines on ER)
+  - \+ Number of Assets (for Trustlines on ER, always 0 or 1)
   - \+ 2 x Number of R's Signers
 
 Changes in the networks base reserve do not impact the channel.
@@ -610,25 +556,25 @@ the payments they sign for are receivable by the escrow accounts.
 
 ### Trustline Authorization
 
-Any trustlines on the escrow accounts that have been auth revoked, or could be
+Any trustline on the escrow accounts that have been auth revoked, or could be
 auth revoked, could compromise the payment channel's ability to close
 successfully.
 
 If the issuer of any auth revocable asset submits an allow trust operation
 freezing the amounts in either escrow account, the close transaction may fail to
-process if its payment operations are dependent on amounts frozen.
+process if its payment operation is dependent on amounts frozen.
 
 There is nothing participants can do to prevent this, other than using only auth
 immutable assets.
 
 ### Clawback
 
-Any trustlines on the escrow accounts that have clawback enabled could
+Any trustline on the escrow accounts that have clawback enabled could
 compromise the payment channels ability to close successfully.
 
 If the issuer of any clawback enabled trustline submits a clawback operation for
 amounts in either escrow account, the close transaction may fail to process if
-its payment operations are dependent on amounts clawed back.
+its payment operation is dependent on amounts clawed back.
 
 Participants can inspect the state of trustlines before and after formation to
 check if either participant has clawback enabled. Checking the state after
@@ -636,7 +582,7 @@ formation is critical because there is no way for participants to guarantee
 trustline state until after formation has completed because the state can change
 prior to formation. For this reason participants should perform their initial
 deposit after formation, unless they trust the asset issuer not to clawback from
-payment channel escrow accounts, or unless the asset is auth immutable. 
+payment channel escrow accounts, or unless the asset is auth immutable.
 
 ## Limitations
 
