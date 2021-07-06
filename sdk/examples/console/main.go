@@ -20,15 +20,15 @@ func main() {
 }
 
 func run() error {
-	horizonURL := "http://localhost:8000"
 	showHelp := false
+	horizonURL := "http://localhost:8000"
 	accountKeyStr := ""
 	signerKeyStr := ""
 
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	fs.StringVar(&horizonURL, "horizon-url", horizonURL, "Horizon URL")
 	fs.BoolVar(&showHelp, "h", showHelp, "Show this help")
+	fs.StringVar(&horizonURL, "horizon-url", horizonURL, "Horizon URL")
 	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
 	fs.StringVar(&signerKeyStr, "signer", signerKeyStr, "Account S signer")
 	err := fs.Parse(os.Args[1:])
@@ -39,7 +39,6 @@ func run() error {
 		fs.Usage()
 		return nil
 	}
-
 	if accountKeyStr == "" {
 		return fmt.Errorf("-account required")
 	}
@@ -64,11 +63,14 @@ func run() error {
 
 	_, err = client.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 	if horizonclient.IsNotFoundError(err) {
+		fmt.Fprintf(os.Stderr, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
 		err = fund(client, networkDetails.NetworkPassphrase, accountKey)
 	}
 	if err != nil {
 		return err
 	}
+
+	fmt.Fprintf(os.Stderr, "waiting for incoming request or action\n")
 
 	for {
 		// wait for incoming request to connect
