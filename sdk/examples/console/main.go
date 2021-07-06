@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"net"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/clients/horizonclient"
@@ -22,8 +24,8 @@ func main() {
 func run() error {
 	showHelp := false
 	horizonURL := "http://localhost:8000"
-	accountKeyStr := ""
-	signerKeyStr := ""
+	accountKeyStr := "G..."
+	signerKeyStr := "S..."
 
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -70,18 +72,72 @@ func run() error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "waiting for incoming request or action\n")
+	conn := net.Conn(nil)
 
+	br := bufio.NewReader(os.Stdin)
 	for {
-		// wait for incoming request to connect
-		// or, wait for message typed in with instruction:
-		//   connect
-		//   open
-		//   pay
-		//   close
-		time.Sleep(time.Second)
+		fmt.Fprintf(os.Stdout, "> ")
+		line, err := br.ReadString('\n')
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %#v", err)
+			continue
+		}
+		params := strings.Fields(line)
+		if len(params) == 0 {
+			continue
+		}
+		switch params[0] {
+		case "listen":
+			if conn != nil {
+				fmt.Fprintf(os.Stderr, "error: already connected to a peer")
+				continue
+			}
+			ln, err := net.Listen("tcp", params[1])
+			if err != nil {
+				return err
+			}
+			conn, err := ln.Accept()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: accepting incoming conn: %v", err)
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "connected to %v\n", conn.RemoteAddr())
+		case "connect":
+			if conn != nil {
+				fmt.Fprintf(os.Stderr, "error: already connected to a peer")
+				continue
+			}
+			outgoingConn, err := connect(params[1])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "connected to %v\n", outgoingConn.RemoteAddr())
+			conn = outgoingConn
+		case "open":
+		case "close":
+		case "exit":
+			os.Exit(0)
+		}
 	}
 
+	return nil
+}
+
+func connect(peerAddr string) (net.Conn, error) {
+	return net.Dial("tcp", peerAddr)
+}
+
+func open(networkPassphrase string) error {
+	c := state.Config{
+		NetworkPassphrase:   networkPassphrase,
+		Initiator:           true,
+		LocalEscrowAccount:  &state.EscrowAccount{},
+		RemoteEscrowAccount: &state.EscrowAccount{},
+		// LocalSigner:         localSigner,
+		// RemoteSigner:        remoteSigner,
+	}
+	state.NewChannel(c)
 	return nil
 }
 
@@ -114,18 +170,5 @@ func fund(client horizonclient.ClientInterface, networkPassphrase string, accoun
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func connect(networkPassphrase string) error {
-	c := state.Config{
-		NetworkPassphrase:   networkPassphrase,
-		Initiator:           true,
-		LocalEscrowAccount:  &state.EscrowAccount{},
-		RemoteEscrowAccount: &state.EscrowAccount{},
-		// LocalSigner:         localSigner,
-		// RemoteSigner:        remoteSigner,
-	}
-	state.NewChannel(c)
 	return nil
 }
