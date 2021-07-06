@@ -150,7 +150,6 @@ i's transaction set starts at, and is computable as, s+(m*i).
 
 - s_e, the _executed iteration sequence number_, is the sequence number that the
 executed iteration e's transaction set starts at, and is computable as, s+(m*e).
-TODO: remove this?
 
 ### Processes
 
@@ -174,7 +173,6 @@ without any payment.
 Participants should defer deposits of initial contributions till after formation
 for channels that will hold trustlines to issuers that are not auth immutable,
 and could be clawback enabled. See [Security](#Security).
-TODO: remove this?
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
 will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
