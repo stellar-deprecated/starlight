@@ -1,6 +1,8 @@
 package txbuild
 
 import (
+	"math"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -10,7 +12,7 @@ type CreateEscrowParams struct {
 	Creator        *keypair.FromAddress
 	Escrow         *keypair.FromAddress
 	SequenceNumber int64
-	Trustlines     []Trustline
+	Asset          txnbuild.Asset
 }
 
 func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
@@ -32,14 +34,12 @@ func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
 			Signer:          &txnbuild.Signer{Address: p.Creator.Address(), Weight: 1},
 		},
 	}
-	for _, a := range p.Trustlines {
-		if !a.Asset.IsNative() {
-			ops = append(ops, &txnbuild.ChangeTrust{
-				Line:          a.Asset,
-				Limit:         amount.StringFromInt64(a.AssetLimit),
-				SourceAccount: p.Escrow.Address(),
-			})
-		}
+	if !p.Asset.IsNative() {
+		ops = append(ops, &txnbuild.ChangeTrust{
+			Line:          p.Asset,
+			Limit:         amount.StringFromInt64(math.MaxInt64),
+			SourceAccount: p.Escrow.Address(),
+		})
 	}
 	ops = append(ops, &txnbuild.EndSponsoringFutureReserves{
 		SourceAccount: p.Escrow.Address(),
