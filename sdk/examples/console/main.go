@@ -96,7 +96,7 @@ func run() error {
 			if err != nil {
 				return err
 			}
-			conn, err := ln.Accept()
+			conn, err = ln.Accept()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: accepting incoming conn: %v", err)
 				continue
@@ -107,13 +107,12 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "error: already connected to a peer")
 				continue
 			}
-			outgoingConn, err := connect(params[1])
+			conn, err = net.Dial("tcp", params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "connected to %v\n", outgoingConn.RemoteAddr())
-			conn = outgoingConn
+			fmt.Fprintf(os.Stderr, "connected to %v\n", conn.RemoteAddr())
 		case "open":
 		case "close":
 		case "exit":
@@ -122,10 +121,6 @@ func run() error {
 	}
 
 	return nil
-}
-
-func connect(peerAddr string) (net.Conn, error) {
-	return net.Dial("tcp", peerAddr)
 }
 
 func open(networkPassphrase string) error {
