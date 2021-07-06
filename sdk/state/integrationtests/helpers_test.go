@@ -21,10 +21,9 @@ import (
 type AssetParam struct {
 	Asset       txnbuild.Asset
 	Distributor *keypair.Full
-	AssetLimit  int64
 }
 
-func initAccounts(t *testing.T, assets []AssetParam) (initiator Participant, responder Participant) {
+func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, responder Participant) {
 	initiator = Participant{
 		Name:         "Initiator",
 		KP:           keypair.MustRandom(),
@@ -36,13 +35,13 @@ func initAccounts(t *testing.T, assets []AssetParam) (initiator Participant, res
 	{
 		err := retry(2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		for _, asset := range assets {
-			err = retry(2, func() error { return fundAsset(asset.Asset, initiator.Contribution, initiator.KP, asset.Distributor) })
-			require.NoError(t, err)
+		err = retry(2, func() error {
+			return fundAsset(assetParam.Asset, initiator.Contribution, initiator.KP, assetParam.Distributor)
+		})
+		require.NoError(t, err)
 
-			t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", asset.Asset.GetCode(), "issuer: ", asset.Asset.GetIssuer())
-		}
-		initEscrowAccount(t, &initiator, assets)
+		t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", assetParam.Asset.GetCode(), "issuer: ", assetParam.Asset.GetIssuer())
+		initEscrowAccount(t, &initiator, assetParam)
 	}
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
 
@@ -58,35 +57,31 @@ func initAccounts(t *testing.T, assets []AssetParam) (initiator Participant, res
 	{
 		err := retry(2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		for _, asset := range assets {
-			err = retry(2, func() error { return fundAsset(asset.Asset, responder.Contribution, responder.KP, asset.Distributor) })
-			require.NoError(t, err)
+		err = retry(2, func() error {
+			return fundAsset(assetParam.Asset, responder.Contribution, responder.KP, assetParam.Distributor)
+		})
+		require.NoError(t, err)
 
-			t.Log("Responder Contribution:", responder.Contribution, "of asset:", asset.Asset.GetCode(), "issuer: ", asset.Asset.GetIssuer())
-		}
-		initEscrowAccount(t, &responder, assets)
+		t.Log("Responder Contribution:", responder.Contribution, "of asset:", assetParam.Asset.GetCode(), "issuer: ", assetParam.Asset.GetIssuer())
+		initEscrowAccount(t, &responder, assetParam)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
 
 	return initiator, responder
 }
 
-func initEscrowAccount(t *testing.T, participant *Participant, assets []AssetParam) {
+func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetParam) {
 	// create escrow account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
 	seqNum, err := account.GetSequenceNumber()
 	require.NoError(t, err)
 
-	tl := []txbuild.Trustline{}
-	for _, a := range assets {
-		tl = append(tl, txbuild.Trustline{Asset: a.Asset, AssetLimit: a.AssetLimit})
-	}
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 		Creator:        participant.KP.FromAddress(),
 		Escrow:         participant.Escrow.FromAddress(),
 		SequenceNumber: seqNum + 1,
-		Trustlines:     tl,
+		Asset:          assetParam.Asset,
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)
@@ -107,13 +102,12 @@ func initEscrowAccount(t *testing.T, participant *Participant, assets []AssetPar
 	_, err = account.IncrementSequenceNumber()
 	require.NoError(t, err)
 
-	payments := []txnbuild.Operation{}
-	for _, asset := range assets {
-		payments = append(payments, &txnbuild.Payment{
+	payments := []txnbuild.Operation{
+		&txnbuild.Payment{
 			Destination: participant.Escrow.Address(),
 			Amount:      stellarAmount.StringFromInt64(participant.Contribution),
-			Asset:       asset.Asset,
-		})
+			Asset:       assetParam.Asset,
+		},
 	}
 
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
