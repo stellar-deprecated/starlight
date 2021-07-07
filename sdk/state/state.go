@@ -6,12 +6,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type (
-	Asset       = txnbuild.Asset
-	NativeAsset = txnbuild.NativeAsset
-	CreditAsset = txnbuild.CreditAsset
-)
-
 type Amount struct {
 	Asset  Asset
 	Amount int64
