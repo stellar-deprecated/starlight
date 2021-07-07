@@ -209,9 +209,7 @@ func Test(t *testing.T) {
 			InitiatorEscrow: initiator.Escrow.FromAddress(),
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
-			Trustlines: []txbuild.Trustline{
-				{Asset: txnbuild.NativeAsset{}},
-			},
+			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)
