@@ -213,7 +213,7 @@ func run() error {
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
 					}
-					otherEscrowAccountSeqNum, err := getSeqNum(client, escrowAccountKey.Address())
+					otherEscrowAccountSeqNum, err := getSeqNum(client, otherSignerKey.Address())
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
@@ -228,7 +228,7 @@ func run() error {
 							Address:        otherEscrowAccountKey,
 							SequenceNumber: otherEscrowAccountSeqNum,
 						},
-						Initiator:    true,
+						Initiator:    false,
 						LocalSigner:  signerKey,
 						RemoteSigner: otherSignerKey,
 					})
@@ -323,7 +323,7 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
-			otherEscrowAccountSeqNum, err := getSeqNum(client, escrowAccountKey.Address())
+			otherEscrowAccountSeqNum, err := getSeqNum(client, otherSignerKey.Address())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
@@ -345,7 +345,7 @@ func run() error {
 			openAgreement, err := channel.ProposeOpen(state.OpenParams{
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-				Asset:                      state.NativeAsset{},
+				Asset:                      state.NativeAsset,
 			})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: proposing open agreement: %v\n", err)
@@ -424,19 +424,6 @@ type message struct {
 	Introduction *introduction
 	Open         *state.OpenAgreement
 	Close        *state.CloseAgreement
-}
-
-func open(networkPassphrase string) error {
-	c := state.Config{
-		NetworkPassphrase:   networkPassphrase,
-		Initiator:           true,
-		LocalEscrowAccount:  &state.EscrowAccount{},
-		RemoteEscrowAccount: &state.EscrowAccount{},
-		// LocalSigner:         localSigner,
-		// RemoteSigner:        remoteSigner,
-	}
-	state.NewChannel(c)
-	return nil
 }
 
 func getSeqNum(client horizonclient.ClientInterface, accountID string) (int64, error) {
