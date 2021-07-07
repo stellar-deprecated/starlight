@@ -29,7 +29,6 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	asset := txnbuild.NativeAsset{}
 	// native asset has no asset limit
-	assetLimit := int64(0)
 	rootResp, err := client.Root()
 	require.NoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
@@ -54,9 +53,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -309,7 +306,6 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
 	asset, distributor := initAsset(t, client, "ABDC")
-	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, AssetParam{
 		Asset:       asset,
 		Distributor: distributor,
@@ -327,9 +323,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -522,7 +516,6 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
 	asset, distributor := initAsset(t, client, "ABDC")
-	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, AssetParam{
 		Asset:       asset,
 		Distributor: distributor,
@@ -540,9 +533,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 
 	require.NoError(t, err)
@@ -737,7 +728,6 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
 	asset, distributor := initAsset(t, client, "ABDC")
-	assetLimit := int64(5_000_0000000)
 	initiator, responder := initAccounts(t, AssetParam{
 		Asset:       asset,
 		Distributor: distributor,
@@ -755,9 +745,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 
 	require.NoError(t, err)

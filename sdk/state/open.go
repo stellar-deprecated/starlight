@@ -9,27 +9,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type Trustline = txbuild.Trustline
-
 type OpenAgreementDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
-	Trustlines                 []Trustline
+	Asset                      Asset
 }
 
 func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
-	if d.ObservationPeriodTime != d2.ObservationPeriodTime ||
-		d.ObservationPeriodLedgerGap != d2.ObservationPeriodLedgerGap ||
-		len(d.Trustlines) != len(d2.Trustlines) {
-		return false
-	}
-
-	for i, a := range d.Trustlines {
-		if a != d2.Trustlines[i] {
-			return false
-		}
-	}
-	return true
+	return d == d2
 }
 
 type OpenAgreement struct {
@@ -40,14 +27,14 @@ type OpenAgreement struct {
 }
 
 func (oa OpenAgreement) isEmpty() bool {
-	return len(oa.Details.Trustlines) == 0 && oa.Details.ObservationPeriodTime == 0 && oa.Details.ObservationPeriodLedgerGap == 0
+	return oa.Details.Equal(OpenAgreementDetails{})
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
 type OpenParams struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
-	Trustlines                 []Trustline
+	Asset                      Asset
 }
 
 func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
@@ -62,8 +49,7 @@ func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *t
 		IterationNumber:            1,
 		AmountToInitiator:          0,
 		AmountToResponder:          0,
-		// TODO - change to use all assets, simplifying for now
-		Asset: d.Trustlines[0].Asset,
+		Asset:                      d.Asset,
 	})
 	if err != nil {
 		return
@@ -83,7 +69,7 @@ func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *t
 		InitiatorEscrow: c.initiatorEscrowAccount().Address,
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
-		Trustlines:      d.Trustlines,
+		Asset:           d.Asset,
 	})
 	return
 }
@@ -228,7 +214,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
 			// TODO - change to use all assets, simplifying for now
-			Balance:                    Amount{Asset: m.Details.Trustlines[0].Asset},
+			Balance:                    Amount{Asset: m.Details.Asset},
 			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
 		},
