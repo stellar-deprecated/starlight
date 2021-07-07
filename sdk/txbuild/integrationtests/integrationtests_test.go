@@ -47,9 +47,7 @@ func Test(t *testing.T) {
 			Creator:        initiator.KP.FromAddress(),
 			Escrow:         initiator.Escrow.FromAddress(),
 			SequenceNumber: seqNum + 1,
-			Trustlines: []txbuild.Trustline{
-				{Asset: txnbuild.NativeAsset{}},
-			},
+			Asset:          txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, initiator.KP, initiator.Escrow)
@@ -112,9 +110,7 @@ func Test(t *testing.T) {
 			Creator:        responder.KP.FromAddress(),
 			Escrow:         responder.Escrow.FromAddress(),
 			SequenceNumber: seqNum + 1,
-			Trustlines: []txbuild.Trustline{
-				{Asset: txnbuild.NativeAsset{}},
-			},
+			Asset:          txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		tx, err = tx.Sign(networkPassphrase, responder.KP, responder.Escrow)
@@ -213,9 +209,7 @@ func Test(t *testing.T) {
 			InitiatorEscrow: initiator.Escrow.FromAddress(),
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
-			Trustlines: []txbuild.Trustline{
-				{Asset: txnbuild.NativeAsset{}},
-			},
+			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)

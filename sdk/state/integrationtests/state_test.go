@@ -29,16 +29,12 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	asset := txnbuild.NativeAsset{}
 	// native asset has no asset limit
-	assetLimit := int64(0)
 	rootResp, err := client.Root()
 	require.NoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
-	initiator, responder := initAccounts(t, []AssetParam{
-		{
-			Asset:       asset,
-			AssetLimit:  assetLimit,
-			Distributor: distributor,
-		},
+	initiator, responder := initAccounts(t, AssetParam{
+		Asset:       asset,
+		Distributor: distributor,
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
@@ -57,9 +53,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -312,13 +306,9 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
 	asset, distributor := initAsset(t, client, "ABDC")
-	assetLimit := int64(5_000_0000000)
-	initiator, responder := initAccounts(t, []AssetParam{
-		{
-			Asset:       asset,
-			AssetLimit:  assetLimit,
-			Distributor: distributor,
-		},
+	initiator, responder := initAccounts(t, AssetParam{
+		Asset:       asset,
+		Distributor: distributor,
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
@@ -333,9 +323,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -521,112 +509,6 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
 }
 
-func TestOpen_multipleAssets(t *testing.T) {
-	asset1, distributor := initAsset(t, client, "code1")
-	assetLimit1 := int64(5_000_0000000)
-	ap1 := AssetParam{
-		Asset:       asset1,
-		Distributor: distributor,
-		AssetLimit:  assetLimit1,
-	}
-
-	asset2, distributor := initAsset(t, client, "code2")
-	assetLimit2 := int64(10_000_0000000)
-	ap2 := AssetParam{
-		Asset:       asset2,
-		Distributor: distributor,
-		AssetLimit:  assetLimit2,
-	}
-
-	initiator, responder := initAccounts(t, []AssetParam{ap1, ap2})
-	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
-
-	s := initiator.EscrowSequenceNumber + 1
-	i := int64(1)
-	e := int64(0)
-	t.Log("Vars: s:", s, "i:", i, "e:", e)
-
-	// Open
-	t.Log("Open...")
-	// I signs txClose
-	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
-		Trustlines: []state.Trustline{
-			{Asset: asset1, AssetLimit: assetLimit1},
-			{Asset: asset2, AssetLimit: assetLimit2},
-		},
-	})
-	require.NoError(t, err)
-	{
-		var authorizedR bool
-		// R signs txClose and txDecl
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.False(t, authorizedR)
-
-		var authorizedI bool
-		// I signs txDecl and F
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.False(t, authorizedI)
-
-		// R signs F, R is done
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.True(t, authorizedR)
-
-		// I receives the last signatures for F, I is done
-		_, authorizedI, err = initiatorChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.True(t, authorizedI)
-	}
-
-	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(initiatorChannel.OpenAgreement().Details)
-		require.NoError(t, err)
-
-		_, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
-		require.NoError(t, err)
-
-		_, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
-		require.NoError(t, err)
-
-		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
-		require.NoError(t, err)
-
-		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      fi,
-			FeeAccount: initiator.KP.Address(),
-			BaseFee:    txnbuild.MinBaseFee,
-		})
-		require.NoError(t, err)
-		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
-		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
-	}
-
-	// check the balances are correct for both escrow accounts
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
-	responderEscrowResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(1_000_0000000), responderEscrowResponse.Balances[0].Balance)
-	assert.Equal(t, "code1", responderEscrowResponse.Balances[0].Asset.Code)
-	assert.Equal(t, amount.StringFromInt64(assetLimit1), responderEscrowResponse.Balances[0].Limit)
-	assert.Equal(t, amount.StringFromInt64(1_000_0000000), responderEscrowResponse.Balances[1].Balance)
-	assert.Equal(t, amount.StringFromInt64(assetLimit2), responderEscrowResponse.Balances[1].Limit)
-	assert.Equal(t, "code2", responderEscrowResponse.Balances[1].Asset.Code)
-
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
-	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(1_000_0000000), initiatorEscrowResponse.Balances[0].Balance)
-	assert.Equal(t, "code1", initiatorEscrowResponse.Balances[0].Asset.Code)
-	assert.Equal(t, amount.StringFromInt64(assetLimit1), initiatorEscrowResponse.Balances[0].Limit)
-	assert.Equal(t, amount.StringFromInt64(1_000_0000000), initiatorEscrowResponse.Balances[1].Balance)
-	assert.Equal(t, amount.StringFromInt64(assetLimit2), initiatorEscrowResponse.Balances[1].Limit)
-	assert.Equal(t, "code2", initiatorEscrowResponse.Balances[1].Asset.Code)
-}
-
 func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
@@ -634,13 +516,9 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
 	asset, distributor := initAsset(t, client, "ABDC")
-	assetLimit := int64(5_000_0000000)
-	initiator, responder := initAccounts(t, []AssetParam{
-		{
-			Asset:       asset,
-			AssetLimit:  assetLimit,
-			Distributor: distributor,
-		},
+	initiator, responder := initAccounts(t, AssetParam{
+		Asset:       asset,
+		Distributor: distributor,
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
@@ -655,9 +533,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 
 	require.NoError(t, err)
@@ -852,13 +728,9 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
 	asset, distributor := initAsset(t, client, "ABDC")
-	assetLimit := int64(5_000_0000000)
-	initiator, responder := initAccounts(t, []AssetParam{
-		{
-			Asset:       asset,
-			AssetLimit:  assetLimit,
-			Distributor: distributor,
-		},
+	initiator, responder := initAccounts(t, AssetParam{
+		Asset:       asset,
+		Distributor: distributor,
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
@@ -873,9 +745,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Trustlines: []state.Trustline{
-			{Asset: asset, AssetLimit: assetLimit},
-		},
+		Asset:                      asset,
 	})
 
 	require.NoError(t, err)
