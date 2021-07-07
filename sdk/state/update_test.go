@@ -6,7 +6,6 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -113,7 +112,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
 			Balance: Amount{
-				Asset:  NativeAsset{},
+				Asset:  NativeAsset,
 				Amount: 100, // Local (initiator) owes remote (responder) 100.
 			},
 		},
@@ -121,7 +120,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
 		Balance: Amount{
-			Asset:  NativeAsset{},
+			Asset:  NativeAsset,
 			Amount: 110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
 		},
 	}
@@ -164,7 +163,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
 			Balance: Amount{
-				Asset:  NativeAsset{},
+				Asset:  NativeAsset,
 				Amount: 100, // Remote (initiator) owes local (responder) 100.
 			},
 		},
@@ -172,7 +171,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
 		Balance: Amount{
-			Asset:  NativeAsset{},
+			Asset:  NativeAsset,
 			Amount: 90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 		},
 	}
@@ -216,11 +215,11 @@ func TestLastConfirmedPayment(t *testing.T) {
 	})
 
 	// latest close agreement should be set during open steps
-	sendingChannel.latestAuthorizedCloseAgreement.Details.Balance = Amount{Asset: NativeAsset{}}
-	receiverChannel.latestAuthorizedCloseAgreement.Details.Balance = Amount{Asset: NativeAsset{}}
+	sendingChannel.latestAuthorizedCloseAgreement.Details.Balance = Amount{Asset: NativeAsset}
+	receiverChannel.latestAuthorizedCloseAgreement.Details.Balance = Amount{Asset: NativeAsset}
 
 	ca, err := sendingChannel.ProposePayment(Amount{
-		Asset:  NativeAsset{},
+		Asset:  NativeAsset,
 		Amount: 200,
 	})
 	require.NoError(t, err)
@@ -235,7 +234,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
 			Balance: Amount{
-				Asset:  txnbuild.NativeAsset{},
+				Asset:  NativeAsset,
 				Amount: 400,
 			},
 		},
@@ -244,7 +243,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	_, authorized, err = receiverChannel.ConfirmPayment(caDifferent)
 	assert.False(t, authorized)
 	require.EqualError(t, err, "close agreement does not match the close agreement already in progress")
-	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: Amount{Asset: NativeAsset{}}}}, receiverChannel.LatestCloseAgreement())
+	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: Amount{Asset: NativeAsset}}}, receiverChannel.LatestCloseAgreement())
 
 	// Confirming a payment with same sequence number and same amount should pass
 	ca, authorized, err = sendingChannel.ConfirmPayment(ca)

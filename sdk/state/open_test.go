@@ -28,21 +28,13 @@ func TestProposeOpen_validAsset(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
-	native := NativeAsset{}
 	_, err := sendingChannel.ProposeOpen(OpenParams{
-		Asset: native,
+		Asset: NativeAsset,
 	})
 	require.NoError(t, err)
 
-	invalidCredit := CreditAsset{}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: invalidCredit,
-	})
-	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
-
-	validCredit := CreditAsset{Code: "ABCD", Issuer: "GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P"}
-	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: validCredit,
+		Asset: "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
 	})
 	require.NoError(t, err)
 }
@@ -71,14 +63,14 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
-			Asset:                      NativeAsset{},
+			Asset:                      NativeAsset,
 		},
 	}
 
 	oa := OpenAgreementDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
-		Asset:                      NativeAsset{},
+		Asset:                      NativeAsset,
 	}
 
 	{
@@ -93,7 +85,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 	{
 		// invalid different asset
 		d := oa
-		d.Asset = CreditAsset{Code: "abc"}
+		d.Asset = "ABC:GCDFU7RNY6HTYQKP7PYHBMXXKXZ4HET6LMJ5CDO7YL5NMYH4T2BSZCPZ"
 		_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: d})
 		require.False(t, authorized)
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")
