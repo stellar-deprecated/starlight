@@ -28,6 +28,8 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		BaseFee:    0,
 		Timebounds: txnbuild.NewTimebounds(0, p.ExpiresAt.Unix()),
 	}
+
+	// I sponsoring ledger entries on EI
 	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.InitiatorEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
 		SourceAccount:   p.InitiatorEscrow.Address(),
@@ -35,11 +37,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		LowThreshold:    txnbuild.NewThreshold(2),
 		MediumThreshold: txnbuild.NewThreshold(2),
 		HighThreshold:   txnbuild.NewThreshold(2),
-		Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
-	})
-	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount: p.InitiatorEscrow.Address(),
-		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
+		Signer:          &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
 	if !p.Asset.IsNative() {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
@@ -49,6 +47,16 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		})
 	}
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
+
+	// I sponsoring ledger entries on ER
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
+		SourceAccount: p.ResponderEscrow.Address(),
+		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
+	})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
+
+	// R sponsoring ledger entries on ER
 	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
 		SourceAccount:   p.ResponderEscrow.Address(),
@@ -56,11 +64,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		LowThreshold:    txnbuild.NewThreshold(2),
 		MediumThreshold: txnbuild.NewThreshold(2),
 		HighThreshold:   txnbuild.NewThreshold(2),
-		Signer:          &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
-	})
-	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount: p.ResponderEscrow.Address(),
-		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
+		Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
 	if !p.Asset.IsNative() {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
@@ -70,6 +74,15 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		})
 	}
 	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
+
+	// R sponsoring ledger entries on EI
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.InitiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
+		SourceAccount: p.InitiatorEscrow.Address(),
+		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
+	})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
+
 	tx, err := txnbuild.NewTransaction(tp)
 	if err != nil {
 		return nil, err
