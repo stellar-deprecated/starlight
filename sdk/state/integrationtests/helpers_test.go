@@ -137,6 +137,7 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 
 	initiatorChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:   networkPassphrase,
+		MaxOpenExpiry:       5 * time.Minute,
 		Initiator:           true,
 		LocalEscrowAccount:  &initiatorEscrowAccount,
 		RemoteEscrowAccount: &responderEscrowAccount,
@@ -145,6 +146,7 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 	})
 	responderChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:   networkPassphrase,
+		MaxOpenExpiry:       5 * time.Minute,
 		Initiator:           false,
 		LocalEscrowAccount:  &responderEscrowAccount,
 		RemoteEscrowAccount: &initiatorEscrowAccount,

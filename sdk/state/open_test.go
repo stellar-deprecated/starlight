@@ -2,6 +2,7 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -29,22 +30,26 @@ func TestProposeOpen_validAsset(t *testing.T) {
 	})
 
 	_, err := sendingChannel.ProposeOpen(OpenParams{
-		Asset: NativeAsset,
+		Asset:     NativeAsset,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.NoError(t, err)
 
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: ":GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
+		Asset:     ":GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
 
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: "ABCD:GABCD:AB",
+		Asset:     "ABCD:GABCD:AB",
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset issuer: GABCD:AB is not a valid stellar public key`)
 
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
+		Asset:     "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.NoError(t, err)
 }
@@ -100,4 +105,36 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		require.False(t, authorized)
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")
 	}
+}
+
+func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       10 * time.Second,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: OpenAgreementDetails{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(100 * time.Second),
+	}})
+	require.False(t, authorized)
+	require.EqualError(t, err, "input open agreement expire too far into the future")
 }

@@ -13,10 +13,14 @@ type OpenAgreementDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
+	ExpiresAt                  time.Time
 }
 
 func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
-	return d == d2
+	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
+		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
+		d.Asset == d2.Asset &&
+		d.ExpiresAt == d2.ExpiresAt
 }
 
 type OpenAgreement struct {
@@ -35,6 +39,7 @@ type OpenParams struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
+	ExpiresAt                  time.Time
 }
 
 func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
@@ -70,6 +75,7 @@ func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *t
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
 		Asset:           d.Asset.Asset(),
+		ExpiresAt:       d.ExpiresAt,
 	})
 	return
 }
@@ -118,6 +124,11 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 	// If the open agreement details don't match the open agreement in progress, error.
 	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
 		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
+	}
+
+	// If the expiry of the agreement is past the max expiry the channel will accept, error.
+	if m.Details.ExpiresAt.After(time.Now().Add(c.maxOpenExpiry)) {
+		return m, authorized, fmt.Errorf("input open agreement expire too far into the future")
 	}
 
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the
