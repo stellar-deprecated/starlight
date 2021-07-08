@@ -34,6 +34,16 @@ func TestProposeOpen_validAsset(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = sendingChannel.ProposeOpen(OpenParams{
+		Asset: ":GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
+	})
+	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
+
+	_, err = sendingChannel.ProposeOpen(OpenParams{
+		Asset: "ABCD:GABCD:AB",
+	})
+	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset issuer: GABCD:AB is not a valid stellar public key`)
+
+	_, err = sendingChannel.ProposeOpen(OpenParams{
 		Asset: "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
 	})
 	require.NoError(t, err)
