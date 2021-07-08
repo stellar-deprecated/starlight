@@ -21,6 +21,7 @@ import (
 const (
 	observationPeriodTime      = 5 * time.Minute
 	observationPeriodLedgerGap = 720
+	openExpiry                 = 30 * time.Second
 )
 
 func main() {
@@ -223,6 +224,7 @@ Input:
 					fmt.Fprintf(os.Stdout, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
 					channel = state.NewChannel(state.Config{
 						NetworkPassphrase: networkDetails.NetworkPassphrase,
+						MaxOpenExpiry:     openExpiry,
 						LocalEscrowAccount: &state.EscrowAccount{
 							Address:        escrowAccountKey.FromAddress(),
 							SequenceNumber: escrowAccountSeqNum,
@@ -314,6 +316,7 @@ Input:
 			fmt.Fprintf(os.Stdout, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
 			channel = state.NewChannel(state.Config{
 				NetworkPassphrase: networkDetails.NetworkPassphrase,
+				MaxOpenExpiry:     openExpiry,
 				LocalEscrowAccount: &state.EscrowAccount{
 					Address:        escrowAccountKey.FromAddress(),
 					SequenceNumber: escrowAccountSeqNum,
@@ -330,6 +333,7 @@ Input:
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 				Asset:                      state.NativeAsset,
+				ExpiresAt:                  time.Now().Add(openExpiry),
 			})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: proposing open agreement: %v\n", err)
