@@ -20,7 +20,7 @@ func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
-		d.ExpiresAt == d2.ExpiresAt
+		d.ExpiresAt.Equal(d2.ExpiresAt)
 }
 
 type OpenAgreement struct {
