@@ -13,13 +13,14 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
 
 const (
-	observationPeriodTime      = 5 * time.Minute
+	observationPeriodTime      = 10 * time.Second
 	observationPeriodLedgerGap = 720
 	openExpiry                 = 30 * time.Second
 )
@@ -128,8 +129,12 @@ Input:
 	for {
 		fmt.Fprintf(os.Stdout, "> ")
 		line, err := br.ReadString('\n')
+		if err == io.EOF {
+			fmt.Fprintf(os.Stderr, "connection terminated\n")
+			break
+		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %#v", err)
+			fmt.Fprintf(os.Stderr, "error: %#v\n", err)
 			continue
 		}
 		params := strings.Fields(line)
@@ -178,8 +183,8 @@ Input:
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
-			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
-			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
+			dec := json.NewDecoder(io.TeeReader(conn, os.Stdout))
+			enc := json.NewEncoder(io.MultiWriter(conn, os.Stdout))
 			for {
 				m := message{}
 				err := dec.Decode(&m)
@@ -259,7 +264,48 @@ Input:
 						}
 					}
 					break
+				} else if m.Update != nil {
+					var authorized bool
+					for {
+						var update state.CloseAgreement
+						update, authorized, err = channel.ConfirmPayment(*m.Update)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
+							break
+						}
+						if authorized {
+							break
+						}
+						err = enc.Encode(message{Update: &update})
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "error: encoding payment to send back: %v\n", err)
+							break
+						}
+						err = dec.Decode(&m)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
+							break
+						}
+					}
+					if authorized {
+						fmt.Fprintln(os.Stderr, "payment successfully received")
+					}
+					break
 				} else if m.Close != nil {
+					close, authorized, err := channel.ConfirmClose(*m.Close)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
+						break
+					}
+					err = enc.Encode(message{Close: &close})
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "error: encoding close to send back: %v\n", err)
+						break
+					}
+					if authorized {
+						fmt.Fprintln(os.Stderr, "close ready")
+					}
+					break
 				}
 			}
 		case "open":
@@ -391,14 +437,137 @@ Input:
 				return fmt.Errorf("submitting tx to form the channel: %w", err)
 			}
 		case "pay":
-			if conn == nil {
+			if conn == nil || channel == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
+			amountValue, err := amount.ParseInt64(params[1])
+			if err != nil {
+				return fmt.Errorf("parsing the amount: %w", err)
+			}
+			amount := state.Amount{Asset: state.NativeAsset, Amount: amountValue}
+			ca, err := channel.ProposePayment(amount)
+			if err != nil {
+				return fmt.Errorf("proposing the payment: %w", err)
+			}
+			enc := json.NewEncoder(io.MultiWriter(conn, os.Stdout))
+			dec := json.NewDecoder(io.TeeReader(conn, os.Stdout))
+			err = enc.Encode(message{Update: &ca})
+			if err != nil {
+				return fmt.Errorf("sending the payment: %w", err)
+			}
+			var authorized bool
+			for {
+				m := message{}
+				err = dec.Decode(&m)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
+					break
+				}
+				var update state.CloseAgreement
+				update, authorized, err = channel.ConfirmPayment(*m.Update)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
+					break
+				}
+				err = enc.Encode(message{Update: &update})
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: encoding payment to send back: %v\n", err)
+					break
+				}
+				if authorized {
+					break
+				}
+			}
+			if authorized {
+				fmt.Fprintln(os.Stderr, "payment successfully sent")
+			}
 		case "close":
-			if conn == nil {
+			if conn == nil || channel == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
+			}
+			// Submit declaration tx
+			decl, _, err := channel.CloseTxs(channel.LatestCloseAgreement().Details)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: getting close txs: %v\n", err)
+				continue
+			}
+			decl, err = decl.AddSignatureDecorated(channel.LatestCloseAgreement().DeclarationSignatures...)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: adding signatures to the decl tx: %v\n", err)
+				continue
+			}
+			ftx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+				Inner:      decl,
+				BaseFee:    txnbuild.MinBaseFee,
+				FeeAccount: accountKey.Address(),
+			})
+			if err != nil {
+				return fmt.Errorf("building fee bump tx to decl the channel: %w", err)
+			}
+			ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
+			if err != nil {
+				return fmt.Errorf("signing fee bump tx to decl the channel: %w", err)
+			}
+			_, err = client.SubmitFeeBumpTransaction(ftx)
+			if err != nil {
+				return fmt.Errorf("submitting tx to decl the channel: %w", err)
+			}
+			// Revising agreement to close early
+			ca, err := channel.ProposeClose()
+			if err != nil {
+				return fmt.Errorf("proposing the close: %w", err)
+			}
+			enc := json.NewEncoder(io.MultiWriter(conn, os.Stdout))
+			dec := json.NewDecoder(io.TeeReader(conn, os.Stdout))
+			err = enc.Encode(message{Close: &ca})
+			if err != nil {
+				return fmt.Errorf("sending the payment: %w", err)
+			}
+			m := message{}
+			err = dec.Decode(&m)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
+				break
+			}
+			_, authorized, err := channel.ConfirmClose(*m.Close)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
+				break
+			}
+			if !authorized {
+				fmt.Fprintf(os.Stderr, "error: close not authorized, waiting observation period then closing...")
+				time.Sleep(10 * time.Second)
+			} else {
+				fmt.Fprintln(os.Stderr, "close ready")
+			}
+			// Submit close tx
+			_, close, err := channel.CloseTxs(channel.LatestCloseAgreement().Details)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: getting close txs: %v\n", err)
+				continue
+			}
+			close, err = close.AddSignatureDecorated(channel.LatestCloseAgreement().CloseSignatures...)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: adding signatures to the close tx: %v\n", err)
+				continue
+			}
+			ftx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+				Inner:      close,
+				BaseFee:    txnbuild.MinBaseFee,
+				FeeAccount: accountKey.Address(),
+			})
+			if err != nil {
+				return fmt.Errorf("building fee bump tx to close the channel: %w", err)
+			}
+			ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
+			if err != nil {
+				return fmt.Errorf("signing fee bump tx to close the channel: %w", err)
+			}
+			_, err = client.SubmitFeeBumpTransaction(ftx)
+			if err != nil {
+				return fmt.Errorf("submitting tx to close the channel: %w", err)
 			}
 		case "exit":
 			return nil
@@ -406,6 +575,7 @@ Input:
 			fmt.Fprintf(os.Stderr, "error: unrecognized command\n")
 		}
 	}
+	return nil
 }
 
 type introduction struct {
@@ -416,6 +586,7 @@ type introduction struct {
 type message struct {
 	Introduction *introduction
 	Open         *state.OpenAgreement
+	Update       *state.CloseAgreement
 	Close        *state.CloseAgreement
 }
 
