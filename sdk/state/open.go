@@ -13,10 +13,14 @@ type OpenAgreementDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
+	ExpiresAt                  time.Time
 }
 
 func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
-	return d == d2
+	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
+		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
+		d.Asset == d2.Asset &&
+		d.ExpiresAt == d2.ExpiresAt
 }
 
 type OpenAgreement struct {
@@ -35,6 +39,7 @@ type OpenParams struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
+	ExpiresAt                  time.Time
 }
 
 func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
@@ -70,6 +75,7 @@ func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *t
 		ResponderEscrow: c.responderEscrowAccount().Address,
 		StartSequence:   c.startingSequence,
 		Asset:           d.Asset,
+		ExpiresAt:       d.ExpiresAt,
 	})
 	return
 }

@@ -210,6 +210,7 @@ func Test(t *testing.T) {
 			ResponderEscrow: responder.Escrow.FromAddress(),
 			StartSequence:   s,
 			Asset:           txnbuild.NativeAsset{},
+			ExpiresAt:       time.Now().Add(1 * time.Minute),
 		})
 		require.NoError(t, err)
 		f, err = f.Sign(networkPassphrase, initiator.KP, responder.KP)

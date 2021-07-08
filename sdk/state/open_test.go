@@ -2,6 +2,7 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -30,19 +31,22 @@ func TestProposeOpen_validAsset(t *testing.T) {
 
 	native := NativeAsset{}
 	_, err := sendingChannel.ProposeOpen(OpenParams{
-		Asset: native,
+		Asset:     native,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.NoError(t, err)
 
 	invalidCredit := CreditAsset{}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: invalidCredit,
+		Asset:     invalidCredit,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
 
 	validCredit := CreditAsset{Code: "ABCD", Issuer: "GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P"}
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset: validCredit,
+		Asset:     validCredit,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.NoError(t, err)
 }
