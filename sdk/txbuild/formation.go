@@ -26,7 +26,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 			Sequence:  p.StartSequence,
 		},
 		BaseFee:    0,
-		Timebounds: txnbuild.NewTimebounds(0, p.ExpiresAt.Unix()),
+		Timebounds: txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
 	}
 
 	// I sponsoring ledger entries on EI
