@@ -123,6 +123,7 @@ func run() error {
 	}
 
 	br := bufio.NewReader(os.Stdin)
+Input:
 	for {
 		fmt.Fprintf(os.Stdout, "> ")
 		line, err := br.ReadString('\n')
@@ -176,8 +177,8 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
-			dec := json.NewDecoder(conn)
-			enc := json.NewEncoder(io.MultiWriter(os.Stderr, conn))
+			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
+			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
 			for {
 				m := message{}
 				err := dec.Decode(&m)
@@ -213,11 +214,13 @@ func run() error {
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
 					}
-					otherEscrowAccountSeqNum, err := getSeqNum(client, otherSignerKey.Address())
+					otherEscrowAccountSeqNum, err := getSeqNum(client, otherEscrowAccountKey.Address())
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
 					}
+					fmt.Fprintf(os.Stdout, "this's escrow account seq: %v\n", escrowAccountSeqNum)
+					fmt.Fprintf(os.Stdout, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
 					channel = state.NewChannel(state.Config{
 						NetworkPassphrase: networkDetails.NetworkPassphrase,
 						LocalEscrowAccount: &state.EscrowAccount{
@@ -237,42 +240,21 @@ func run() error {
 						open, authorized, err := channel.ConfirmOpen(*m.Open)
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error: confirming open: %v\n", err)
-							continue
+							continue Input
 						}
 						err = enc.Encode(message{Open: &open})
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error: encoding open to send back: %v\n", err)
-							continue
+							continue Input
 						}
-						if !authorized {
+						if authorized {
 							break
 						}
 						err = dec.Decode(&m)
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-							continue
+							continue Input
 						}
-					}
-					_, _, formation, err := channel.OpenTxs(channel.OpenAgreement().Details)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: getting open txs: %v\n", err)
-						continue
-					}
-					ftx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-						Inner:      formation,
-						BaseFee:    txnbuild.MinBaseFee,
-						FeeAccount: accountKey.Address(),
-					})
-					if err != nil {
-						return fmt.Errorf("building fee bump tx to form the channel: %w", err)
-					}
-					ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
-					if err != nil {
-						return fmt.Errorf("signing fee bump tx to form the channel: %w", err)
-					}
-					_, err = client.SubmitFeeBumpTransaction(ftx)
-					if err != nil {
-						return fmt.Errorf("submitting tx to form the channel: %w", err)
 					}
 					break
 				} else if m.Close != nil {
@@ -283,8 +265,8 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
-			enc := json.NewEncoder(io.MultiWriter(os.Stderr, conn))
-			dec := json.NewDecoder(conn)
+			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
+			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
 			err = enc.Encode(message{
 				Introduction: &introduction{
 					EscrowAccount: escrowAccountKey.Address(),
@@ -323,11 +305,13 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
-			otherEscrowAccountSeqNum, err := getSeqNum(client, otherSignerKey.Address())
+			otherEscrowAccountSeqNum, err := getSeqNum(client, otherEscrowAccountKey.Address())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
+			fmt.Fprintf(os.Stdout, "this's escrow account seq: %v\n", escrowAccountSeqNum)
+			fmt.Fprintf(os.Stdout, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
 			channel = state.NewChannel(state.Config{
 				NetworkPassphrase: networkDetails.NetworkPassphrase,
 				LocalEscrowAccount: &state.EscrowAccount{
@@ -367,7 +351,7 @@ func run() error {
 					fmt.Fprintf(os.Stderr, "error: confirming open: %v\n", err)
 					continue
 				}
-				if !authorized {
+				if authorized {
 					break
 				}
 				err = enc.Encode(message{Open: &open})
@@ -379,6 +363,11 @@ func run() error {
 			_, _, formation, err := channel.OpenTxs(channel.OpenAgreement().Details)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: getting open txs: %v\n", err)
+				continue
+			}
+			formation, err = formation.AddSignatureDecorated(channel.OpenAgreement().FormationSignatures...)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: adding signatures to the formation tx: %v\n", err)
 				continue
 			}
 			ftx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
