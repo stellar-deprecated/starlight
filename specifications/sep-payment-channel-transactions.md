@@ -186,22 +186,34 @@ multisig accounts. F has source account E, and sequence number set to s.
 
   F contains operations:
 
-  - Operations sponsored by I:
+  - Operations sponsored by I for EI:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
     - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is not the native asset.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
-    - One or more `SET_OPTIONS` operations adding I and R's signers to ER.
+    - One or more `SET_OPTIONS` operations adding I signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
-  - Operations sponsored by R:
+  - Operations sponsored by I for ER:
+    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
+    participant I as a sponsor of future reserves.
+    - One or more `SET_OPTIONS` operations adding I signers to ER.
+    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
+    future reserves of subsequent operations.
+  - Operations sponsored by R for ER:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
     - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is not the native asset.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
-    - One or more `SET_OPTIONS` operations adding I and R's signers to EI.
+    - One or more `SET_OPTIONS` operations adding R's signers to ER.
+    - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
+    future reserves of subsequent operations.
+  - Operations sponsored by R for EI:
+    - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
+    account R as a sponsor of future reserves.
+    - One or more `SET_OPTIONS` operations adding R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
 
