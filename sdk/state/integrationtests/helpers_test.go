@@ -19,7 +19,7 @@ import (
 // functions to be used in the state_test integration tests
 
 type AssetParam struct {
-	Asset       txnbuild.Asset
+	Asset       state.Asset
 	Distributor *keypair.Full
 }
 
@@ -40,7 +40,7 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 		})
 		require.NoError(t, err)
 
-		t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", assetParam.Asset.GetCode(), "issuer: ", assetParam.Asset.GetIssuer())
+		t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", assetParam.Asset.Code(), "issuer: ", assetParam.Asset.Issuer())
 		initEscrowAccount(t, &initiator, assetParam)
 	}
 	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
@@ -62,7 +62,7 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 		})
 		require.NoError(t, err)
 
-		t.Log("Responder Contribution:", responder.Contribution, "of asset:", assetParam.Asset.GetCode(), "issuer: ", assetParam.Asset.GetIssuer())
+		t.Log("Responder Contribution:", responder.Contribution, "of asset:", assetParam.Asset.Code(), "issuer: ", assetParam.Asset.Issuer())
 		initEscrowAccount(t, &responder, assetParam)
 	}
 	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
@@ -81,7 +81,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 		Creator:        participant.KP.FromAddress(),
 		Escrow:         participant.Escrow.FromAddress(),
 		SequenceNumber: seqNum + 1,
-		Asset:          assetParam.Asset,
+		Asset:          assetParam.Asset.Asset(),
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)
@@ -106,7 +106,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 		&txnbuild.Payment{
 			Destination: participant.Escrow.Address(),
 			Amount:      stellarAmount.StringFromInt64(participant.Contribution),
-			Asset:       assetParam.Asset,
+			Asset:       assetParam.Asset.Asset(),
 		},
 	}
 
@@ -154,7 +154,7 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 	return initiatorChannel, responderChannel
 }
 
-func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) (txnbuild.Asset, *keypair.Full) {
+func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) (state.Asset, *keypair.Full) {
 	issuerKP := keypair.MustRandom()
 	distributorKP := keypair.MustRandom()
 
@@ -194,7 +194,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 	_, err = client.SubmitTransaction(tx)
 	require.NoError(t, err)
 
-	return asset, distributorKP
+	return state.Asset(asset.Code + ":" + asset.Issuer), distributorKP
 }
 
 func randomBool(t *testing.T) bool {
@@ -224,7 +224,7 @@ func retry(maxAttempts int, f func() error) (err error) {
 	return err
 }
 
-func fundAsset(asset txnbuild.Asset, amount int64, accountKP *keypair.Full, distributorKP *keypair.Full) error {
+func fundAsset(asset state.Asset, amount int64, accountKP *keypair.Full, distributorKP *keypair.Full) error {
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
 	if err != nil {
 		return err
@@ -234,14 +234,14 @@ func fundAsset(asset txnbuild.Asset, amount int64, accountKP *keypair.Full, dist
 	if !asset.IsNative() {
 		ops = append(ops, &txnbuild.ChangeTrust{
 			SourceAccount: accountKP.Address(),
-			Line:          asset,
+			Line:          asset.Asset(),
 			Limit:         "5000",
 		})
 	}
 	ops = append(ops, &txnbuild.Payment{
 		Destination: accountKP.Address(),
 		Amount:      stellarAmount.StringFromInt64(amount),
-		Asset:       asset,
+		Asset:       asset.Asset(),
 	})
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount:        &distributor,
@@ -316,9 +316,9 @@ func txSeqs(txs []*txnbuild.Transaction) []int64 {
 	return seqs
 }
 
-func assetBalance(asset txnbuild.Asset, account horizon.Account) string {
+func assetBalance(asset state.Asset, account horizon.Account) string {
 	for _, b := range account.Balances {
-		if b.Asset.Code == asset.GetCode() {
+		if b.Asset.Code == asset.Code() {
 			return b.Balance
 		}
 	}

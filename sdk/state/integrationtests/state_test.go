@@ -27,7 +27,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
 
-	asset := txnbuild.NativeAsset{}
+	asset := state.NativeAsset
 	// native asset has no asset limit
 	rootResp, err := client.Root()
 	require.NoError(t, err)
@@ -159,7 +159,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, sends to other party
-		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset{}, Amount: amount})
+		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset, Amount: amount})
 		require.NoError(t, err)
 
 		var authorized bool
