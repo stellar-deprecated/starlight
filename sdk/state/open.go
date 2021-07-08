@@ -212,8 +212,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			// TODO - change to use all assets, simplifying for now
+			IterationNumber:            1,
 			Balance:                    Amount{Asset: m.Details.Asset},
 			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,

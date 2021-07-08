@@ -10,7 +10,7 @@ type Asset string
 
 const NativeAsset = Asset("native")
 
-func (a Asset) Native() bool {
+func (a Asset) IsNative() bool {
 	return a.Asset().IsNative()
 }
 
