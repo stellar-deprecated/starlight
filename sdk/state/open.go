@@ -126,6 +126,11 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
 	}
 
+	// If the expiry of the agreement is past the max expiry the channel will accept, error.
+	if m.Details.ExpiresAt.After(time.Now().Add(c.maxOpenExpiry)) {
+		return m, authorized, fmt.Errorf("input open agreement expire too far into the future")
+	}
+
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the
 	// channel's saved open agreement details if present, to prevent other party from changing.
 	defer func() {

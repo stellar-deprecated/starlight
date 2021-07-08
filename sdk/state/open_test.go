@@ -106,3 +106,35 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")
 	}
 }
+
+func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       10 * time.Second,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: OpenAgreementDetails{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(100 * time.Second),
+	}})
+	require.False(t, authorized)
+	require.EqualError(t, err, "input open agreement expire too far into the future")
+}
