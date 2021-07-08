@@ -39,7 +39,7 @@ func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transactio
 		IterationNumber:            d.IterationNumber,
 		AmountToInitiator:          amountToInitiator(d.Balance.Amount),
 		AmountToResponder:          amountToResponder(d.Balance.Amount),
-		Asset:                      d.Balance.Asset,
+		Asset:                      d.Balance.Asset.Asset(),
 	})
 	if err != nil {
 		return nil, nil, err
