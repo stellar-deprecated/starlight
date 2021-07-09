@@ -22,7 +22,7 @@ import (
 
 const (
 	observationPeriodTime      = 10 * time.Second
-	observationPeriodLedgerGap = 720
+	observationPeriodLedgerGap = 1
 	openExpiry                 = 30 * time.Second
 )
 
@@ -550,7 +550,7 @@ Input:
 				fmt.Fprintln(os.Stderr, "close ready")
 			} else {
 				fmt.Fprintf(os.Stderr, "close not authorized, waiting observation period then closing...")
-				time.Sleep(observationPeriodTime - time.Since(timerStart))
+				time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
 			}
 			// Submit close tx
 			_, close, err := channel.CloseTxs(channel.LatestCloseAgreement().Details)
@@ -577,7 +577,15 @@ Input:
 			}
 			_, err = client.SubmitFeeBumpTransaction(ftx)
 			if err != nil {
-				return fmt.Errorf("submitting tx to close the channel: %w", err)
+				resultString := "<none>"
+				if hErr := horizonclient.GetError(err); hErr != nil {
+					var err error
+					resultString, err = hErr.ResultString()
+					if err != nil {
+						resultString = "<error getting result string: " + err.Error() + ">"
+					}
+				}
+				return fmt.Errorf("submitting tx to close the channel: %w: %v", err, resultString)
 			}
 		case "exit":
 			return nil
