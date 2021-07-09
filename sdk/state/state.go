@@ -8,11 +8,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type Amount struct {
-	Asset  Asset
-	Amount int64
-}
-
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
@@ -74,7 +69,7 @@ func (c *Channel) NextIterationNumber() int64 {
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
-func (c *Channel) Balance() Amount {
+func (c *Channel) Balance() int64 {
 	return c.latestAuthorizedCloseAgreement.Details.Balance
 }
 

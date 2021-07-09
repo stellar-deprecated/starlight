@@ -156,12 +156,12 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", sendingChannel.Balance().Amount/1_000_0000, "R: ", receivingChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, sends to other party
-		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: state.NativeAsset, Amount: amount})
+		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
 		var authorized bool
@@ -422,12 +422,12 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", sendingChannel.Balance().Amount/1_000_0000, "R: ", receivingChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, sends to other party
-		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: asset, Amount: amount})
+		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
 		var authorized bool
@@ -635,12 +635,12 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", sendingChannel.Balance().Amount/1_000_0000, "R: ", receivingChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, sends to other party
-		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: asset, Amount: amount})
+		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
 		var authorized bool
@@ -849,12 +849,12 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 			rBalanceCheck -= amount
 			iBalanceCheck += amount
 		}
-		t.Log("Current channel balances: I: ", sendingChannel.Balance().Amount/1_000_0000, "R: ", receivingChannel.Balance().Amount/1_000_0000)
+		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, sends to other party
-		payment, err := sendingChannel.ProposePayment(state.Amount{Asset: asset, Amount: amount})
+		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
 		var authorized bool
