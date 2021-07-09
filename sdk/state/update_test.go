@@ -116,12 +116,12 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: 100, // Local (initiator) owes remote (responder) 100.
+			Balance:         100, // Local (initiator) owes remote (responder) 100.
 		},
 	}
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
-		Balance: 110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
+		Balance:         110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
 	}
 	_, txClose, err := channel.CloseTxs(ca)
 	require.NoError(t, err)
@@ -166,12 +166,12 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: 100, // Remote (initiator) owes local (responder) 100.
+			Balance:         100, // Remote (initiator) owes local (responder) 100.
 		},
 	}
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
-		Balance: 90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
+		Balance:         90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 	}
 	_, txClose, err := channel.CloseTxs(ca)
 	require.NoError(t, err)
@@ -236,7 +236,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	caDifferent := CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: 400,
+			Balance:         400,
 		},
 		CloseSignatures: ca.CloseSignatures,
 	}
