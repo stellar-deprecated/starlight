@@ -11,6 +11,7 @@ import (
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
+	Balance        int64
 }
 
 type Channel struct {
@@ -81,6 +82,14 @@ func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestAuthorizedCloseAgreement
 }
 
+func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
+	c.localEscrowAccount.Balance = balance
+}
+
+func (c *Channel) UpdateRemoteEscrowAccountBalance(balance int64) {
+	c.remoteEscrowAccount.Balance = balance
+}
+
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
 	if c.initiator {
 		return c.localEscrowAccount
@@ -128,6 +137,27 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 		}
 	}
 	return false, nil
+}
+
+func (c *Channel) amountToLocal(balance int64) int64 {
+	if c.initiator {
+		return amountToInitiator(balance)
+	}
+	return amountToResponder(balance)
+}
+
+func amountToInitiator(balance int64) int64 {
+	if balance < 0 {
+		return balance * -1
+	}
+	return 0
+}
+
+func amountToResponder(balance int64) int64 {
+	if balance > 0 {
+		return balance
+	}
+	return 0
 }
 
 func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) []xdr.DecoratedSignature {
