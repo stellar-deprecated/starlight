@@ -26,6 +26,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const formationExpiry = 5 * time.Minute
 
 	asset := state.NativeAsset
 	// native asset has no asset limit
@@ -54,6 +55,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
+		ExpiresAt:                  time.Now().Add(formationExpiry),
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -304,6 +306,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const formationExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
 	initiator, responder := initAccounts(t, AssetParam{
@@ -324,6 +327,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
+		ExpiresAt:                  time.Now().Add(formationExpiry),
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
@@ -514,6 +518,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const formationExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
 	initiator, responder := initAccounts(t, AssetParam{
@@ -534,6 +539,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
+		ExpiresAt:                  time.Now().Add(formationExpiry),
 	})
 
 	require.NoError(t, err)
@@ -726,6 +732,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const formationExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
 	initiator, responder := initAccounts(t, AssetParam{
@@ -746,6 +753,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
+		ExpiresAt:                  time.Now().Add(formationExpiry),
 	})
 
 	require.NoError(t, err)

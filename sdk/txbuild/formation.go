@@ -2,6 +2,7 @@ package txbuild
 
 import (
 	"math"
+	"time"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
@@ -15,6 +16,7 @@ type FormationParams struct {
 	ResponderEscrow *keypair.FromAddress
 	StartSequence   int64
 	Asset           txnbuild.Asset
+	ExpiresAt       time.Time
 }
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
@@ -24,7 +26,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 			Sequence:  p.StartSequence,
 		},
 		BaseFee:    0,
-		Timebounds: txnbuild.NewTimeout(300),
+		Timebounds: txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
 	}
 
 	// I sponsoring ledger entries on EI

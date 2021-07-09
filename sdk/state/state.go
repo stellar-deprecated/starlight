@@ -1,6 +1,8 @@
 package state
 
 import (
+	"time"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -18,6 +20,7 @@ type EscrowAccount struct {
 
 type Channel struct {
 	networkPassphrase string
+	maxOpenExpiry     time.Duration
 
 	startingSequence int64
 	// TODO - leave execution out for now
@@ -38,6 +41,7 @@ type Channel struct {
 
 type Config struct {
 	NetworkPassphrase string
+	MaxOpenExpiry     time.Duration
 
 	Initiator bool
 
@@ -51,6 +55,7 @@ type Config struct {
 func NewChannel(c Config) *Channel {
 	channel := &Channel{
 		networkPassphrase:   c.NetworkPassphrase,
+		maxOpenExpiry:       c.MaxOpenExpiry,
 		initiator:           c.Initiator,
 		localEscrowAccount:  c.LocalEscrowAccount,
 		remoteEscrowAccount: c.RemoteEscrowAccount,
