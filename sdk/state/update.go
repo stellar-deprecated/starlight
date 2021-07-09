@@ -71,6 +71,8 @@ func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
+var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
+
 // ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
@@ -136,6 +138,9 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		if (c.initiator && ca.Details.Balance.Amount > c.latestAuthorizedCloseAgreement.Details.Balance.Amount) ||
 			(!c.initiator && ca.Details.Balance.Amount < c.latestAuthorizedCloseAgreement.Details.Balance.Amount) {
 			return ca, authorized, fmt.Errorf("close agreement is a payment to the proposer")
+		}
+		if c.amountToLocal(ca.Details.Balance.Amount) > c.remoteEscrowAccount.Balance {
+			return ca, authorized, fmt.Errorf("close agreement over commits: %w", ErrUnderfunded)
 		}
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {

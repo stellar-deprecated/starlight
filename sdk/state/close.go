@@ -47,20 +47,6 @@ func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transactio
 	return txDecl, txClose, nil
 }
 
-func amountToInitiator(balance int64) int64 {
-	if balance < 0 {
-		return balance * -1
-	}
-	return 0
-}
-
-func amountToResponder(balance int64) int64 {
-	if balance > 0 {
-		return balance
-	}
-	return 0
-}
-
 // ProposeClose proposes that the latest authorized close agreement be submitted
 // without waiting the observation period. This should be used when participants
 // are in agreement on the final close state, but would like to submit earlier
