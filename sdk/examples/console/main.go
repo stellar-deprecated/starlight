@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 )
 
@@ -146,10 +147,11 @@ Input:
 		case "help":
 			fmt.Fprintf(os.Stderr, "listen [addr]:<port> - listen for a peer to connect\n")
 			fmt.Fprintf(os.Stderr, "connect <addr>:<port> - connect to a peer\n")
-			fmt.Fprintf(os.Stderr, "open <amount> <asset-code | native> [asset-issuer] - open a channel with asset\n")
-			fmt.Fprintf(os.Stderr, "status - display the channel\n")
+			fmt.Fprintf(os.Stderr, "open - open a channel with asset\n")
+			fmt.Fprintf(os.Stderr, "deposit <amount> - deposit asset into escrow account\n")
 			fmt.Fprintf(os.Stderr, "pay <amount> - pay amount of asset to peer\n")
 			fmt.Fprintf(os.Stderr, "close - close the channel\n")
+			fmt.Fprintf(os.Stderr, "status - display the channel\n")
 			fmt.Fprintf(os.Stderr, "exit - exit the application\n")
 		case "status":
 			fmt.Fprintf(os.Stderr, "%#v\n", channel)
@@ -184,8 +186,8 @@ Input:
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
-			dec := json.NewDecoder(io.TeeReader(conn, os.Stdout))
-			enc := json.NewEncoder(io.MultiWriter(conn, os.Stdout))
+			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
+			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
 			for {
 				m := message{}
 				err := dec.Decode(&m)
@@ -270,6 +272,25 @@ Input:
 					for {
 						var update state.CloseAgreement
 						update, authorized, err = channel.ConfirmPayment(*m.Update)
+						if errors.Is(err, state.ErrUnderfunded) {
+							fmt.Fprintf(os.Stderr, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
+							var account horizon.Account
+							account, err = client.AccountDetail(horizonclient.AccountRequest{AccountID: otherEscrowAccountKey.Address()})
+							if err != nil {
+								return fmt.Errorf("getting state of remote escrow account: %w", err)
+							}
+							balance, err := amount.ParseInt64(account.Balances[0].Balance)
+							if err != nil {
+								return fmt.Errorf("parsing balance of remote escrow account: %w", err)
+							}
+							fmt.Fprintf(os.Stderr, "updating remote escrow balance to: %d\n", balance)
+							channel.UpdateRemoteEscrowAccountBalance(balance)
+							update, authorized, err = channel.ConfirmPayment(*m.Update)
+							if err != nil {
+								fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
+								break
+							}
+						}
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
 							break
@@ -437,6 +458,33 @@ Input:
 			if err != nil {
 				return fmt.Errorf("submitting tx to form the channel: %w", err)
 			}
+		case "deposit":
+			amount := params[1]
+			account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
+			if err != nil {
+				return fmt.Errorf("getting state of local escrow account: %w", err)
+			}
+			tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+				SourceAccount:        &account,
+				IncrementSequenceNum: true,
+				BaseFee:              txnbuild.MinBaseFee,
+				Timebounds:           txnbuild.NewTimeout(300),
+				Operations: []txnbuild.Operation{
+					&txnbuild.Payment{Destination: escrowAccountKey.Address(), Asset: txnbuild.NativeAsset{}, Amount: amount},
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("building deposit payment tx: %w", err)
+			}
+			tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey)
+			if err != nil {
+				return fmt.Errorf("signing deposit payment tx: %w", err)
+			}
+			_, err = client.SubmitTransaction(tx)
+			if err != nil {
+				return fmt.Errorf("submitting deposit payment tx: %w", err)
+			}
+			fmt.Println("deposit complete of", amount)
 		case "pay":
 			if conn == nil || channel == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
@@ -446,13 +494,12 @@ Input:
 			if err != nil {
 				return fmt.Errorf("parsing the amount: %w", err)
 			}
-			amount := state.Amount{Asset: state.NativeAsset, Amount: amountValue}
-			ca, err := channel.ProposePayment(amount)
+			ca, err := channel.ProposePayment(amountValue)
 			if err != nil {
 				return fmt.Errorf("proposing the payment: %w", err)
 			}
-			enc := json.NewEncoder(io.MultiWriter(conn, os.Stdout))
-			dec := json.NewDecoder(io.TeeReader(conn, os.Stdout))
+			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
+			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
 			err = enc.Encode(message{Update: &ca})
 			if err != nil {
 				return fmt.Errorf("sending the payment: %w", err)
