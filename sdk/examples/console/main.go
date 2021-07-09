@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -525,22 +526,31 @@ Input:
 			if err != nil {
 				return fmt.Errorf("sending the payment: %w", err)
 			}
+			err = conn.SetReadDeadline(time.Now().Add(observationPeriodTime))
+			if err != nil {
+				return fmt.Errorf("setting read deadline of conn: %w", err)
+			}
+			timerStart := time.Now()
+			authorized := false
 			m := message{}
 			err = dec.Decode(&m)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-				break
-			}
-			_, authorized, err := channel.ConfirmClose(*m.Close)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
-				break
-			}
-			if !authorized {
-				fmt.Fprintf(os.Stderr, "error: close not authorized, waiting observation period then closing...")
-				time.Sleep(10 * time.Second)
+			if errors.Is(err, os.ErrDeadlineExceeded) {
 			} else {
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
+					break
+				}
+				_, authorized, err = channel.ConfirmClose(*m.Close)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
+					break
+				}
+			}
+			if authorized {
 				fmt.Fprintln(os.Stderr, "close ready")
+			} else {
+				fmt.Fprintf(os.Stderr, "close not authorized, waiting observation period then closing...")
+				time.Sleep(observationPeriodTime - time.Since(timerStart))
 			}
 			// Submit close tx
 			_, close, err := channel.CloseTxs(channel.LatestCloseAgreement().Details)
