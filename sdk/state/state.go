@@ -82,10 +82,6 @@ func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestAuthorizedCloseAgreement
 }
 
-func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
-	c.localEscrowAccount.Balance = balance
-}
-
 func (c *Channel) UpdateRemoteEscrowAccountBalance(balance int64) {
 	c.remoteEscrowAccount.Balance = balance
 }
