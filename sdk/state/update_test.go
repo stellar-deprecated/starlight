@@ -213,18 +213,12 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: Amount{
-				Asset:  NativeAsset,
-				Amount: -60, // Remote (responder) owes local (initiator) 60.
-			},
+			Balance:         -60, // Remote (responder) owes local (initiator) 60.
 		},
 	}
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
-		Balance: Amount{
-			Asset:  NativeAsset,
-			Amount: -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
-		},
+		Balance:         -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
 	}
 	_, txClose, err := channel.CloseTxs(ca)
 	require.NoError(t, err)
@@ -275,18 +269,12 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: Amount{
-				Asset:  NativeAsset,
-				Amount: 60, // Remote (initiator) owes local (responder) 60.
-			},
+			Balance:         60, // Remote (initiator) owes local (responder) 60.
 		},
 	}
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
-		Balance: Amount{
-			Asset:  NativeAsset,
-			Amount: 110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
-		},
+		Balance:         110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
 	}
 	_, txClose, err := channel.CloseTxs(ca)
 	require.NoError(t, err)
