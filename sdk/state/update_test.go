@@ -184,16 +184,130 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 	require.EqualError(t, err, "close agreement is a payment to the proposer")
 }
 
+func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        100,
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        100,
+	}
+
+	// Given a channel with observation periods set to 1, that is already open.
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	// A close agreement from the remote participant should be rejected if the
+	// payment changes the balance in the favor of the remote.
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance:         -60, // Remote (responder) owes local (initiator) 60.
+		},
+	}
+	ca := CloseAgreementDetails{
+		IterationNumber: 2,
+		Balance:         -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
+	}
+	_, txClose, err := channel.CloseTxs(ca)
+	require.NoError(t, err)
+	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+	require.NoError(t, err)
+	_, _, err = channel.ConfirmPayment(CloseAgreement{
+		Details:         ca,
+		CloseSignatures: txClose.Signatures(),
+	})
+	assert.EqualError(t, err, "close agreement over commits: account is underfunded to make payment")
+	assert.ErrorIs(t, err, ErrUnderfunded)
+
+	// The same close payment should pass if the balance has been updated.
+	channel.UpdateRemoteEscrowAccountBalance(200)
+	_, _, err = channel.ConfirmPayment(CloseAgreement{
+		Details:         ca,
+		CloseSignatures: txClose.Signatures(),
+	})
+	assert.NoError(t, err)
+}
+
+func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        100,
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        100,
+	}
+
+	// Given a channel with observation periods set to 1, that is already open.
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	// A close agreement from the remote participant should be rejected if the
+	// payment changes the balance in the favor of the remote.
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance:         60, // Remote (initiator) owes local (responder) 60.
+		},
+	}
+	ca := CloseAgreementDetails{
+		IterationNumber: 2,
+		Balance:         110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
+	}
+	_, txClose, err := channel.CloseTxs(ca)
+	require.NoError(t, err)
+	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+	require.NoError(t, err)
+	_, _, err = channel.ConfirmPayment(CloseAgreement{
+		Details:         ca,
+		CloseSignatures: txClose.Signatures(),
+	})
+	assert.EqualError(t, err, "close agreement over commits: account is underfunded to make payment")
+	assert.ErrorIs(t, err, ErrUnderfunded)
+
+	// The same close payment should pass if the balance has been updated.
+	channel.UpdateRemoteEscrowAccountBalance(200)
+	_, _, err = channel.ConfirmPayment(CloseAgreement{
+		Details:         ca,
+		CloseSignatures: txClose.Signatures(),
+	})
+	assert.NoError(t, err)
+}
+
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
 		Address:        keypair.MustRandom().FromAddress(),
 		SequenceNumber: int64(101),
+		Balance:        1000,
 	}
 	remoteEscrowAccount := &EscrowAccount{
 		Address:        keypair.MustRandom().FromAddress(),
 		SequenceNumber: int64(202),
+		Balance:        1000,
 	}
 	sendingChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
