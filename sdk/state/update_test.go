@@ -108,21 +108,20 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
+	channel.openAgreement = OpenAgreement{
+		Details: OpenAgreementDetails{
+			Asset: NativeAsset,
+		},
+	}
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: Amount{
-				Asset:  NativeAsset,
-				Amount: 100, // Local (initiator) owes remote (responder) 100.
-			},
+			Balance:         100, // Local (initiator) owes remote (responder) 100.
 		},
 	}
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
-		Balance: Amount{
-			Asset:  NativeAsset,
-			Amount: 110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
-		},
+		Balance:         110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
 	}
 	_, txClose, err := channel.CloseTxs(ca)
 	require.NoError(t, err)
@@ -159,21 +158,20 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
+	channel.openAgreement = OpenAgreement{
+		Details: OpenAgreementDetails{
+			Asset: NativeAsset,
+		},
+	}
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: Amount{
-				Asset:  NativeAsset,
-				Amount: 100, // Remote (initiator) owes local (responder) 100.
-			},
+			Balance:         100, // Remote (initiator) owes local (responder) 100.
 		},
 	}
 	ca := CloseAgreementDetails{
 		IterationNumber: 2,
-		Balance: Amount{
-			Asset:  NativeAsset,
-			Amount: 90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
-		},
+		Balance:         90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 	}
 	_, txClose, err := channel.CloseTxs(ca)
 	require.NoError(t, err)
@@ -215,13 +213,18 @@ func TestLastConfirmedPayment(t *testing.T) {
 	})
 
 	// latest close agreement should be set during open steps
-	sendingChannel.latestAuthorizedCloseAgreement.Details.Balance = Amount{Asset: NativeAsset}
-	receiverChannel.latestAuthorizedCloseAgreement.Details.Balance = Amount{Asset: NativeAsset}
+	sendingChannel.openAgreement = OpenAgreement{
+		Details: OpenAgreementDetails{
+			Asset: NativeAsset,
+		},
+	}
+	receiverChannel.openAgreement = OpenAgreement{
+		Details: OpenAgreementDetails{
+			Asset: NativeAsset,
+		},
+	}
 
-	ca, err := sendingChannel.ProposePayment(Amount{
-		Asset:  NativeAsset,
-		Amount: 200,
-	})
+	ca, err := sendingChannel.ProposePayment(200)
 	require.NoError(t, err)
 
 	ca, authorized, err := receiverChannel.ConfirmPayment(ca)
@@ -233,17 +236,14 @@ func TestLastConfirmedPayment(t *testing.T) {
 	caDifferent := CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber: 1,
-			Balance: Amount{
-				Asset:  NativeAsset,
-				Amount: 400,
-			},
+			Balance:         400,
 		},
 		CloseSignatures: ca.CloseSignatures,
 	}
 	_, authorized, err = receiverChannel.ConfirmPayment(caDifferent)
 	assert.False(t, authorized)
 	require.EqualError(t, err, "close agreement does not match the close agreement already in progress")
-	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: Amount{Asset: NativeAsset}}}, receiverChannel.LatestCloseAgreement())
+	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: 0}}, receiverChannel.LatestCloseAgreement())
 
 	// Confirming a payment with same sequence number and same amount should pass
 	ca, authorized, err = sendingChannel.ConfirmPayment(ca)
