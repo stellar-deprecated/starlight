@@ -127,6 +127,10 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
 	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
+	// Update balances known for each other.
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
 	t.Log("Subsequent agreements...")
@@ -394,6 +398,10 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	// Update balances known for each other.
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
 	t.Log("Subsequent agreements...")
@@ -606,6 +614,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 	}
+
+	// Update balances known for each other.
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -820,6 +832,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
 	}
+
+	// Update balances known for each other.
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
