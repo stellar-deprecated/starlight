@@ -20,7 +20,7 @@ type CloseAgreementDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
-	Balance                    Amount
+	Balance                    int64
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -35,25 +35,21 @@ func (ca CloseAgreement) isEmpty() bool {
 	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
 }
 
-func (c *Channel) ProposePayment(amount Amount) (CloseAgreement, error) {
-	if amount.Amount <= 0 {
+func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
+	if amount <= 0 {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
-	}
-	if amount.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
-		return CloseAgreement{}, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			amount.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
 	}
 	newBalance := int64(0)
 	if c.initiator {
-		newBalance = c.Balance().Amount + amount.Amount
+		newBalance = c.Balance() + amount
 	} else {
-		newBalance = c.Balance().Amount - amount.Amount
+		newBalance = c.Balance() - amount
 	}
 	d := CloseAgreementDetails{
 		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
-		Balance:                    Amount{Asset: amount.Asset, Amount: newBalance},
+		Balance:                    newBalance,
 	}
 	_, txClose, err := c.CloseTxs(d)
 	if err != nil {
@@ -86,10 +82,6 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
-	}
-	if ca.Details.Balance.Asset != c.latestAuthorizedCloseAgreement.Details.Balance.Asset {
-		return ca, authorized, fmt.Errorf("payment asset type is invalid, got: %s want: %s",
-			ca.Details.Balance.Asset, c.latestAuthorizedCloseAgreement.Details.Balance.Asset)
 	}
 
 	// If the agreement is signed by all participants at the end of this method,
@@ -135,8 +127,8 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
-		if (c.initiator && ca.Details.Balance.Amount > c.latestAuthorizedCloseAgreement.Details.Balance.Amount) ||
-			(!c.initiator && ca.Details.Balance.Amount < c.latestAuthorizedCloseAgreement.Details.Balance.Amount) {
+		if (c.initiator && ca.Details.Balance > c.latestAuthorizedCloseAgreement.Details.Balance) ||
+			(!c.initiator && ca.Details.Balance < c.latestAuthorizedCloseAgreement.Details.Balance) {
 			return ca, authorized, fmt.Errorf("close agreement is a payment to the proposer")
 		}
 		if c.amountToLocal(ca.Details.Balance.Amount) > c.remoteEscrowAccount.Balance {
