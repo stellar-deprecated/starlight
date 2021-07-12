@@ -45,6 +45,10 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	} else {
 		newBalance = c.Balance() - amount
 	}
+	if c.amountToRemote(newBalance) > c.localEscrowAccount.Balance {
+		return CloseAgreement{}, fmt.Errorf("amount over commits: %w", ErrUnderfunded)
+	}
+
 	d := CloseAgreementDetails{
 		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
