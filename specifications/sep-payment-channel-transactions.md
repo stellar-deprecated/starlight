@@ -170,9 +170,11 @@ without any payment.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
 
-Participants may prefer to make deposits of initial contributions till after
+Participants may prefer to make deposits of initial contributions after
 formation if the channel will hold a trustline to an issuer that is not auth
-immutable, and could become clawback enabled. See [Security](#Security).
+immutable, the participants' trustlines are not clawback enabled, and the
+participants do not want the trustlines of the escrow accounts to be clawback
+enabled. See [Security](#Security).
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
 will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
@@ -600,10 +602,10 @@ escrow accounts to cause the closing transaction's payment to fail.
 
 ### Clawback
 
-Any trustline on the escrow accounts that have clawback enabled could
-compromise the payment channels ability to close successfully.
+Any trustline on the escrow accounts that has clawback enabled could compromise
+the payment channels ability to close successfully.
 
-If the issuer of any clawback enabled trustline submits a clawback operation for
+If the issuer of a clawback enabled trustline submits a clawback operation for
 amounts in either escrow account, the close transaction may fail to process if
 its payment operation is dependent on amounts clawed back.
 
@@ -612,8 +614,9 @@ check if either participant has clawback enabled. Checking the state after
 formation is critical because there is no way for participants to guarantee
 trustline state until after formation has completed because the state can change
 prior to formation. For this reason participants should perform their initial
-deposit after formation, unless they trust the asset issuer not to clawback from
-payment channel escrow accounts, or unless the asset is auth immutable.
+deposit after formation, unless they have no requirement for the asset not to be
+clawback enabled, or they trust the asset issuer not to clawback from payment
+channel escrow accounts, or the asset is auth immutable.
 
 ## Limitations
 
