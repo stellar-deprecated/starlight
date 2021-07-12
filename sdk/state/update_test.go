@@ -296,6 +296,90 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	assert.NoError(t, err)
 }
 
+func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        100,
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        100,
+	}
+
+	// Given a channel with observation periods set to 1, that is already open.
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	// A close agreement from the remote participant should be rejected if the
+	// payment changes the balance in the favor of the remote.
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance:         60, // Local (initiator) owes remote (responder) 60.
+		},
+	}
+	_, err := channel.ProposePayment(110)
+	assert.EqualError(t, err, "amount over commits: account is underfunded to make payment")
+	assert.ErrorIs(t, err, ErrUnderfunded)
+
+	// The same close payment should pass if the balance has been updated.
+	channel.UpdateLocalEscrowAccountBalance(200)
+	_, err = channel.ProposePayment(110)
+	assert.NoError(t, err)
+}
+
+func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        100,
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        100,
+	}
+
+	// Given a channel with observation periods set to 1, that is already open.
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	// A close agreement from the remote participant should be rejected if the
+	// payment changes the balance in the favor of the remote.
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+			Balance:         -60, // Local (responder) owes remote (initiator) 60.
+		},
+	}
+	_, err := channel.ProposePayment(110)
+	assert.EqualError(t, err, "amount over commits: account is underfunded to make payment")
+	assert.ErrorIs(t, err, ErrUnderfunded)
+
+	// The same close payment should pass if the balance has been updated.
+	channel.UpdateLocalEscrowAccountBalance(200)
+	_, err = channel.ProposePayment(110)
+	assert.NoError(t, err)
+}
+
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
