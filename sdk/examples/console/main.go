@@ -459,7 +459,11 @@ Input:
 				return fmt.Errorf("submitting tx to form the channel: %w", err)
 			}
 		case "deposit":
-			amount := params[1]
+			depositAmountStr := params[1]
+			depositAmountInt, err := amount.ParseInt64(depositAmountStr)
+			if err != nil {
+				return fmt.Errorf("parsing deposit amount: %w", err)
+			}
 			account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 			if err != nil {
 				return fmt.Errorf("getting state of local escrow account: %w", err)
@@ -470,7 +474,7 @@ Input:
 				BaseFee:              txnbuild.MinBaseFee,
 				Timebounds:           txnbuild.NewTimeout(300),
 				Operations: []txnbuild.Operation{
-					&txnbuild.Payment{Destination: escrowAccountKey.Address(), Asset: txnbuild.NativeAsset{}, Amount: amount},
+					&txnbuild.Payment{Destination: escrowAccountKey.Address(), Asset: txnbuild.NativeAsset{}, Amount: depositAmountStr},
 				},
 			})
 			if err != nil {
@@ -484,7 +488,9 @@ Input:
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			fmt.Println("deposit complete of", amount)
+			newBalance := channel.LocalEscrowAccountBalance() + depositAmountInt
+			channel.UpdateLocalEscrowAccountBalance(newBalance)
+			fmt.Println("new balance of", newBalance)
 		case "pay":
 			if conn == nil || channel == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
