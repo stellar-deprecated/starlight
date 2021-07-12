@@ -233,7 +233,7 @@ func fundAsset(asset state.Asset, amount int64, accountKP *keypair.Full, distrib
 	}
 
 	ops := []txnbuild.Operation{}
-	if !asset.Native() {
+	if !asset.IsNative() {
 		ops = append(ops, &txnbuild.ChangeTrust{
 			SourceAccount: accountKP.Address(),
 			Line:          asset.Asset(),
@@ -255,7 +255,7 @@ func fundAsset(asset state.Asset, amount int64, accountKP *keypair.Full, distrib
 	if err != nil {
 		return err
 	}
-	if !asset.Native() {
+	if !asset.IsNative() {
 		tx, err = tx.Sign(networkPassphrase, accountKP)
 		if err != nil {
 			return err
