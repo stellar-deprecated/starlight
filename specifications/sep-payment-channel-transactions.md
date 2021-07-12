@@ -170,9 +170,9 @@ without any payment.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
 
-Participants should defer deposits of initial contributions till after formation
-for channels that will hold trustlines to issuers that are not auth immutable,
-and could be clawback enabled. See [Security](#Security).
+Participants may prefer to make deposits of initial contributions till after
+formation if the channel will hold a trustline to an issuer that is not auth
+immutable, and could become clawback enabled. See [Security](#Security).
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
 will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
