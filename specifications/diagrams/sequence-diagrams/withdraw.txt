@@ -2,7 +2,7 @@ sequenceDiagram
     participant I as Initiator
     participant R as Responder
 
-    Note over I,R: 1. Setup and a single update
+    Note over I,R: 1. Setup and a single payment
     Note right of R: i = 2, e = 0
     Note left of I: EI.seqNum = 1000
 
