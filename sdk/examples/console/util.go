@@ -20,7 +20,7 @@ func getSeqNum(client horizonclient.ClientInterface, accountID string) (int64, e
 	return seqNum, nil
 }
 
-func fund(client horizonclient.ClientInterface, networkPassphrase string, accountKey *keypair.FromAddress) error {
+func createAccountWithRoot(client horizonclient.ClientInterface, networkPassphrase string, accountKey *keypair.FromAddress) error {
 	rootKey := keypair.Root(networkPassphrase)
 	root, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: rootKey.Address()})
 	if err != nil {

@@ -43,7 +43,7 @@ func run() error {
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.BoolVar(&showHelp, "h", showHelp, "Show this help")
-	fs.StringVar(&horizonURL, "horizon-url", horizonURL, "Horizon URL")
+	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
 	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
 	fs.StringVar(&signerKeyStr, "signer", signerKeyStr, "Account S signer")
 	err := fs.Parse(os.Args[1:])
@@ -54,10 +54,10 @@ func run() error {
 		fs.Usage()
 		return nil
 	}
-	if accountKeyStr == "" {
+	if accountKeyStr == "" || accountKeyStr == "G..." {
 		return fmt.Errorf("-account required")
 	}
-	if signerKeyStr == "" {
+	if signerKeyStr == "" || accountKeyStr == "S..." {
 		return fmt.Errorf("-signer required")
 	}
 
@@ -70,16 +70,16 @@ func run() error {
 		return fmt.Errorf("cannot parse -signer: %w", err)
 	}
 
-	client := &horizonclient.Client{HorizonURL: horizonURL}
-	networkDetails, err := client.Root()
+	horizonClient := &horizonclient.Client{HorizonURL: horizonURL}
+	networkDetails, err := horizonClient.Root()
 	if err != nil {
 		return err
 	}
 
-	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
+	account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 	if horizonclient.IsNotFoundError(err) {
 		fmt.Fprintf(os.Stderr, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
-		err = fund(client, networkDetails.NetworkPassphrase, accountKey)
+		err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
 	}
 	if err != nil {
 		return err
@@ -87,6 +87,14 @@ func run() error {
 	accountSeqNum, err := account.GetSequenceNumber()
 	if err != nil {
 		return err
+	}
+
+	submitter := &Submitter{
+		HorizonClient:     horizonClient,
+		NetworkPassphrase: networkDetails.NetworkPassphrase,
+		BaseFee:           txnbuild.MinBaseFee,
+		FeeAccount:        accountKey,
+		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
 
 	conn := net.Conn(nil)
@@ -109,7 +117,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("signing tx to create escrow account: %w", err)
 	}
-	err = SubmitFeeBumpTx(client, networkDetails.NetworkPassphrase, tx, accountKey.FromAddress(), signerKey)
+	err = submitter.SubmitFeeBumpTx(tx)
 	if err != nil {
 		return fmt.Errorf("submitting tx to create escrow account: %w", err)
 	}
@@ -206,12 +214,12 @@ Input:
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
 					}
-					escrowAccountSeqNum, err := getSeqNum(client, escrowAccountKey.Address())
+					escrowAccountSeqNum, err := getSeqNum(horizonClient, escrowAccountKey.Address())
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
 					}
-					otherEscrowAccountSeqNum, err := getSeqNum(client, otherEscrowAccountKey.Address())
+					otherEscrowAccountSeqNum, err := getSeqNum(horizonClient, otherEscrowAccountKey.Address())
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error: %v\n", err)
 						continue
@@ -263,7 +271,7 @@ Input:
 						if errors.Is(err, state.ErrUnderfunded) {
 							fmt.Fprintf(os.Stderr, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
 							var account horizon.Account
-							account, err = client.AccountDetail(horizonclient.AccountRequest{AccountID: otherEscrowAccountKey.Address()})
+							account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: otherEscrowAccountKey.Address()})
 							if err != nil {
 								return fmt.Errorf("getting state of remote escrow account: %w", err)
 							}
@@ -358,12 +366,12 @@ Input:
 			}
 			fmt.Fprintf(os.Stdout, "other's signer: %v\n", otherSignerKey.Address())
 			fmt.Fprintf(os.Stdout, "other's escrow account: %v\n", otherEscrowAccountKey.Address())
-			escrowAccountSeqNum, err := getSeqNum(client, escrowAccountKey.Address())
+			escrowAccountSeqNum, err := getSeqNum(horizonClient, escrowAccountKey.Address())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
-			otherEscrowAccountSeqNum, err := getSeqNum(client, otherEscrowAccountKey.Address())
+			otherEscrowAccountSeqNum, err := getSeqNum(horizonClient, otherEscrowAccountKey.Address())
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
@@ -420,7 +428,7 @@ Input:
 					continue
 				}
 			}
-			err = SubmitFormationTx(channel, client, networkDetails.NetworkPassphrase, accountKey.FromAddress(), signerKey)
+			err = ChannelSubmitter{Submitter: submitter, Channel: channel}.SubmitFormationTx()
 			if err != nil {
 				return fmt.Errorf("submitting tx to form the channel: %w", err)
 			}
@@ -430,7 +438,7 @@ Input:
 			if err != nil {
 				return fmt.Errorf("parsing deposit amount: %w", err)
 			}
-			account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
+			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 			if err != nil {
 				return fmt.Errorf("getting state of local escrow account: %w", err)
 			}
@@ -450,7 +458,7 @@ Input:
 			if err != nil {
 				return fmt.Errorf("signing deposit payment tx: %w", err)
 			}
-			_, err = client.SubmitTransaction(tx)
+			_, err = horizonClient.SubmitTransaction(tx)
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
@@ -508,7 +516,7 @@ Input:
 				continue
 			}
 			// Submit declaration tx
-			err = SubmitDeclarationTx(channel, client, networkDetails.NetworkPassphrase, accountKey.FromAddress(), signerKey)
+			err = ChannelSubmitter{Submitter: submitter, Channel: channel}.SubmitLatestDeclarationTx()
 			if err != nil {
 				return fmt.Errorf("submitting tx to decl the channel: %w", err)
 			}
@@ -549,7 +557,7 @@ Input:
 				fmt.Fprintf(os.Stderr, "close not authorized, waiting observation period then closing...")
 				time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
 			}
-			err = SubmitCloseTx(channel, client, networkDetails.NetworkPassphrase, accountKey.FromAddress(), signerKey)
+			err = ChannelSubmitter{Submitter: submitter, Channel: channel}.SubmitLatestCloseTx()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: submitting close: %v\n", err)
 				break
