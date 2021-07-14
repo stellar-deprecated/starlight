@@ -114,7 +114,8 @@ channel is open.
 contributed to the channel and that will be distributed to the participants at
 channel close according to the final close transactions submitted.  Created by
 R.  Jointly controlled by I and R while the channel is open.  Control is
-returned to R at close.  Does not provide sequence numbers for the channel in anyway.
+returned to R at close.  Does not provide sequence numbers for the channel in 
+anyway.
 
 ### Constants
 
@@ -189,7 +190,8 @@ multisig accounts. F has source account E, and sequence number set to s.
   - Operations sponsored by I for EI:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
-    - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is not the native asset.
+    - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is 
+    not the native asset.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
     - One or more `SET_OPTIONS` operations adding I signers to EI.
@@ -204,7 +206,8 @@ multisig accounts. F has source account E, and sequence number set to s.
   - Operations sponsored by R for ER:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
-    - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is not the native asset.
+    - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is 
+    not the native asset.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
     - One or more `SET_OPTIONS` operations adding R's signers to ER.
@@ -276,7 +279,8 @@ ledger count).
   
   C_i contains operations:
   - One `PAYMENT` operation that disburses funds from EI to ER, or from ER to
-  EI, that may be omitted if the final state at this update does not require the movement of funds.
+  EI, that may be omitted if the final state at this update does not require the 
+  movement of funds.
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
   to give I full control of EI, and removing R's signers.
   - One or more `SET_OPTIONS` operation adjusting reserve account ER's
