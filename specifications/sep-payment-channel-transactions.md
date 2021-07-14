@@ -274,7 +274,7 @@ ledger count).
   submitting D_i' for some i' > i.
   
   C_i contains operations:
-  - One `PAYMENT` operation that disburses funds from EI to ER, or from ER to
+  - Zero or one `PAYMENT` operations that disburses funds from EI to ER, or from ER to
   EI, that may be omitted if the final state at this update does not require the movement of funds.
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
   to give I full control of EI, and removing R's signers.
