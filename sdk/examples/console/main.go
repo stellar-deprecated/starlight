@@ -109,19 +109,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("signing tx to create escrow account: %w", err)
 	}
-	ftx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-		Inner:      tx,
-		BaseFee:    txnbuild.MinBaseFee,
-		FeeAccount: accountKey.Address(),
-	})
-	if err != nil {
-		return fmt.Errorf("building fee bump tx to create escrow account: %w", err)
-	}
-	ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
-	if err != nil {
-		return fmt.Errorf("signing fee bump tx to create escrow account: %w", err)
-	}
-	_, err = client.SubmitFeeBumpTransaction(ftx)
+	err = SubmitFeeBumpTx(client, networkDetails.NetworkPassphrase, tx, accountKey.FromAddress(), signerKey)
 	if err != nil {
 		return fmt.Errorf("submitting tx to create escrow account: %w", err)
 	}
@@ -432,29 +420,7 @@ Input:
 					continue
 				}
 			}
-			_, _, formation, err := channel.OpenTxs(channel.OpenAgreement().Details)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: getting open txs: %v\n", err)
-				continue
-			}
-			formation, err = formation.AddSignatureDecorated(channel.OpenAgreement().FormationSignatures...)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: adding signatures to the formation tx: %v\n", err)
-				continue
-			}
-			ftx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-				Inner:      formation,
-				BaseFee:    txnbuild.MinBaseFee,
-				FeeAccount: accountKey.Address(),
-			})
-			if err != nil {
-				return fmt.Errorf("building fee bump tx to form the channel: %w", err)
-			}
-			ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
-			if err != nil {
-				return fmt.Errorf("signing fee bump tx to form the channel: %w", err)
-			}
-			_, err = client.SubmitFeeBumpTransaction(ftx)
+			err = SubmitFormationTx(channel, client, networkDetails.NetworkPassphrase, accountKey.FromAddress(), signerKey)
 			if err != nil {
 				return fmt.Errorf("submitting tx to form the channel: %w", err)
 			}
@@ -542,29 +508,7 @@ Input:
 				continue
 			}
 			// Submit declaration tx
-			decl, _, err := channel.CloseTxs(channel.LatestCloseAgreement().Details)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: getting close txs: %v\n", err)
-				continue
-			}
-			decl, err = decl.AddSignatureDecorated(channel.LatestCloseAgreement().DeclarationSignatures...)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: adding signatures to the decl tx: %v\n", err)
-				continue
-			}
-			ftx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-				Inner:      decl,
-				BaseFee:    txnbuild.MinBaseFee,
-				FeeAccount: accountKey.Address(),
-			})
-			if err != nil {
-				return fmt.Errorf("building fee bump tx to decl the channel: %w", err)
-			}
-			ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
-			if err != nil {
-				return fmt.Errorf("signing fee bump tx to decl the channel: %w", err)
-			}
-			_, err = client.SubmitFeeBumpTransaction(ftx)
+			err = SubmitDeclarationTx(channel, client, networkDetails.NetworkPassphrase, accountKey.FromAddress(), signerKey)
 			if err != nil {
 				return fmt.Errorf("submitting tx to decl the channel: %w", err)
 			}
@@ -605,102 +549,16 @@ Input:
 				fmt.Fprintf(os.Stderr, "close not authorized, waiting observation period then closing...")
 				time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
 			}
-			// Submit close tx
-			_, close, err := channel.CloseTxs(channel.LatestCloseAgreement().Details)
+			err = SubmitCloseTx(channel, client, networkDetails.NetworkPassphrase, accountKey.FromAddress(), signerKey)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: getting close txs: %v\n", err)
-				continue
-			}
-			close, err = close.AddSignatureDecorated(channel.LatestCloseAgreement().CloseSignatures...)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: adding signatures to the close tx: %v\n", err)
-				continue
-			}
-			ftx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-				Inner:      close,
-				BaseFee:    txnbuild.MinBaseFee,
-				FeeAccount: accountKey.Address(),
-			})
-			if err != nil {
-				return fmt.Errorf("building fee bump tx to close the channel: %w", err)
-			}
-			ftx, err = ftx.Sign(networkDetails.NetworkPassphrase, signerKey)
-			if err != nil {
-				return fmt.Errorf("signing fee bump tx to close the channel: %w", err)
-			}
-			_, err = client.SubmitFeeBumpTransaction(ftx)
-			if err != nil {
-				resultString := "<none>"
-				if hErr := horizonclient.GetError(err); hErr != nil {
-					var err error
-					resultString, err = hErr.ResultString()
-					if err != nil {
-						resultString = "<error getting result string: " + err.Error() + ">"
-					}
-				}
-				return fmt.Errorf("submitting tx to close the channel: %w: %v", err, resultString)
+				fmt.Fprintf(os.Stderr, "error: submitting close: %v\n", err)
+				break
 			}
 		case "exit":
 			return nil
 		default:
 			fmt.Fprintf(os.Stderr, "error: unrecognized command\n")
 		}
-	}
-	return nil
-}
-
-type introduction struct {
-	EscrowAccount string
-	Signer        string
-}
-
-type message struct {
-	Introduction *introduction
-	Open         *state.OpenAgreement
-	Update       *state.CloseAgreement
-	Close        *state.CloseAgreement
-}
-
-func getSeqNum(client horizonclient.ClientInterface, accountID string) (int64, error) {
-	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: accountID})
-	if err != nil {
-		return 0, fmt.Errorf("getting account %s: %w", accountID, err)
-	}
-	seqNum, err := account.GetSequenceNumber()
-	if err != nil {
-		return 0, fmt.Errorf("getting sequence number of account %s: %w", accountID, err)
-	}
-	return seqNum, nil
-}
-
-func fund(client horizonclient.ClientInterface, networkPassphrase string, accountKey *keypair.FromAddress) error {
-	rootKey := keypair.Root(networkPassphrase)
-	root, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: rootKey.Address()})
-	if err != nil {
-		return err
-	}
-	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount:        &root,
-		IncrementSequenceNum: true,
-		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewTimeout(300),
-		Operations: []txnbuild.Operation{
-			&txnbuild.CreateAccount{
-				Destination: accountKey.Address(),
-				Amount:      "10000",
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	tx, err = tx.Sign(networkPassphrase, rootKey)
-	if err != nil {
-		return err
-	}
-	_, err = client.SubmitTransaction(tx)
-	if err != nil {
-		return err
 	}
 	return nil
 }
