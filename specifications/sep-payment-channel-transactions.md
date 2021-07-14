@@ -235,8 +235,8 @@ multisig accounts. F has source account E, and sequence number set to s.
 
 #### Payment
 
-Participants use the payment process to agree, and re-agree, on a new final state
-for the channel. Participants will agree on a new final state when making
+Participants use the payment process to agree, and re-agree, on a new final
+state for the channel. Participants will agree on a new final state when making
 payments to one another within the channel.
 
 For example, if the channel initial state is $30 of which $10 belongs to I and
