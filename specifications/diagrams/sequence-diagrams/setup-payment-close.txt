@@ -17,7 +17,7 @@ sequenceDiagram
     I->>R: Sign F
     R->>R: Sign F, submit
 
-    Note over I,R: 2. Update
+    Note over I,R: 2. Payment
     I->>I: increment i
     R->>R: increment i
     Note right of R: i=2
