@@ -87,6 +87,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
 	}
+	// TODO - check # of signatures here
 
 	// If the agreement is signed by all participants at the end of this method,
 	// promote the agreement to authorized. If not signed by all participants,

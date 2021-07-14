@@ -131,6 +131,8 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 		return m, authorized, fmt.Errorf("input open agreement expire too far into the future")
 	}
 
+	// TODO check # of signatures here
+
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the
 	// channel's saved open agreement details if present, to prevent other party from changing.
 	defer func() {

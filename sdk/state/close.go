@@ -87,6 +87,8 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 		return CloseAgreement{}, authorized, fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
 	}
 
+	// TODO - check # of signatures here
+
 	_, txClose, err := c.CloseTxs(ca.Details)
 	if err != nil {
 		return CloseAgreement{}, authorized, fmt.Errorf("making close transactions: %w", err)
