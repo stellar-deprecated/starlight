@@ -10,6 +10,11 @@ The code and documents in this repository are a work-in-progress and are incompl
 - [SEP](specifications/sep-payment-channel-mechanism.md)
 - [Examples](examples/)
 
+## Discussions
+
+- Discussions specific to CAP-21 are on the [stellar-dev mailing list](https://groups.google.com/g/stellar-dev/c/N8vzP2Mi89U)
+- All other discussions are [here](https://github.com/stellar/experimental-payment-channels/discussions)
+
 ## Forks
 
 The code in this repository uses forks of some software with partial implementations of [CAP-21].
