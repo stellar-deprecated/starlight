@@ -229,13 +229,13 @@ multisig accounts. F has source account E, and sequence number set to s.
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
   which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
 
-- C_i, see [Update](#Update) process.
+- C_i, see [Payment](#Payment) process.
 
-- D_i, see [Update](#Update) process.
+- D_i, see [Payment](#Payment) process.
 
-#### Update
+#### Payment
 
-Participants use the update process to agree, and re-agree, on a new final state
+Participants use the payment process to agree, and re-agree, on a new final state
 for the channel. Participants will agree on a new final state when making
 payments to one another within the channel.
 
@@ -246,7 +246,7 @@ agreeing on a new declaration and aclosing transaction that supersedes all
 previous declaration and closing transaction and that will disburse $8 to I and
 $22 to R.
 
-To update the payment channel state, the participants:
+To make a payment by updating the payment channel state, the participants:
 
 1. Increment i.
 2. Sign and exchange a closing transaction C_i.
@@ -430,9 +430,9 @@ not EI, typically the participant proposing the change.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
   EI to s_i.
 
-- C_i, see [Update](#Update) process.
+- C_i, see [Payment](#Payment) process.
 
-- D_i, see [Update](#Update) process.
+- D_i, see [Payment](#Payment) process.
 
 ##### Change the Observation Period
 
