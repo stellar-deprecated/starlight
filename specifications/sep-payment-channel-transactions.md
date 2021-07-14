@@ -241,12 +241,13 @@ payments to one another within the channel.
 
 For example, if the channel initial state is $30 of which $10 belongs to I and
 $20 belongs to R, the first closing transaction will disburse $10 to I and $20
-to R. If I makes a payment of $2 to R, this update process will involve I and R
+to R. If I makes a payment of $2 to R, this payment process will involve I and R
 agreeing on a new declaration and closing transaction that supersedes all
 previous declaration and closing transactions and that will disburse $8 to I and
 $22 to R.
 
-To make a payment by updating the payment channel state, the participants:
+To make a payment, participants agree on a new payment channel state. The participant
+steps for which are:
 
 1. Increment i.
 2. Sign and exchange a closing transaction C_i.
