@@ -246,8 +246,8 @@ agreeing on a new declaration and closing transaction that supersedes all
 previous declaration and closing transactions and that will disburse $8 to I and
 $22 to R.
 
-To make a payment, participants agree on a new payment channel state. The participant
-steps for which are:
+To make a payment, participants agree on a new payment channel state. The
+participant steps for which are:
 
 1. Increment i.
 2. Sign and exchange a closing transaction C_i.
