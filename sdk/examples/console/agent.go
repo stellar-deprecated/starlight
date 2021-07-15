@@ -19,7 +19,7 @@ import (
 const (
 	observationPeriodTime      = 10 * time.Second
 	observationPeriodLedgerGap = 1
-	openExpiry                 = 30 * time.Second
+	openExpiry                 = 5 * time.Minute
 )
 
 type Agent struct {
