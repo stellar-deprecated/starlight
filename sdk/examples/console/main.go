@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -17,14 +16,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
-)
-
-const (
-	observationPeriodTime      = 10 * time.Second
-	observationPeriodLedgerGap = 1
-	openExpiry                 = 30 * time.Second
 )
 
 func main() {
@@ -97,11 +89,14 @@ func run() error {
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
 
-	conn := net.Conn(nil)
 	escrowAccountKey := keypair.MustRandom()
-	otherEscrowAccountKey := (*keypair.FromAddress)(nil)
-	otherSignerKey := (*keypair.FromAddress)(nil)
-	channel := (*state.Channel)(nil)
+	agent := &Agent{
+		HorizonClient:       horizonClient,
+		NetworkPassphrase:   networkDetails.NetworkPassphrase,
+		EscrowAccountKey:    escrowAccountKey.FromAddress(),
+		EscrowAccountSigner: signerKey,
+		LogWriter:           os.Stderr,
+	}
 
 	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
@@ -123,7 +118,6 @@ func run() error {
 	}
 
 	br := bufio.NewReader(os.Stdin)
-Input:
 	for {
 		fmt.Fprintf(os.Stdout, "> ")
 		line, err := br.ReadString('\n')
@@ -147,192 +141,27 @@ Input:
 			fmt.Fprintf(os.Stderr, "deposit <amount> - deposit asset into escrow account\n")
 			fmt.Fprintf(os.Stderr, "pay <amount> - pay amount of asset to peer\n")
 			fmt.Fprintf(os.Stderr, "close - close the channel\n")
-			fmt.Fprintf(os.Stderr, "status - display the channel\n")
 			fmt.Fprintf(os.Stderr, "exit - exit the application\n")
-		case "status":
-			fmt.Fprintf(os.Stderr, "%#v\n", channel)
 		case "listen":
-			if conn != nil {
-				fmt.Fprintf(os.Stderr, "error: already connected to a peer\n")
+			err := agent.Listen(params[1])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v", err)
 				continue
 			}
-			ln, err := net.Listen("tcp", params[1])
-			if err != nil {
-				return err
-			}
-			conn, err = ln.Accept()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: accepting incoming conn: %v\n", err)
-				continue
-			}
-			fmt.Fprintf(os.Stderr, "connected to %v\n", conn.RemoteAddr())
+			fmt.Fprintf(os.Stderr, "connected to %v\n", agent.Conn().RemoteAddr())
 		case "connect":
-			if conn != nil {
-				fmt.Fprintf(os.Stderr, "error: already connected to a peer\n")
-				continue
-			}
-			conn, err = net.Dial("tcp", params[1])
+			err := agent.Connect(params[1])
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "connected to %v\n", conn.RemoteAddr())
-		case "wait":
-			if conn == nil {
+			fmt.Fprintf(os.Stderr, "connected to %v\n", agent.Conn().RemoteAddr())
+		case "intro":
+			if agent.Conn() == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
-			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
-			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
-			for {
-				m := message{}
-				err := dec.Decode(&m)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: %v\n", err)
-					continue
-				}
-				if m.Introduction != nil {
-					otherEscrowAccountKey, err = keypair.ParseAddress(m.Introduction.EscrowAccount)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: parsing other's escrow account: %v\n", err)
-						continue
-					}
-					otherSignerKey, err = keypair.ParseAddress(m.Introduction.Signer)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: parsing other's signer: %v\n", err)
-						continue
-					}
-					fmt.Fprintf(os.Stdout, "other's signer: %v\n", otherSignerKey.Address())
-					fmt.Fprintf(os.Stdout, "other's escrow account: %v\n", otherEscrowAccountKey.Address())
-					err = enc.Encode(message{
-						Introduction: &introduction{
-							EscrowAccount: escrowAccountKey.Address(),
-							Signer:        accountKey.Address(),
-						},
-					})
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: %v\n", err)
-						continue
-					}
-					escrowAccountSeqNum, err := getSeqNum(horizonClient, escrowAccountKey.Address())
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: %v\n", err)
-						continue
-					}
-					otherEscrowAccountSeqNum, err := getSeqNum(horizonClient, otherEscrowAccountKey.Address())
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: %v\n", err)
-						continue
-					}
-					fmt.Fprintf(os.Stdout, "this's escrow account seq: %v\n", escrowAccountSeqNum)
-					fmt.Fprintf(os.Stdout, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
-					channel = state.NewChannel(state.Config{
-						NetworkPassphrase: networkDetails.NetworkPassphrase,
-						MaxOpenExpiry:     openExpiry,
-						LocalEscrowAccount: &state.EscrowAccount{
-							Address:        escrowAccountKey.FromAddress(),
-							SequenceNumber: escrowAccountSeqNum,
-						},
-						RemoteEscrowAccount: &state.EscrowAccount{
-							Address:        otherEscrowAccountKey,
-							SequenceNumber: otherEscrowAccountSeqNum,
-						},
-						Initiator:    false,
-						LocalSigner:  signerKey,
-						RemoteSigner: otherSignerKey,
-					})
-				} else if m.Open != nil {
-					for {
-						open, authorized, err := channel.ConfirmOpen(*m.Open)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: confirming open: %v\n", err)
-							continue Input
-						}
-						err = enc.Encode(message{Open: &open})
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: encoding open to send back: %v\n", err)
-							continue Input
-						}
-						if authorized {
-							break
-						}
-						err = dec.Decode(&m)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-							continue Input
-						}
-					}
-					break
-				} else if m.Update != nil {
-					var authorized bool
-					for {
-						var update state.CloseAgreement
-						update, authorized, err = channel.ConfirmPayment(*m.Update)
-						if errors.Is(err, state.ErrUnderfunded) {
-							fmt.Fprintf(os.Stderr, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
-							var account horizon.Account
-							account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: otherEscrowAccountKey.Address()})
-							if err != nil {
-								return fmt.Errorf("getting state of remote escrow account: %w", err)
-							}
-							balance, err := amount.ParseInt64(account.Balances[0].Balance)
-							if err != nil {
-								return fmt.Errorf("parsing balance of remote escrow account: %w", err)
-							}
-							fmt.Fprintf(os.Stderr, "updating remote escrow balance to: %d\n", balance)
-							channel.UpdateRemoteEscrowAccountBalance(balance)
-							update, authorized, err = channel.ConfirmPayment(*m.Update)
-							if err != nil {
-								fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
-								break
-							}
-						}
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
-							break
-						}
-						if authorized {
-							break
-						}
-						err = enc.Encode(message{Update: &update})
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: encoding payment to send back: %v\n", err)
-							break
-						}
-						err = dec.Decode(&m)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-							break
-						}
-					}
-					if authorized {
-						fmt.Fprintln(os.Stderr, "payment successfully received")
-					}
-					break
-				} else if m.Close != nil {
-					close, authorized, err := channel.ConfirmClose(*m.Close)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
-						break
-					}
-					err = enc.Encode(message{Close: &close})
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: encoding close to send back: %v\n", err)
-						break
-					}
-					if authorized {
-						fmt.Fprintln(os.Stderr, "close ready")
-					}
-					break
-				}
-			}
-		case "open":
-			if conn == nil {
-				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
-				continue
-			}
-			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
-			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
+			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), io.Discard))
 			err = enc.Encode(message{
 				Introduction: &introduction{
 					EscrowAccount: escrowAccountKey.Address(),
@@ -343,95 +172,35 @@ Input:
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
-			m := message{}
-			err := dec.Decode(&m)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		case "open":
+			if agent.Conn() == nil {
+				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
-			if m.Introduction != nil {
-				otherSignerKey, err = keypair.ParseAddress(m.Introduction.Signer)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: parsing other's signer: %v\n", err)
-					continue
-				}
-				otherEscrowAccountKey, err = keypair.ParseAddress(m.Introduction.EscrowAccount)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: parsing other's escrow account: %v\n", err)
-					continue
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "error: unexpected response: %v\n", err)
+			if agent.channel == nil {
+				fmt.Fprintf(os.Stderr, "error: not introduced to peer\n")
 				continue
 			}
-			fmt.Fprintf(os.Stdout, "other's signer: %v\n", otherSignerKey.Address())
-			fmt.Fprintf(os.Stdout, "other's escrow account: %v\n", otherEscrowAccountKey.Address())
-			escrowAccountSeqNum, err := getSeqNum(horizonClient, escrowAccountKey.Address())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				continue
-			}
-			otherEscrowAccountSeqNum, err := getSeqNum(horizonClient, otherEscrowAccountKey.Address())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				continue
-			}
-			fmt.Fprintf(os.Stdout, "this's escrow account seq: %v\n", escrowAccountSeqNum)
-			fmt.Fprintf(os.Stdout, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
-			channel = state.NewChannel(state.Config{
-				NetworkPassphrase: networkDetails.NetworkPassphrase,
-				MaxOpenExpiry:     openExpiry,
-				LocalEscrowAccount: &state.EscrowAccount{
-					Address:        escrowAccountKey.FromAddress(),
-					SequenceNumber: escrowAccountSeqNum,
-				},
-				RemoteEscrowAccount: &state.EscrowAccount{
-					Address:        otherEscrowAccountKey,
-					SequenceNumber: otherEscrowAccountSeqNum,
-				},
-				Initiator:    true,
-				LocalSigner:  signerKey,
-				RemoteSigner: otherSignerKey,
-			})
-			openAgreement, err := channel.ProposeOpen(state.OpenParams{
+			open, err := agent.channel.ProposeOpen(state.OpenParams{
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-				Asset:                      state.NativeAsset,
+				Asset:                      "native",
 				ExpiresAt:                  time.Now().Add(openExpiry),
 			})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: proposing open agreement: %v\n", err)
-				continue
+				return fmt.Errorf("proposing open: %w", err)
 			}
-			err = enc.Encode(message{Open: &openAgreement})
+			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), io.Discard))
+			err = enc.Encode(message{Open: &open})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				continue
+				return fmt.Errorf("sending open: %w", err)
 			}
-			for {
-				err = dec.Decode(&m)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-					continue
-				}
-				open, authorized, err := channel.ConfirmOpen(*m.Open)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: confirming open: %v\n", err)
-					continue
-				}
-				if authorized {
-					break
-				}
-				err = enc.Encode(message{Open: &open})
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: encoding open to send back: %v\n", err)
-					continue
-				}
-			}
-			err = ChannelSubmitter{Submitter: submitter, Channel: channel}.SubmitFormationTx()
+		case "formate":
+			err = ChannelSubmitter{Submitter: submitter, Channel: agent.channel}.SubmitFormationTx()
 			if err != nil {
-				return fmt.Errorf("submitting tx to form the channel: %w", err)
+				return fmt.Errorf("submitting formation: %w", err)
 			}
+			fmt.Fprintf(os.Stdout, "formation submitted\n")
 		case "deposit":
 			depositAmountStr := params[1]
 			depositAmountInt, err := amount.ParseInt64(depositAmountStr)
@@ -462,11 +231,11 @@ Input:
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			newBalance := channel.LocalEscrowAccountBalance() + depositAmountInt
-			channel.UpdateLocalEscrowAccountBalance(newBalance)
+			newBalance := agent.channel.LocalEscrowAccountBalance() + depositAmountInt
+			agent.channel.UpdateLocalEscrowAccountBalance(newBalance)
 			fmt.Println("new balance of", newBalance)
 		case "pay":
-			if conn == nil || channel == nil {
+			if agent.Conn() == nil || agent.channel == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
@@ -474,64 +243,37 @@ Input:
 			if err != nil {
 				return fmt.Errorf("parsing the amount: %w", err)
 			}
-			ca, err := channel.ProposePayment(amountValue)
+			ca, err := agent.channel.ProposePayment(amountValue)
 			if err != nil {
 				return fmt.Errorf("proposing the payment: %w", err)
 			}
-			enc := json.NewEncoder(io.MultiWriter(conn, io.Discard))
-			dec := json.NewDecoder(io.TeeReader(conn, io.Discard))
+			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), io.Discard))
 			err = enc.Encode(message{Update: &ca})
 			if err != nil {
 				return fmt.Errorf("sending the payment: %w", err)
 			}
-			var authorized bool
-			for {
-				m := message{}
-				err = dec.Decode(&m)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-					break
-				}
-				var update state.CloseAgreement
-				update, authorized, err = channel.ConfirmPayment(*m.Update)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: confirming payment: %v\n", err)
-					break
-				}
-				err = enc.Encode(message{Update: &update})
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: encoding payment to send back: %v\n", err)
-					break
-				}
-				if authorized {
-					break
-				}
-			}
-			if authorized {
-				fmt.Fprintln(os.Stderr, "payment successfully sent")
-			}
 		case "close":
-			if conn == nil || channel == nil {
+			if agent.Conn() == nil || agent.channel == nil {
 				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
 				continue
 			}
 			// Submit declaration tx
-			err = ChannelSubmitter{Submitter: submitter, Channel: channel}.SubmitLatestDeclarationTx()
+			err = ChannelSubmitter{Submitter: submitter, Channel: agent.channel}.SubmitLatestDeclarationTx()
 			if err != nil {
 				return fmt.Errorf("submitting tx to decl the channel: %w", err)
 			}
 			// Revising agreement to close early
-			ca, err := channel.ProposeClose()
+			ca, err := agent.channel.ProposeClose()
 			if err != nil {
 				return fmt.Errorf("proposing the close: %w", err)
 			}
-			enc := json.NewEncoder(io.MultiWriter(conn, os.Stdout))
-			dec := json.NewDecoder(io.TeeReader(conn, os.Stdout))
+			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), os.Stdout))
+			dec := json.NewDecoder(io.TeeReader(agent.Conn(), os.Stdout))
 			err = enc.Encode(message{Close: &ca})
 			if err != nil {
 				return fmt.Errorf("sending the payment: %w", err)
 			}
-			err = conn.SetReadDeadline(time.Now().Add(observationPeriodTime))
+			err = agent.Conn().SetReadDeadline(time.Now().Add(observationPeriodTime))
 			if err != nil {
 				return fmt.Errorf("setting read deadline of conn: %w", err)
 			}
@@ -545,7 +287,7 @@ Input:
 					fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
 					break
 				}
-				_, authorized, err = channel.ConfirmClose(*m.Close)
+				_, authorized, err = agent.channel.ConfirmClose(*m.Close)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
 					break
@@ -557,7 +299,7 @@ Input:
 				fmt.Fprintf(os.Stderr, "close not authorized, waiting observation period then closing...")
 				time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
 			}
-			err = ChannelSubmitter{Submitter: submitter, Channel: channel}.SubmitLatestCloseTx()
+			err = ChannelSubmitter{Submitter: submitter, Channel: agent.channel}.SubmitLatestCloseTx()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: submitting close: %v\n", err)
 				break

@@ -94,6 +94,10 @@ func (c *Channel) LocalEscrowAccountBalance() int64 {
 	return c.localEscrowAccount.Balance
 }
 
+func (c *Channel) RemoteEscrowAccount() EscrowAccount {
+	return *c.remoteEscrowAccount
+}
+
 func (c *Channel) RemoteEscrowAccountBalance() int64 {
 	return c.remoteEscrowAccount.Balance
 }

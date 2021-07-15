@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/stellar/go/xdr"
@@ -33,6 +34,11 @@ type CloseAgreement struct {
 
 func (ca CloseAgreement) isEmpty() bool {
 	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
+}
+
+func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
+	return reflect.DeepEqual(ca, ca2)
+	// TODO: Implement equal properly.
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {

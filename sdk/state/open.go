@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -32,6 +33,28 @@ type OpenAgreement struct {
 
 func (oa OpenAgreement) isEmpty() bool {
 	return oa.Details.Equal(OpenAgreementDetails{})
+}
+
+func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
+	return reflect.DeepEqual(oa, oa2)
+	// TODO: Complete this equal function properly.
+	// if !oa.Details.Equal(oa2.Details) {
+	// 	return false
+	// }
+	// if len(oa.CloseSignatures) != len(oa2.CloseSignatures) {
+	// 	return false
+	// }
+	// if len(oa.DeclarationSignatures) != len(oa2.DeclarationSignatures) {
+	// 	return false
+	// }
+	// if len(oa.FormationSignatures) != len(oa2.FormationSignatures) {
+	// 	return false
+	// }
+	// for i, s := range oa.CloseSignatures {
+	// 	if s.Equal(oa2.CloseSignatures[i]) {
+	// 		return false
+	// 	}
+	// }
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
