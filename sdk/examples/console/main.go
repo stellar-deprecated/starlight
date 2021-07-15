@@ -2,16 +2,12 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -22,7 +18,7 @@ import (
 func main() {
 	err := run()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		fmt.Fprintln(os.Stdout, "error:", err)
 	}
 }
 
@@ -33,7 +29,7 @@ func run() error {
 	signerKeyStr := "S..."
 
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
+	fs.SetOutput(os.Stdout)
 	fs.BoolVar(&showHelp, "h", showHelp, "Show this help")
 	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
 	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
@@ -70,7 +66,7 @@ func run() error {
 
 	account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 	if horizonclient.IsNotFoundError(err) {
-		fmt.Fprintf(os.Stderr, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
+		fmt.Fprintf(os.Stdout, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
 		err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
 	}
 	if err != nil {
@@ -81,6 +77,9 @@ func run() error {
 		return err
 	}
 
+	escrowAccountKey := keypair.MustRandom()
+	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
+
 	submitter := &Submitter{
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
@@ -88,17 +87,15 @@ func run() error {
 		FeeAccount:        accountKey,
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
-
-	escrowAccountKey := keypair.MustRandom()
 	agent := &Agent{
-		HorizonClient:       horizonClient,
 		NetworkPassphrase:   networkDetails.NetworkPassphrase,
+		HorizonClient:       horizonClient,
+		Submitter:           submitter,
 		EscrowAccountKey:    escrowAccountKey.FromAddress(),
 		EscrowAccountSigner: signerKey,
 		LogWriter:           os.Stderr,
 	}
 
-	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 		Creator:        accountKey.FromAddress(),
 		Escrow:         escrowAccountKey.FromAddress(),
@@ -122,11 +119,11 @@ func run() error {
 		fmt.Fprintf(os.Stdout, "> ")
 		line, err := br.ReadString('\n')
 		if err == io.EOF {
-			fmt.Fprintf(os.Stderr, "connection terminated\n")
+			fmt.Fprintf(os.Stdout, "connection terminated\n")
 			break
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %#v\n", err)
+			fmt.Fprintf(os.Stdout, "error: %#v\n", err)
 			continue
 		}
 		params := strings.Fields(line)
@@ -135,72 +132,57 @@ func run() error {
 		}
 		switch params[0] {
 		case "help":
-			fmt.Fprintf(os.Stderr, "listen [addr]:<port> - listen for a peer to connect\n")
-			fmt.Fprintf(os.Stderr, "connect <addr>:<port> - connect to a peer\n")
-			fmt.Fprintf(os.Stderr, "open - open a channel with asset\n")
-			fmt.Fprintf(os.Stderr, "deposit <amount> - deposit asset into escrow account\n")
-			fmt.Fprintf(os.Stderr, "pay <amount> - pay amount of asset to peer\n")
-			fmt.Fprintf(os.Stderr, "close - close the channel\n")
-			fmt.Fprintf(os.Stderr, "exit - exit the application\n")
+			fmt.Fprintf(os.Stdout, "listen [addr]:<port> - listen for a peer to connect\n")
+			fmt.Fprintf(os.Stdout, "connect <addr>:<port> - connect to a peer\n")
+			fmt.Fprintf(os.Stdout, "open - open a channel with asset\n")
+			fmt.Fprintf(os.Stdout, "deposit <amount> - deposit asset into escrow account\n")
+			fmt.Fprintf(os.Stdout, "pay <amount> - pay amount of asset to peer\n")
+			fmt.Fprintf(os.Stdout, "close - close the channel\n")
+			fmt.Fprintf(os.Stdout, "exit - exit the application\n")
 		case "listen":
 			err := agent.Listen(params[1])
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v", err)
+				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "connected to %v\n", agent.Conn().RemoteAddr())
+			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
 		case "connect":
 			err := agent.Connect(params[1])
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v", err)
+				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "connected to %v\n", agent.Conn().RemoteAddr())
+			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
 		case "intro":
-			if agent.Conn() == nil {
-				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
-				continue
-			}
-			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), io.Discard))
-			err = enc.Encode(message{
-				Introduction: &introduction{
-					EscrowAccount: escrowAccountKey.Address(),
-					Signer:        accountKey.Address(),
-				},
-			})
+			err := agent.StartIntro()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
 			}
 		case "open":
-			if agent.Conn() == nil {
-				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
-				continue
-			}
-			if agent.channel == nil {
-				fmt.Fprintf(os.Stderr, "error: not introduced to peer\n")
-				continue
-			}
-			open, err := agent.channel.ProposeOpen(state.OpenParams{
-				ObservationPeriodTime:      observationPeriodTime,
-				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-				Asset:                      "native",
-				ExpiresAt:                  time.Now().Add(openExpiry),
-			})
+			err := agent.StartOpen()
 			if err != nil {
-				return fmt.Errorf("proposing open: %w", err)
-			}
-			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), io.Discard))
-			err = enc.Encode(message{Open: &open})
-			if err != nil {
-				return fmt.Errorf("sending open: %w", err)
+				fmt.Fprintf(os.Stdout, "error: %v\n", err)
+				continue
 			}
 		case "formate":
-			err = ChannelSubmitter{Submitter: submitter, Channel: agent.channel}.SubmitFormationTx()
+			err := agent.StartFormate()
 			if err != nil {
-				return fmt.Errorf("submitting formation: %w", err)
+				fmt.Fprintf(os.Stdout, "error: %v\n", err)
+				continue
 			}
-			fmt.Fprintf(os.Stdout, "formation submitted\n")
+		case "pay":
+			err := agent.StartPayment(params[1])
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "error: %v\n", err)
+				continue
+			}
+		case "close":
+			err := agent.StartClose()
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "error: %v\n", err)
+				continue
+			}
 		case "deposit":
 			depositAmountStr := params[1]
 			depositAmountInt, err := amount.ParseInt64(depositAmountStr)
@@ -234,80 +216,10 @@ func run() error {
 			newBalance := agent.channel.LocalEscrowAccountBalance() + depositAmountInt
 			agent.channel.UpdateLocalEscrowAccountBalance(newBalance)
 			fmt.Println("new balance of", newBalance)
-		case "pay":
-			if agent.Conn() == nil || agent.channel == nil {
-				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
-				continue
-			}
-			amountValue, err := amount.ParseInt64(params[1])
-			if err != nil {
-				return fmt.Errorf("parsing the amount: %w", err)
-			}
-			ca, err := agent.channel.ProposePayment(amountValue)
-			if err != nil {
-				return fmt.Errorf("proposing the payment: %w", err)
-			}
-			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), io.Discard))
-			err = enc.Encode(message{Update: &ca})
-			if err != nil {
-				return fmt.Errorf("sending the payment: %w", err)
-			}
-		case "close":
-			if agent.Conn() == nil || agent.channel == nil {
-				fmt.Fprintf(os.Stderr, "error: not connected to a peer\n")
-				continue
-			}
-			// Submit declaration tx
-			err = ChannelSubmitter{Submitter: submitter, Channel: agent.channel}.SubmitLatestDeclarationTx()
-			if err != nil {
-				return fmt.Errorf("submitting tx to decl the channel: %w", err)
-			}
-			// Revising agreement to close early
-			ca, err := agent.channel.ProposeClose()
-			if err != nil {
-				return fmt.Errorf("proposing the close: %w", err)
-			}
-			enc := json.NewEncoder(io.MultiWriter(agent.Conn(), os.Stdout))
-			dec := json.NewDecoder(io.TeeReader(agent.Conn(), os.Stdout))
-			err = enc.Encode(message{Close: &ca})
-			if err != nil {
-				return fmt.Errorf("sending the payment: %w", err)
-			}
-			err = agent.Conn().SetReadDeadline(time.Now().Add(observationPeriodTime))
-			if err != nil {
-				return fmt.Errorf("setting read deadline of conn: %w", err)
-			}
-			timerStart := time.Now()
-			authorized := false
-			m := message{}
-			err = dec.Decode(&m)
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-			} else {
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: decoding response: %v\n", err)
-					break
-				}
-				_, authorized, err = agent.channel.ConfirmClose(*m.Close)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "error: confirming close: %v\n", err)
-					break
-				}
-			}
-			if authorized {
-				fmt.Fprintln(os.Stderr, "close ready")
-			} else {
-				fmt.Fprintf(os.Stderr, "close not authorized, waiting observation period then closing...")
-				time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
-			}
-			err = ChannelSubmitter{Submitter: submitter, Channel: agent.channel}.SubmitLatestCloseTx()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: submitting close: %v\n", err)
-				break
-			}
 		case "exit":
 			return nil
 		default:
-			fmt.Fprintf(os.Stderr, "error: unrecognized command\n")
+			fmt.Fprintf(os.Stdout, "error: unrecognized command\n")
 		}
 	}
 	return nil

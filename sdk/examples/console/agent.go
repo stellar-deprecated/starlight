@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
@@ -22,8 +23,9 @@ const (
 )
 
 type Agent struct {
-	HorizonClient     horizonclient.ClientInterface
 	NetworkPassphrase string
+	HorizonClient     horizonclient.ClientInterface
+	Submitter         *Submitter
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -71,6 +73,138 @@ func (a *Agent) Connect(addr string) error {
 		return fmt.Errorf("connecting to %s: %w", addr, err)
 	}
 	go a.loop()
+	return nil
+}
+
+func (a *Agent) StartIntro() error {
+	if a.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	err := enc.Encode(message{
+		Introduction: &introduction{
+			EscrowAccount: a.EscrowAccountKey.Address(),
+			Signer:        a.EscrowAccountSigner.Address(),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("sending introduction: %w", err)
+	}
+	return nil
+}
+
+func (a *Agent) StartOpen() error {
+	if a.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	if a.channel == nil {
+		return fmt.Errorf("not introduced")
+	}
+	open, err := a.channel.ProposeOpen(state.OpenParams{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		Asset:                      "native",
+		ExpiresAt:                  time.Now().Add(openExpiry),
+	})
+	if err != nil {
+		return fmt.Errorf("proposing open: %w", err)
+	}
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	err = enc.Encode(message{Open: &open})
+	if err != nil {
+		return fmt.Errorf("sending open: %w", err)
+	}
+	return nil
+}
+
+func (a *Agent) StartFormate() error {
+	if a.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	if a.channel == nil {
+		return fmt.Errorf("not introduced")
+	}
+	err := ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitFormationTx()
+	if err != nil {
+		return fmt.Errorf("submitting formation: %w", err)
+	}
+	return nil
+}
+
+func (a *Agent) StartPayment(paymentAmount string) error {
+	if a.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	if a.channel == nil {
+		return fmt.Errorf("not introduced")
+	}
+	amountValue, err := amount.ParseInt64(paymentAmount)
+	if err != nil {
+		return fmt.Errorf("parsing amount %s: %w", paymentAmount, err)
+	}
+	ca, err := a.channel.ProposePayment(amountValue)
+	if err != nil {
+		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
+	}
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	err = enc.Encode(message{Update: &ca})
+	if err != nil {
+		return fmt.Errorf("sending payment: %w", err)
+	}
+	return nil
+}
+
+func (a *Agent) StartClose() error {
+	if a.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	if a.channel == nil {
+		return fmt.Errorf("not introduced")
+	}
+	// Submit declaration tx
+	err := ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitLatestDeclarationTx()
+	if err != nil {
+		return fmt.Errorf("submitting tx to decl the channel: %w", err)
+	}
+	// Revising agreement to close early
+	ca, err := a.channel.ProposeClose()
+	if err != nil {
+		return fmt.Errorf("proposing the close: %w", err)
+	}
+	enc := json.NewEncoder(io.MultiWriter(a.Conn(), a.LogWriter))
+	dec := json.NewDecoder(io.TeeReader(a.Conn(), a.LogWriter))
+	err = enc.Encode(message{Close: &ca})
+	if err != nil {
+		return fmt.Errorf("sending the payment: %w", err)
+	}
+	err = a.conn.SetReadDeadline(time.Now().Add(observationPeriodTime))
+	if err != nil {
+		return fmt.Errorf("setting read deadline of conn: %w", err)
+	}
+	timerStart := time.Now()
+	authorized := false
+	m := message{}
+	err = dec.Decode(&m)
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+	} else {
+		if err != nil {
+			return fmt.Errorf("decoding response: %w", err)
+		}
+		_, authorized, err = a.channel.ConfirmClose(*m.Close)
+		if err != nil {
+			return fmt.Errorf("confirming close response: %w", err)
+		}
+	}
+	if authorized {
+		fmt.Fprintln(a.LogWriter, "close ready")
+	} else {
+		fmt.Fprintf(a.LogWriter, "close not authorized, waiting observation period then closing...")
+		time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
+	}
+	err = ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitLatestCloseTx()
+	if err != nil {
+		return fmt.Errorf("submitting close tx: %w", err)
+	}
 	return nil
 }
 
