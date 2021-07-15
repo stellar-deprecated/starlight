@@ -114,7 +114,8 @@ channel is open.
 contributed to the channel and that will be distributed to the participants at
 channel close according to the final close transactions submitted.  Created by
 R.  Jointly controlled by I and R while the channel is open.  Control is
-returned to R at close.  Does not provide sequence numbers for the channel in anyway.
+returned to R at close.  Does not provide sequence numbers for the channel in 
+anyway.
 
 ### Constants
 
@@ -189,7 +190,8 @@ multisig accounts. F has source account E, and sequence number set to s.
   - Operations sponsored by I for EI:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
-    - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is not the native asset.
+    - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is 
+    not the native asset.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
     - One or more `SET_OPTIONS` operations adding I signers to EI.
@@ -204,7 +206,8 @@ multisig accounts. F has source account E, and sequence number set to s.
   - Operations sponsored by R for ER:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
-    - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is not the native asset.
+    - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is 
+    not the native asset.
     - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
     - One or more `SET_OPTIONS` operations adding R's signers to ER.
@@ -229,24 +232,25 @@ multisig accounts. F has source account E, and sequence number set to s.
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
   which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
 
-- C_i, see [Update](#Update) process.
+- C_i, with no payment, see [Payment](#Payment) process.
 
-- D_i, see [Update](#Update) process.
+- D_i, see [Payment](#Payment) process.
 
-#### Update
+#### Payment
 
-Participants use the update process to agree, and re-agree, on a new final state
-for the channel. Participants will agree on a new final state when making
+Participants use the payment process to agree, and re-agree, on a new final
+state for the channel. Participants will agree on a new final state when making
 payments to one another within the channel.
 
 For example, if the channel initial state is $30 of which $10 belongs to I and
 $20 belongs to R, the first closing transaction will disburse $10 to I and $20
-to R. If I makes a payment of $2 to R, this update process will involve I and R
-agreeing on a new declaration and aclosing transaction that supersedes all
-previous declaration and closing transaction and that will disburse $8 to I and
+to R. If I makes a payment of $2 to R, this payment process will involve I and R
+agreeing on a new declaration and closing transaction that supersedes all
+previous declaration and closing transactions and that will disburse $8 to I and
 $22 to R.
 
-To update the payment channel state, the participants:
+To make a payment, participants agree on a new payment channel state. The
+participant steps for which are:
 
 1. Increment i.
 2. Sign and exchange a closing transaction C_i.
@@ -274,8 +278,9 @@ ledger count).
   submitting D_i' for some i' > i.
   
   C_i contains operations:
-  - One `PAYMENT` operation that disburses funds from EI to ER, or from ER to
-  EI, that may be omitted if the final state at this update does not require the movement of funds.
+  - Zero or one `PAYMENT` operations that disburses funds from EI to ER, or from
+  ER to EI, that may be omitted if the final state at this update does not
+  require the movement of funds.
   - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
   to give I full control of EI, and removing R's signers.
   - One or more `SET_OPTIONS` operation adjusting reserve account ER's
@@ -430,9 +435,9 @@ not EI, typically the participant proposing the change.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
   EI to s_i.
 
-- C_i, see [Update](#Update) process.
+- C_i, see [Payment](#Payment) process.
 
-- D_i, see [Update](#Update) process.
+- D_i, see [Payment](#Payment) process.
 
 ##### Change the Observation Period
 
