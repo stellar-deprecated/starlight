@@ -61,6 +61,10 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
+func (c *Channel) IsInitiator() bool {
+	return c.initiator
+}
+
 func (c *Channel) NextIterationNumber() int64 {
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
 		return c.latestUnauthorizedCloseAgreement.Details.IterationNumber
