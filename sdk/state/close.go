@@ -109,46 +109,45 @@ func (c *Channel) validateClose(ca CloseAgreement) error {
 // observation period. The agreement will always be accepted if it is identical
 // to the latest authorized close agreement, and it is signed by the participant
 // proposing the close.
-func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement, err error) {
 	err = c.validateClose(ca)
 	if err != nil {
-		return CloseAgreement{}, authorized, fmt.Errorf("validating close agreement: %w", err)
+		return CloseAgreement{}, fmt.Errorf("validating close agreement: %w", err)
 	}
 
 	_, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
-		return CloseAgreement{}, authorized, fmt.Errorf("making close transactions: %w", err)
+		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
 
 	// If remote has not signed, error as is invalid.
 	signed, err := c.verifySigned(txClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return CloseAgreement{}, authorized, fmt.Errorf("verifying close signature with remote: %w", err)
+		return CloseAgreement{}, fmt.Errorf("verifying close signature with remote: %w", err)
 	}
 	if !signed {
-		return CloseAgreement{}, authorized, fmt.Errorf("verifying close: not signed by remote")
+		return CloseAgreement{}, fmt.Errorf("verifying close: not signed by remote")
 	}
 
 	// If local has not signed, sign.
 	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
-		return CloseAgreement{}, authorized, fmt.Errorf("verifying close signature with local: %w", err)
+		return CloseAgreement{}, fmt.Errorf("verifying close signature with local: %w", err)
 	}
 	if !signed {
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return CloseAgreement{}, authorized, fmt.Errorf("signing close transaction: %w", err)
+			return CloseAgreement{}, fmt.Errorf("signing close transaction: %w", err)
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
 	}
 
 	// The new close agreement is valid and authorized, store and promote it.
-	authorized = true
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details:               ca.Details,
 		CloseSignatures:       ca.CloseSignatures,
 		DeclarationSignatures: c.latestAuthorizedCloseAgreement.DeclarationSignatures,
 	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
-	return c.latestAuthorizedCloseAgreement, authorized, nil
+	return c.latestAuthorizedCloseAgreement, nil
 }

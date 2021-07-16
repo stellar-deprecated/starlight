@@ -62,7 +62,11 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
 	}
-	_, txClose, err := c.closeTxs(c.openAgreement.Details, d)
+	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
+	if err != nil {
+		return CloseAgreement{}, err
+	}
+	txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -72,8 +76,9 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:         d,
-		CloseSignatures: txClose.Signatures(),
+		Details:               d,
+		CloseSignatures:       txClose.Signatures(),
+		DeclarationSignatures: txDecl.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
 }
@@ -96,96 +101,78 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	return nil
 }
 
-// ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
-// receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
-// from the other party's confirmation.
-func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+// ConfirmPayment confirms an agreement. The destination of a payment calls this
+// once to sign and store the agreement. The source of a payment calls this once
+// with a copy of the agreement signed by the destination.
+func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, err error) {
 	err = c.validatePayment(ca)
 	if err != nil {
-		return ca, authorized, fmt.Errorf("validating payment: %w", err)
+		return CloseAgreement{}, fmt.Errorf("validating payment: %w", err)
 	}
-
-	// If the agreement is signed by all participants at the end of this method,
-	// promote the agreement to authorized. If not signed by all participants,
-	// save it as the latest unauthorized agreement, as we are still in the
-	// process of collecting signatures for it. If an error occurred during this
-	// process don't save any new state, as something went wrong.
-	defer func() {
-		if err != nil {
-			return
-		}
-		updatedCA := CloseAgreement{
-			Details:               ca.Details,
-			CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
-			DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
-		}
-		if authorized {
-			c.latestUnauthorizedCloseAgreement = CloseAgreement{}
-			c.latestAuthorizedCloseAgreement = updatedCA
-		} else {
-			c.latestUnauthorizedCloseAgreement = updatedCA
-		}
-	}()
 
 	// create payment transactions
 	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
-		return ca, authorized, err
+		return CloseAgreement{}, err
 	}
 
-	// If remote has not signed close, error as is invalid.
+	// If remote has not signed the txs, error as is invalid.
 	signed, err := c.verifySigned(txClose, ca.CloseSignatures, c.remoteSigner)
 	if err != nil {
-		return ca, authorized, fmt.Errorf("verifying close signed by remote: %w", err)
+		return CloseAgreement{}, fmt.Errorf("verifying close signed by remote: %w", err)
 	}
 	if !signed {
-		return ca, authorized, fmt.Errorf("verifying close signed by remote: not signed by remote")
+		return CloseAgreement{}, fmt.Errorf("verifying close signed by remote: not signed by remote")
+	}
+	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.remoteSigner)
+	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by remote: %w", err)
+	}
+	if !signed {
+		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by remote: not signed by remote")
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
 	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
 	if err != nil {
-		return ca, authorized, fmt.Errorf("verifying close signed by local: %w", err)
+		return CloseAgreement{}, fmt.Errorf("verifying close signed by local: %w", err)
 	}
 	if !signed {
 		if (c.initiator && ca.Details.Balance > c.latestAuthorizedCloseAgreement.Details.Balance) ||
 			(!c.initiator && ca.Details.Balance < c.latestAuthorizedCloseAgreement.Details.Balance) {
-			return ca, authorized, fmt.Errorf("close agreement is a payment to the proposer")
+			return CloseAgreement{}, fmt.Errorf("close agreement is a payment to the proposer")
 		}
 		if c.amountToLocal(ca.Details.Balance) > c.remoteEscrowAccount.Balance {
-			return ca, authorized, fmt.Errorf("close agreement over commits: %w", ErrUnderfunded)
+			return CloseAgreement{}, fmt.Errorf("close agreement over commits: %w", ErrUnderfunded)
 		}
 		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return ca, authorized, fmt.Errorf("signing close with local: %w", err)
+			return CloseAgreement{}, fmt.Errorf("signing close with local: %w", err)
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
 	}
 
-	// Local should always sign declaration if have not yet.
+	// If local has not signed declaration, sign it.
 	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.localSigner)
 	if err != nil {
-		return ca, authorized, fmt.Errorf("verifying declaration signed by local: %w", err)
+		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by local: %w", err)
 	}
 	if !signed {
 		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return ca, authorized, err
+			return CloseAgreement{}, err
 		}
 		ca.DeclarationSignatures = append(ca.DeclarationSignatures, txDecl.Signatures()...)
 	}
 
-	// If remote has not signed declaration, it is incomplete.
-	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.remoteSigner)
-	if err != nil {
-		return ca, authorized, fmt.Errorf("verifying declaration signed by remote: %w", err)
-	}
-	if !signed {
-		return ca, authorized, nil
-	}
-
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
-	authorized = true
-	return ca, authorized, nil
+	c.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details:               ca.Details,
+		CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
+		DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
+	}
+	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+
+	return c.latestAuthorizedCloseAgreement, nil
 }
