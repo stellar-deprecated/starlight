@@ -1,4 +1,4 @@
-name: SDK
+name: 'Examples: Console'
 
 on:
   push:
