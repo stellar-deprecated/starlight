@@ -2,9 +2,9 @@ package state
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -32,29 +32,13 @@ type OpenAgreement struct {
 }
 
 func (oa OpenAgreement) isEmpty() bool {
-	return oa.Details.Equal(OpenAgreementDetails{})
+	return oa.Equal(OpenAgreement{})
 }
 
 func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
-	return reflect.DeepEqual(oa, oa2)
-	// TODO: Complete this equal function properly.
-	// if !oa.Details.Equal(oa2.Details) {
-	// 	return false
-	// }
-	// if len(oa.CloseSignatures) != len(oa2.CloseSignatures) {
-	// 	return false
-	// }
-	// if len(oa.DeclarationSignatures) != len(oa2.DeclarationSignatures) {
-	// 	return false
-	// }
-	// if len(oa.FormationSignatures) != len(oa2.FormationSignatures) {
-	// 	return false
-	// }
-	// for i, s := range oa.CloseSignatures {
-	// 	if s.Equal(oa2.CloseSignatures[i]) {
-	// 		return false
-	// 	}
-	// }
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type OA OpenAgreement
+	return cmp.Equal(OA(oa), OA(oa2))
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.

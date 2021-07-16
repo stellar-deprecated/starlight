@@ -213,7 +213,7 @@ func run() error {
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			newBalance := agent.channel.LocalEscrowAccountBalance() + depositAmountInt
+			newBalance := agent.channel.LocalEscrowAccount().Balance + depositAmountInt
 			agent.channel.UpdateLocalEscrowAccountBalance(newBalance)
 			fmt.Println("new balance of", newBalance)
 		case "exit":
