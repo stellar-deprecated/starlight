@@ -175,7 +175,7 @@ Participants should defer deposits of initial contributions till after formation
 for channels that will hold trustlines to issuers that are not auth immutable,
 and could be clawback enabled. See [Security](#Security).
 
-Signatures for D, D_i, and C_i may be shared in a single message.
+Signatures for F, D_i, and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
@@ -305,7 +305,7 @@ execute.
 
   - A ed25519 signed payload signer configured with:
     - Payload set to the transaction hash of C_i.
-    - Public key set to R's signer.
+    - Public key set to payee's signer.
 
   D_i does not require any operations, but since Stellar disallows empty
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0
@@ -662,7 +662,7 @@ payment channel escrow accounts, or unless the asset is auth immutable.
 
 ## Transaction Signature Disclosure
 
-Processes that require the signing of multiple transactions make use an ed25519
+Processes that require the signing of multiple transactions make use of an ed25519
 signed payload signer proposed in [CAP-40] and the `extraSigners` precondition
 proposed in [CAP-21] so that all signatures required from the receiving
 participant are disclosed in the first transaction required by the process.
