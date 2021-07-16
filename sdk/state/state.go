@@ -94,12 +94,12 @@ func (c *Channel) UpdateRemoteEscrowAccountBalance(balance int64) {
 	c.remoteEscrowAccount.Balance = balance
 }
 
-func (c *Channel) LocalEscrowAccountBalance() int64 {
-	return c.localEscrowAccount.Balance
+func (c *Channel) LocalEscrowAccount() EscrowAccount {
+	return *c.localEscrowAccount
 }
 
-func (c *Channel) RemoteEscrowAccountBalance() int64 {
-	return c.remoteEscrowAccount.Balance
+func (c *Channel) RemoteEscrowAccount() EscrowAccount {
+	return *c.remoteEscrowAccount
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
