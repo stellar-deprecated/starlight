@@ -4,7 +4,7 @@ go 1.16
 
 replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210528222607-c2e3ef441a5d
 
-replace github.com/stellar/experimental-payment-channels/sdk => ../..
+replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
 
 require (
 	github.com/stellar/experimental-payment-channels/sdk v0.0.0-00010101000000-000000000000
