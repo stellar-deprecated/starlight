@@ -59,6 +59,7 @@ func (a *Agent) Listen(addr string) error {
 	if err != nil {
 		return fmt.Errorf("accepting incoming connection: %w", err)
 	}
+	a.sendHello()
 	go a.loop()
 	return nil
 }
@@ -72,23 +73,24 @@ func (a *Agent) Connect(addr string) error {
 	if err != nil {
 		return fmt.Errorf("connecting to %s: %w", addr, err)
 	}
+	a.sendHello()
 	go a.loop()
 	return nil
 }
 
-func (a *Agent) StartIntro() error {
+func (a *Agent) sendHello() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(message{
-		Introduction: &introduction{
+		Hello: &hello{
 			EscrowAccount: a.EscrowAccountKey.Address(),
 			Signer:        a.EscrowAccountSigner.Address(),
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("sending introduction: %w", err)
+		return fmt.Errorf("sending hello: %w", err)
 	}
 	return nil
 }
@@ -171,35 +173,48 @@ func (a *Agent) StartClose() error {
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.Conn(), a.LogWriter))
-	dec := json.NewDecoder(io.TeeReader(a.Conn(), a.LogWriter))
-	err = enc.Encode(message{Close: &ca})
-	if err != nil {
-		return fmt.Errorf("sending the payment: %w", err)
-	}
-	err = a.conn.SetReadDeadline(time.Now().Add(observationPeriodTime))
-	if err != nil {
-		return fmt.Errorf("setting read deadline of conn: %w", err)
-	}
-	timerStart := time.Now()
+	timeStart := time.Now()
+	closeReady := make(chan bool)
+	go func() {
+		enc := json.NewEncoder(io.MultiWriter(a.Conn(), a.LogWriter))
+		dec := json.NewDecoder(io.TeeReader(a.Conn(), a.LogWriter))
+		err = enc.Encode(message{Close: &ca})
+		if err != nil {
+			fmt.Fprintf(a.LogWriter, "error: sending the close proposal: %v\n", err)
+		}
+		err = a.conn.SetReadDeadline(time.Now().Add(observationPeriodTime))
+		if err != nil {
+			fmt.Fprintf(a.LogWriter, "error: setting read deadline of conn: %v\n", err)
+		}
+		authorized := false
+		m := message{}
+		err = dec.Decode(&m)
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			fmt.Fprintf(a.LogWriter, "error: timeout waiting for response: %v\n", err)
+		} else if errors.Is(err, io.EOF) {
+			fmt.Fprintf(a.LogWriter, "error: connection lost: %v\n", err)
+		} else if err != nil {
+			fmt.Fprintf(a.LogWriter, "error: decoding response: %v\n", err)
+		} else {
+			_, authorized, err = a.channel.ConfirmClose(*m.Close)
+			if err != nil {
+				fmt.Fprintf(a.LogWriter, "error: confirming close response: %v\n", err)
+			}
+		}
+		closeReady <- authorized
+	}()
 	authorized := false
-	m := message{}
-	err = dec.Decode(&m)
-	if errors.Is(err, os.ErrDeadlineExceeded) {
-	} else {
-		if err != nil {
-			return fmt.Errorf("decoding response: %w", err)
-		}
-		_, authorized, err = a.channel.ConfirmClose(*m.Close)
-		if err != nil {
-			return fmt.Errorf("confirming close response: %w", err)
-		}
+	waitTime := observationPeriodTime * 2
+	select {
+	case authorized = <-closeReady:
+	case <-time.After(waitTime):
 	}
 	if authorized {
-		fmt.Fprintln(a.LogWriter, "close ready")
+		fmt.Fprintf(a.LogWriter, "close authorized\n")
 	} else {
-		fmt.Fprintf(a.LogWriter, "close not authorized, waiting observation period then closing...")
-		time.Sleep(observationPeriodTime*2 - time.Since(timerStart))
+		remainingWaitTime := waitTime - time.Since(timeStart)
+		fmt.Fprintf(a.LogWriter, "close not authorized, waiting %v\n", remainingWaitTime)
+		time.Sleep(remainingWaitTime)
 	}
 	err = ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitLatestCloseTx()
 	if err != nil {
@@ -228,8 +243,8 @@ func (a *Agent) loop() {
 }
 
 func (a *Agent) handle(m message, send *json.Encoder) error {
-	if m.Introduction != nil {
-		return a.handleIntroduction(*m.Introduction, send)
+	if m.Hello != nil {
+		return a.handleHello(*m.Hello, send)
 	}
 	if m.Open != nil {
 		return a.handleOpen(*m.Open, send)
@@ -243,30 +258,21 @@ func (a *Agent) handle(m message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handleIntroduction(intro introduction, send *json.Encoder) error {
+func (a *Agent) handleHello(h hello, send *json.Encoder) error {
 	if a.channel != nil {
 		return nil
 	}
 
-	otherEscrowAccountKey, err := keypair.ParseAddress(intro.EscrowAccount)
+	otherEscrowAccountKey, err := keypair.ParseAddress(h.EscrowAccount)
 	if err != nil {
 		return fmt.Errorf("parsing other's escrow account: %w", err)
 	}
-	otherSignerKey, err := keypair.ParseAddress(intro.Signer)
+	otherSignerKey, err := keypair.ParseAddress(h.Signer)
 	if err != nil {
 		return fmt.Errorf("parsing other's signer: %v\n", err)
 	}
 	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", otherSignerKey.Address())
 	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", otherEscrowAccountKey.Address())
-	err = send.Encode(message{
-		Introduction: &introduction{
-			EscrowAccount: a.EscrowAccountKey.Address(),
-			Signer:        a.EscrowAccountSigner.Address(),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("sending back introduction: %w", err)
-	}
 	escrowAccountSeqNum, err := getSeqNum(a.HorizonClient, a.EscrowAccountKey.Address())
 	if err != nil {
 		return fmt.Errorf("getting sequence number of escrow account: %w", err)
@@ -321,7 +327,8 @@ func (a *Agent) handleUpdate(updateIn state.CloseAgreement, send *json.Encoder) 
 		if err != nil {
 			return fmt.Errorf("getting state of remote escrow account: %w", err)
 		}
-		balance, err := amount.ParseInt64(account.Balances[0].Balance)
+		var balance int64
+		balance, err = amount.ParseInt64(account.Balances[0].Balance)
 		if err != nil {
 			return fmt.Errorf("parsing balance of remote escrow account: %w", err)
 		}
@@ -335,7 +342,7 @@ func (a *Agent) handleUpdate(updateIn state.CloseAgreement, send *json.Encoder) 
 	if !update.Equal(updateIn) {
 		err = send.Encode(message{Update: &update})
 		if err != nil {
-			fmt.Errorf("encoding payment to send back: %w", err)
+			return fmt.Errorf("encoding payment to send back: %w", err)
 		}
 	}
 	if authorized {

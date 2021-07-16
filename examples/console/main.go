@@ -153,12 +153,6 @@ func run() error {
 				continue
 			}
 			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
-		case "intro":
-			err := agent.StartIntro()
-			if err != nil {
-				fmt.Fprintf(os.Stdout, "error: %v\n", err)
-				continue
-			}
 		case "open":
 			err := agent.StartOpen()
 			if err != nil {
