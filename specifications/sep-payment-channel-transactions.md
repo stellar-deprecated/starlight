@@ -9,7 +9,7 @@ Status: Draft
 Discussion: https://github.com/stellar/experimental-payment-channels/issues
 Created: 2021-04-21
 Updated: 2021-07-06
-Version: 0.3.0
+Version: 0.4.0
 ```
 
 ## Summary
@@ -19,8 +19,8 @@ open and close a payment channel.
 
 ## Dependencies
 
-This protocol is dependent on the not-yet-impemented [CAP-21], and is based
-on the two-way payment channel protocol defined in that CAP's rationale.
+This protocol is dependent on the not-yet-impemented [CAP-21] and [CAP-40], and
+is based on the two-way payment channel protocol defined in those CAPs.
 
 This protocol is also dependent on [CAP-33], that added sponsorship to accounts.
 
@@ -33,9 +33,9 @@ network is fast, but not as fast as two parties forming an agreement directly
 with each other.  For high-frequency transactors it would be beneficial if
 there was a simple method on Stellar to allow two parties to escrow funds
 into an account that is controlled by both parties, where agreements can be
-formed and guaranteed to be executable and contested on-chain.  [CAP-21] and
-[CAP-33] introduce new functionality to the Stellar protocol that make it
-easier to do this.
+formed and guaranteed to be executable and contested on-chain.  [CAP-21],
+[CAP-40] and [CAP-33] introduce new functionality to the Stellar protocol that
+make it easier to do this.
 
 ## Abstract
 
@@ -158,32 +158,41 @@ executed iteration e's transaction set starts at, and is computable as, s+(m*e).
 
 To setup the payment channel:
 
-1. I creates and deposits initial contribution to escrow account EI.
-2. R creates and deposits initial contribution to escrow account ER.
+1. I creates escrow account EI.
+2. R creates escrow account ER.
 3. Set variable initial states:
    - s to EI's sequence number + 1.
    - i to 0.
    - e to 0.
 4. Increment i.
-5. Sign and exchange a closing transaction C_i, that closes the channel
-without any payment.
-6. Sign and exchange a declaration transaction D_i.
-7. I and R sign and exchange the formation transaction F.
-8. I or R submit F.
+5. I signs and shares:
+   - A formation transaction F.
+   - A declaration transaction D_i.
+   - A closing transaction C_i, that closes the channel without any payment.
+6. R signs and submits F.
 
 Participants should defer deposits of initial contributions till after formation
 for channels that will hold trustlines to issuers that are not auth immutable,
 and could be clawback enabled. See [Security](#Security).
 
-It is critical that signatures for F are exchanged after C_i and D_i because F
-will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
-would not be able to close the channel, or regain control of the accounts and
-the assets within, without coordinating with each other.
+Signatures for D, D_i, and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
 - F, the _formation transaction_, changes escrow accounts EI and ER to be 2-of-2
 multisig accounts. F has source account E, and sequence number set to s.
+
+  F has two signers in its `extraSigners` precondition that ensures that if F is
+  authorized, signed, and submitted, that the signatures for D_i and C_i are
+  revealed. The signer is specified as:
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of D_i.
+    - Public key set to R's signer.
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of C_i.
+    - Public key set to R's signer.
 
   F contains operations:
 
@@ -194,13 +203,13 @@ multisig accounts. F has source account E, and sequence number set to s.
     not the native asset.
     - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
     that I and R's signers must both sign.
-    - One or more `SET_OPTIONS` operations adding I signers to EI.
+    - One `SET_OPTIONS` operation adding I signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
   - Operations sponsored by I for ER:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
-    - One or more `SET_OPTIONS` operations adding I signers to ER.
+    - One `SET_OPTIONS` operation adding I signers to ER.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
   - Operations sponsored by R for ER:
@@ -208,15 +217,15 @@ multisig accounts. F has source account E, and sequence number set to s.
     account R as a sponsor of future reserves.
     - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is 
     not the native asset.
-    - One `SET_OPTIONS` operations adjusting escrow account ER's thresholds such
+    - One `SET_OPTIONS` operation adjusting escrow account ER's thresholds such
     that R and I's signers must both sign.
-    - One or more `SET_OPTIONS` operations adding R's signers to ER.
+    - One `SET_OPTIONS` operation adding R's signers to ER.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
   - Operations sponsored by R for EI:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
-    - One or more `SET_OPTIONS` operations adding R's signers to EI.
+    - One `SET_OPTIONS` operations adding R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
 
@@ -232,9 +241,9 @@ multisig accounts. F has source account E, and sequence number set to s.
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
   which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
 
-- C_i, with no payment, see [Payment](#Payment) process.
+- D_i, with no payment, see [Payment](#Payment) process.
 
-- D_i, see [Payment](#Payment) process.
+- C_i, see [Payment](#Payment) process.
 
 #### Payment
 
@@ -250,18 +259,15 @@ previous declaration and closing transactions and that will disburse $8 to I and
 $22 to R.
 
 To make a payment, participants agree on a new payment channel state. The
-participant steps for which are:
+participants:
 
 1. Increment i.
-2. Sign and exchange a closing transaction C_i.
-3. Sign and exchange a declaration transaction D_i.
+2. The payer participant signs and shares signatures for:
+   - A declaration transaction D_i.
+   - A closing transaction C_i.
+3. The payee participant signs and shares signatures D_i and C_i.
 
-It is critical that signatures for D_i are exchanged after C_i because D_i will
-invalidate any previously signed C_i. If I and R signed and exchanged D_i first
-either party could prevent the channel from closing without coordination by
-submitting D_i and refusing to sign C_i.  The participants would not be able to
-close the channel, or regain control of the accounts, and the assets within
-without coordinating with each other.
+Signatures for D_i and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
@@ -292,6 +298,14 @@ number s_i, and `minSeqNum` set to s_e.  Hence, D_i can execute at any time, so
 long as EI's sequence number n satisfies s_e <= n < s_i.  Because C_i has source
 account EI and sequence number s_i+1, D_i leaves EI in a state where C_i can
 execute.
+
+  D_i has a single signer in its `extraSigners` precondition that ensures that
+  if D_i is authorized, signed, and submitted, that the signature for C_i is
+  revealed. The signer is specified as:
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of C_i.
+    - Public key set to R's signer.
 
   D_i does not require any operations, but since Stellar disallows empty
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0
@@ -401,32 +415,45 @@ first.
 
 Participants must coordinate to withdraw an amount without closing the channel.
 The participants use the following process, where W is the participant
-withdrawing:
+withdrawing and X is the participant witnessing the withdrawal:
 
 1. Increment i.
-2. I and R build the withdrawal transaction W_i.
-3. Set e' to the value of e.
-4. Set e to i.
-5. Increment i.
-6. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursement matching the most recent agreed state, but reducing W's disbursed
-amount by W's withdrawal amount.
-7. Sign and exchange a declaration transaction D_i.
-8. I and R sign and exchange signatures for withdrawal transaction W_i.
-9. I or R submit W.
+2. Set e' to the value of e.
+3. Set e to i.
+4. W signs and shares:
+   - A withdrawal transaction W_i.
+   - A declaration transaction D_i+1.
+   - A declaration transaction C_i+1, that closes the channel with disbursement
+   matching the most recent agreed state, but reducing W's disbursed amount by
+   W's withdrawal amount.
+5. X signs and shares W_i, D_i+1, and C_i+1.
+6. Increment i.
+7. I or R submit W_i.
 
 If the withdrawal transaction W_i fails or is never submitted, the C_i and D_i
 are not executable because escrow account EI's sequence number was not bumped to
 s_i.  The participants should take the following steps since the withdrawal did
 not succeed:
 
-10. Set e to the value of e'.
+8. Set e to the value of e'.
 
 The transactions are constructed as follows:
 
 - W_i, the _withdrawal transaction_, makes one or more payments from the escrow
 account EI and/or ER to any Stellar account. W_i has any source account that is
 not EI, typically the participant proposing the change.
+
+  W_i has two signers in its `extraSigners` precondition that ensures that if
+  W_i is authorized, signed, and submitted, that the signatures for D_i+1 and
+  C_i+1 are revealed. The signer is specified as:
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of D_i+1.
+    - Public key set to X's signer.
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of C_i+1.
+    - Public key set to X's signer.
 
   W_i contains operations:
 
@@ -457,19 +484,32 @@ The participants:
 
 1. Increment i.
 2. I and R build the bump transaction B_i.
-3. Increment i.
-4. Sign and exchange a closing transaction C_i, that closes the channel with
-disbursement matching the most recent agreed state.
-5. Sign and exchange a declaration transaction D_i.
-6. I and R sign and exchange signatures for bump transaction B_i.
+3. Set e to i.
+4. I or R signs and shares signatures for:
+   - A declaration transaction D_i+1.
+   - A closing transaction C_i+1, that closes the channel with disbursement
+   matching the most recent agreed state.
+5. R or I signs and shares signatures for B_i, D_i+1, and C_i+1.
+6. Increment i.
 7. I or R submit B_i.
-9. Set e to B_i's iteration number.
 
 The transactions are constructed as follows:
 
 - B_i, the _bump transaction_, bumps the sequence number of escrow account E
 such that only the most recent transaction set is valid. B has source account
 EI, sequence number s_i.
+
+  B_i has two signers in its `extraSigners` precondition that ensures that if
+  B_i is authorized, signed, and submitted, that the signatures for D_i+1 and
+  C_i+1 are revealed. The signer is specified as:
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of D_i.
+    - Public key set to R's signer.
+
+  - A ed25519 signed payload signer configured with:
+    - Payload set to the transaction hash of C_i.
+    - Public key set to R's signer.
 
   B_i does not require any operations, but since Stellar disallows empty
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0 as
@@ -620,6 +660,20 @@ prior to formation. For this reason participants should perform their initial
 deposit after formation, unless they trust the asset issuer not to clawback from
 payment channel escrow accounts, or unless the asset is auth immutable.
 
+## Transaction Signature Disclosure
+
+Processes that require the signing of multiple transactions make use an ed25519
+signed payload signer proposed in [CAP-40] and the `extraSigners` precondition
+proposed in [CAP-21] so that all signatures required from the receiving
+participant are disclosed in the first transaction required by the process.
+
+Participants must observe the network for submissions of the first transaction
+so as to collect the signatures in the event that the other participant does not
+share the signatures. If a participant fails to do this the other participant
+could submit a subset of the transactions required by the process and the
+participant will not have any other capability to authorize and submit the
+remaining transactions.
+
 ## Limitations
 
 This protocol defines the mechanisms of the Stellar network's core protocol that
@@ -636,3 +690,4 @@ TODO: Add implementation.
 [CAP-21]: https://stellar.org/protocol/cap-21
 [CAP-23]: https://stellar.org/protocol/cap-23
 [CAP-33]: https://stellar.org/protocol/cap-33
+[CAP-40]: https://stellar.org/protocol/cap-40
