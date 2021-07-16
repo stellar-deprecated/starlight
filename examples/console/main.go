@@ -159,12 +159,6 @@ func run() error {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
 			}
-		case "formate":
-			err := agent.StartFormate()
-			if err != nil {
-				fmt.Fprintf(os.Stdout, "error: %v\n", err)
-				continue
-			}
 		case "pay":
 			err := agent.StartPayment(params[1])
 			if err != nil {

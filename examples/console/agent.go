@@ -59,7 +59,10 @@ func (a *Agent) Listen(addr string) error {
 	if err != nil {
 		return fmt.Errorf("accepting incoming connection: %w", err)
 	}
-	a.sendHello()
+	err = a.sendHello()
+	if err != nil {
+		return fmt.Errorf("sending hello: %w", err)
+	}
 	go a.loop()
 	return nil
 }
@@ -73,15 +76,15 @@ func (a *Agent) Connect(addr string) error {
 	if err != nil {
 		return fmt.Errorf("connecting to %s: %w", addr, err)
 	}
-	a.sendHello()
+	err = a.sendHello()
+	if err != nil {
+		return fmt.Errorf("sending hello: %w", err)
+	}
 	go a.loop()
 	return nil
 }
 
 func (a *Agent) sendHello() error {
-	if a.conn == nil {
-		return fmt.Errorf("not connected")
-	}
 	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(message{
 		Hello: &hello{
@@ -115,20 +118,6 @@ func (a *Agent) StartOpen() error {
 	err = enc.Encode(message{Open: &open})
 	if err != nil {
 		return fmt.Errorf("sending open: %w", err)
-	}
-	return nil
-}
-
-func (a *Agent) StartFormate() error {
-	if a.conn == nil {
-		return fmt.Errorf("not connected")
-	}
-	if a.channel == nil {
-		return fmt.Errorf("not introduced")
-	}
-	err := ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitFormationTx()
-	if err != nil {
-		return fmt.Errorf("submitting formation: %w", err)
 	}
 	return nil
 }
@@ -308,6 +297,12 @@ func (a *Agent) handleOpen(openIn state.OpenAgreement, send *json.Encoder) error
 	}
 	if authorized {
 		fmt.Fprintf(a.LogWriter, "open authorized\n")
+		if a.channel.IsInitiator() {
+			err := ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitFormationTx()
+			if err != nil {
+				return fmt.Errorf("submitting formation: %w", err)
+			}
+		}
 	}
 	if !open.Equal(openIn) {
 		err = send.Encode(message{Open: &open})
