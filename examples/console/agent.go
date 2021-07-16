@@ -183,10 +183,11 @@ func (a *Agent) StartClose() error {
 		} else if err != nil {
 			fmt.Fprintf(a.LogWriter, "error: decoding response: %v\n", err)
 		} else {
-			_, authorized, err = a.channel.ConfirmClose(*m.Close)
+			_, err = a.channel.ConfirmClose(*m.Close)
 			if err != nil {
 				fmt.Fprintf(a.LogWriter, "error: confirming close response: %v\n", err)
 			}
+			authorized = true
 		}
 		closeReady <- authorized
 	}()
@@ -299,21 +300,19 @@ func (a *Agent) handleHello(h hello, send *json.Encoder) error {
 }
 
 func (a *Agent) handleOpen(openIn state.OpenAgreement, send *json.Encoder) error {
-	open, authorized, err := a.channel.ConfirmOpen(openIn)
+	open, err := a.channel.ConfirmOpen(openIn)
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
-	if authorized {
-		fmt.Fprintf(a.LogWriter, "open authorized\n")
-		if a.channel.IsInitiator() {
-			formationTx, err := a.channel.OpenTx()
-			if err != nil {
-				return fmt.Errorf("building formation tx: %w", err)
-			}
-			err = a.Submitter.SubmitFeeBumpTx(formationTx)
-			if err != nil {
-				return fmt.Errorf("submitting formation tx: %w", err)
-			}
+	fmt.Fprintf(a.LogWriter, "open authorized\n")
+	if a.channel.IsInitiator() {
+		formationTx, err := a.channel.OpenTx()
+		if err != nil {
+			return fmt.Errorf("building formation tx: %w", err)
+		}
+		err = a.Submitter.SubmitFeeBumpTx(formationTx)
+		if err != nil {
+			return fmt.Errorf("submitting formation tx: %w", err)
 		}
 	}
 	if !open.Equal(openIn) {
@@ -326,7 +325,7 @@ func (a *Agent) handleOpen(openIn state.OpenAgreement, send *json.Encoder) error
 }
 
 func (a *Agent) handleUpdate(updateIn state.CloseAgreement, send *json.Encoder) error {
-	update, authorized, err := a.channel.ConfirmPayment(updateIn)
+	update, err := a.channel.ConfirmPayment(updateIn)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.LogWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
 		var account horizon.Account
@@ -341,25 +340,23 @@ func (a *Agent) handleUpdate(updateIn state.CloseAgreement, send *json.Encoder) 
 			return fmt.Errorf("parsing balance of remote escrow account: %w", err)
 		}
 		a.channel.UpdateRemoteEscrowAccountBalance(balance)
-		update, authorized, err = a.channel.ConfirmPayment(updateIn)
+		update, err = a.channel.ConfirmPayment(updateIn)
 	}
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
+	fmt.Fprintf(a.LogWriter, "payment authorized\n")
 	if !update.Equal(updateIn) {
 		err = send.Encode(message{Update: &update})
 		if err != nil {
 			return fmt.Errorf("encoding payment to send back: %w", err)
 		}
 	}
-	if authorized {
-		fmt.Fprintf(a.LogWriter, "payment authorized\n")
-	}
 	return nil
 }
 
 func (a *Agent) handleClose(closeIn state.CloseAgreement, send *json.Encoder) error {
-	close, authorized, err := a.channel.ConfirmClose(closeIn)
+	close, err := a.channel.ConfirmClose(closeIn)
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
@@ -367,8 +364,6 @@ func (a *Agent) handleClose(closeIn state.CloseAgreement, send *json.Encoder) er
 	if err != nil {
 		return fmt.Errorf("encoding close to send back: %v\n", err)
 	}
-	if authorized {
-		fmt.Fprintln(a.LogWriter, "close ready")
-	}
+	fmt.Fprintln(a.LogWriter, "close ready")
 	return nil
 }
