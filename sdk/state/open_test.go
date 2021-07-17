@@ -257,3 +257,41 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 	require.False(t, authorized)
 	require.EqualError(t, err, "input open agreement expire too far into the future")
 }
+
+func TestChannel_OpenTx(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	channel.openAgreement = OpenAgreement{
+		Details: OpenAgreementDetails{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now(),
+		},
+		FormationSignatures: []xdr.DecoratedSignature{{Hint: [4]byte{2, 2, 2, 2}, Signature: []byte{2}}},
+	}
+
+	formationTx, err := channel.OpenTx()
+	require.NoError(t, err)
+	// TODO: Compare the non-signature parts of formationTx with the result of
+	// channel.openTx() when there is an practical way of doing that added to
+	// txnbuild.
+	assert.Equal(t, []xdr.DecoratedSignature{{Hint: [4]byte{2, 2, 2, 2}, Signature: []byte{2}}}, formationTx.Signatures())
+}

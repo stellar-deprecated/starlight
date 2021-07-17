@@ -62,6 +62,22 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (formation *txnbuild.Transacti
 	return
 }
 
+// OpenTx builds the formation transaction used for opening the channel. The
+// transaction is signed and ready to submit. ProposeOpen and ConfirmOpen must
+// be used prior to prepare an open agreement with the other participant.
+func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
+	openAgreement := c.OpenAgreement()
+	formationTx, err = c.openTxs(openAgreement.Details)
+	if err != nil {
+		return nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
+	}
+	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
+	if err != nil {
+		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
+	}
+	return
+}
+
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {

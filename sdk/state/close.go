@@ -47,6 +47,26 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 	return txDecl, txClose, nil
 }
 
+// CloseTxs builds the declaration and close transactions used for closing the
+// channel using the latest close agreement. The transaction are signed and
+// ready to submit.
+func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
+	closeAgreement := c.LatestCloseAgreement()
+	declTx, closeTx, err = c.closeTxs(c.openAgreement.Details, closeAgreement.Details)
+	if err != nil {
+		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
+	}
+	declTx, err = declTx.AddSignatureDecorated(closeAgreement.DeclarationSignatures...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("attaching signatures to declaration tx for latest close agreement: %w", err)
+	}
+	closeTx, err = closeTx.AddSignatureDecorated(closeAgreement.CloseSignatures...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("attaching signatures to close tx for latest close agreement: %w", err)
+	}
+	return
+}
+
 // ProposeClose proposes that the latest authorized close agreement be submitted
 // without waiting the observation period. This should be used when participants
 // are in agreement on the final close state, but would like to submit earlier

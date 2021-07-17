@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/stellar/go/keypair"
@@ -83,38 +82,8 @@ func (c *Channel) OpenAgreement() OpenAgreement {
 	return c.openAgreement
 }
 
-func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
-	openAgreement := c.OpenAgreement()
-	formationTx, err = c.openTxs(openAgreement.Details)
-	if err != nil {
-		return nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
-	}
-	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
-	if err != nil {
-		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
-	}
-	return
-}
-
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestAuthorizedCloseAgreement
-}
-
-func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
-	closeAgreement := c.LatestCloseAgreement()
-	declTx, closeTx, err = c.closeTxs(c.openAgreement.Details, closeAgreement.Details)
-	if err != nil {
-		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
-	}
-	declTx, err = declTx.AddSignatureDecorated(closeAgreement.DeclarationSignatures...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("attaching signatures to declaration tx for latest close agreement: %w", err)
-	}
-	closeTx, err = closeTx.AddSignatureDecorated(closeAgreement.CloseSignatures...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("attaching signatures to close tx for latest close agreement: %w", err)
-	}
-	return
 }
 
 func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
