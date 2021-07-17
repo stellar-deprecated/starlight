@@ -153,14 +153,9 @@ func (a *Agent) StartClose() error {
 		return fmt.Errorf("not introduced")
 	}
 	// Submit declaration tx
-	closeAgreement := a.channel.LatestCloseAgreement()
-	declTx, closeTx, err := a.channel.CloseTxs(closeAgreement.Details)
+	declTx, closeTx, err := a.channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building declaration tx: %w", err)
-	}
-	declTx, err = declTx.AddSignatureDecorated(closeAgreement.DeclarationSignatures...)
-	if err != nil {
-		return fmt.Errorf("adding signatures to the declaration tx: %w", err)
 	}
 	err = a.Submitter.SubmitFeeBumpTx(declTx)
 	if err != nil {
@@ -209,12 +204,10 @@ func (a *Agent) StartClose() error {
 	}
 	if authorized {
 		fmt.Fprintf(a.LogWriter, "close authorized\n")
-		immediateCloseAgreement := a.channel.LatestCloseAgreement()
-		_, immediateCloseTx, err := a.channel.CloseTxs(immediateCloseAgreement.Details)
+		_, immediateCloseTx, err := a.channel.CloseTxs()
 		if err != nil {
 			fmt.Fprintf(a.LogWriter, "error: building immediate close tx: %v", err)
 		} else {
-			closeAgreement = immediateCloseAgreement
 			closeTx = immediateCloseTx
 		}
 	} else {
@@ -223,10 +216,6 @@ func (a *Agent) StartClose() error {
 		time.Sleep(remainingWaitTime)
 	}
 	// Submit close tx
-	closeTx, err = closeTx.AddSignatureDecorated(closeAgreement.CloseSignatures...)
-	if err != nil {
-		return fmt.Errorf("adding signatures to the close tx: %w", err)
-	}
 	err = a.Submitter.SubmitFeeBumpTx(closeTx)
 	if err != nil {
 		return fmt.Errorf("submitting close tx: %w", err)
@@ -320,13 +309,9 @@ func (a *Agent) handleOpen(openIn state.OpenAgreement, send *json.Encoder) error
 	if authorized {
 		fmt.Fprintf(a.LogWriter, "open authorized\n")
 		if a.channel.IsInitiator() {
-			_, _, formationTx, err := a.channel.OpenTxs(open.Details)
+			formationTx, err := a.channel.OpenTx()
 			if err != nil {
 				return fmt.Errorf("building formation tx: %w", err)
-			}
-			formationTx, err = formationTx.AddSignatureDecorated(open.FormationSignatures...)
-			if err != nil {
-				return fmt.Errorf("adding signatures to the formation tx: %w", err)
 			}
 			err = a.Submitter.SubmitFeeBumpTx(formationTx)
 			if err != nil {
