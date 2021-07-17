@@ -158,7 +158,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	// A close agreement from the remote participant should be accepted if the
 	// observation period matches the channels observation period.
 	{
-		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
+		_, txClose, err := channel.closeTxs(channel.openAgreement.Details, CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
@@ -180,7 +180,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	// A close agreement from the remote participant should be rejected if the
 	// observation period doesn't match the channels observation period.
 	{
-		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
+		_, txClose, err := channel.closeTxs(channel.openAgreement.Details, CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
@@ -239,7 +239,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 		IterationNumber: 2,
 		Balance:         110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	_, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -289,7 +289,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 		IterationNumber: 2,
 		Balance:         90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	_, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -336,7 +336,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		IterationNumber: 2,
 		Balance:         -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	_, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		IterationNumber: 2,
 		Balance:         110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	_, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)

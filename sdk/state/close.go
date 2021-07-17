@@ -18,7 +18,7 @@ import (
 // 6. If A or B declines or is not responsive at any step, A or B may submit the
 //    original close tx after the observation period.
 
-func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
+func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           c.startingSequence,
@@ -39,7 +39,7 @@ func (c *Channel) CloseTxs(d CloseAgreementDetails) (txDecl *txnbuild.Transactio
 		IterationNumber:            d.IterationNumber,
 		AmountToInitiator:          amountToInitiator(d.Balance),
 		AmountToResponder:          amountToResponder(d.Balance),
-		Asset:                      c.openAgreement.Details.Asset.Asset(),
+		Asset:                      oad.Asset.Asset(),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -56,7 +56,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	d.ObservationPeriodTime = 0
 	d.ObservationPeriodLedgerGap = 0
 
-	_, txClose, err := c.CloseTxs(d)
+	_, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
@@ -87,7 +87,7 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 		return CloseAgreement{}, authorized, fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
 	}
 
-	_, txClose, err := c.CloseTxs(ca.Details)
+	_, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return CloseAgreement{}, authorized, fmt.Errorf("making close transactions: %w", err)
 	}
