@@ -212,7 +212,7 @@ func (a *Agent) StartClose() error {
 		immediateCloseAgreement := a.channel.LatestCloseAgreement()
 		_, immediateCloseTx, err := a.channel.CloseTxs(immediateCloseAgreement.Details)
 		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error: building immediate close tx: %w", err)
+			fmt.Fprintf(a.LogWriter, "error: building immediate close tx: %v", err)
 		} else {
 			closeAgreement = immediateCloseAgreement
 			closeTx = immediateCloseTx
