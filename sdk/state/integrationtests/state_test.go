@@ -175,7 +175,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.True(t, authorized)
 
 		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
+		_, authorized, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 		require.True(t, authorized)
 
