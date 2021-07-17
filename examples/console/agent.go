@@ -153,9 +153,18 @@ func (a *Agent) StartClose() error {
 		return fmt.Errorf("not introduced")
 	}
 	// Submit declaration tx
-	err := ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitLatestDeclarationTx()
+	closeAgreement := a.channel.LatestCloseAgreement()
+	declTx, closeTx, err := a.channel.CloseTxs(closeAgreement.Details)
 	if err != nil {
-		return fmt.Errorf("submitting tx to decl the channel: %w", err)
+		return fmt.Errorf("building declaration tx: %w", err)
+	}
+	declTx, err = declTx.AddSignatureDecorated(closeAgreement.DeclarationSignatures...)
+	if err != nil {
+		return fmt.Errorf("adding signatures to the declaration tx: %w", err)
+	}
+	err = a.Submitter.SubmitFeeBumpTx(declTx)
+	if err != nil {
+		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
 	// Revising agreement to close early
 	ca, err := a.channel.ProposeClose()
@@ -200,12 +209,25 @@ func (a *Agent) StartClose() error {
 	}
 	if authorized {
 		fmt.Fprintf(a.LogWriter, "close authorized\n")
+		immediateCloseAgreement := a.channel.LatestCloseAgreement()
+		_, immediateCloseTx, err := a.channel.CloseTxs(immediateCloseAgreement.Details)
+		if err != nil {
+			fmt.Fprintf(a.LogWriter, "error: building immediate close tx: %w", err)
+		} else {
+			closeAgreement = immediateCloseAgreement
+			closeTx = immediateCloseTx
+		}
 	} else {
 		remainingWaitTime := waitTime - time.Since(timeStart)
 		fmt.Fprintf(a.LogWriter, "close not authorized, waiting %v\n", remainingWaitTime)
 		time.Sleep(remainingWaitTime)
 	}
-	err = ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitLatestCloseTx()
+	// Submit close tx
+	closeTx, err = closeTx.AddSignatureDecorated(closeAgreement.CloseSignatures...)
+	if err != nil {
+		return fmt.Errorf("adding signatures to the close tx: %w", err)
+	}
+	err = a.Submitter.SubmitFeeBumpTx(closeTx)
 	if err != nil {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
@@ -298,9 +320,17 @@ func (a *Agent) handleOpen(openIn state.OpenAgreement, send *json.Encoder) error
 	if authorized {
 		fmt.Fprintf(a.LogWriter, "open authorized\n")
 		if a.channel.IsInitiator() {
-			err := ChannelSubmitter{Submitter: a.Submitter, Channel: a.channel}.SubmitFormationTx()
+			_, _, formationTx, err := a.channel.OpenTxs(open.Details)
 			if err != nil {
-				return fmt.Errorf("submitting formation: %w", err)
+				return fmt.Errorf("building formation tx: %w", err)
+			}
+			formationTx, err = formationTx.AddSignatureDecorated(open.FormationSignatures...)
+			if err != nil {
+				return fmt.Errorf("adding signatures to the formation tx: %w", err)
+			}
+			err = a.Submitter.SubmitFeeBumpTx(formationTx)
+			if err != nil {
+				return fmt.Errorf("submitting formation tx: %w", err)
 			}
 		}
 	}
