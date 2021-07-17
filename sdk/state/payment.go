@@ -62,7 +62,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
 	}
-	_, txClose, err := c.CloseTxs(d)
+	_, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -118,7 +118,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}()
 
 	// create payment transactions
-	txDecl, txClose, err := c.CloseTxs(ca.Details)
+	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return ca, authorized, err
 	}
