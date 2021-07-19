@@ -68,6 +68,10 @@ func run() error {
 	if horizonclient.IsNotFoundError(err) {
 		fmt.Fprintf(os.Stdout, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
 		err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
+		if err != nil {
+			return err
+		}
+		account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 	}
 	if err != nil {
 		return err
