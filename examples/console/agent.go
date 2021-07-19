@@ -35,16 +35,10 @@ type Agent struct {
 	channel *state.Channel
 
 	conn net.Conn
-	// err is the last error that has occurred on the agent.
-	err error
 }
 
 func (a *Agent) Conn() net.Conn {
 	return a.conn
-}
-
-func (a *Agent) Error() error {
-	return a.err
 }
 
 func (a *Agent) Listen(addr string) error {
@@ -231,13 +225,12 @@ func (a *Agent) loop() {
 		m := message{}
 		err = recv.Decode(&m)
 		if err != nil {
-			a.err = err
+			fmt.Fprintf(a.LogWriter, "error decoding message: %v\n", err)
 			break
 		}
 		err = a.handle(m, send)
 		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error: %v\n", err)
-			a.err = err
+			fmt.Fprintf(a.LogWriter, "error handling message: %v\n", err)
 		}
 	}
 }
