@@ -241,9 +241,9 @@ multisig accounts. F has source account E, and sequence number set to s.
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
   which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
 
-- D_i, with no payment, see [Payment](#Payment) process.
+- C_i, with no payment, see [Payment](#Payment) process.
 
-- C_i, see [Payment](#Payment) process.
+- D_i, see [Payment](#Payment) process.
 
 #### Payment
 
