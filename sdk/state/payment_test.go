@@ -568,6 +568,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 		CloseSignatures: ca.CloseSignatures,
 	}
 	_, authorized, err = receiverChannel.ConfirmPayment(caDifferent)
+	assert.False(t, authorized)
 	require.EqualError(t, err, "validating payment: close agreement does not match the close agreement already in progress")
 	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: 0}}, receiverChannel.LatestCloseAgreement())
 
