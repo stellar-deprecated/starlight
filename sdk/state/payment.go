@@ -90,10 +90,6 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
 	}
-	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
-		return fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
-			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
-	}
 	return nil
 }
 

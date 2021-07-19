@@ -121,12 +121,6 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 		return fmt.Errorf("input open agreement expire too far into the future")
 	}
 
-	// If the open agreement has extra signatures, error.
-	if len(m.DeclarationSignatures) > 2 || len(m.CloseSignatures) > 2 || len(m.FormationSignatures) > 2 {
-		return fmt.Errorf("input open agreement has too many signatures, has declaration: %d,"+
-			" close: %d, formation: %d, max of 2 allowed for each",
-			len(m.DeclarationSignatures), len(m.CloseSignatures), len(m.FormationSignatures))
-	}
 	return nil
 }
 

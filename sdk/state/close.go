@@ -82,10 +82,6 @@ func (c *Channel) validateClose(ca CloseAgreement) error {
 	if ca.Details != latestWithoutObservation {
 		return fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
 	}
-	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
-		return fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
-			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
-	}
 	return nil
 }
 
