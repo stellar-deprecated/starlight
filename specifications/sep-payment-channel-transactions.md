@@ -480,18 +480,19 @@ sequence number of the escrow account to the sequence before the most recent
 D_i. The sequence bump ensures only the most recent transaction with the new
 period O is valid.
 
-The participants:
+The participant initiating this change is X, and the other participant is Y. The
+participants:
 
 1. Increment i.
-2. I and R build the bump transaction B_i.
-3. Set e to i.
-4. I or R signs and shares signatures for:
+2. Set e to i.
+3. X signs and shares signatures for:
+   - A bump transaction B_i.
    - A declaration transaction D_i+1.
    - A closing transaction C_i+1, that closes the channel with disbursement
    matching the most recent agreed state.
-5. R or I signs and shares signatures for B_i, D_i+1, and C_i+1.
-6. Increment i.
-7. I or R submit B_i.
+4. Y signs and shares signatures for B_i, D_i+1, and C_i+1.
+5. Increment i.
+6. Y submits B_i.
 
 The transactions are constructed as follows:
 
@@ -505,11 +506,11 @@ EI, sequence number s_i.
 
   - A ed25519 signed payload signer configured with:
     - Payload set to the transaction hash of D_i.
-    - Public key set to R's signer.
+    - Public key set to Y's signer.
 
   - A ed25519 signed payload signer configured with:
     - Payload set to the transaction hash of C_i.
-    - Public key set to R's signer.
+    - Public key set to Y's signer.
 
   B_i does not require any operations, but since Stellar disallows empty
   transactions, it contains a `BUMP_SEQUENCE` operation with sequence value 0 as
