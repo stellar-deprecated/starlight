@@ -21,5 +21,8 @@ cd examples/console
 go run . -horizon=http://localhost:8000 -account=G... -signer=S...
 ```
 
-The application will create an escrow account. Type `help` once in to discover
-commands to use.
+The application will create the account passed in if needed.
+
+The application will randomly generate and create an escrow account as well.
+
+Type `help` once in to discover commands to use.
