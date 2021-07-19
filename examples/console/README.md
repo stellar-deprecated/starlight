@@ -10,15 +10,10 @@ This example is a rough example and is brittle and is still a work in progress.
 
 ## Install
 
-```
-go install github.com/stellar/experimental-payment-channels/examples/console@latest
-```
-
-Or clone this repository:
+Clone this repository:
 
 ```
 git clone https://github.com/stellar/experimental-payment-channels
-cd examples/console
 ```
 
 ## Usage
@@ -29,7 +24,8 @@ stellar-core and horizon with CAP-21 capabilities.
 Run the example providing a key and its secret key.
 
 ```
-console -horizon=http://localhost:8000 -account=G... -signer=S...
+cd examples/console
+go run . -horizon=http://localhost:8000 -account=G... -signer=S...
 ```
 
 The application will create an escrow account. Type `help` once in to discover
