@@ -8,14 +8,6 @@ using simple TCP network connection and JSON messages.
 
 This example is a rough example and is brittle and is still a work in progress.
 
-## Install
-
-Clone this repository:
-
-```
-git clone https://github.com/stellar/experimental-payment-channels
-```
-
 ## Usage
 
 Follow the [Getting Started](../../Getting%20Started.md) instructions to run a
@@ -24,6 +16,7 @@ stellar-core and horizon with CAP-21 capabilities.
 Run the example providing a key and its secret key.
 
 ```
+git clone https://github.com/stellar/experimental-payment-channels
 cd examples/console
 go run . -horizon=http://localhost:8000 -account=G... -signer=S...
 ```
