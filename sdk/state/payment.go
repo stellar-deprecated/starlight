@@ -80,6 +80,9 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 
 var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 
+// validatePayment validates the close agreement given to the ConfirmPayment method. Note that
+// there are additional verifications ConfirmPayment performs that are based
+// on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
