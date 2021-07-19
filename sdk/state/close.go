@@ -74,17 +74,29 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
-// ConfirmClose agrees to a close agreement to be submitted without waiting the
-// observation period. The agreement will always be accepted if it is identical
-// to the latest authorized close agreement, and it is signed by the participant
-// proposing the close.
-func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+func (c *Channel) validateClose(ca CloseAgreement) error {
 	latestWithoutObservation := c.latestAuthorizedCloseAgreement.Details
 	latestWithoutObservation.ObservationPeriodTime = 0
 	latestWithoutObservation.ObservationPeriodLedgerGap = 0
 
 	if ca.Details != latestWithoutObservation {
-		return CloseAgreement{}, authorized, fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
+		return fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
+	}
+	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
+		return fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
+			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
+	}
+	return nil
+}
+
+// ConfirmClose agrees to a close agreement to be submitted without waiting the
+// observation period. The agreement will always be accepted if it is identical
+// to the latest authorized close agreement, and it is signed by the participant
+// proposing the close.
+func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
+	err = c.validateClose(ca)
+	if err != nil {
+		return CloseAgreement{}, authorized, fmt.Errorf("validating close agreement: %w", err)
 	}
 
 	_, txClose, err := c.CloseTxs(ca.Details)
