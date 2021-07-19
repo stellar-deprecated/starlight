@@ -51,7 +51,7 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 // channel using the latest close agreement. The transaction are signed and
 // ready to submit.
 func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
-	closeAgreement := c.LatestCloseAgreement()
+	closeAgreement := c.latestAuthorizedCloseAgreement
 	declTx, closeTx, err = c.closeTxs(c.openAgreement.Details, closeAgreement.Details)
 	if err != nil {
 		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
