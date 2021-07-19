@@ -61,6 +61,10 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
+func (c *Channel) IsInitiator() bool {
+	return c.initiator
+}
+
 func (c *Channel) NextIterationNumber() int64 {
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
 		return c.latestUnauthorizedCloseAgreement.Details.IterationNumber
@@ -90,12 +94,12 @@ func (c *Channel) UpdateRemoteEscrowAccountBalance(balance int64) {
 	c.remoteEscrowAccount.Balance = balance
 }
 
-func (c *Channel) LocalEscrowAccountBalance() int64 {
-	return c.localEscrowAccount.Balance
+func (c *Channel) LocalEscrowAccount() EscrowAccount {
+	return *c.localEscrowAccount
 }
 
-func (c *Channel) RemoteEscrowAccountBalance() int64 {
-	return c.remoteEscrowAccount.Balance
+func (c *Channel) RemoteEscrowAccount() EscrowAccount {
+	return *c.remoteEscrowAccount
 }
 
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {

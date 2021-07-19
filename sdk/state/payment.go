@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/xdr"
 )
 
@@ -32,7 +33,13 @@ type CloseAgreement struct {
 }
 
 func (ca CloseAgreement) isEmpty() bool {
-	return ca.Details == CloseAgreementDetails{} && len(ca.CloseSignatures) == 0 && len(ca.DeclarationSignatures) == 0
+	return ca.Equal(CloseAgreement{})
+}
+
+func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type CA CloseAgreement
+	return cmp.Equal(CA(ca), CA(ca2))
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
