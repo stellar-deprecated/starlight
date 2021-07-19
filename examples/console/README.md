@@ -23,7 +23,7 @@ cd examples/console
 
 ## Usage
 
-Follow the [Getting Started](../../Getting Started.md) instructions to run a
+Follow the [Getting Started](../../Getting%20Started.md) instructions to run a
 stellar-core and horizon with CAP-21 capabilities.
 
 Run the example providing a key and its secret key.
