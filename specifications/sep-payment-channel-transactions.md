@@ -171,10 +171,10 @@ without any payment.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
 
-Participants should make deposits of initial contributions after formation to
-ensure the account and trust line state of both escrow accounts has not changed
-between signing and submission of the open transactions. See
-[Security](#Security).
+Participants should check the state of the other participant's escrow account
+after the formation transaction is submitted to ensure the state is as
+expected.Participants may wish to reduce their exposure to griefing by making
+deposits of initial contributions after formation. See [Security](#Security).
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
 will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
