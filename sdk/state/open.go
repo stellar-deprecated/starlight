@@ -144,7 +144,7 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
 	err = c.validateOpen(m)
 	if err != nil {
-		return m, authorized, fmt.Errorf("validating open agreement failed: %w", err)
+		return m, authorized, fmt.Errorf("validating open agreement: %w", err)
 	}
 
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the
