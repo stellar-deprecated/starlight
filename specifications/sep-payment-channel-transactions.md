@@ -170,11 +170,10 @@ without any payment.
 7. I and R sign and exchange the formation transaction F.
 8. I or R submit F.
 
-Participants may prefer to make deposits of initial contributions after
-formation if the channel will hold a trustline to an issuer that is not auth
-immutable, the participants' trustlines are not clawback enabled, and the
-participants do not want the trustlines of the escrow accounts to be clawback
-enabled. See [Security](#Security).
+Participants should make deposits of initial contributions after formation to
+ensure the account and trust line state of both escrow accounts has not changed
+between signing and submission of the open transactions. See
+[Security](#Security).
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
 will make the accounts EI and ER 2-of-2 multisig. Without C_i and D_i, I and R
@@ -609,14 +608,19 @@ If the issuer of a clawback enabled trustline submits a clawback operation for
 amounts in either escrow account, the close transaction may fail to process if
 its payment operation is dependent on amounts clawed back.
 
-Participants can inspect the state of trustlines before and after formation to
-check if either participant has clawback enabled. Checking the state after
-formation is critical because there is no way for participants to guarantee
-trustline state until after formation has completed because the state can change
-prior to formation. For this reason participants should perform their initial
-deposit after formation, unless they have no requirement for the asset not to be
-clawback enabled, or they trust the asset issuer not to clawback from payment
-channel escrow accounts, or the asset is auth immutable.
+### Escrow Account and Trustline State
+
+Participants can inspect the state of escrow accounts and trustlines before
+execution of the formation to check the state of the accounts and trustlines are
+acceptable, but there is no guarantee that state will remain constant until
+after the formation transaction is executed.
+
+It is critical to check the state of the other participants escrow account and
+their trustlines after formation because there is no way for participants to
+guarantee that the other participant has not altered its state. For example, the
+other participant could add an additional signer to their account. Or, for
+example, the other participant could intentionally or accidentally cause flags
+on their trustline to be changed, such as the clawback enabled flag.
 
 ## Limitations
 
