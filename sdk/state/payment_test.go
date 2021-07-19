@@ -2,7 +2,9 @@ package state
 
 import (
 	"math/rand"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -10,6 +12,133 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCloseAgreement_Equal(t *testing.T) {
+	testCases := []struct {
+		ca1       CloseAgreement
+		ca2       CloseAgreement
+		wantEqual bool
+	}{
+		{CloseAgreement{}, CloseAgreement{}, true},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+			},
+			true,
+		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+			},
+			CloseAgreement{},
+			false,
+		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			true,
+		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{},
+			false,
+		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			false,
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			equal := tc.ca1.Equal(tc.ca2)
+			assert.Equal(t, tc.wantEqual, equal)
+		})
+	}
+}
 
 func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) {
 	localSigner := keypair.MustRandom()

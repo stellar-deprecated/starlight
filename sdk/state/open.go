@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -31,7 +32,13 @@ type OpenAgreement struct {
 }
 
 func (oa OpenAgreement) isEmpty() bool {
-	return oa.Details.Equal(OpenAgreementDetails{})
+	return oa.Equal(OpenAgreement{})
+}
+
+func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type OA OpenAgreement
+	return cmp.Equal(OA(oa), OA(oa2))
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.

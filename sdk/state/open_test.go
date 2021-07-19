@@ -1,13 +1,143 @@
 package state
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestOpenAgreement_Equal(t *testing.T) {
+	testCases := []struct {
+		oa1       OpenAgreement
+		oa2       OpenAgreement
+		wantEqual bool
+	}{
+		{OpenAgreement{}, OpenAgreement{}, true},
+		{
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+			},
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+			},
+			true,
+		},
+		{
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+			},
+			OpenAgreement{},
+			false,
+		},
+		{
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			true,
+		},
+		{
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			OpenAgreement{},
+			false,
+		},
+		{
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			false,
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			equal := tc.oa1.Equal(tc.oa2)
+			assert.Equal(t, tc.wantEqual, equal)
+		})
+	}
+}
 
 func TestProposeOpen_validAsset(t *testing.T) {
 	localSigner := keypair.MustRandom()
