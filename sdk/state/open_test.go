@@ -6,6 +6,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -137,4 +138,54 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 	}})
 	require.False(t, authorized)
 	require.EqualError(t, err, "input open agreement expire too far into the future")
+}
+
+func TestConfirmOpen_checkForExtraSignatures(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	m := OpenAgreement{
+		CloseSignatures: []xdr.DecoratedSignature{
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+		},
+		DeclarationSignatures: []xdr.DecoratedSignature{
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+		},
+		FormationSignatures: []xdr.DecoratedSignature{
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+		},
+	}
+
+	err := receiverChannel.validateOpen(m)
+	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 3, close: 2, formation: 3, max of 2 allowed for each")
+
+	m.DeclarationSignatures = m.DeclarationSignatures[1:]
+	err = receiverChannel.validateOpen(m)
+	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 2, close: 2, formation: 3, max of 2 allowed for each")
+
+	// Should pass check with 2 signatures each
+	m.FormationSignatures = m.FormationSignatures[1:]
+	err = receiverChannel.validateOpen(m)
+	require.NoError(t, err)
 }

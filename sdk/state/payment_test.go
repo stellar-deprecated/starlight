@@ -498,3 +498,48 @@ func randomByteArray(t *testing.T, length int) []byte {
 	require.NoError(t, err)
 	return arr
 }
+
+func TestChannel_ConfirmPayment_checkForExtraSignatures(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	ca := CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber: 1,
+		},
+		CloseSignatures: []xdr.DecoratedSignature{
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+		},
+		DeclarationSignatures: []xdr.DecoratedSignature{
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+			{Signature: randomByteArray(t, 10)},
+		},
+	}
+
+	err := channel.validatePayment(ca)
+	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 3, close: 2, max of 2 allowed for each")
+
+	// Should pass check with 2 signatures each
+	ca.DeclarationSignatures = ca.DeclarationSignatures[1:]
+	err = channel.validatePayment(ca)
+	require.NoError(t, err)
+}

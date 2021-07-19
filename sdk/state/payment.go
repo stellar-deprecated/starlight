@@ -73,21 +73,31 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 
 var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 
+func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
+	if ca.Details.IterationNumber != c.NextIterationNumber() {
+		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	}
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
+		return fmt.Errorf("invalid payment observation period: different than channel state")
+	}
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
+		return fmt.Errorf("close agreement does not match the close agreement already in progress")
+	}
+	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
+		return fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
+			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
+	}
+	return nil
+}
+
 // ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
-	// If the close agreement details don't match the close agreement in progress, error.
-	if ca.Details.IterationNumber != c.NextIterationNumber() {
-		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	err = c.validatePayment(ca)
+	if err != nil {
+		return ca, authorized, err
 	}
-	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
-		return ca, authorized, fmt.Errorf("invalid payment observation period: different than channel state")
-	}
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
-		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
-	}
-	// TODO - check # of signatures here
 
 	// If the agreement is signed by all participants at the end of this method,
 	// promote the agreement to authorized. If not signed by all participants,
