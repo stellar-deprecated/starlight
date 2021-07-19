@@ -49,7 +49,20 @@ type OpenParams struct {
 	ExpiresAt                  time.Time
 }
 
-func (c *Channel) openTxs(d OpenAgreementDetails) (formation *txnbuild.Transaction, err error) {
+func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbuild.Transaction, err error) {
+	cad := CloseAgreementDetails{
+		ObservationPeriodTime:      d.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
+		IterationNumber:            1,
+		Balance:                    0,
+	}
+
+	decl, close, err = c.closeTxs(d, cad)
+	if err != nil {
+		err = fmt.Errorf("building close txs for open: %w", err)
+		return
+	}
+
 	formation, err = txbuild.Formation(txbuild.FormationParams{
 		InitiatorSigner: c.initiatorSigner(),
 		ResponderSigner: c.responderSigner(),
@@ -59,6 +72,10 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (formation *txnbuild.Transacti
 		Asset:           d.Asset.Asset(),
 		ExpiresAt:       d.ExpiresAt,
 	})
+	if err != nil {
+		err = fmt.Errorf("building formation tx for open: %w", err)
+	}
+
 	return
 }
 
@@ -66,8 +83,8 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (formation *txnbuild.Transacti
 // transaction is signed and ready to submit. ProposeOpen and ConfirmOpen must
 // be used prior to prepare an open agreement with the other participant.
 func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
-	openAgreement := c.OpenAgreement()
-	formationTx, err = c.openTxs(openAgreement.Details)
+	openAgreement := c.openAgreement
+	_, _, formationTx, err = c.openTxs(openAgreement.Details)
 	if err != nil {
 		return nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
 	}
@@ -85,14 +102,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 
 	d := OpenAgreementDetails(p)
 
-	cad := CloseAgreementDetails{
-		ObservationPeriodTime:      d.ObservationPeriodTime,
-		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
-		IterationNumber:            1,
-		Balance:                    0,
-	}
-
-	_, txClose, err := c.closeTxs(d, cad)
+	_, txClose, _, err := c.openTxs(d)
 	if err != nil {
 		return OpenAgreement{}, err
 	}
@@ -152,19 +162,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	cad := CloseAgreementDetails{
-		ObservationPeriodTime:      m.Details.ObservationPeriodTime,
-		ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
-		IterationNumber:            1,
-		Balance:                    0,
-	}
-
-	txDecl, txClose, err := c.closeTxs(m.Details, cad)
-	if err != nil {
-		return m, authorized, err
-	}
-
-	formation, err := c.openTxs(m.Details)
+	txDecl, txClose, formation, err := c.openTxs(m.Details)
 	if err != nil {
 		return m, authorized, err
 	}
