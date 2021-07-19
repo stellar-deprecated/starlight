@@ -134,6 +134,20 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	return open, nil
 }
 
+func (c *Channel) validateOpen(m OpenAgreement) error {
+	// If the open agreement details don't match the open agreement in progress, error.
+	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
+		return fmt.Errorf("input open agreement details do not match the saved open agreement details")
+	}
+
+	// If the expiry of the agreement is past the max expiry the channel will accept, error.
+	if m.Details.ExpiresAt.After(time.Now().Add(c.maxOpenExpiry)) {
+		return fmt.Errorf("input open agreement expire too far into the future")
+	}
+
+	return nil
+}
+
 // ConfirmOpen confirms an open that was proposed. It is called by both
 // participants as they both participate in the open process.
 //
@@ -152,14 +166,9 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 // If after confirming the open has all the signatures it needs to be fully and
 // completely signed, fully signed will be true, otherwise it will be false.
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
-	// If the open agreement details don't match the open agreement in progress, error.
-	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
-		return m, authorized, fmt.Errorf("input open agreement details do not match the saved open agreement details")
-	}
-
-	// If the expiry of the agreement is past the max expiry the channel will accept, error.
-	if m.Details.ExpiresAt.After(time.Now().Add(c.maxOpenExpiry)) {
-		return m, authorized, fmt.Errorf("input open agreement expire too far into the future")
+	err = c.validateOpen(m)
+	if err != nil {
+		return m, authorized, fmt.Errorf("validating open agreement: %w", err)
 	}
 
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the

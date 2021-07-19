@@ -80,19 +80,29 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 
 var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 
+// validatePayment validates the close agreement given to the ConfirmPayment method. Note that
+// there are additional verifications ConfirmPayment performs that are based
+// on the state of the close agreement signatures.
+func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
+	if ca.Details.IterationNumber != c.NextIterationNumber() {
+		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
+	}
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
+		return fmt.Errorf("invalid payment observation period: different than channel state")
+	}
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
+		return fmt.Errorf("close agreement does not match the close agreement already in progress")
+	}
+	return nil
+}
+
 // ConfirmPayment confirms a close agreement. The original proposer should only have to call this once, and the
 // receiver should call twice. First to sign the agreement and store signatures, second to just store the new signatures
 // from the other party's confirmation.
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
-	// If the close agreement details don't match the close agreement in progress, error.
-	if ca.Details.IterationNumber != c.NextIterationNumber() {
-		return ca, authorized, fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
-	}
-	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
-		return ca, authorized, fmt.Errorf("invalid payment observation period: different than channel state")
-	}
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
-		return ca, authorized, errors.New("close agreement does not match the close agreement already in progress")
+	err = c.validatePayment(ca)
+	if err != nil {
+		return ca, authorized, fmt.Errorf("validating payment: %w", err)
 	}
 
 	// If the agreement is signed by all participants at the end of this method,
