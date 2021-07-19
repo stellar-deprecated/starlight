@@ -222,8 +222,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		// invalid ObservationPeriodTime
 		d := oa
 		d.ObservationPeriodTime = 0
-		_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: d})
-		require.False(t, authorized)
+		err := channel.validateOpen(OpenAgreement{Details: d})
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")
 	}
 
@@ -231,8 +230,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		// invalid different asset
 		d := oa
 		d.Asset = "ABC:GCDFU7RNY6HTYQKP7PYHBMXXKXZ4HET6LMJ5CDO7YL5NMYH4T2BSZCPZ"
-		_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: d})
-		require.False(t, authorized)
+		err := channel.validateOpen(OpenAgreement{Details: d})
 		require.EqualError(t, err, "input open agreement details do not match the saved open agreement details")
 	}
 }
@@ -259,13 +257,12 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
-	_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: OpenAgreementDetails{
+	err := channel.validateOpen(OpenAgreement{Details: OpenAgreementDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      NativeAsset,
 		ExpiresAt:                  time.Now().Add(100 * time.Second),
 	}})
-	require.False(t, authorized)
 	require.EqualError(t, err, "input open agreement expire too far into the future")
 }
 

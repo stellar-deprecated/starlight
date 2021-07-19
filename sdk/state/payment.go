@@ -103,7 +103,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, authorized bool, err error) {
 	err = c.validatePayment(ca)
 	if err != nil {
-		return ca, authorized, err
+		return ca, authorized, fmt.Errorf("validating payment: %w", err)
 	}
 
 	// If the agreement is signed by all participants at the end of this method,
