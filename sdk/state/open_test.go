@@ -110,11 +110,24 @@ func TestOpenAgreement_Equal(t *testing.T) {
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
 						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
 						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 					},
 				},
 			},
-			OpenAgreement{},
 			false,
 		},
 	}
