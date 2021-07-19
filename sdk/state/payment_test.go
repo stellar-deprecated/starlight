@@ -209,7 +209,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 			},
 			CloseSignatures: txClose.Signatures(),
 		})
-		require.EqualError(t, err, "invalid payment observation period: different than channel state")
+		require.EqualError(t, err, "validating payment: invalid payment observation period: different than channel state")
 	}
 }
 
@@ -569,7 +569,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	}
 	_, authorized, err = receiverChannel.ConfirmPayment(caDifferent)
 	assert.False(t, authorized)
-	require.EqualError(t, err, "close agreement does not match the close agreement already in progress")
+	require.EqualError(t, err, "validating payment: close agreement does not match the close agreement already in progress")
 	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: 0}}, receiverChannel.LatestCloseAgreement())
 
 	// Confirming a payment with same sequence number and same amount should pass
