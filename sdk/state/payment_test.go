@@ -111,11 +111,24 @@ func TestCloseAgreement_Equal(t *testing.T) {
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
 						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
 						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 					},
 				},
 			},
-			CloseAgreement{},
 			false,
 		},
 	}
