@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -122,10 +121,6 @@ func run() error {
 	for {
 		fmt.Fprintf(os.Stdout, "> ")
 		line, err := br.ReadString('\n')
-		if err == io.EOF {
-			fmt.Fprintf(os.Stdout, "connection terminated\n")
-			break
-		}
 		if err != nil {
 			fmt.Fprintf(os.Stdout, "error: %#v\n", err)
 			continue
