@@ -114,6 +114,15 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 		if err != nil {
 			return
 		}
+
+		// If an agreement ever surpasses 2 signatures per tx, error.
+		if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
+			authorized = false
+			err = fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
+				len(ca.DeclarationSignatures), len(ca.CloseSignatures))
+			return
+		}
+
 		updatedCA := CloseAgreement{
 			Details:               ca.Details,
 			CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
