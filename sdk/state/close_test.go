@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
 )

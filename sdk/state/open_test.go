@@ -261,7 +261,7 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
-	err := channel.validateOpen(OpenAgreement{Details: OpenAgreementDetails{
+	_, authorized, err := channel.ConfirmOpen(OpenAgreement{Details: OpenAgreementDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      NativeAsset,
