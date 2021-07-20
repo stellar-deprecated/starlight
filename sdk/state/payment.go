@@ -62,7 +62,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
 	}
-	_, txClose, err := c.CloseTxs(d)
+	_, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -80,6 +80,9 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 
 var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 
+// validatePayment validates the close agreement given to the ConfirmPayment method. Note that
+// there are additional verifications ConfirmPayment performs that are based
+// on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
@@ -94,6 +97,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 		return fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
 			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
 	}
+
 	return nil
 }
 
@@ -129,7 +133,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}()
 
 	// create payment transactions
-	txDecl, txClose, err := c.CloseTxs(ca.Details)
+	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return ca, authorized, err
 	}

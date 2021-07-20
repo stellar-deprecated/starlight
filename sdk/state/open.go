@@ -49,32 +49,20 @@ type OpenParams struct {
 	ExpiresAt                  time.Time
 }
 
-func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *txnbuild.Transaction, err error) {
-	txClose, err = txbuild.Close(txbuild.CloseParams{
+func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbuild.Transaction, err error) {
+	cad := CloseAgreementDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
-		InitiatorSigner:            c.initiatorSigner(),
-		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
 		IterationNumber:            1,
-		AmountToInitiator:          0,
-		AmountToResponder:          0,
-		Asset:                      d.Asset.Asset(),
-	})
+		Balance:                    0,
+	}
+
+	decl, close, err = c.closeTxs(d, cad)
 	if err != nil {
+		err = fmt.Errorf("building close txs for open: %w", err)
 		return
 	}
-	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
-		IterationNumber:         1,
-		IterationNumberExecuted: 0,
-	})
-	if err != nil {
-		return
-	}
+
 	formation, err = txbuild.Formation(txbuild.FormationParams{
 		InitiatorSigner: c.initiatorSigner(),
 		ResponderSigner: c.responderSigner(),
@@ -84,6 +72,26 @@ func (c *Channel) OpenTxs(d OpenAgreementDetails) (txClose, txDecl, formation *t
 		Asset:           d.Asset.Asset(),
 		ExpiresAt:       d.ExpiresAt,
 	})
+	if err != nil {
+		err = fmt.Errorf("building formation tx for open: %w", err)
+	}
+
+	return
+}
+
+// OpenTx builds the formation transaction used for opening the channel. The
+// transaction is signed and ready to submit. ProposeOpen and ConfirmOpen must
+// be used prior to prepare an open agreement with the other participant.
+func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
+	openAgreement := c.openAgreement
+	_, _, formationTx, err = c.openTxs(openAgreement.Details)
+	if err != nil {
+		return nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
+	}
+	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
+	if err != nil {
+		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
+	}
 	return
 }
 
@@ -94,7 +102,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 
 	d := OpenAgreementDetails(p)
 
-	txClose, _, _, err := c.OpenTxs(d)
+	_, txClose, _, err := c.openTxs(d)
 	if err != nil {
 		return OpenAgreement{}, err
 	}
@@ -150,7 +158,7 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized bool, err error) {
 	err = c.validateOpen(m)
 	if err != nil {
-		return m, authorized, fmt.Errorf("validating open agreement failed: %w", err)
+		return m, authorized, fmt.Errorf("validating open agreement: %w", err)
 	}
 
 	// at the end of this method, if no error, then save a new channel openAgreement. Use the
@@ -169,7 +177,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, authorized b
 
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	txClose, txDecl, formation, err := c.OpenTxs(m.Details)
+	txDecl, txClose, formation, err := c.openTxs(m.Details)
 	if err != nil {
 		return m, authorized, err
 	}
