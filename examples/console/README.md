@@ -28,6 +28,10 @@ The application will randomly generate and create an escrow account as well.
 
 Type `help` once in to discover commands to use.
 
+Foreground events and commands are written to stdout. Background events are
+written to stderr. To view them side-by-side pipe them to a file or alternative
+tty device.
+
 ## Example
 
 Run these commands on the first terminal:

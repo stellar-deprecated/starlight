@@ -237,19 +237,19 @@ func (a *Agent) loop() {
 
 func (a *Agent) handle(m message, send *json.Encoder) error {
 	if m.Hello != nil {
-		fmt.Fprintf(a.LogWriter, "handling hello")
+		fmt.Fprintf(a.LogWriter, "handling hello\n")
 		return a.handleHello(*m.Hello, send)
 	}
 	if m.Open != nil {
-		fmt.Fprintf(a.LogWriter, "handling open")
+		fmt.Fprintf(a.LogWriter, "handling open\n")
 		return a.handleOpen(*m.Open, send)
 	}
 	if m.Update != nil {
-		fmt.Fprintf(a.LogWriter, "handling update")
+		fmt.Fprintf(a.LogWriter, "handling update\n")
 		return a.handleUpdate(*m.Update, send)
 	}
 	if m.Close != nil {
-		fmt.Fprintf(a.LogWriter, "handling close")
+		fmt.Fprintf(a.LogWriter, "handling close\n")
 		return a.handleClose(*m.Close, send)
 	}
 	return nil
