@@ -102,11 +102,6 @@ func (c *Channel) validateClose(ca CloseAgreement) error {
 	if ca.Details != latestWithoutObservation {
 		return fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
 	}
-
-	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
-		return fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
-			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
-	}
 	return nil
 }
 
@@ -145,6 +140,12 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 			return CloseAgreement{}, authorized, fmt.Errorf("signing close transaction: %w", err)
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
+	}
+
+	// If the agreement has extra signatures, error.
+	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
+		return CloseAgreement{}, authorized, fmt.Errorf("close agreement has too many signatures, has declaration: %d, close: %d, max of 2 allowed for each",
+			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
 	}
 
 	// The new close agreement is valid and authorized, store and promote it.

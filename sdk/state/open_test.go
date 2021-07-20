@@ -320,41 +320,68 @@ func TestConfirmOpen_checkForExtraSignatures(t *testing.T) {
 		Address:        keypair.MustRandom().FromAddress(),
 		SequenceNumber: int64(202),
 	}
-	receiverChannel := NewChannel(Config{
+	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
+		Initiator:           true,
 		LocalSigner:         localSigner,
 		RemoteSigner:        remoteSigner.FromAddress(),
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
 
-	m := OpenAgreement{
-		CloseSignatures: []xdr.DecoratedSignature{
-			{Signature: randomByteArray(t, 10)},
-			{Signature: randomByteArray(t, 10)},
-		},
-		DeclarationSignatures: []xdr.DecoratedSignature{
-			{Signature: randomByteArray(t, 10)},
-			{Signature: randomByteArray(t, 10)},
-			{Signature: randomByteArray(t, 10)},
-		},
-		FormationSignatures: []xdr.DecoratedSignature{
-			{Signature: randomByteArray(t, 10)},
-			{Signature: randomByteArray(t, 10)},
-			{Signature: randomByteArray(t, 10)},
-		},
+	p := OpenParams{
+		ObservationPeriodTime:      time.Minute,
+		ObservationPeriodLedgerGap: 2,
+		Asset:                      "native",
+		ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 	}
 
-	err := receiverChannel.validateOpen(m)
-	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 3, close: 2, formation: 3, max of 2 allowed for each")
+	m, err := senderChannel.ProposeOpen(p)
+	require.NoError(t, err)
 
-	m.DeclarationSignatures = m.DeclarationSignatures[1:]
-	err = receiverChannel.validateOpen(m)
+	m.CloseSignatures = append(m.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
+
+	// Extra signature should cause error when receiver confirms
+	_, authorized, err := receiverChannel.ConfirmOpen(m)
+	assert.False(t, authorized)
+	assert.Equal(t, OpenAgreement{}, receiverChannel.openAgreement)
+	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 1, close: 3, formation: 0, max of 2 allowed for each")
+
+	// Remove extra signature, now should succeed
+	m.CloseSignatures = m.CloseSignatures[0:1]
+	m, authorized, err = receiverChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+	assert.False(t, authorized)
+
+	// Adding extra signature should fail when sender confirms
+	m.DeclarationSignatures = append(m.DeclarationSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
+	_, authorized, err = senderChannel.ConfirmOpen(m)
+	assert.False(t, authorized)
+	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 3, close: 2, formation: 1, max of 2 allowed for each")
+
+	// Remove extra signature, now should succeed
+	m.DeclarationSignatures = m.DeclarationSignatures[0:1]
+	m, authorized, err = senderChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+	assert.False(t, authorized)
+
+	// Extra signature should cause error when receiver confirms last time
+	m.FormationSignatures = append(m.FormationSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
+	_, authorized, err = receiverChannel.ConfirmOpen(m)
+	assert.False(t, authorized)
 	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 2, close: 2, formation: 3, max of 2 allowed for each")
 
-	// Should pass check with 2 signatures each
-	m.FormationSignatures = m.FormationSignatures[1:]
-	err = receiverChannel.validateOpen(m)
+	// Remove extra signature, now should succeed
+	m.FormationSignatures = m.FormationSignatures[0:1]
+	m, authorized, err = receiverChannel.ConfirmOpen(m)
 	require.NoError(t, err)
+	assert.True(t, authorized)
 }
