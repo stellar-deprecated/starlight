@@ -330,12 +330,12 @@ func (a *Agent) handleUpdate(updateIn state.CloseAgreement, send *json.Encoder) 
 		if err != nil {
 			return fmt.Errorf("getting state of remote escrow account: %w", err)
 		}
+		fmt.Fprintf(a.LogWriter, "updating remote escrow balance to: %s\n", account.Balances[0].Balance)
 		var balance int64
 		balance, err = amount.ParseInt64(account.Balances[0].Balance)
 		if err != nil {
 			return fmt.Errorf("parsing balance of remote escrow account: %w", err)
 		}
-		fmt.Fprintf(a.LogWriter, "updating remote escrow balance to: %d\n", balance)
 		a.channel.UpdateRemoteEscrowAccountBalance(balance)
 		update, authorized, err = a.channel.ConfirmPayment(updateIn)
 	}

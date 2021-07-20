@@ -207,7 +207,7 @@ func run() error {
 			}
 			newBalance := agent.channel.LocalEscrowAccount().Balance + depositAmountInt
 			agent.channel.UpdateLocalEscrowAccountBalance(newBalance)
-			fmt.Println("new balance of", newBalance)
+			fmt.Println("new balance of", amount.StringFromInt64(newBalance))
 		case "exit":
 			return nil
 		default:
