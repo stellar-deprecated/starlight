@@ -209,5 +209,4 @@ func run() error {
 			fmt.Fprintf(os.Stdout, "error: unrecognized command\n")
 		}
 	}
-	return nil
 }
