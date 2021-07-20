@@ -128,6 +128,7 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 	if m.Details.ExpiresAt.After(time.Now().Add(c.maxOpenExpiry)) {
 		return fmt.Errorf("input open agreement expire too far into the future")
 	}
+
 	return nil
 }
 
