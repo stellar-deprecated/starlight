@@ -72,14 +72,6 @@ func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
 		SequenceNumber: int64(202),
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
-	latestCA := CloseAgreement{
-		Details: CloseAgreementDetails{
-			ObservationPeriodTime:      1,
-			ObservationPeriodLedgerGap: 1,
-		},
-	}
-
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -88,8 +80,6 @@ func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-	senderChannel.latestAuthorizedCloseAgreement = latestCA
-
 	responderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           false,
@@ -98,7 +88,6 @@ func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
 		LocalEscrowAccount:  remoteEscrowAccount,
 		RemoteEscrowAccount: localEscrowAccount,
 	})
-	responderChannel.latestAuthorizedCloseAgreement = latestCA
 
 	ca, err := senderChannel.ProposeClose()
 	require.NoError(t, err)
