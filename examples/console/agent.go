@@ -353,7 +353,7 @@ func (a *Agent) handleUpdate(updateIn state.CloseAgreement, send *json.Encoder) 
 		}
 	}
 	if authorized {
-		fmt.Fprintf(a.LogWriter, "payment successfully received\n")
+		fmt.Fprintf(a.LogWriter, "payment authorized\n")
 	}
 	return nil
 }
