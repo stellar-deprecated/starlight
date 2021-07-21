@@ -103,7 +103,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 
 // ConfirmPayment confirms an agreement. The destination of a payment calls this
 // once to sign and store the agreement. The source of a payment calls this once
-// with a copy of the agreement signed by the destination.
+// with a copy of the agreement signed by the destination to store the destination's signatures.
 func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreement, err error) {
 	err = c.validatePayment(ca)
 	if err != nil {

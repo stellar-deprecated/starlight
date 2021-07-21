@@ -626,6 +626,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, CloseAgreement{}, sendingChannel.latestUnauthorizedCloseAgreement)
 	assert.Equal(t, caFinal, sendingChannel.latestAuthorizedCloseAgreement)
+	assert.Equal(t, caFinal, caResponse)
 }
 
 func TestAppendNewSignature(t *testing.T) {
