@@ -146,7 +146,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 
-		// Sender: stores receiver's sigantures
+		// Sender: stores receiver's signatures
 		_, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 
@@ -302,7 +302,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 
-		// I the signatures, I is done
+		// I stores the signatures, I is done.
 		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		assert.Len(t, open.CloseSignatures, 2)
