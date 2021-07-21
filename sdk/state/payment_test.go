@@ -708,25 +708,21 @@ func TestChannel_ConfirmPayment_checkForExtraSignatures(t *testing.T) {
 
 	// Adding extra signature should cause error when receiver confirms
 	ca.CloseSignatures = append(ca.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-	_, authorized, err := receiverChannel.ConfirmPayment(ca)
-	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 1, close: 3, max of 2 allowed for each")
-	assert.False(t, authorized)
+	_, err = receiverChannel.ConfirmPayment(ca)
+	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 2, close: 3, max of 2 allowed for each")
 
 	// Remove extra signature, now should succeed
 	ca.CloseSignatures = ca.CloseSignatures[0:1]
-	ca, authorized, err = receiverChannel.ConfirmPayment(ca)
+	ca, err = receiverChannel.ConfirmPayment(ca)
 	require.NoError(t, err)
-	assert.False(t, authorized)
 
 	// Adding extra signature should cause error when sender confirms
 	ca.DeclarationSignatures = append(ca.DeclarationSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-	_, authorized, err = senderChannel.ConfirmPayment(ca)
+	_, err = senderChannel.ConfirmPayment(ca)
 	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 3, close: 2, max of 2 allowed for each")
-	assert.False(t, authorized)
 
 	// Remove extra signature, now should succeed
-	ca.DeclarationSignatures = ca.DeclarationSignatures[0:1]
-	_, authorized, err = senderChannel.ConfirmPayment(ca)
+	ca.DeclarationSignatures = ca.DeclarationSignatures[0:2]
+	_, err = senderChannel.ConfirmPayment(ca)
 	require.NoError(t, err)
-	assert.True(t, authorized)
 }

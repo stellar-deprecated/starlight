@@ -219,7 +219,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	// If an agreement ever surpasses 2 signatures per tx, error.
 	if len(m.DeclarationSignatures) > 2 || len(m.CloseSignatures) > 2 || len(m.FormationSignatures) > 2 {
 		return OpenAgreement{}, fmt.Errorf("input open agreement has too many signatures,"+
-			"has declaration: %d, close: %d, formation: %d, max of 2 allowed for each",
+			" has declaration: %d, close: %d, formation: %d, max of 2 allowed for each",
 			len(m.DeclarationSignatures), len(m.CloseSignatures), len(m.FormationSignatures))
 	}
 
