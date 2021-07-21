@@ -3,7 +3,6 @@ package integrationtests
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"testing"
 	"time"
 
@@ -201,7 +200,6 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, distributorKP, issuerKP)
 	require.NoError(t, err)
-	fmt.Println(tx.Base64())
 	err = retry(t, 2, func() error {
 		_, err = client.SubmitTransaction(tx)
 		return err
