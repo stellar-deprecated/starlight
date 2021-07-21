@@ -99,9 +99,13 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	d.ObservationPeriodLedgerGap = 0
 	d.ConfirmingSigner = c.remoteSigner
 
-	_, txClose, err := c.closeTxs(c.openAgreement.Details, d)
+	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
+		return CloseAgreement{}, fmt.Errorf("making declaration and close transactions: %w", err)
+	}
+	txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
+	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("signing declaration transaction: %w", err)
 	}
 	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
 	if err != nil {
@@ -112,7 +116,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
 		Details:               d,
 		CloseSignatures:       txClose.Signatures(),
-		DeclarationSignatures: append([]xdr.DecoratedSignature{}, c.latestAuthorizedCloseAgreement.DeclarationSignatures...),
+		DeclarationSignatures: txDecl.Signatures(),
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
 }
@@ -147,7 +151,7 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 		return CloseAgreement{}, fmt.Errorf("validating close agreement: %w", err)
 	}
 
-	_, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
@@ -159,6 +163,13 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 	}
 	if !signed {
 		return CloseAgreement{}, fmt.Errorf("verifying close: not signed by remote")
+	}
+	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.remoteSigner)
+	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by remote: %w", err)
+	}
+	if !signed {
+		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by remote: not signed by remote")
 	}
 
 	// If local has not signed, sign.
@@ -173,6 +184,17 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 		}
 		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
 	}
+	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.localSigner)
+	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("verifying declaration signature with local: %w", err)
+	}
+	if !signed {
+		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
+		if err != nil {
+			return CloseAgreement{}, fmt.Errorf("signing declaration transaction: %w", err)
+		}
+		ca.DeclarationSignatures = append(ca.DeclarationSignatures, txDecl.Signatures()...)
+	}
 
 	// If the agreement has extra signatures, error.
 	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
@@ -185,7 +207,7 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details:               ca.Details,
 		CloseSignatures:       ca.CloseSignatures,
-		DeclarationSignatures: c.latestAuthorizedCloseAgreement.DeclarationSignatures,
+		DeclarationSignatures: ca.DeclarationSignatures,
 	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
 	return c.latestAuthorizedCloseAgreement, nil
