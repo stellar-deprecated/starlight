@@ -94,13 +94,11 @@ func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
 
 	// Adding extra signature should cause error
 	ca.CloseSignatures = append(ca.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-	_, authorized, err := responderChannel.ConfirmClose(ca)
+	_, err = responderChannel.ConfirmClose(ca)
 	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 0, close: 3, max of 2 allowed for each")
-	assert.False(t, authorized)
 
 	// Remove extra signature, now should succeed
 	ca.CloseSignatures = ca.CloseSignatures[0:1]
-	_, authorized, err = responderChannel.ConfirmClose(ca)
+	_, err = responderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 }

@@ -177,7 +177,7 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 	// If the agreement has extra signatures, error.
 	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
 		return CloseAgreement{}, fmt.Errorf("close agreement has too many signatures,"+
-			"has declaration: %d, close: %d, max of 2 allowed for each",
+			" has declaration: %d, close: %d, max of 2 allowed for each",
 			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
 	}
 
