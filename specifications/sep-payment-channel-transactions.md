@@ -319,8 +319,13 @@ change `minSeqAge` and `minSeqLedgerGap` to zero.
 
 1. Submit most recent D_i
 2. Modify the most recent C_i `minSeqAge` and `minSeqLedgerGap` to zero
-3. Resign and exchange the modified confirmation transaction C_i
+3. Resign and exchange the modified close transaction C_i
 4. Submit modified C_i
+
+If participants choose to coordinate a close before submitting D_i they must
+take care to also modify D_i such that it contains the new C_i's hash is
+included in the new D_i's `extraSigners` or to keep a copy of the old C_i's
+signatures required to satisfy D_i's `extraSigners` precondition.
 
 #### Uncoordinated Close
 
