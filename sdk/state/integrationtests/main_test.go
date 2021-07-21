@@ -10,7 +10,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 )
 
-const horizonURL = "http://host.docker.internal:8000"
+const horizonURL = "http://localhost:8000"
 
 var (
 	networkPassphrase string
