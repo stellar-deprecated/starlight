@@ -248,7 +248,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	}
 }
 
-func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
+func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsResponder(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
@@ -301,7 +301,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 	require.EqualError(t, err, "close agreement is a payment to the proposer")
 }
 
-func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
+func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsInitiator(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
