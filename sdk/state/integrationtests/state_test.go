@@ -50,7 +50,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	// I signs txClose
+	// I signs
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -59,57 +59,31 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 0)
-	assert.Len(t, open.FormationSignatures, 0)
+	assert.Len(t, open.DeclarationSignatures, 1)
+	assert.Len(t, open.FormationSignatures, 1)
 	{
-		var authorizedR bool
-		// R signs txClose and txDecl
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
+		// R signs, R is done
+		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, authorizedR)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 1)
-		assert.Len(t, open.FormationSignatures, 0)
-
-		var authorizedI bool
-		// I signs txDecl and F
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.False(t, authorizedI)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 1)
-
-		// R signs F, R is done
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.True(t, authorizedR)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 
-		// I receives the last signatures for F, I is done
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
+		// I receives the signatures, I is done
+		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, authorizedI)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(initiatorChannel.OpenAgreement().Details)
-		require.NoError(t, err)
-
-		ci, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
-		require.NoError(t, err)
-		closeTxs = append(closeTxs, ci)
-
-		di, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
+		di, ci, err := initiatorChannel.CloseTxs()
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
+		closeTxs = append(closeTxs, ci)
 
-		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
+		fi, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -164,36 +138,23 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		// Sender: creates new Payment, sends to other party
+		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
-		var authorized bool
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
+		// Receiver: receives new payment, validates, then confirms by signing
+		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, authorized)
 
-		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
+		// Sender: stores receiver's signatures
+		_, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, authorized)
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
-		require.True(t, authorized)
 
 		// Record the close tx's at this point in time.
-		di, ci, err := sendingChannel.CloseTxs(sendingChannel.LatestCloseAgreement().Details)
-		require.NoError(t, err)
-		ci, err = ci.AddSignatureDecorated(payment.CloseSignatures...)
-		require.NoError(t, err)
-		closeTxs = append(closeTxs, ci)
-		di, err = di.AddSignatureDecorated(payment.DeclarationSignatures...)
+		di, ci, err := sendingChannel.CloseTxs()
 		require.NoError(t, err)
 		declarationTxs = append(declarationTxs, di)
+		closeTxs = append(closeTxs, ci)
 
 		t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
 		t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
@@ -242,11 +203,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	// Good participant closes channel at latest iteration.
 	t.Log("Good participant (initiator) closing channel at latest iteration...")
 	{
-		lastD, lastC, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
-		require.NoError(t, err)
-		lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
-		require.NoError(t, err)
-		lastC, err = lastC.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
+		lastD, lastC, err := initiatorChannel.CloseTxs()
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -326,7 +283,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	// I signs txClose
+	// I signs
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -335,55 +292,26 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 0)
-	assert.Len(t, open.FormationSignatures, 0)
+	assert.Len(t, open.DeclarationSignatures, 1)
+	assert.Len(t, open.FormationSignatures, 1)
 	{
-		var authorizedR bool
-		// R signs txClose and txDecl
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
+		// R signs, R is done
+		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, authorizedR)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 1)
-		assert.Len(t, open.FormationSignatures, 0)
-
-		var authorizedI bool
-		// I signs txDecl and F
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.False(t, authorizedI)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 1)
-
-		// R signs F, R is done
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.True(t, authorizedR)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 
-		// I receives the last signatures for F, I is done
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
+		// I stores the signatures, I is done.
+		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, authorizedI)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(initiatorChannel.OpenAgreement().Details)
-		require.NoError(t, err)
-
-		_, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
-		require.NoError(t, err)
-
-		_, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
-		require.NoError(t, err)
-
-		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
+		fi, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -434,34 +362,23 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		// Sender: creates new Payment, sends to other party
+		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
-		var authorized bool
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
+		// Receiver: receives new payment, validates, then confirms by signing
+		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, authorized)
 
-		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
+		// Sender: stores the receivers signatures
+		_, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, authorized)
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		_, authorized, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
-		require.True(t, authorized)
 	}
 
 	// Coordinated Close
 	t.Log("Begin coordinated close process ...")
 	t.Log("Initiator submitting latest declaration transaction")
-	lastD, _, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
-	require.NoError(t, err)
-	lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
+	lastD, _, err := initiatorChannel.CloseTxs()
 	require.NoError(t, err)
 
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -479,18 +396,14 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, authorized, err := responderChannel.ConfirmClose(ca)
+	ca, err = responderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 
-	_, authorized, err = initiatorChannel.ConfirmClose(ca)
+	_, err = initiatorChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
-	_, txCoordinated, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
-	require.NoError(t, err)
-	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
+	_, txCoordinated, err := initiatorChannel.CloseTxs()
 	require.NoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
@@ -542,7 +455,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	// I signs txClose
+	// I signs
 	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -552,55 +465,26 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 0)
-	assert.Len(t, open.FormationSignatures, 0)
+	assert.Len(t, open.DeclarationSignatures, 1)
+	assert.Len(t, open.FormationSignatures, 1)
 	{
-		var authorizedR bool
 		// R signs txClose and txDecl
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
+		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, authorizedR)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 1)
-		assert.Len(t, open.FormationSignatures, 0)
-
-		var authorizedI bool
-		// I signs txDecl and F
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.False(t, authorizedI)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 1)
-
-		// R signs F, R is done
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.True(t, authorizedR)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 
-		// I receives the last signatures for F, I is done
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
+		// I receives the signatures, I is done
+		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, authorizedI)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(initiatorChannel.OpenAgreement().Details)
-		require.NoError(t, err)
-
-		_, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
-		require.NoError(t, err)
-
-		_, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
-		require.NoError(t, err)
-
-		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
+		fi, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -651,26 +535,17 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		// Sender: creates new Payment, sends to other party
+		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
-		var authorized bool
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
+		// Receiver: receives new payment, validates, then confirms by signing
+		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, authorized)
 
-		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
+		// Sender: stores the signatures from receiver
+		_, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, authorized)
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		_, authorized, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
-		require.True(t, authorized)
 	}
 
 	// Coordinated Close
@@ -680,18 +555,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, authorized, err := responderChannel.ConfirmClose(ca)
+	ca, err = responderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 
-	_, authorized, err = initiatorChannel.ConfirmClose(ca)
+	_, err = initiatorChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 
 	t.Log("Initiator submitting latest declaration transaction")
-	lastD, _, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
-	require.NoError(t, err)
-	lastD, err = lastD.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().DeclarationSignatures...)
+	lastD, _, err := initiatorChannel.CloseTxs()
 	require.NoError(t, err)
 
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -706,9 +577,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
-	_, txCoordinated, err := initiatorChannel.CloseTxs(initiatorChannel.LatestCloseAgreement().Details)
-	require.NoError(t, err)
-	txCoordinated, err = txCoordinated.AddSignatureDecorated(initiatorChannel.LatestCloseAgreement().CloseSignatures...)
+	_, txCoordinated, err := initiatorChannel.CloseTxs()
 	require.NoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
@@ -770,55 +639,26 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 
 	require.NoError(t, err)
 	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 0)
-	assert.Len(t, open.FormationSignatures, 0)
+	assert.Len(t, open.DeclarationSignatures, 1)
+	assert.Len(t, open.FormationSignatures, 1)
 	{
-		var authorizedR bool
-		// R signs txClose and txDecl
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
+		// R signs
+		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.False(t, authorizedR)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 1)
-		assert.Len(t, open.FormationSignatures, 0)
-
-		var authorizedI bool
-		// I signs txDecl and F
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.False(t, authorizedI)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 1)
-
-		// R signs F, R is done
-		open, authorizedR, err = responderChannel.ConfirmOpen(open)
-		require.NoError(t, err)
-		require.True(t, authorizedR)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 
-		// I receives the last signatures for F, I is done
-		open, authorizedI, err = initiatorChannel.ConfirmOpen(open)
+		// I receives the signatures, I is done
+		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		require.True(t, authorizedI)
 		assert.Len(t, open.CloseSignatures, 2)
 		assert.Len(t, open.DeclarationSignatures, 2)
 		assert.Len(t, open.FormationSignatures, 2)
 	}
 
 	{
-		ci, di, fi, err := initiatorChannel.OpenTxs(initiatorChannel.OpenAgreement().Details)
-		require.NoError(t, err)
-
-		_, err = ci.AddSignatureDecorated(initiatorChannel.OpenAgreement().CloseSignatures...)
-		require.NoError(t, err)
-
-		_, err = di.AddSignatureDecorated(initiatorChannel.OpenAgreement().DeclarationSignatures...)
-		require.NoError(t, err)
-
-		fi, err = fi.AddSignatureDecorated(initiatorChannel.OpenAgreement().FormationSignatures...)
+		fi, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -869,26 +709,17 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
-		// Sender: creates new Payment, sends to other party
+		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
 		require.NoError(t, err)
 
-		var authorized bool
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		payment, authorized, err = receivingChannel.ConfirmPayment(payment)
+		// Receiver: receives new payment, validates, then confirms by signing
+		payment, err = receivingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.False(t, authorized)
 
-		// Sender: re-confirms P_i by signing D_i and sending back
-		payment, authorized, err = sendingChannel.ConfirmPayment(payment)
+		// Sender: stores signatures from receiver
+		_, err = sendingChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-		require.True(t, authorized)
-
-		// Receiver: receives new payment, validates, then confirms by signing both
-		_, authorized, err = receivingChannel.ConfirmPayment(payment)
-		require.NoError(t, err)
-		require.True(t, authorized)
 	}
 
 	// Coordinated Close
@@ -898,18 +729,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, authorized, err := responderChannel.ConfirmClose(ca)
+	ca, err = responderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 
-	_, authorized, err = initiatorChannel.ConfirmClose(ca)
+	_, err = initiatorChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-	require.True(t, authorized)
 
 	t.Log("Responder submitting latest declaration transaction")
-	lastD, _, err := responderChannel.CloseTxs(responderChannel.LatestCloseAgreement().Details)
-	require.NoError(t, err)
-	lastD, err = lastD.AddSignatureDecorated(responderChannel.LatestCloseAgreement().DeclarationSignatures...)
+	lastD, _, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
 
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
@@ -924,9 +751,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	require.NoError(t, err)
 
 	t.Log("Responder closing channel with new coordinated close transaction")
-	_, txCoordinated, err := responderChannel.CloseTxs(responderChannel.LatestCloseAgreement().Details)
-	require.NoError(t, err)
-	txCoordinated, err = txCoordinated.AddSignatureDecorated(responderChannel.LatestCloseAgreement().CloseSignatures...)
+	_, txCoordinated, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
