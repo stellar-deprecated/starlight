@@ -196,7 +196,7 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 // ConfirmOpen confirms an open that was proposed.  ConfirmPayment confirms the
 // agreement. The responder to the open process calls this once to sign and
 // store the agreement. The initiator of the open process calls this once with a
-// copy of the agreement signed by the destination.
+// copy of the agreement signed by the destination to store the destination's signatures.
 func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	err = c.validateOpen(m)
 	if err != nil {
