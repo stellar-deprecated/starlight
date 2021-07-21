@@ -45,6 +45,7 @@ func TestChannel_CloseTx(t *testing.T) {
 			ObservationPeriodLedgerGap: 2,
 			IterationNumber:            3,
 			Balance:                    4,
+			ConfirmingSigner:           remoteSigner.FromAddress(),
 		},
 		DeclarationSignatures: []xdr.DecoratedSignature{{Hint: [4]byte{0, 0, 0, 0}, Signature: []byte{0}}},
 		CloseSignatures:       []xdr.DecoratedSignature{{Hint: [4]byte{1, 1, 1, 1}, Signature: []byte{1}}},

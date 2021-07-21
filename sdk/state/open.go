@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -15,13 +16,17 @@ type OpenAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
 	ExpiresAt                  time.Time
+	ConfirmingSigner           *keypair.FromAddress
 }
 
 func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
-		d.ExpiresAt.Equal(d2.ExpiresAt)
+		d.ExpiresAt.Equal(d2.ExpiresAt) &&
+		((d.ConfirmingSigner == nil && d2.ConfirmingSigner == nil) ||
+			(d.ConfirmingSigner != nil && d2.ConfirmingSigner != nil &&
+				d.ConfirmingSigner.Address() == d2.ConfirmingSigner.Address()))
 }
 
 type OpenAgreement struct {
@@ -55,6 +60,7 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		IterationNumber:            1,
 		Balance:                    0,
+		ConfirmingSigner:           d.ConfirmingSigner,
 	}
 
 	decl, close, err = c.closeTxs(d, cad)
@@ -100,7 +106,13 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	d := OpenAgreementDetails(p)
+	d := OpenAgreementDetails{
+		ObservationPeriodTime:      p.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
+		Asset:                      p.Asset,
+		ExpiresAt:                  p.ExpiresAt,
+		ConfirmingSigner:           c.remoteSigner,
+	}
 
 	txDecl, txClose, txFormation, err := c.openTxs(d)
 	if err != nil {
@@ -225,6 +237,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			Balance:                    0,
 			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
+			ConfirmingSigner:           m.Details.ConfirmingSigner,
 		},
 		CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
 		DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),

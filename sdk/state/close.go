@@ -19,15 +19,6 @@ import (
 //    original close tx after the observation period.
 
 func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
-	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
-		IterationNumber:         d.IterationNumber,
-		IterationNumberExecuted: 0,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
@@ -44,6 +35,21 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 	if err != nil {
 		return nil, nil, err
 	}
+	txCloseHash, err := txClose.Hash(c.networkPassphrase)
+	if err != nil {
+		return nil, nil, err
+	}
+	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
+		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
+		StartSequence:           c.startingSequence,
+		IterationNumber:         d.IterationNumber,
+		IterationNumberExecuted: 0,
+		ConfirmingSigner:        d.ConfirmingSigner,
+		CloseTxHash:             txCloseHash,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
 	return txDecl, txClose, nil
 }
 
@@ -56,14 +62,30 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 	if err != nil {
 		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
 	}
+
 	declTx, err = declTx.AddSignatureDecorated(closeAgreement.DeclarationSignatures...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("attaching signatures to declaration tx for latest close agreement: %w", err)
 	}
+	for _, s := range closeAgreement.CloseSignatures {
+		var signed bool
+		signed, err = c.verifySigned(closeTx, []xdr.DecoratedSignature{s}, closeAgreement.Details.ConfirmingSigner)
+		if err != nil {
+			return nil, nil, fmt.Errorf("finding signatures of confirming signer of close tx for declaration tx for latest close agreement: %w", err)
+		}
+		if signed {
+			declTx, err = declTx.AddSignatureDecorated(s)
+			if err != nil {
+				return nil, nil, fmt.Errorf("attaching signatures to declaration tx for latest close agreement: %w", err)
+			}
+		}
+	}
+
 	closeTx, err = closeTx.AddSignatureDecorated(closeAgreement.CloseSignatures...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("attaching signatures to close tx for latest close agreement: %w", err)
 	}
+
 	return
 }
 
@@ -75,6 +97,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	d := c.latestAuthorizedCloseAgreement.Details
 	d.ObservationPeriodTime = 0
 	d.ObservationPeriodLedgerGap = 0
+	d.ConfirmingSigner = c.remoteSigner
 
 	_, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
@@ -95,12 +118,21 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 }
 
 func (c *Channel) validateClose(ca CloseAgreement) error {
-	latestWithoutObservation := c.latestAuthorizedCloseAgreement.Details
-	latestWithoutObservation.ObservationPeriodTime = 0
-	latestWithoutObservation.ObservationPeriodLedgerGap = 0
-
-	if ca.Details != latestWithoutObservation {
-		return fmt.Errorf("close agreement details do not match saved latest authorized close agreement")
+	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Details.IterationNumber {
+		return fmt.Errorf("close agreement iteration number does not match saved latest authorized close agreement")
+	}
+	if ca.Details.Balance != c.latestAuthorizedCloseAgreement.Details.Balance {
+		return fmt.Errorf("close agreement balance does not match saved latest authorized close agreement")
+	}
+	if ca.Details.ObservationPeriodTime != 0 {
+		return fmt.Errorf("close agreement observation period time is not zero")
+	}
+	if ca.Details.ObservationPeriodLedgerGap != 0 {
+		return fmt.Errorf("close agreement observation period ledger gap is not zero")
+	}
+	if ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
+		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
+		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
 	return nil
 }

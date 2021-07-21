@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
 )
 
@@ -22,6 +23,7 @@ type CloseAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
+	ConfirmingSigner           *keypair.FromAddress
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -61,6 +63,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
+		ConfirmingSigner:           c.remoteSigner,
 	}
 	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
@@ -97,6 +100,10 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
+	}
+	if ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
+		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
+		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
 	return nil
 }
