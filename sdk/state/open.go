@@ -68,15 +68,28 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 		err = fmt.Errorf("building close txs for open: %w", err)
 		return
 	}
+	declHash, err := decl.Hash(c.networkPassphrase)
+	if err != nil {
+		err = fmt.Errorf("generating hash for declaration tx for open: %w", err)
+		return
+	}
+	closeHash, err := close.Hash(c.networkPassphrase)
+	if err != nil {
+		err = fmt.Errorf("generating hash for close tx for open: %w", err)
+		return
+	}
 
 	formation, err = txbuild.Formation(txbuild.FormationParams{
-		InitiatorSigner: c.initiatorSigner(),
-		ResponderSigner: c.responderSigner(),
-		InitiatorEscrow: c.initiatorEscrowAccount().Address,
-		ResponderEscrow: c.responderEscrowAccount().Address,
-		StartSequence:   c.startingSequence,
-		Asset:           d.Asset.Asset(),
-		ExpiresAt:       d.ExpiresAt,
+		InitiatorSigner:   c.initiatorSigner(),
+		ResponderSigner:   c.responderSigner(),
+		InitiatorEscrow:   c.initiatorEscrowAccount().Address,
+		ResponderEscrow:   c.responderEscrowAccount().Address,
+		StartSequence:     c.startingSequence,
+		Asset:             d.Asset.Asset(),
+		ExpiresAt:         d.ExpiresAt,
+		DeclarationTxHash: declHash,
+		CloseTxHash:       closeHash,
+		ConfirmingSigner:  d.ConfirmingSigner,
 	})
 	if err != nil {
 		err = fmt.Errorf("building formation tx for open: %w", err)
@@ -90,13 +103,39 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 // be used prior to prepare an open agreement with the other participant.
 func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 	openAgreement := c.openAgreement
-	_, _, formationTx, err = c.openTxs(openAgreement.Details)
+	declTx, closeTx, formationTx, err := c.openTxs(openAgreement.Details)
 	if err != nil {
-		return nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
+		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
 	}
 	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
 	if err != nil {
 		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
+	}
+	for _, s := range openAgreement.DeclarationSignatures {
+		var signed bool
+		signed, err = c.verifySigned(declTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
+		if err != nil {
+			return nil, fmt.Errorf("finding signatures of confirming signer of declaration tx for formation tx: %w", err)
+		}
+		if signed {
+			formationTx, err = formationTx.AddSignatureDecorated(s)
+			if err != nil {
+				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
+			}
+		}
+	}
+	for _, s := range openAgreement.CloseSignatures {
+		var signed bool
+		signed, err = c.verifySigned(closeTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
+		if err != nil {
+			return nil, fmt.Errorf("finding signatures of confirming signer of close tx for formation tx: %w", err)
+		}
+		if signed {
+			formationTx, err = formationTx.AddSignatureDecorated(s)
+			if err != nil {
+				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
+			}
+		}
 	}
 	return
 }
