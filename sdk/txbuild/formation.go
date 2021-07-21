@@ -25,11 +25,11 @@ type FormationParams struct {
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	extraSignerKeys := [2]xdr.SignerKey{}
-	err := extraSignerKeys[0].SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
+	err := extraSignerKeys[0].SetSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
 	if err != nil {
 		return nil, err
 	}
-	err = extraSignerKeys[1].SetSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
+	err = extraSignerKeys[1].SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
 	if err != nil {
 		return nil, err
 	}
