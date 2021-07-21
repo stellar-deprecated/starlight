@@ -111,11 +111,24 @@ func TestCloseAgreement_Equal(t *testing.T) {
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
 						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
 						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 					},
 				},
 			},
-			CloseAgreement{},
 			false,
 		},
 	}
@@ -124,6 +137,60 @@ func TestCloseAgreement_Equal(t *testing.T) {
 			equal := tc.ca1.Equal(tc.ca2)
 			assert.Equal(t, tc.wantEqual, equal)
 		})
+	}
+}
+
+func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	// Given a channel with observation periods set to 1, that is already open.
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+		},
+	}
+
+	// A close agreement from the remote participant should be accepted if the
+	// observation period matches the channels observation period.
+	{
+		txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, CloseAgreementDetails{
+			IterationNumber:            1,
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+		})
+		require.NoError(t, err)
+		txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
+		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
+		_, err = channel.ConfirmPayment(CloseAgreement{
+			Details: CloseAgreementDetails{
+				IterationNumber:            1,
+				ObservationPeriodTime:      1,
+				ObservationPeriodLedgerGap: 1,
+			},
+			DeclarationSignatures: txDecl.Signatures(),
+			CloseSignatures:       txClose.Signatures(),
+		})
+		require.NoError(t, err)
 	}
 }
 
@@ -155,52 +222,33 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		},
 	}
 
-	// A close agreement from the remote participant should be accepted if the
-	// observation period matches the channels observation period.
-	{
-		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
-			IterationNumber:            1,
-			ObservationPeriodTime:      1,
-			ObservationPeriodLedgerGap: 1,
-		})
-		require.NoError(t, err)
-		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
-		require.NoError(t, err)
-		_, _, err = channel.ConfirmPayment(CloseAgreement{
-			Details: CloseAgreementDetails{
-				IterationNumber:            1,
-				ObservationPeriodTime:      1,
-				ObservationPeriodLedgerGap: 1,
-			},
-			CloseSignatures: txClose.Signatures(),
-		})
-		require.NoError(t, err)
-	}
-
 	// A close agreement from the remote participant should be rejected if the
 	// observation period doesn't match the channels observation period.
 	{
-		_, txClose, err := channel.CloseTxs(CloseAgreementDetails{
+		txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
 		})
 		require.NoError(t, err)
+		txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
+		require.NoError(t, err)
 		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 		require.NoError(t, err)
-		_, _, err = channel.ConfirmPayment(CloseAgreement{
+		_, err = channel.ConfirmPayment(CloseAgreement{
 			Details: CloseAgreementDetails{
 				IterationNumber:            1,
 				ObservationPeriodTime:      0,
 				ObservationPeriodLedgerGap: 0,
 			},
-			CloseSignatures: txClose.Signatures(),
+			DeclarationSignatures: txDecl.Signatures(),
+			CloseSignatures:       txClose.Signatures(),
 		})
-		require.EqualError(t, err, "invalid payment observation period: different than channel state")
+		require.EqualError(t, err, "validating payment: invalid payment observation period: different than channel state")
 	}
 }
 
-func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
+func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsResponder(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
@@ -239,18 +287,21 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentToRemote(t *testing.T) {
 		IterationNumber: 2,
 		Balance:         110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
+	require.NoError(t, err)
+	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
-	_, _, err = channel.ConfirmPayment(CloseAgreement{
-		Details:         ca,
-		CloseSignatures: txClose.Signatures(),
+	_, err = channel.ConfirmPayment(CloseAgreement{
+		Details:               ca,
+		DeclarationSignatures: txDecl.Signatures(),
+		CloseSignatures:       txClose.Signatures(),
 	})
 	require.EqualError(t, err, "close agreement is a payment to the proposer")
 }
 
-func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
+func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsInitiator(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
@@ -289,13 +340,16 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentToRemote(t *testing.T) {
 		IterationNumber: 2,
 		Balance:         90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
+	require.NoError(t, err)
+	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
-	_, _, err = channel.ConfirmPayment(CloseAgreement{
-		Details:         ca,
-		CloseSignatures: txClose.Signatures(),
+	_, err = channel.ConfirmPayment(CloseAgreement{
+		Details:               ca,
+		DeclarationSignatures: txDecl.Signatures(),
+		CloseSignatures:       txClose.Signatures(),
 	})
 	require.EqualError(t, err, "close agreement is a payment to the proposer")
 }
@@ -336,22 +390,26 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		IterationNumber: 2,
 		Balance:         -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
+	require.NoError(t, err)
+	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
-	_, _, err = channel.ConfirmPayment(CloseAgreement{
-		Details:         ca,
-		CloseSignatures: txClose.Signatures(),
+	_, err = channel.ConfirmPayment(CloseAgreement{
+		Details:               ca,
+		DeclarationSignatures: txDecl.Signatures(),
+		CloseSignatures:       txClose.Signatures(),
 	})
 	assert.EqualError(t, err, "close agreement over commits: account is underfunded to make payment")
 	assert.ErrorIs(t, err, ErrUnderfunded)
 
 	// The same close payment should pass if the balance has been updated.
 	channel.UpdateRemoteEscrowAccountBalance(200)
-	_, _, err = channel.ConfirmPayment(CloseAgreement{
-		Details:         ca,
-		CloseSignatures: txClose.Signatures(),
+	_, err = channel.ConfirmPayment(CloseAgreement{
+		Details:               ca,
+		DeclarationSignatures: txDecl.Signatures(),
+		CloseSignatures:       txClose.Signatures(),
 	})
 	assert.NoError(t, err)
 }
@@ -392,22 +450,26 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		IterationNumber: 2,
 		Balance:         110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
 	}
-	_, txClose, err := channel.CloseTxs(ca)
+	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
+	require.NoError(t, err)
+	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
-	_, _, err = channel.ConfirmPayment(CloseAgreement{
-		Details:         ca,
-		CloseSignatures: txClose.Signatures(),
+	_, err = channel.ConfirmPayment(CloseAgreement{
+		Details:               ca,
+		DeclarationSignatures: txDecl.Signatures(),
+		CloseSignatures:       txClose.Signatures(),
 	})
 	assert.EqualError(t, err, "close agreement over commits: account is underfunded to make payment")
 	assert.ErrorIs(t, err, ErrUnderfunded)
 
 	// The same close payment should pass if the balance has been updated.
 	channel.UpdateRemoteEscrowAccountBalance(200)
-	_, _, err = channel.ConfirmPayment(CloseAgreement{
-		Details:         ca,
-		CloseSignatures: txClose.Signatures(),
+	_, err = channel.ConfirmPayment(CloseAgreement{
+		Details:               ca,
+		DeclarationSignatures: txDecl.Signatures(),
+		CloseSignatures:       txClose.Signatures(),
 	})
 	assert.NoError(t, err)
 }
@@ -540,11 +602,11 @@ func TestLastConfirmedPayment(t *testing.T) {
 
 	ca, err := sendingChannel.ProposePayment(200)
 	require.NoError(t, err)
+	assert.Equal(t, ca, sendingChannel.latestUnauthorizedCloseAgreement)
 
-	ca, authorized, err := receiverChannel.ConfirmPayment(ca)
-	assert.False(t, authorized)
+	caResponse, err := receiverChannel.ConfirmPayment(ca)
 	require.NoError(t, err)
-	assert.Equal(t, ca, receiverChannel.latestUnauthorizedCloseAgreement)
+	assert.Equal(t, caResponse, receiverChannel.latestAuthorizedCloseAgreement)
 
 	// Confirming a close agreement with same sequence number but different Amount should error
 	caDifferent := CloseAgreement{
@@ -552,23 +614,19 @@ func TestLastConfirmedPayment(t *testing.T) {
 			IterationNumber: 1,
 			Balance:         400,
 		},
-		CloseSignatures: ca.CloseSignatures,
+		DeclarationSignatures: ca.DeclarationSignatures,
+		CloseSignatures:       ca.CloseSignatures,
 	}
-	_, authorized, err = receiverChannel.ConfirmPayment(caDifferent)
-	assert.False(t, authorized)
-	require.EqualError(t, err, "close agreement does not match the close agreement already in progress")
-	assert.Equal(t, CloseAgreement{Details: CloseAgreementDetails{Balance: 0}}, receiverChannel.LatestCloseAgreement())
+	_, err = sendingChannel.ConfirmPayment(caDifferent)
+	require.EqualError(t, err, "validating payment: close agreement does not match the close agreement already in progress")
+	assert.Equal(t, ca, sendingChannel.latestUnauthorizedCloseAgreement)
 
 	// Confirming a payment with same sequence number and same amount should pass
-	ca, authorized, err = sendingChannel.ConfirmPayment(ca)
-	assert.True(t, authorized)
+	caFinal, err := sendingChannel.ConfirmPayment(caResponse)
 	require.NoError(t, err)
 	assert.Equal(t, CloseAgreement{}, sendingChannel.latestUnauthorizedCloseAgreement)
-
-	ca, authorized, err = receiverChannel.ConfirmPayment(ca)
-	assert.True(t, authorized)
-	require.NoError(t, err)
-	assert.Equal(t, CloseAgreement{}, receiverChannel.latestUnauthorizedCloseAgreement)
+	assert.Equal(t, caFinal, sendingChannel.latestAuthorizedCloseAgreement)
+	assert.Equal(t, caFinal, caResponse)
 }
 
 func TestAppendNewSignature(t *testing.T) {
@@ -613,4 +671,59 @@ func randomByteArray(t *testing.T, length int) []byte {
 	_, err := rand.Read(arr)
 	require.NoError(t, err)
 	return arr
+}
+
+func TestChannel_ConfirmPayment_checkForExtraSignatures(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        int64(100),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        int64(100),
+	}
+
+	senderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
+
+	ca, err := senderChannel.ProposePayment(10)
+	require.NoError(t, err)
+
+	// Adding extra signature should cause error when receiver confirms
+	ca.CloseSignatures = append(ca.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
+	_, err = receiverChannel.ConfirmPayment(ca)
+	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 2, close: 3, max of 2 allowed for each")
+
+	// Remove extra signature, now should succeed
+	ca.CloseSignatures = ca.CloseSignatures[0:1]
+	ca, err = receiverChannel.ConfirmPayment(ca)
+	require.NoError(t, err)
+
+	// Adding extra signature should cause error when sender confirms
+	ca.DeclarationSignatures = append(ca.DeclarationSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
+	_, err = senderChannel.ConfirmPayment(ca)
+	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 3, close: 2, max of 2 allowed for each")
+
+	// Remove extra signature, now should succeed
+	ca.DeclarationSignatures = ca.DeclarationSignatures[0:2]
+	_, err = senderChannel.ConfirmPayment(ca)
+	require.NoError(t, err)
 }
