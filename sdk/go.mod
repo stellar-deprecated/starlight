@@ -2,7 +2,7 @@ module github.com/stellar/experimental-payment-channels/sdk
 
 go 1.16
 
-replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210719230929-e9c1ed0fd6ad
+replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210721064915-b6aa47488b8a
 
 require (
 	github.com/google/go-cmp v0.5.6
