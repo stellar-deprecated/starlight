@@ -408,14 +408,4 @@ func TestConfirmOpen_checkForExtraSignatures(t *testing.T) {
 	m.DeclarationSignatures = m.DeclarationSignatures[0:2]
 	m, err = senderChannel.ConfirmOpen(m)
 	require.NoError(t, err)
-
-	// Extra signature should cause error when receiver confirms last time
-	m.FormationSignatures = append(m.FormationSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-	_, err = receiverChannel.ConfirmOpen(m)
-	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 2, close: 2, formation: 3, max of 2 allowed for each")
-
-	// Remove extra signature, now should succeed
-	m.FormationSignatures = m.FormationSignatures[0:2]
-	m, err = receiverChannel.ConfirmOpen(m)
-	require.NoError(t, err)
 }
