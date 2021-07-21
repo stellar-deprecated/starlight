@@ -3,6 +3,7 @@ package integrationtests
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"testing"
 	"time"
 
@@ -33,9 +34,9 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 	t.Log("Initiator:", initiator.KP.Address())
 	t.Log("Initiator Escrow:", initiator.Escrow.Address())
 	{
-		err := retry(2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
+		err := retry(t, 2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		err = retry(2, func() error {
+		err = retry(t, 2, func() error {
 			return fundAsset(assetParam.Asset, initiator.Contribution, initiator.KP, assetParam.Distributor)
 		})
 		require.NoError(t, err)
@@ -55,9 +56,9 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 	t.Log("Responder:", responder.KP.Address())
 	t.Log("Responder Escrow:", responder.Escrow.Address())
 	{
-		err := retry(2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
+		err := retry(t, 2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
-		err = retry(2, func() error {
+		err = retry(t, 2, func() error {
 			return fundAsset(assetParam.Asset, responder.Contribution, responder.KP, assetParam.Distributor)
 		})
 		require.NoError(t, err)
@@ -94,7 +95,11 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 	require.NoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, participant.KP)
 	require.NoError(t, err)
-	txResp, err := client.SubmitFeeBumpTransaction(fbtx)
+	var txResp horizon.Transaction
+	err = retry(t, 2, func() error {
+		txResp, err = client.SubmitFeeBumpTransaction(fbtx)
+		return err
+	})
 	require.NoError(t, err)
 	participant.EscrowSequenceNumber = int64(txResp.Ledger) << 32
 
@@ -121,7 +126,10 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 
 	tx, err = tx.Sign(networkPassphrase, participant.KP)
 	require.NoError(t, err)
-	_, err = client.SubmitTransaction(tx)
+	err = retry(t, 2, func() error {
+		_, err = client.SubmitTransaction(tx)
+		return err
+	})
 	require.NoError(t, err)
 }
 
@@ -160,9 +168,9 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 	issuerKP := keypair.MustRandom()
 	distributorKP := keypair.MustRandom()
 
-	err := retry(2, func() error { return createAccount(issuerKP.FromAddress(), 1_000_0000000) })
+	err := retry(t, 2, func() error { return createAccount(issuerKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
-	err = retry(2, func() error { return createAccount(distributorKP.FromAddress(), 1_000_0000000) })
+	err = retry(t, 2, func() error { return createAccount(distributorKP.FromAddress(), 1_000_0000000) })
 	require.NoError(t, err)
 
 	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
@@ -193,7 +201,11 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 	require.NoError(t, err)
 	tx, err = tx.Sign(networkPassphrase, distributorKP, issuerKP)
 	require.NoError(t, err)
-	_, err = client.SubmitTransaction(tx)
+	fmt.Println(tx.Base64())
+	err = retry(t, 2, func() error {
+		_, err = client.SubmitTransaction(tx)
+		return err
+	})
 	require.NoError(t, err)
 
 	return state.Asset(asset.Code + ":" + asset.Issuer), distributorKP
@@ -215,13 +227,15 @@ func randomPositiveInt64(t *testing.T, max int64) int64 {
 	return int64(i) % max
 }
 
-func retry(maxAttempts int, f func() error) (err error) {
+func retry(t *testing.T, maxAttempts int, f func() error) (err error) {
+	t.Helper()
 	for i := 0; i < maxAttempts; i++ {
 		err = f()
 		if err == nil {
 			return
 		}
-		time.Sleep(time.Second)
+		t.Logf("failed attempt %d at performing a retry-able operation: %v", i, err)
+		time.Sleep(5 * time.Second)
 	}
 	return err
 }
