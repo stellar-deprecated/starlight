@@ -18,6 +18,13 @@ type DeclarationParams struct {
 func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 	minSequenceNumber := startSequenceOfIteration(p.StartSequence, p.IterationNumberExecuted)
 
+	// Build the extra signature required for signing the declaration
+	// transaction that will be required in addition to the signers for the
+	// account signers. The extra signer will be a signature by the confirming
+	// signer for the close transaction so that the confirming signer must
+	// reveal that signature publicly when submitting the declaration
+	// transaction. This prevents the confirming signer from withholding
+	// signatures for the closing transactions.
 	extraSignerKey := xdr.SignerKey{}
 	err := extraSignerKey.SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
 	if err != nil {
