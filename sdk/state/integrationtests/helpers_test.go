@@ -233,7 +233,7 @@ func retry(t *testing.T, maxAttempts int, f func() error) (err error) {
 			return
 		}
 		t.Logf("failed attempt %d at performing a retry-able operation: %v", i, err)
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 	return err
 }
