@@ -173,7 +173,7 @@ without any payment.
 
 Participants should check the state of the other participant's escrow account
 after the formation transaction is submitted to ensure the state is as
-expected.Participants may wish to reduce their exposure to griefing by making
+expected. Participants may wish to reduce their exposure to griefing by making
 deposits of initial contributions after formation. See [Security](#Security).
 
 It is critical that signatures for F are exchanged after C_i and D_i because F
