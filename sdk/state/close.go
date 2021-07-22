@@ -134,7 +134,7 @@ func (c *Channel) validateClose(ca CloseAgreement) error {
 	if ca.Details.ObservationPeriodLedgerGap != 0 {
 		return fmt.Errorf("close agreement observation period ledger gap is not zero")
 	}
-	if ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
+	if ca.Details.ConfirmingSigner != nil && ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
 		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
