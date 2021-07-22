@@ -894,14 +894,14 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 	_, err = senderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
 
-	// After a confirmed coordinated close proposing a payment should error
+	// After a confirmed coordinated close proposing a payment should error.
 	_, err = senderChannel.ProposePayment(10)
 	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
 
 	_, err = receiverChannel.ProposePayment(10)
 	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
 
-	// After a confirmed coordinated close confirming a payment should error
+	// After a confirmed coordinated close confirming a payment should error.
 	p := CloseAgreement{
 		Details: CloseAgreementDetails{
 			ObservationPeriodTime:      0,
