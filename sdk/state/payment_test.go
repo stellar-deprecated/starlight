@@ -833,3 +833,67 @@ func TestChannel_ConfirmPayment_checkForExtraSignatures(t *testing.T) {
 	_, err = senderChannel.ConfirmPayment(ca)
 	require.NoError(t, err)
 }
+
+func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        int64(100),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        int64(100),
+	}
+
+	senderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
+
+	ca, err := senderChannel.ProposeClose()
+	require.NoError(t, err)
+
+	ca, err = receiverChannel.ConfirmClose(ca)
+	require.NoError(t, err)
+
+	_, err = senderChannel.ConfirmClose(ca)
+	require.NoError(t, err)
+
+	// After a confirmed coordinated close proposing a payment should error
+	_, err = senderChannel.ProposePayment(10)
+	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
+
+	_, err = receiverChannel.ProposePayment(10)
+	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
+
+	// After a confirmed coordinated close confirming a payment should error
+	p := CloseAgreement{
+		Details: CloseAgreementDetails{
+			ObservationPeriodTime:      0,
+			ObservationPeriodLedgerGap: 0,
+			IterationNumber:            1,
+			Balance:                    10,
+			ConfirmingSigner:           localSigner.FromAddress(),
+		},
+	}
+	_, err = receiverChannel.ConfirmPayment(p)
+	require.EqualError(t, err, "validating payment: cannot confirm payment after an accepted coordinated close")
+
+	_, err = senderChannel.ConfirmPayment(p)
+	require.EqualError(t, err, "validating payment: cannot confirm payment after an accepted coordinated close")
+}

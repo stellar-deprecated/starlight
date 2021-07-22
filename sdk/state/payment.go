@@ -54,6 +54,13 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	if amount <= 0 {
 		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
 	}
+
+	// If a coordinated close has been accepted already, error.
+	if c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
+		c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
+		return CloseAgreement{}, errors.New("cannot propose payment after an accepted coordinated close")
+	}
+
 	newBalance := int64(0)
 	if c.initiator {
 		newBalance = c.Balance() + amount
@@ -101,15 +108,20 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
 	}
-	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
+	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime ||
+		ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
 		return fmt.Errorf("invalid payment observation period: different than channel state")
 	}
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && !ca.Details.Equal(c.latestUnauthorizedCloseAgreement.Details) {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
 	}
-	if ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
+	if ca.Details.ConfirmingSigner != nil && ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
 		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
+	}
+	if c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
+		c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
+		return fmt.Errorf("cannot confirm payment after an accepted coordinated close")
 	}
 	return nil
 }
