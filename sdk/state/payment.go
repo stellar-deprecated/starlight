@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
 )
 
@@ -22,6 +23,13 @@ type CloseAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
+	ConfirmingSigner           *keypair.FromAddress
+}
+
+func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type CAD CloseAgreementDetails
+	return cmp.Equal(CAD(d), CAD(d2), cmp.AllowUnexported(keypair.FromAddress{}))
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -39,7 +47,7 @@ func (ca CloseAgreement) isEmpty() bool {
 func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
 	type CA CloseAgreement
-	return cmp.Equal(CA(ca), CA(ca2))
+	return cmp.Equal(CA(ca), CA(ca2), cmp.AllowUnexported(keypair.FromAddress{}))
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
@@ -61,6 +69,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
+		ConfirmingSigner:           c.remoteSigner,
 	}
 	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
@@ -95,8 +104,12 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if ca.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime || ca.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap {
 		return fmt.Errorf("invalid payment observation period: different than channel state")
 	}
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details != ca.Details {
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && !ca.Details.Equal(c.latestUnauthorizedCloseAgreement.Details) {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
+	}
+	if ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
+		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
+		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
 	return nil
 }
