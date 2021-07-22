@@ -323,9 +323,9 @@ change `minSeqAge` and `minSeqLedgerGap` to zero.
 4. Submit modified C_i
 
 If participants choose to coordinate a close before submitting D_i they must
-take care to also modify D_i such that it contains the new C_i's hash is
-included in the new D_i's `extraSigners` or to keep a copy of the old C_i's
-signatures required to satisfy D_i's `extraSigners` precondition.
+take care that the new C_i's hash is included in the D_i's `extraSigners`,
+or keep a copy of the old C_i's signature required to satisfy D_i's `extraSigners` 
+precondition.
 
 #### Uncoordinated Close
 
