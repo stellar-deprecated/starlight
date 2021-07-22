@@ -107,10 +107,13 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
 	}
+	// Add the formation signatures to the formation tx.
 	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
 	if err != nil {
 		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
 	}
+	// Add the declaration signature provided by the confirming signer that is
+	// required to be an extra signer on the formation tx to the formation tx.
 	for _, s := range openAgreement.DeclarationSignatures {
 		var signed bool
 		signed, err = c.verifySigned(declTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
@@ -124,6 +127,8 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 			}
 		}
 	}
+	// Add the close signature provided by the confirming signer that is
+	// required to be an extra signer on the formation tx to the formation tx.
 	for _, s := range openAgreement.CloseSignatures {
 		var signed bool
 		signed, err = c.verifySigned(closeTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
