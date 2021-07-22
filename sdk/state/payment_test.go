@@ -871,6 +871,7 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
+		MaxOpenExpiry:       10 * time.Second,
 		LocalSigner:         localSigner,
 		RemoteSigner:        remoteSigner.FromAddress(),
 		LocalEscrowAccount:  localEscrowAccount,
@@ -879,34 +880,45 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 	receiverChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           false,
+		MaxOpenExpiry:       10 * time.Second,
 		LocalSigner:         remoteSigner,
 		RemoteSigner:        localSigner.FromAddress(),
 		LocalEscrowAccount:  remoteEscrowAccount,
 		RemoteEscrowAccount: localEscrowAccount,
 	})
 
+	// Open channel.
+	m, err := senderChannel.ProposeOpen(OpenParams{
+		Asset:     NativeAsset,
+		ExpiresAt: time.Now().Add(5 * time.Second),
+	})
+	require.NoError(t, err)
+	m, err = receiverChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+	_, err = senderChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+
+	// Close channel.
 	ca, err := senderChannel.ProposeClose()
 	require.NoError(t, err)
-
 	ca, err = receiverChannel.ConfirmClose(ca)
 	require.NoError(t, err)
-
 	_, err = senderChannel.ConfirmClose(ca)
 	require.NoError(t, err)
 
-	// After a confirmed coordinated close proposing a payment should error.
+	// After a confirmed coordinated close, proposing a payment should error.
 	_, err = senderChannel.ProposePayment(10)
 	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
 
 	_, err = receiverChannel.ProposePayment(10)
 	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
 
-	// After a confirmed coordinated close confirming a payment should error.
+	// After a confirmed coordinated close, confirming a payment should error.
 	p := CloseAgreement{
 		Details: CloseAgreementDetails{
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
-			IterationNumber:            1,
+			IterationNumber:            2,
 			Balance:                    10,
 			ConfirmingSigner:           localSigner.FromAddress(),
 		},
