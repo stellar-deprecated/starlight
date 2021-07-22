@@ -4,11 +4,11 @@
 To run a standalone network and Horizon instance use the fork of the quickstart docker image:
 
 ```
-docker build -t stellar/quickstart:cap21 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21
+docker build -t stellar/quickstart:cap21and40 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21and40
 ```
 
 ```
-docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21 --standalone --enable-core-artificially-accelerate-time-for-testing
+docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21and40 --standalone --enable-core-artificially-accelerate-time-for-testing
 ```
 
 The root account of the network will be:

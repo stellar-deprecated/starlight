@@ -2,8 +2,10 @@ package integrationtests
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
 )
@@ -21,7 +23,12 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
-	client = &horizonclient.Client{HorizonURL: horizonURL}
+	client = &horizonclient.Client{
+		HorizonURL: horizonURL,
+		HTTP: &http.Client{
+			Timeout: 20 * time.Second,
+		},
+	}
 	networkDetails, err := client.Root()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
