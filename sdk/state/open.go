@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -15,13 +16,17 @@ type OpenAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
 	ExpiresAt                  time.Time
+	ConfirmingSigner           *keypair.FromAddress
 }
 
 func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
-		d.ExpiresAt.Equal(d2.ExpiresAt)
+		d.ExpiresAt.Equal(d2.ExpiresAt) &&
+		((d.ConfirmingSigner == nil && d2.ConfirmingSigner == nil) ||
+			(d.ConfirmingSigner != nil && d2.ConfirmingSigner != nil &&
+				d.ConfirmingSigner.Address() == d2.ConfirmingSigner.Address()))
 }
 
 type OpenAgreement struct {
@@ -55,6 +60,7 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		IterationNumber:            1,
 		Balance:                    0,
+		ConfirmingSigner:           d.ConfirmingSigner,
 	}
 
 	decl, close, err = c.closeTxs(d, cad)
@@ -62,15 +68,28 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 		err = fmt.Errorf("building close txs for open: %w", err)
 		return
 	}
+	declHash, err := decl.Hash(c.networkPassphrase)
+	if err != nil {
+		err = fmt.Errorf("generating hash for declaration tx for open: %w", err)
+		return
+	}
+	closeHash, err := close.Hash(c.networkPassphrase)
+	if err != nil {
+		err = fmt.Errorf("generating hash for close tx for open: %w", err)
+		return
+	}
 
 	formation, err = txbuild.Formation(txbuild.FormationParams{
-		InitiatorSigner: c.initiatorSigner(),
-		ResponderSigner: c.responderSigner(),
-		InitiatorEscrow: c.initiatorEscrowAccount().Address,
-		ResponderEscrow: c.responderEscrowAccount().Address,
-		StartSequence:   c.startingSequence,
-		Asset:           d.Asset.Asset(),
-		ExpiresAt:       d.ExpiresAt,
+		InitiatorSigner:   c.initiatorSigner(),
+		ResponderSigner:   c.responderSigner(),
+		InitiatorEscrow:   c.initiatorEscrowAccount().Address,
+		ResponderEscrow:   c.responderEscrowAccount().Address,
+		StartSequence:     c.startingSequence,
+		Asset:             d.Asset.Asset(),
+		ExpiresAt:         d.ExpiresAt,
+		DeclarationTxHash: declHash,
+		CloseTxHash:       closeHash,
+		ConfirmingSigner:  d.ConfirmingSigner,
 	})
 	if err != nil {
 		err = fmt.Errorf("building formation tx for open: %w", err)
@@ -84,13 +103,44 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 // be used prior to prepare an open agreement with the other participant.
 func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 	openAgreement := c.openAgreement
-	_, _, formationTx, err = c.openTxs(openAgreement.Details)
+	declTx, closeTx, formationTx, err := c.openTxs(openAgreement.Details)
 	if err != nil {
-		return nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
+		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
 	}
+	// Add the formation signatures to the formation tx.
 	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
 	if err != nil {
 		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
+	}
+	// Add the declaration signature provided by the confirming signer that is
+	// required to be an extra signer on the formation tx to the formation tx.
+	for _, s := range openAgreement.DeclarationSignatures {
+		var signed bool
+		signed, err = c.verifySigned(declTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
+		if err != nil {
+			return nil, fmt.Errorf("finding signatures of confirming signer of declaration tx for formation tx: %w", err)
+		}
+		if signed {
+			formationTx, err = formationTx.AddSignatureDecorated(s)
+			if err != nil {
+				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
+			}
+		}
+	}
+	// Add the close signature provided by the confirming signer that is
+	// required to be an extra signer on the formation tx to the formation tx.
+	for _, s := range openAgreement.CloseSignatures {
+		var signed bool
+		signed, err = c.verifySigned(closeTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
+		if err != nil {
+			return nil, fmt.Errorf("finding signatures of confirming signer of close tx for formation tx: %w", err)
+		}
+		if signed {
+			formationTx, err = formationTx.AddSignatureDecorated(s)
+			if err != nil {
+				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
+			}
+		}
 	}
 	return
 }
@@ -100,7 +150,13 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
-	d := OpenAgreementDetails(p)
+	d := OpenAgreementDetails{
+		ObservationPeriodTime:      p.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
+		Asset:                      p.Asset,
+		ExpiresAt:                  p.ExpiresAt,
+		ConfirmingSigner:           c.remoteSigner,
+	}
 
 	txDecl, txClose, txFormation, err := c.openTxs(d)
 	if err != nil {
@@ -151,6 +207,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	if err != nil {
 		return OpenAgreement{}, fmt.Errorf("validating open agreement: %w", err)
 	}
+
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txDecl, txClose, formation, err := c.openTxs(m.Details)
@@ -231,6 +288,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			Balance:                    0,
 			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
+			ConfirmingSigner:           m.Details.ConfirmingSigner,
 		},
 		CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
 		DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),

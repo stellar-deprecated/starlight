@@ -45,6 +45,7 @@ func TestChannel_CloseTx(t *testing.T) {
 			ObservationPeriodLedgerGap: 2,
 			IterationNumber:            3,
 			Balance:                    4,
+			ConfirmingSigner:           remoteSigner.FromAddress(),
 		},
 		DeclarationSignatures: []xdr.DecoratedSignature{{Hint: [4]byte{0, 0, 0, 0}, Signature: []byte{0}}},
 		CloseSignatures:       []xdr.DecoratedSignature{{Hint: [4]byte{1, 1, 1, 1}, Signature: []byte{1}}},
@@ -94,7 +95,7 @@ func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
 	// Adding extra signature should cause error
 	ca.CloseSignatures = append(ca.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
 	_, err = responderChannel.ConfirmClose(ca)
-	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 0, close: 3, max of 2 allowed for each")
+	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 2, close: 3, max of 2 allowed for each")
 
 	// Remove extra signature, now should succeed
 	ca.CloseSignatures = ca.CloseSignatures[0:1]

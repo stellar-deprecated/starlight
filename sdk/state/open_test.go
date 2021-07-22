@@ -13,6 +13,7 @@ import (
 )
 
 func TestOpenAgreement_Equal(t *testing.T) {
+	kp := keypair.MustRandom().FromAddress()
 	testCases := []struct {
 		oa1       OpenAgreement
 		oa2       OpenAgreement
@@ -26,6 +27,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 			},
 			OpenAgreement{
@@ -34,6 +36,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 			},
 			true,
@@ -45,6 +48,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 			},
 			OpenAgreement{},
@@ -57,6 +61,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
@@ -71,6 +76,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
@@ -88,6 +94,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
@@ -106,6 +113,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
@@ -120,11 +128,45 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
 				},
 				CloseSignatures: []xdr.DecoratedSignature{
 					{
 						Hint:      [4]byte{0, 1, 2, 3},
 						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			false,
+		},
+		{
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           kp,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			OpenAgreement{
+				Details: OpenAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					Asset:                      "native",
+					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
+					ConfirmingSigner:           keypair.MustRandom().FromAddress(),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 					},
 				},
 			},
@@ -294,6 +336,7 @@ func TestChannel_OpenTx(t *testing.T) {
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
 			ExpiresAt:                  time.Now(),
+			ConfirmingSigner:           channel.remoteSigner,
 		},
 		FormationSignatures: []xdr.DecoratedSignature{{Hint: [4]byte{2, 2, 2, 2}, Signature: []byte{2}}},
 	}

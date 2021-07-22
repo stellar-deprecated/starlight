@@ -131,6 +131,105 @@ func TestCloseAgreement_Equal(t *testing.T) {
 			},
 			false,
 		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			true,
+		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+					ConfirmingSigner:           keypair.MustParseAddress("GDJ5SXSKKFXINP7TN4J4T4JAXL4VZL7UMIAGZWQTYSKHSNHLSPVOAXRY"),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			false,
+		},
+		{
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			CloseAgreement{
+				Details: CloseAgreementDetails{
+					ObservationPeriodTime:      time.Minute,
+					ObservationPeriodLedgerGap: 2,
+					IterationNumber:            3,
+					Balance:                    100,
+					ConfirmingSigner:           nil,
+				},
+				CloseSignatures: []xdr.DecoratedSignature{
+					{
+						Hint:      [4]byte{0, 1, 2, 3},
+						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+					},
+				},
+			},
+			false,
+		},
 	}
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -175,6 +274,7 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 			IterationNumber:            1,
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
+			ConfirmingSigner:           localSigner.FromAddress(),
 		})
 		require.NoError(t, err)
 		txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
@@ -186,6 +286,7 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 				IterationNumber:            1,
 				ObservationPeriodTime:      1,
 				ObservationPeriodLedgerGap: 1,
+				ConfirmingSigner:           localSigner.FromAddress(),
 			},
 			DeclarationSignatures: txDecl.Signatures(),
 			CloseSignatures:       txClose.Signatures(),
@@ -229,6 +330,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 			IterationNumber:            1,
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
+			ConfirmingSigner:           localSigner.FromAddress(),
 		})
 		require.NoError(t, err)
 		txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
@@ -284,8 +386,9 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber: 2,
-		Balance:         110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
+		IterationNumber:  2,
+		Balance:          110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
+		ConfirmingSigner: localSigner.FromAddress(),
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -337,8 +440,9 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber: 2,
-		Balance:         90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
+		IterationNumber:  2,
+		Balance:          90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
+		ConfirmingSigner: localSigner.FromAddress(),
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -387,8 +491,9 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber: 2,
-		Balance:         -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
+		IterationNumber:  2,
+		Balance:          -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
+		ConfirmingSigner: localSigner.FromAddress(),
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -447,8 +552,9 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber: 2,
-		Balance:         110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
+		IterationNumber:  2,
+		Balance:          110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
+		ConfirmingSigner: localSigner.FromAddress(),
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
