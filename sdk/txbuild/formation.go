@@ -7,26 +7,57 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 type FormationParams struct {
-	InitiatorSigner *keypair.FromAddress
-	ResponderSigner *keypair.FromAddress
-	InitiatorEscrow *keypair.FromAddress
-	ResponderEscrow *keypair.FromAddress
-	StartSequence   int64
-	Asset           txnbuild.Asset
-	ExpiresAt       time.Time
+	InitiatorSigner   *keypair.FromAddress
+	ResponderSigner   *keypair.FromAddress
+	InitiatorEscrow   *keypair.FromAddress
+	ResponderEscrow   *keypair.FromAddress
+	StartSequence     int64
+	Asset             txnbuild.Asset
+	ExpiresAt         time.Time
+	DeclarationTxHash [32]byte
+	CloseTxHash       [32]byte
+	ConfirmingSigner  *keypair.FromAddress
 }
 
 func Formation(p FormationParams) (*txnbuild.Transaction, error) {
+	// Build the list of extra signatures required for signing the formation
+	// transaction that will be required in addition to the signers for the
+	// account signers. The extra signers will be signatures by the confirming
+	// signer for the declaration and close transaction so that the confirming
+	// signer must reveal those signatures publicly when submitting the
+	// formation transaction. This prevents the confirming signer from
+	// withholding signatures for the declaration and closing transactions.
+	extraSignerKeys := [2]xdr.SignerKey{}
+	err := extraSignerKeys[0].SetSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
+	if err != nil {
+		return nil, err
+	}
+	err = extraSignerKeys[1].SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
+	if err != nil {
+		return nil, err
+	}
+	extraSigners := []string{}
+	for _, k := range extraSignerKeys {
+		var a string
+		a, err = k.GetAddress()
+		if err != nil {
+			return nil, err
+		}
+		extraSigners = append(extraSigners, a)
+	}
+
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: p.InitiatorEscrow.Address(),
 			Sequence:  p.StartSequence,
 		},
-		BaseFee:    0,
-		Timebounds: txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
+		BaseFee:      0,
+		Timebounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
+		ExtraSigners: extraSigners,
 	}
 
 	// I sponsoring ledger entries on EI
