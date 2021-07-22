@@ -381,14 +381,18 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	}
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         100, // Local (initiator) owes remote (responder) 100.
+			IterationNumber:            1,
+			Balance:                    100, // Local (initiator) owes remote (responder) 100.
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber:  2,
-		Balance:          110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
-		ConfirmingSigner: localSigner.FromAddress(),
+		IterationNumber:            2,
+		Balance:                    110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
+		ConfirmingSigner:           localSigner.FromAddress(),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -435,14 +439,18 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	}
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         100, // Remote (initiator) owes local (responder) 100.
+			IterationNumber:            1,
+			Balance:                    100, // Remote (initiator) owes local (responder) 100.
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber:  2,
-		Balance:          90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
-		ConfirmingSigner: localSigner.FromAddress(),
+		IterationNumber:            2,
+		Balance:                    90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
+		ConfirmingSigner:           localSigner.FromAddress(),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -486,14 +494,18 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	// payment changes the balance in the favor of the remote.
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         -60, // Remote (responder) owes local (initiator) 60.
+			IterationNumber:            1,
+			Balance:                    -60, // Remote (responder) owes local (initiator) 60.
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber:  2,
-		Balance:          -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
-		ConfirmingSigner: localSigner.FromAddress(),
+		IterationNumber:            2,
+		Balance:                    -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
+		ConfirmingSigner:           localSigner.FromAddress(),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -547,14 +559,18 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	// payment changes the balance in the favor of the remote.
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         60, // Remote (initiator) owes local (responder) 60.
+			IterationNumber:            1,
+			Balance:                    60, // Remote (initiator) owes local (responder) 60.
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 	ca := CloseAgreementDetails{
-		IterationNumber:  2,
-		Balance:          110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
-		ConfirmingSigner: localSigner.FromAddress(),
+		IterationNumber:            2,
+		Balance:                    110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
+		ConfirmingSigner:           localSigner.FromAddress(),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
 	}
 	txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, ca)
 	require.NoError(t, err)
@@ -608,8 +624,10 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 	// payment changes the balance in the favor of the remote.
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         60, // Local (initiator) owes remote (responder) 60.
+			IterationNumber:            1,
+			Balance:                    60, // Local (initiator) owes remote (responder) 60.
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 	_, err := channel.ProposePayment(110)
@@ -650,8 +668,10 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 	// payment changes the balance in the favor of the remote.
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         -60, // Local (responder) owes remote (initiator) 60.
+			IterationNumber:            1,
+			Balance:                    -60, // Local (responder) owes remote (initiator) 60.
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 	_, err := channel.ProposePayment(110)
