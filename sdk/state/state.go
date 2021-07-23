@@ -151,6 +151,21 @@ func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSig
 	return false, nil
 }
 
+// TODO - delete/rename/export other one
+func (c *Channel) VerifySigned(tx *txnbuild.Transaction, sigs []xdr.Signature, signer keypair.KP) (bool, error) {
+	hash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return false, err
+	}
+	for _, sig := range sigs {
+		err := signer.Verify(hash[:], sig)
+		if err == nil {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (c *Channel) amountToLocal(balance int64) int64 {
 	if c.initiator {
 		return amountToInitiator(balance)

@@ -89,6 +89,27 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 	return
 }
 
+// TODO - rename? refactor CloseTxs()?
+func (c *Channel) LatestUnauthorizedCloseTx() (*txnbuild.Transaction, error) {
+	txClose, err := txbuild.Close(txbuild.CloseParams{
+		ObservationPeriodTime:      c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
+		InitiatorSigner:            c.initiatorSigner(),
+		ResponderSigner:            c.responderSigner(),
+		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
+		ResponderEscrow:            c.responderEscrowAccount().Address,
+		StartSequence:              c.startingSequence,
+		IterationNumber:            c.latestUnauthorizedCloseAgreement.Details.IterationNumber,
+		AmountToInitiator:          amountToInitiator(c.latestUnauthorizedCloseAgreement.Details.Balance),
+		AmountToResponder:          amountToResponder(c.latestUnauthorizedCloseAgreement.Details.Balance),
+		Asset:                      c.OpenAgreement().Details.Asset.Asset(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return txClose, nil
+}
+
 // ProposeClose proposes that the latest authorized close agreement be submitted
 // without waiting the observation period. This should be used when participants
 // are in agreement on the final close state, but would like to submit earlier
