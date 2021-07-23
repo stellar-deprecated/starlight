@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -52,13 +51,19 @@ func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	if amount <= 0 {
-		return CloseAgreement{}, errors.New("payment amount must be greater than 0")
+		return CloseAgreement{}, fmt.Errorf("payment amount must be greater than 0")
 	}
 
 	// If a coordinated close has been accepted already, error.
 	if !c.latestAuthorizedCloseAgreement.isEmpty() && c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
 		c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
-		return CloseAgreement{}, errors.New("cannot propose payment after an accepted coordinated close")
+		return CloseAgreement{}, fmt.Errorf("cannot propose payment after an accepted coordinated close")
+	}
+
+	// If a coordinated close has been proposed by this channel already, error.
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
+		c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
+		return CloseAgreement{}, fmt.Errorf("cannot propose payment after proposing a coordinated close")
 	}
 
 	newBalance := int64(0)
@@ -105,6 +110,17 @@ var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 // there are additional verifications ConfirmPayment performs that are based
 // on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
+	// If a coordinated close has been accepted already, error.
+	if !c.latestAuthorizedCloseAgreement.isEmpty() && c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
+		c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
+		return fmt.Errorf("cannot confirm payment after an accepted coordinated close")
+	}
+	// If a coordinated close has been proposed by this channel already, error.
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
+		c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
+		return fmt.Errorf("cannot propose payment after proposing a coordinated close")
+	}
+
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
 	}
@@ -119,10 +135,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
-	if !c.latestAuthorizedCloseAgreement.isEmpty() && c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
-		c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
-		return fmt.Errorf("cannot confirm payment after an accepted coordinated close")
-	}
+
 	return nil
 }
 

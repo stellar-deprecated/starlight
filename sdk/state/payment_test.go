@@ -889,8 +889,10 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 
 	// Open channel.
 	m, err := senderChannel.ProposeOpen(OpenParams{
-		Asset:     NativeAsset,
-		ExpiresAt: time.Now().Add(5 * time.Second),
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Second),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
 	})
 	require.NoError(t, err)
 	m, err = receiverChannel.ConfirmOpen(m)
@@ -898,9 +900,28 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 	_, err = senderChannel.ConfirmOpen(m)
 	require.NoError(t, err)
 
-	// Close channel.
+	// Sender proposes coordinated close.
 	ca, err := senderChannel.ProposeClose()
 	require.NoError(t, err)
+
+	// After proposing a coordinated close, proposing a payment should error.
+	_, err = senderChannel.ProposePayment(10)
+	require.EqualError(t, err, "cannot propose payment after proposing a coordinated close")
+
+	// After proposing a coordinated close, confirming a payment should error.
+	p := CloseAgreement{
+		Details: CloseAgreementDetails{
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+			IterationNumber:            1,
+			Balance:                    0,
+			ConfirmingSigner:           localSigner.FromAddress(),
+		},
+	}
+	_, err = senderChannel.ConfirmPayment(p)
+	require.EqualError(t, err, "validating payment: cannot propose payment after proposing a coordinated close")
+
+	// Finish close.
 	ca, err = receiverChannel.ConfirmClose(ca)
 	require.NoError(t, err)
 	_, err = senderChannel.ConfirmClose(ca)
@@ -914,7 +935,7 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 	require.EqualError(t, err, "cannot propose payment after an accepted coordinated close")
 
 	// After a confirmed coordinated close, confirming a payment should error.
-	p := CloseAgreement{
+	p = CloseAgreement{
 		Details: CloseAgreementDetails{
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
