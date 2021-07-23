@@ -714,15 +714,21 @@ func TestLastConfirmedPayment(t *testing.T) {
 		RemoteEscrowAccount: localEscrowAccount,
 	})
 
-	// latest close agreement should be set during open steps
-	sendingChannel.openAgreement = OpenAgreement{
-		Details: OpenAgreementDetails{
-			Asset: NativeAsset,
+	// // latest close agreement should be set during open steps
+	sendingChannel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber:            1,
+			Balance:                    0,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
-	receiverChannel.openAgreement = OpenAgreement{
-		Details: OpenAgreementDetails{
-			Asset: NativeAsset,
+	receiverChannel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber:            1,
+			Balance:                    0,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 	}
 
@@ -737,8 +743,10 @@ func TestLastConfirmedPayment(t *testing.T) {
 	// Confirming a close agreement with same sequence number but different Amount should error
 	caDifferent := CloseAgreement{
 		Details: CloseAgreementDetails{
-			IterationNumber: 1,
-			Balance:         400,
+			IterationNumber:            2,
+			Balance:                    400,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
 		},
 		DeclarationSignatures: ca.DeclarationSignatures,
 		CloseSignatures:       ca.CloseSignatures,
@@ -829,6 +837,23 @@ func TestChannel_ConfirmPayment_checkForExtraSignatures(t *testing.T) {
 		LocalEscrowAccount:  remoteEscrowAccount,
 		RemoteEscrowAccount: localEscrowAccount,
 	})
+
+	senderChannel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber:            1,
+			Balance:                    0,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		},
+	}
+	receiverChannel.latestAuthorizedCloseAgreement = CloseAgreement{
+		Details: CloseAgreementDetails{
+			IterationNumber:            1,
+			Balance:                    0,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		},
+	}
 
 	ca, err := senderChannel.ProposePayment(10)
 	require.NoError(t, err)
