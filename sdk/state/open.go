@@ -121,7 +121,13 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 			return nil, fmt.Errorf("finding signatures of confirming signer of declaration tx for formation tx: %w", err)
 		}
 		if signed {
-			formationTx, err = formationTx.AddSignatureDecorated(s)
+			var declTxHash [32]byte
+			declTxHash, err = declTx.Hash(c.networkPassphrase)
+			if err != nil {
+				return nil, fmt.Errorf("hashing declaration tx for including payload sig in formation tx: %w", err)
+			}
+			payloadSig := xdr.NewDecoratedSignatureForPayload(s.Signature, s.Hint, declTxHash[:])
+			formationTx, err = formationTx.AddSignatureDecorated(payloadSig)
 			if err != nil {
 				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
 			}
@@ -136,7 +142,13 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 			return nil, fmt.Errorf("finding signatures of confirming signer of close tx for formation tx: %w", err)
 		}
 		if signed {
-			formationTx, err = formationTx.AddSignatureDecorated(s)
+			var closeTxHash [32]byte
+			closeTxHash, err = closeTx.Hash(c.networkPassphrase)
+			if err != nil {
+				return nil, fmt.Errorf("hashing close tx for including payload sig in formation tx: %w", err)
+			}
+			payloadSig := xdr.NewDecoratedSignatureForPayload(s.Signature, s.Hint, closeTxHash[:])
+			formationTx, err = formationTx.AddSignatureDecorated(payloadSig)
 			if err != nil {
 				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
 			}
