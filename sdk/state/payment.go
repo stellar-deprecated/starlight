@@ -115,12 +115,14 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 		c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
 		return fmt.Errorf("cannot propose payment after proposing a coordinated close")
 	}
+
 	// If a coordinated close has been accepted already, error.
 	if !c.latestAuthorizedCloseAgreement.isEmpty() && c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
 		c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
 		return fmt.Errorf("cannot confirm payment after an accepted coordinated close")
 	}
 
+	// If the new close agreement details are incorrect, error.
 	if ca.Details.IterationNumber != c.NextIterationNumber() {
 		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ca.Details.IterationNumber, c.NextIterationNumber())
 	}
