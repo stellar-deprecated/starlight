@@ -74,7 +74,13 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 			return nil, nil, fmt.Errorf("finding signatures of confirming signer of close tx for declaration tx for latest close agreement: %w", err)
 		}
 		if signed {
-			declTx, err = declTx.AddSignatureDecorated(s)
+			var closeTxHash [32]byte
+			closeTxHash, err = closeTx.Hash(c.networkPassphrase)
+			if err != nil {
+				return nil, nil, fmt.Errorf("hashing close tx for including payload sig in declaration tx: %w", err)
+			}
+			payloadSig := xdr.NewDecoratedSignatureForPayload(s.Signature, s.Hint, closeTxHash[:])
+			declTx, err = declTx.AddSignatureDecorated(payloadSig)
 			if err != nil {
 				return nil, nil, fmt.Errorf("attaching signatures to declaration tx for latest close agreement: %w", err)
 			}
