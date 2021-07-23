@@ -131,7 +131,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && !ca.Details.Equal(c.latestUnauthorizedCloseAgreement.Details) {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
 	}
-	if ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
+	if ca.Details.ConfirmingSigner != nil && ca.Details.ConfirmingSigner.Address() != c.localSigner.Address() &&
 		ca.Details.ConfirmingSigner.Address() != c.remoteSigner.Address() {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
