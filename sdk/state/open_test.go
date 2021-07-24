@@ -63,11 +63,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{
@@ -78,11 +75,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			true,
@@ -96,11 +90,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{},
@@ -115,11 +106,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{
@@ -130,11 +118,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			false,
@@ -148,11 +133,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{
@@ -163,11 +145,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           keypair.MustRandom().FromAddress(),
 				},
-				CloseSignatures: []xdr.DecoratedSignature{
-					{
-						Hint:      [4]byte{0, 1, 2, 3},
-						Signature: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-					},
+				ProposerSignatures: OpenAgreementSignatures{
+					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			false,
@@ -336,76 +315,35 @@ func TestChannel_OpenTx(t *testing.T) {
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
 			ExpiresAt:                  time.Now(),
-			ConfirmingSigner:           channel.remoteSigner,
+			ProposingSigner:            localSigner.FromAddress(),
+			ConfirmingSigner:           remoteSigner.FromAddress(),
 		},
-		FormationSignatures: []xdr.DecoratedSignature{{Hint: [4]byte{2, 2, 2, 2}, Signature: []byte{2}}},
+		ProposerSignatures: OpenAgreementSignatures{
+			Declaration: xdr.Signature{0},
+			Close:       xdr.Signature{1},
+			Formation:   xdr.Signature{2},
+		},
+		ConfirmerSignatures: OpenAgreementSignatures{
+			Declaration: xdr.Signature{3},
+			Close:       xdr.Signature{4},
+			Formation:   xdr.Signature{5},
+		},
 	}
 
-	formationTx, err := channel.OpenTx()
+	declTx, closeTx, formationTx, err := channel.openTxs(channel.openAgreement.Details)
+	formationTx, err = channel.OpenTx()
+	require.NoError(t, err)
+	declTxHash, err := declTx.Hash(channel.networkPassphrase)
+	require.NoError(t, err)
+	closeTxHash, err := closeTx.Hash(channel.networkPassphrase)
 	require.NoError(t, err)
 	// TODO: Compare the non-signature parts of formationTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to
 	// txnbuild.
-	assert.Equal(t, []xdr.DecoratedSignature{{Hint: [4]byte{2, 2, 2, 2}, Signature: []byte{2}}}, formationTx.Signatures())
-}
-
-func TestConfirmOpen_checkForExtraSignatures(t *testing.T) {
-	localSigner := keypair.MustRandom()
-	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
-	senderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-	})
-	receiverChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         remoteSigner,
-		RemoteSigner:        localSigner.FromAddress(),
-		LocalEscrowAccount:  remoteEscrowAccount,
-		RemoteEscrowAccount: localEscrowAccount,
-	})
-
-	p := OpenParams{
-		ObservationPeriodTime:      time.Minute,
-		ObservationPeriodLedgerGap: 2,
-		Asset:                      "native",
-		ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-	}
-
-	m, err := senderChannel.ProposeOpen(p)
-	require.NoError(t, err)
-
-	m.CloseSignatures = append(m.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-
-	// Extra signature should cause error when receiver confirms
-	_, err = receiverChannel.ConfirmOpen(m)
-	assert.Equal(t, OpenAgreement{}, receiverChannel.openAgreement)
-	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 2, close: 3, formation: 2, max of 2 allowed for each")
-
-	// Remove extra signature, now should succeed
-	m.CloseSignatures = m.CloseSignatures[0:1]
-	m, err = receiverChannel.ConfirmOpen(m)
-	require.NoError(t, err)
-
-	// Adding extra signature should fail when sender confirms
-	m.DeclarationSignatures = append(m.DeclarationSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-	_, err = senderChannel.ConfirmOpen(m)
-	require.EqualError(t, err, "input open agreement has too many signatures, has declaration: 3, close: 2, formation: 2, max of 2 allowed for each")
-
-	// Remove extra signature, now should succeed
-	m.DeclarationSignatures = m.DeclarationSignatures[0:2]
-	m, err = senderChannel.ConfirmOpen(m)
-	require.NoError(t, err)
+	assert.ElementsMatch(t, []xdr.DecoratedSignature{
+		{Hint: localSigner.Hint(), Signature: []byte{2}},
+		{Hint: remoteSigner.Hint(), Signature: []byte{5}},
+		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), declTxHash[:]),
+		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
+	}, formationTx.Signatures())
 }
