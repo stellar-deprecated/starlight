@@ -24,9 +24,7 @@ func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
 		d.ExpiresAt.Equal(d2.ExpiresAt) &&
-		((d.ConfirmingSigner == nil && d2.ConfirmingSigner == nil) ||
-			(d.ConfirmingSigner != nil && d2.ConfirmingSigner != nil &&
-				d.ConfirmingSigner.Address() == d2.ConfirmingSigner.Address()))
+		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
 }
 
 type OpenAgreement struct {

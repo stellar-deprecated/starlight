@@ -28,7 +28,7 @@ type CloseAgreementDetails struct {
 func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
 	type CAD CloseAgreementDetails
-	return cmp.Equal(CAD(d), CAD(d2), cmp.AllowUnexported(keypair.FromAddress{}))
+	return cmp.Equal(CAD(d), CAD(d2))
 }
 
 // CloseAgreement contains everything a participant needs to execute the close
@@ -46,7 +46,7 @@ func (ca CloseAgreement) isEmpty() bool {
 func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
 	type CA CloseAgreement
-	return cmp.Equal(CA(ca), CA(ca2), cmp.AllowUnexported(keypair.FromAddress{}))
+	return cmp.Equal(CA(ca), CA(ca2))
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
