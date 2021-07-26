@@ -75,3 +75,58 @@ func TestChannel_CloseTx(t *testing.T) {
 		{Hint: remoteSigner.Hint(), Signature: []byte{3}},
 	}, closeTx.Signatures())
 }
+
+func TestChannel_ProposeClose(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	localChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	remoteChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	open1, err := localChannel.ProposeOpen(OpenParams{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		ExpiresAt:                  time.Now().Add(time.Hour),
+	})
+	require.NoError(t, err)
+	open2, err := remoteChannel.ConfirmOpen(open1)
+	require.NoError(t, err)
+	_, err = localChannel.ConfirmOpen(open2)
+	require.NoError(t, err)
+
+	// If the local proposes a close, the agreement will have them as the proposer.
+	closeByLocal, err := localChannel.ProposeClose()
+	require.NoError(t, err)
+	assert.Equal(t, localSigner.FromAddress(), closeByLocal.Details.ProposingSigner)
+	assert.Equal(t, remoteSigner.FromAddress(), closeByLocal.Details.ConfirmingSigner)
+
+	// If the remote proposes a close, the agreement will have them as the proposer.
+	closeByRemote, err := remoteChannel.ProposeClose()
+	require.NoError(t, err)
+	assert.Equal(t, remoteSigner.FromAddress(), closeByRemote.Details.ProposingSigner)
+	assert.Equal(t, localSigner.FromAddress(), closeByRemote.Details.ConfirmingSigner)
+}

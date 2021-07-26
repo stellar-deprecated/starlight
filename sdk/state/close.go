@@ -90,6 +90,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	d := c.latestAuthorizedCloseAgreement.Details
 	d.ObservationPeriodTime = 0
 	d.ObservationPeriodLedgerGap = 0
+	d.ProposingSigner = c.localSigner.FromAddress()
 	d.ConfirmingSigner = c.remoteSigner
 
 	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
