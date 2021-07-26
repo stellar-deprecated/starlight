@@ -330,8 +330,9 @@ func TestChannel_OpenTx(t *testing.T) {
 		},
 	}
 
-	declTx, closeTx, formationTx, err := channel.openTxs(channel.openAgreement.Details)
-	formationTx, err = channel.OpenTx()
+	declTx, closeTx, _, err := channel.openTxs(channel.openAgreement.Details)
+	require.NoError(t, err)
+	formationTx, err := channel.OpenTx()
 	require.NoError(t, err)
 	declTxHash, err := declTx.Hash(channel.networkPassphrase)
 	require.NoError(t, err)

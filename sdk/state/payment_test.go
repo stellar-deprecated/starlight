@@ -1,7 +1,6 @@
 package state
 
 import (
-	"math/rand"
 	"strconv"
 	"testing"
 	"time"
@@ -749,13 +748,6 @@ func TestLastConfirmedPayment(t *testing.T) {
 	assert.Equal(t, CloseAgreement{}, sendingChannel.latestUnauthorizedCloseAgreement)
 	assert.Equal(t, caFinal, sendingChannel.latestAuthorizedCloseAgreement)
 	assert.Equal(t, caFinal, caResponse)
-}
-
-func randomByteArray(t *testing.T, length int) []byte {
-	arr := make([]byte, length)
-	_, err := rand.Read(arr)
-	require.NoError(t, err)
-	return arr
 }
 
 func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testing.T) {

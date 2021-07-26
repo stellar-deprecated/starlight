@@ -135,7 +135,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details: d,
+		Details:            d,
 		ProposerSignatures: sigs,
 	}
 	return c.latestUnauthorizedCloseAgreement, nil

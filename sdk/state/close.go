@@ -104,7 +104,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details: d,
+		Details:            d,
 		ProposerSignatures: sigs,
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
