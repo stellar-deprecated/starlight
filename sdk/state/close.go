@@ -54,7 +54,7 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 }
 
 // CloseTxs builds the declaration and close transactions used for closing the
-// channel using the latest close agreement. The transaction are signed and
+// channel using the latest close agreement. The transactions are signed and
 // ready to submit.
 func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
 	ca := c.latestAuthorizedCloseAgreement
