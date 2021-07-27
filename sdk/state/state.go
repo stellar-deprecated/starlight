@@ -104,6 +104,25 @@ func (c *Channel) RemoteEscrowAccount() EscrowAccount {
 	return *c.remoteEscrowAccount
 }
 
+// IngestTx accepts any transaction that has been seen as successful or
+// unsuccessful on the network. The function updates the internal state of the
+// channel if the transaction relates to the channel.
+//
+// TODO: Return an error when the state of the channel has changed to closed or
+// closing.
+func (c *Channel) IngestTx(tx *txnbuild.Transaction, _ xdr.TransactionResult) error {
+	// If the tx's source account is the initiator's escrow account:
+	// - If the tx hash matches an authorized or unauthorized declaration, mark
+	// the channel as closing.
+	// - If the tx hash matches an unauthorized declaration, copy off the close tx
+	// signature.
+	// - If the tx hash matches an authorized or unauthorized close, mark the
+	// channel as closed.
+	// - If the tx is for an older declaration, mark the channel as closing with
+	// requiring bump.
+	return nil
+}
+
 func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
 	if c.initiator {
 		return c.localEscrowAccount

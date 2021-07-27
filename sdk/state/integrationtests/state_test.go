@@ -3,7 +3,6 @@ package integrationtests
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -919,7 +919,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 
 	// Initiator must find the signatures for the close tx on network to complete.
 	{
-		t.Log("Initiator goes hunting")
+		t.Log("Initiator sees the declaration and goes looking for the close signatures...")
 		declTx, closeTx, err := initiatorChannel.UnauthorizedCloseTxs()
 		require.NoError(t, err)
 
@@ -932,18 +932,39 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		closeHash, err := closeTx.Hash(networkPassphrase)
 		require.NoError(t, err)
 		t.Log("Looking for sig for close:", hex.EncodeToString(closeHash[:]))
-
 		require.NoError(t, err)
-
+		closeSig := []byte(nil)
 		for _, sigStr := range tx.Signatures {
 			sig, err := base64.StdEncoding.DecodeString(sigStr)
 			require.NoError(t, err)
 			err = responder.KP.FromAddress().Verify(closeHash[:], sig)
 			if err == nil {
-				fmt.Println("found sig:", sigStr)
+				t.Log("Found sig:", sigStr)
+				closeSig = sig
 				break
 			}
 		}
+		require.NotNil(t, closeSig, "Could not find close sig")
+
+		t.Log("Initiator waits the observation period...")
+		time.Sleep(observationPeriodTime)
+
+		t.Log("Initiator submits close")
+		closeTx, err = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(closeSig, responder.KP.Hint()))
+		require.NoError(t, err)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      closeTx,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
+		if !assert.NoError(t, err) {
+			t.Log(horizonclient.GetError(err).ResultString())
+		}
+		t.Log("Closed")
 	}
 
 	// // check final escrow fund amounts are correct
