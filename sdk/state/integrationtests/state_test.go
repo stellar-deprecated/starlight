@@ -2,6 +2,7 @@ package integrationtests
 
 import (
 	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -895,27 +897,70 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Responder starts but doesn't finish closing the channel.
-	var broadcastedTx *txnbuild.Transaction
+	var broadcastedTx *txnbuild.Transaction // << Pretend this broadcasted tx is how the initiator finds out about the tx.
 	{
 		t.Log("Responder starts but doesn't complete an uncoordinated close...")
 		t.Log("Responder submits the declaration transaction for the agreement that the initiator does not have all the signatures...")
-		declTx, closeTx, err := responderChannel.CloseTxs()
-		require.NoError(t, err)
-		declHash, _ := declTx.HashHex(networkPassphrase)
-		t.Log("Responder submits the declaration:", declHash)
-		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      declTx,
-			FeeAccount: responder.KP.Address(),
-			BaseFee:    txnbuild.MinBaseFee,
-		})
-		require.NoError(t, err)
-		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-		require.NoError(t, err)
-		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
-		closeHash, _ := closeTx.HashHex(networkPassphrase)
-		t.Log("Responder does not submit the close:", closeHash)
-		broadcastedTx = declTx
+
+		{
+			declTx, _, err := responderChannel.CloseTxs()
+			require.NoError(t, err)
+			declHash, _ := declTx.HashHex(networkPassphrase)
+			t.Log("Responder tries to submit the declaration without disclosing signatures of the close tx:", declHash)
+			declTxXDR := declTx.ToXDR()
+			// Assume the declTx has 3 signatures, 2 to authorize the
+			// declaration, 1 that is a the close tx's signature disclosed.
+			assert.Len(t, declTxXDR.V1.Signatures, 3)
+			// Truncate the declTx signatures so the disclosure of the close tx
+			// does not occur.
+			declTxXDR.V1.Signatures = declTxXDR.V1.Signatures[:2]
+			declTxModified64, err := xdr.MarshalBase64(declTxXDR)
+			require.NoError(t, err)
+			declTxModifiedEnv, err := txnbuild.TransactionFromXDR(declTxModified64)
+			require.NoError(t, err)
+			declTxModified, ok := declTxModifiedEnv.Transaction()
+			require.True(t, ok)
+			// Submit the modified declaration transaction and confirm.
+			fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+				Inner:      declTxModified,
+				FeeAccount: responder.KP.Address(),
+				BaseFee:    txnbuild.MinBaseFee,
+			})
+			require.NoError(t, err)
+			fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+			require.NoError(t, err)
+			_, err = client.SubmitFeeBumpTransaction(fbtx)
+			require.Error(t, err)
+			resultsStr, err := horizonclient.GetError(err).ResultString()
+			require.NoError(t, err)
+			results := xdr.TransactionResult{}
+			_, err = xdr.Unmarshal(base64.NewDecoder(base64.StdEncoding, strings.NewReader(resultsStr)), &results)
+			require.NoError(t, err)
+			require.Equal(t, xdr.TransactionResultCodeTxBadAuth, results.Result.InnerResultPair.Result.Result.Code)
+			t.Log("Responder failed to submit tx, result:", results.Result.InnerResultPair.Result.Result.Code)
+		}
+
+		{
+			declTx, closeTx, err := responderChannel.CloseTxs()
+			require.NoError(t, err)
+			declHash, _ := declTx.HashHex(networkPassphrase)
+			t.Log("Responder tries to submit the declaration with all signatures:", declHash)
+			t.Log("Responder submits the declaration:", declHash)
+			fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+				Inner:      declTx,
+				FeeAccount: responder.KP.Address(),
+				BaseFee:    txnbuild.MinBaseFee,
+			})
+			require.NoError(t, err)
+			fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+			require.NoError(t, err)
+			_, err = client.SubmitFeeBumpTransaction(fbtx)
+			require.NoError(t, err)
+			t.Log("Responder succeeds in submitting declaration")
+			closeHash, _ := closeTx.HashHex(networkPassphrase)
+			t.Log("Responder does not submit the close:", closeHash)
+			broadcastedTx = declTx
+		}
 	}
 
 	// Initiator must find the signatures for the close tx on network to complete.
