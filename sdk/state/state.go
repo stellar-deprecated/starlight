@@ -1,9 +1,11 @@
 package state
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -134,23 +136,6 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
-func (c *Channel) verifySigned(tx *txnbuild.Transaction, sigs []xdr.DecoratedSignature, signer keypair.KP) (bool, error) {
-	hash, err := tx.Hash(c.networkPassphrase)
-	if err != nil {
-		return false, err
-	}
-	for _, sig := range sigs {
-		if sig.Hint != signer.Hint() {
-			continue
-		}
-		err := signer.Verify(hash[:], sig.Signature)
-		if err == nil {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (c *Channel) amountToLocal(balance int64) int64 {
 	if c.initiator {
 		return amountToInitiator(balance)
@@ -179,16 +164,26 @@ func amountToResponder(balance int64) int64 {
 	return 0
 }
 
-func appendNewSignatures(oldSignatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) []xdr.DecoratedSignature {
-	m := make(map[string]bool)
-	for _, os := range oldSignatures {
-		m[string(os.Signature)] = true
+func signTx(tx *txnbuild.Transaction, networkPassphrase string, kp *keypair.Full) (xdr.Signature, error) {
+	h, err := network.HashTransactionInEnvelope(tx.ToXDR(), networkPassphrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash transaction: %w", err)
 	}
+	sig, err := kp.Sign(h[:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign transaction hash: %w", err)
+	}
+	return xdr.Signature(sig), nil
+}
 
-	for _, ns := range newSignatures {
-		if !m[string(ns.Signature)] {
-			oldSignatures = append(oldSignatures, ns)
-		}
+func verifySigned(tx *txnbuild.Transaction, networkPassphrase string, signer keypair.KP, sig xdr.Signature) error {
+	hash, err := tx.Hash(networkPassphrase)
+	if err != nil {
+		return err
 	}
-	return oldSignatures
+	err = signer.Verify(hash[:], []byte(sig))
+	if err != nil {
+		return err
+	}
+	return nil
 }

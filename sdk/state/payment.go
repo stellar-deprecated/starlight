@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
@@ -22,6 +23,7 @@ type CloseAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
+	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
 }
 
@@ -31,12 +33,41 @@ func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {
 	return cmp.Equal(CAD(d), CAD(d2))
 }
 
+type CloseAgreementSignatures struct {
+	Close       xdr.Signature
+	Declaration xdr.Signature
+}
+
+func signCloseAgreementTxs(decl, close *txnbuild.Transaction, networkPassphrase string, signer *keypair.Full) (s CloseAgreementSignatures, err error) {
+	s.Declaration, err = signTx(decl, networkPassphrase, signer)
+	if err != nil {
+		return CloseAgreementSignatures{}, fmt.Errorf("signing declaration: %w", err)
+	}
+	s.Close, err = signTx(close, networkPassphrase, signer)
+	if err != nil {
+		return CloseAgreementSignatures{}, fmt.Errorf("signing close: %w", err)
+	}
+	return s, nil
+}
+
+func (s CloseAgreementSignatures) Verify(decl, close *txnbuild.Transaction, networkPassphrase string, signer *keypair.FromAddress) error {
+	err := verifySigned(decl, networkPassphrase, signer, s.Declaration)
+	if err != nil {
+		return fmt.Errorf("verifying declaration signed: %w", err)
+	}
+	err = verifySigned(close, networkPassphrase, signer, s.Close)
+	if err != nil {
+		return fmt.Errorf("verifying close signed: %w", err)
+	}
+	return nil
+}
+
 // CloseAgreement contains everything a participant needs to execute the close
 // agreement on the Stellar network.
 type CloseAgreement struct {
-	Details               CloseAgreementDetails
-	CloseSignatures       []xdr.DecoratedSignature
-	DeclarationSignatures []xdr.DecoratedSignature
+	Details             CloseAgreementDetails
+	ProposerSignatures  CloseAgreementSignatures
+	ConfirmerSignatures CloseAgreementSignatures
 }
 
 func (ca CloseAgreement) isEmpty() bool {
@@ -47,6 +78,16 @@ func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
 	type CA CloseAgreement
 	return cmp.Equal(CA(ca), CA(ca2))
+}
+
+func (ca CloseAgreement) SignaturesFor(signer *keypair.FromAddress) *CloseAgreementSignatures {
+	if ca.Details.ProposingSigner.Equal(signer) {
+		return &ca.ProposerSignatures
+	}
+	if ca.Details.ConfirmingSigner.Equal(signer) {
+		return &ca.ConfirmerSignatures
+	}
+	return nil
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
@@ -81,25 +122,21 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
+		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
 	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
-	txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
+	sigs, err := signCloseAgreementTxs(txDecl, txClose, c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return CloseAgreement{}, err
-	}
-	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
-	if err != nil {
-		return CloseAgreement{}, err
+		return CloseAgreement{}, fmt.Errorf("signing open agreement with local: %w", err)
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:               d,
-		CloseSignatures:       txClose.Signatures(),
-		DeclarationSignatures: txDecl.Signatures(),
+		Details:            d,
+		ProposerSignatures: sigs,
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
 }
@@ -155,68 +192,46 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}
 
 	// If remote has not signed the txs, error as is invalid.
-	signed, err := c.verifySigned(txClose, ca.CloseSignatures, c.remoteSigner)
+	remoteSigs := ca.SignaturesFor(c.remoteSigner)
+	if remoteSigs == nil {
+		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
+	}
+	err = remoteSigs.Verify(txDecl, txClose, c.networkPassphrase, c.remoteSigner)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("verifying close signed by remote: %w", err)
-	}
-	if !signed {
-		return CloseAgreement{}, fmt.Errorf("verifying close signed by remote: not signed by remote")
-	}
-	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.remoteSigner)
-	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by remote: %w", err)
-	}
-	if !signed {
-		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by remote: not signed by remote")
+		return CloseAgreement{}, fmt.Errorf("not signed by remote: %w", err)
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
-	signed, err = c.verifySigned(txClose, ca.CloseSignatures, c.localSigner)
-	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("verifying close signed by local: %w", err)
+	localSigs := ca.SignaturesFor(c.localSigner.FromAddress())
+	if localSigs == nil {
+		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
-	if !signed {
+	err = localSigs.Verify(txDecl, txClose, c.networkPassphrase, c.localSigner.FromAddress())
+	if err != nil {
+		// If the local is not the confirmer, do not sign, because being the
+		// proposer they should have signed earlier.
+		if !ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
+			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
+		}
+		// If the payment is to the proposer, error, because the payment channel
+		// only supports pushing money to the other participant not pulling.
 		if (c.initiator && ca.Details.Balance > c.latestAuthorizedCloseAgreement.Details.Balance) ||
 			(!c.initiator && ca.Details.Balance < c.latestAuthorizedCloseAgreement.Details.Balance) {
 			return CloseAgreement{}, fmt.Errorf("close agreement is a payment to the proposer")
 		}
+		// If the payment over extends the proposers ability to pay, error.
 		if c.amountToLocal(ca.Details.Balance) > c.remoteEscrowAccount.Balance {
 			return CloseAgreement{}, fmt.Errorf("close agreement over commits: %w", ErrUnderfunded)
 		}
-		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
+		ca.ConfirmerSignatures, err = signCloseAgreementTxs(txDecl, txClose, c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return CloseAgreement{}, fmt.Errorf("signing close with local: %w", err)
+			return CloseAgreement{}, fmt.Errorf("local signing: %w", err)
 		}
-		ca.CloseSignatures = append(ca.CloseSignatures, txClose.Signatures()...)
-	}
-
-	// If local has not signed declaration, sign it.
-	signed, err = c.verifySigned(txDecl, ca.DeclarationSignatures, c.localSigner)
-	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("verifying declaration signed by local: %w", err)
-	}
-	if !signed {
-		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return CloseAgreement{}, err
-		}
-		ca.DeclarationSignatures = append(ca.DeclarationSignatures, txDecl.Signatures()...)
-	}
-
-	// If an agreement ever surpasses 2 signatures per tx, error.
-	if len(ca.DeclarationSignatures) > 2 || len(ca.CloseSignatures) > 2 {
-		return CloseAgreement{}, fmt.Errorf("close agreement has too many signatures,"+
-			" has declaration: %d, close: %d, max of 2 allowed for each",
-			len(ca.DeclarationSignatures), len(ca.CloseSignatures))
 	}
 
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
-	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details:               ca.Details,
-		CloseSignatures:       appendNewSignatures(c.latestUnauthorizedCloseAgreement.CloseSignatures, ca.CloseSignatures),
-		DeclarationSignatures: appendNewSignatures(c.latestUnauthorizedCloseAgreement.DeclarationSignatures, ca.DeclarationSignatures),
-	}
+	c.latestAuthorizedCloseAgreement = ca
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
 
 	return c.latestAuthorizedCloseAgreement, nil

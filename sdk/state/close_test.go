@@ -45,22 +45,38 @@ func TestChannel_CloseTx(t *testing.T) {
 			ObservationPeriodLedgerGap: 2,
 			IterationNumber:            3,
 			Balance:                    4,
+			ProposingSigner:            localSigner.FromAddress(),
 			ConfirmingSigner:           remoteSigner.FromAddress(),
 		},
-		DeclarationSignatures: []xdr.DecoratedSignature{{Hint: [4]byte{0, 0, 0, 0}, Signature: []byte{0}}},
-		CloseSignatures:       []xdr.DecoratedSignature{{Hint: [4]byte{1, 1, 1, 1}, Signature: []byte{1}}},
+		ProposerSignatures: CloseAgreementSignatures{
+			Declaration: xdr.Signature{0},
+			Close:       xdr.Signature{1},
+		},
+		ConfirmerSignatures: CloseAgreementSignatures{
+			Declaration: xdr.Signature{2},
+			Close:       xdr.Signature{3},
+		},
 	}
 
 	declTx, closeTx, err := channel.CloseTxs()
 	require.NoError(t, err)
+	closeTxHash, err := closeTx.Hash(channel.networkPassphrase)
+	require.NoError(t, err)
 	// TODO: Compare the non-signature parts of the txs with the result of
 	// channel.closeTxs() when there is an practical way of doing that added to
 	// txnbuild.
-	assert.Equal(t, []xdr.DecoratedSignature{{Hint: [4]byte{0, 0, 0, 0}, Signature: []byte{0}}}, declTx.Signatures())
-	assert.Equal(t, []xdr.DecoratedSignature{{Hint: [4]byte{1, 1, 1, 1}, Signature: []byte{1}}}, closeTx.Signatures())
+	assert.ElementsMatch(t, []xdr.DecoratedSignature{
+		{Hint: localSigner.Hint(), Signature: []byte{0}},
+		{Hint: remoteSigner.Hint(), Signature: []byte{2}},
+		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), closeTxHash[:]),
+	}, declTx.Signatures())
+	assert.ElementsMatch(t, []xdr.DecoratedSignature{
+		{Hint: localSigner.Hint(), Signature: []byte{1}},
+		{Hint: remoteSigner.Hint(), Signature: []byte{3}},
+	}, closeTx.Signatures())
 }
 
-func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
+func TestChannel_ProposeClose(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
@@ -72,33 +88,45 @@ func TestChannel_ConfirmClose_checksForExtraSignatures(t *testing.T) {
 		SequenceNumber: int64(202),
 	}
 
-	senderChannel := NewChannel(Config{
+	localChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
 		LocalSigner:         localSigner,
 		RemoteSigner:        remoteSigner.FromAddress(),
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
 	})
-	responderChannel := NewChannel(Config{
+	remoteChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           false,
 		LocalSigner:         remoteSigner,
 		RemoteSigner:        localSigner.FromAddress(),
 		LocalEscrowAccount:  remoteEscrowAccount,
 		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
 	})
 
-	ca, err := senderChannel.ProposeClose()
+	open1, err := localChannel.ProposeOpen(OpenParams{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		ExpiresAt:                  time.Now().Add(time.Hour),
+	})
+	require.NoError(t, err)
+	open2, err := remoteChannel.ConfirmOpen(open1)
+	require.NoError(t, err)
+	_, err = localChannel.ConfirmOpen(open2)
 	require.NoError(t, err)
 
-	// Adding extra signature should cause error
-	ca.CloseSignatures = append(ca.CloseSignatures, xdr.DecoratedSignature{Signature: randomByteArray(t, 10)})
-	_, err = responderChannel.ConfirmClose(ca)
-	require.EqualError(t, err, "close agreement has too many signatures, has declaration: 2, close: 3, max of 2 allowed for each")
-
-	// Remove extra signature, now should succeed
-	ca.CloseSignatures = ca.CloseSignatures[0:1]
-	_, err = responderChannel.ConfirmClose(ca)
+	// If the local proposes a close, the agreement will have them as the proposer.
+	closeByLocal, err := localChannel.ProposeClose()
 	require.NoError(t, err)
+	assert.Equal(t, localSigner.FromAddress(), closeByLocal.Details.ProposingSigner)
+	assert.Equal(t, remoteSigner.FromAddress(), closeByLocal.Details.ConfirmingSigner)
+
+	// If the remote proposes a close, the agreement will have them as the proposer.
+	closeByRemote, err := remoteChannel.ProposeClose()
+	require.NoError(t, err)
+	assert.Equal(t, remoteSigner.FromAddress(), closeByRemote.Details.ProposingSigner)
+	assert.Equal(t, localSigner.FromAddress(), closeByRemote.Details.ConfirmingSigner)
 }
