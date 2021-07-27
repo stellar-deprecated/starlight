@@ -16,6 +16,7 @@ type OpenAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
 	ExpiresAt                  time.Time
+	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
 }
 
@@ -24,16 +25,52 @@ func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
 		d.ExpiresAt.Equal(d2.ExpiresAt) &&
-		((d.ConfirmingSigner == nil && d2.ConfirmingSigner == nil) ||
-			(d.ConfirmingSigner != nil && d2.ConfirmingSigner != nil &&
-				d.ConfirmingSigner.Address() == d2.ConfirmingSigner.Address()))
+		d.ProposingSigner.Equal(d2.ProposingSigner) &&
+		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
+}
+
+type OpenAgreementSignatures struct {
+	Close       xdr.Signature
+	Declaration xdr.Signature
+	Formation   xdr.Signature
+}
+
+func signOpenAgreementTxs(decl, close, formation *txnbuild.Transaction, networkPassphrase string, signer *keypair.Full) (s OpenAgreementSignatures, err error) {
+	s.Declaration, err = signTx(decl, networkPassphrase, signer)
+	if err != nil {
+		return OpenAgreementSignatures{}, fmt.Errorf("signing declaration: %w", err)
+	}
+	s.Close, err = signTx(close, networkPassphrase, signer)
+	if err != nil {
+		return OpenAgreementSignatures{}, fmt.Errorf("signing close: %w", err)
+	}
+	s.Formation, err = signTx(formation, networkPassphrase, signer)
+	if err != nil {
+		return OpenAgreementSignatures{}, fmt.Errorf("signing formation: %w", err)
+	}
+	return s, nil
+}
+
+func (s OpenAgreementSignatures) Verify(decl, close, formation *txnbuild.Transaction, networkPassphrase string, signer *keypair.FromAddress) error {
+	err := verifySigned(decl, networkPassphrase, signer, s.Declaration)
+	if err != nil {
+		return fmt.Errorf("verifying declaration signed: %w", err)
+	}
+	err = verifySigned(close, networkPassphrase, signer, s.Close)
+	if err != nil {
+		return fmt.Errorf("verifying close signed: %w", err)
+	}
+	err = verifySigned(formation, networkPassphrase, signer, s.Formation)
+	if err != nil {
+		return fmt.Errorf("verifying formation signed: %w", err)
+	}
+	return nil
 }
 
 type OpenAgreement struct {
-	Details               OpenAgreementDetails
-	CloseSignatures       []xdr.DecoratedSignature
-	DeclarationSignatures []xdr.DecoratedSignature
-	FormationSignatures   []xdr.DecoratedSignature
+	Details             OpenAgreementDetails
+	ProposerSignatures  OpenAgreementSignatures
+	ConfirmerSignatures OpenAgreementSignatures
 }
 
 func (oa OpenAgreement) isEmpty() bool {
@@ -44,6 +81,16 @@ func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
 	type OA OpenAgreement
 	return cmp.Equal(OA(oa), OA(oa2))
+}
+
+func (oa OpenAgreement) SignaturesFor(signer *keypair.FromAddress) *OpenAgreementSignatures {
+	if oa.Details.ProposingSigner.Equal(signer) {
+		return &oa.ProposerSignatures
+	}
+	if oa.Details.ConfirmingSigner.Equal(signer) {
+		return &oa.ConfirmerSignatures
+	}
+	return nil
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
@@ -102,58 +149,32 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 // transaction is signed and ready to submit. ProposeOpen and ConfirmOpen must
 // be used prior to prepare an open agreement with the other participant.
 func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
-	openAgreement := c.openAgreement
-	declTx, closeTx, formationTx, err := c.openTxs(openAgreement.Details)
+	oa := c.openAgreement
+	declTx, closeTx, formationTx, err := c.openTxs(oa.Details)
 	if err != nil {
 		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
 	}
+
 	// Add the formation signatures to the formation tx.
-	formationTx, err = formationTx.AddSignatureDecorated(openAgreement.FormationSignatures...)
-	if err != nil {
-		return nil, fmt.Errorf("attaching signatures to formation tx for latest close agreement: %w", err)
-	}
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.ProposerSignatures.Formation, oa.Details.ProposingSigner.Hint()))
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.ConfirmerSignatures.Formation, oa.Details.ConfirmingSigner.Hint()))
+
 	// Add the declaration signature provided by the confirming signer that is
 	// required to be an extra signer on the formation tx to the formation tx.
-	for _, s := range openAgreement.DeclarationSignatures {
-		var signed bool
-		signed, err = c.verifySigned(declTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
-		if err != nil {
-			return nil, fmt.Errorf("finding signatures of confirming signer of declaration tx for formation tx: %w", err)
-		}
-		if signed {
-			var declTxHash [32]byte
-			declTxHash, err = declTx.Hash(c.networkPassphrase)
-			if err != nil {
-				return nil, fmt.Errorf("hashing declaration tx for including payload sig in formation tx: %w", err)
-			}
-			payloadSig := xdr.NewDecoratedSignatureForPayload(s.Signature, s.Hint, declTxHash[:])
-			formationTx, err = formationTx.AddSignatureDecorated(payloadSig)
-			if err != nil {
-				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
-			}
-		}
+	declTxHash, err := declTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return nil, fmt.Errorf("hashing declaration tx for including payload sig in formation tx: %w", err)
 	}
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.ConfirmerSignatures.Declaration, oa.Details.ConfirmingSigner.Hint(), declTxHash[:]))
+
 	// Add the close signature provided by the confirming signer that is
 	// required to be an extra signer on the formation tx to the formation tx.
-	for _, s := range openAgreement.CloseSignatures {
-		var signed bool
-		signed, err = c.verifySigned(closeTx, []xdr.DecoratedSignature{s}, openAgreement.Details.ConfirmingSigner)
-		if err != nil {
-			return nil, fmt.Errorf("finding signatures of confirming signer of close tx for formation tx: %w", err)
-		}
-		if signed {
-			var closeTxHash [32]byte
-			closeTxHash, err = closeTx.Hash(c.networkPassphrase)
-			if err != nil {
-				return nil, fmt.Errorf("hashing close tx for including payload sig in formation tx: %w", err)
-			}
-			payloadSig := xdr.NewDecoratedSignatureForPayload(s.Signature, s.Hint, closeTxHash[:])
-			formationTx, err = formationTx.AddSignatureDecorated(payloadSig)
-			if err != nil {
-				return nil, fmt.Errorf("attaching signatures to formation tx for open agreement: %w", err)
-			}
-		}
+	closeTxHash, err := closeTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return nil, fmt.Errorf("hashing close tx for including payload sig in formation tx: %w", err)
 	}
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.ConfirmerSignatures.Close, oa.Details.ConfirmingSigner.Hint(), closeTxHash[:]))
+
 	return
 }
 
@@ -167,6 +188,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 		ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
 		Asset:                      p.Asset,
 		ExpiresAt:                  p.ExpiresAt,
+		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
 
@@ -174,23 +196,13 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	if err != nil {
 		return OpenAgreement{}, err
 	}
-	txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
+	sigs, err := signOpenAgreementTxs(txDecl, txClose, txFormation, c.networkPassphrase, c.localSigner)
 	if err != nil {
-		return OpenAgreement{}, err
-	}
-	txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
-	if err != nil {
-		return OpenAgreement{}, err
-	}
-	txFormation, err = txFormation.Sign(c.networkPassphrase, c.localSigner)
-	if err != nil {
-		return OpenAgreement{}, err
+		return OpenAgreement{}, fmt.Errorf("signing open agreement with local: %w", err)
 	}
 	open := OpenAgreement{
-		Details:               d,
-		CloseSignatures:       txClose.Signatures(),
-		DeclarationSignatures: txDecl.Signatures(),
-		FormationSignatures:   txFormation.Signatures(),
+		Details:            d,
+		ProposerSignatures: sigs,
 	}
 	c.openAgreement = open
 	return open, nil
@@ -228,68 +240,31 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	}
 
 	// If remote has not signed the txs, error as is invalid.
-	signed, err := c.verifySigned(txClose, m.CloseSignatures, c.remoteSigner)
+	remoteSigs := m.SignaturesFor(c.remoteSigner)
+	if remoteSigs == nil {
+		return OpenAgreement{}, fmt.Errorf("remote is not a signer")
+	}
+	err = remoteSigs.Verify(txDecl, txClose, formation, c.networkPassphrase, c.remoteSigner)
 	if err != nil {
-		return OpenAgreement{}, fmt.Errorf("verifying close signed by remote: %w", err)
-	}
-	if !signed {
-		return OpenAgreement{}, fmt.Errorf("verifying close signed by remote: not signed by remote")
-	}
-	signed, err = c.verifySigned(txDecl, m.DeclarationSignatures, c.remoteSigner)
-	if err != nil {
-		return OpenAgreement{}, fmt.Errorf("verifying declaration with remote: %w", err)
-	}
-	if !signed {
-		return OpenAgreement{}, fmt.Errorf("verifying declaration signed by remote: not signed by remote")
-	}
-	signed, err = c.verifySigned(formation, m.FormationSignatures, c.remoteSigner)
-	if err != nil {
-		return OpenAgreement{}, fmt.Errorf("verifying formation with remote: %w", err)
-	}
-	if !signed {
-		return OpenAgreement{}, fmt.Errorf("verifying formation signed by remote: not signed by remote")
+		return OpenAgreement{}, fmt.Errorf("not signed by remote: %w", err)
 	}
 
 	// If local has not signed the txs, sign them.
-	signed, err = c.verifySigned(txClose, m.CloseSignatures, c.localSigner)
+	localSigs := m.SignaturesFor(c.localSigner.FromAddress())
+	if localSigs == nil {
+		return OpenAgreement{}, fmt.Errorf("remote is not a signer")
+	}
+	err = localSigs.Verify(txDecl, txClose, formation, c.networkPassphrase, c.localSigner.FromAddress())
 	if err != nil {
-		return OpenAgreement{}, fmt.Errorf("verifying close signed by local: %w", err)
-	}
-	if !signed {
-		txClose, err = txClose.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return OpenAgreement{}, fmt.Errorf("signing close with local: %w", err)
+		// If the local is not the confirmer, do not sign, because being the
+		// proposer they should have signed earlier.
+		if !m.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
+			return OpenAgreement{}, fmt.Errorf("not signed by local: %w", err)
 		}
-		m.CloseSignatures = append(m.CloseSignatures, txClose.Signatures()...)
-	}
-	signed, err = c.verifySigned(txDecl, m.DeclarationSignatures, c.localSigner)
-	if err != nil {
-		return OpenAgreement{}, fmt.Errorf("verifying declaration with local: %w", err)
-	}
-	if !signed {
-		txDecl, err = txDecl.Sign(c.networkPassphrase, c.localSigner)
+		m.ConfirmerSignatures, err = signOpenAgreementTxs(txDecl, txClose, formation, c.networkPassphrase, c.localSigner)
 		if err != nil {
-			return OpenAgreement{}, fmt.Errorf("signing declaration with local: decl %w", err)
+			return OpenAgreement{}, fmt.Errorf("local signing: %w", err)
 		}
-		m.DeclarationSignatures = append(m.DeclarationSignatures, txDecl.Signatures()...)
-	}
-	signed, err = c.verifySigned(formation, m.FormationSignatures, c.localSigner)
-	if err != nil {
-		return OpenAgreement{}, fmt.Errorf("verifying formation with local: %w", err)
-	}
-	if !signed {
-		formation, err = formation.Sign(c.networkPassphrase, c.localSigner)
-		if err != nil {
-			return OpenAgreement{}, fmt.Errorf("signing formation with local: %w", err)
-		}
-		m.FormationSignatures = append(m.FormationSignatures, formation.Signatures()...)
-	}
-
-	// If an agreement ever surpasses 2 signatures per tx, error.
-	if len(m.DeclarationSignatures) > 2 || len(m.CloseSignatures) > 2 || len(m.FormationSignatures) > 2 {
-		return OpenAgreement{}, fmt.Errorf("input open agreement has too many signatures,"+
-			" has declaration: %d, close: %d, formation: %d, max of 2 allowed for each",
-			len(m.DeclarationSignatures), len(m.CloseSignatures), len(m.FormationSignatures))
 	}
 
 	// All signatures are present that would be required to submit all
@@ -300,16 +275,22 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			Balance:                    0,
 			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
+			ProposingSigner:            m.Details.ProposingSigner,
 			ConfirmingSigner:           m.Details.ConfirmingSigner,
 		},
-		CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
-		DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
+		ProposerSignatures: CloseAgreementSignatures{
+			Declaration: m.ProposerSignatures.Declaration,
+			Close:       m.ProposerSignatures.Close,
+		},
+		ConfirmerSignatures: CloseAgreementSignatures{
+			Declaration: m.ConfirmerSignatures.Declaration,
+			Close:       m.ConfirmerSignatures.Close,
+		},
 	}
 	c.openAgreement = OpenAgreement{
-		Details:               m.Details,
-		CloseSignatures:       appendNewSignatures(c.openAgreement.CloseSignatures, m.CloseSignatures),
-		DeclarationSignatures: appendNewSignatures(c.openAgreement.DeclarationSignatures, m.DeclarationSignatures),
-		FormationSignatures:   appendNewSignatures(c.openAgreement.FormationSignatures, m.FormationSignatures),
+		Details:             m.Details,
+		ProposerSignatures:  m.ProposerSignatures,
+		ConfirmerSignatures: m.ConfirmerSignatures,
 	}
 	return c.openAgreement, nil
 }

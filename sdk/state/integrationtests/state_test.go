@@ -1,6 +1,8 @@
 package integrationtests
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
@@ -10,7 +12,6 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,23 +61,30 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(formationExpiry),
 	})
 	require.NoError(t, err)
-	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 1)
-	assert.Len(t, open.FormationSignatures, 1)
+	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.ProposerSignatures.Formation)
+	assert.Empty(t, open.ConfirmerSignatures)
 	{
 		// R signs, R is done
 		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -293,23 +301,30 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(formationExpiry),
 	})
 	require.NoError(t, err)
-	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 1)
-	assert.Len(t, open.FormationSignatures, 1)
+	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.ProposerSignatures.Formation)
+	assert.Empty(t, open.ConfirmerSignatures)
 	{
 		// R signs, R is done
 		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 
 		// I stores the signatures, I is done.
 		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -466,23 +481,31 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 1)
-	assert.Len(t, open.FormationSignatures, 1)
+	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.ProposerSignatures.Formation)
+	assert.Empty(t, open.ConfirmerSignatures)
+
 	{
 		// R signs txClose and txDecl
 		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -640,23 +663,30 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 1)
-	assert.Len(t, open.FormationSignatures, 1)
+	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.ProposerSignatures.Formation)
+	assert.Empty(t, open.ConfirmerSignatures)
 	{
 		// R signs
 		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
+		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -809,40 +839,21 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 
 	// Open
 	t.Log("Open...")
-	// I signs txClose
-	open, err := initiatorChannel.ProposeOpen(state.OpenParams{
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		Asset:                      asset,
-		ExpiresAt:                  time.Now().Add(formationExpiry),
-	})
-
-	require.NoError(t, err)
-	assert.Len(t, open.CloseSignatures, 1)
-	assert.Len(t, open.DeclarationSignatures, 1)
-	assert.Len(t, open.FormationSignatures, 1)
 	{
-		// R signs
+		open, err := initiatorChannel.ProposeOpen(state.OpenParams{
+			ObservationPeriodTime:      observationPeriodTime,
+			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+			Asset:                      asset,
+			ExpiresAt:                  time.Now().Add(formationExpiry),
+		})
 		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
-
-		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		assert.Len(t, open.CloseSignatures, 2)
-		assert.Len(t, open.DeclarationSignatures, 2)
-		assert.Len(t, open.FormationSignatures, 2)
-	}
-
-	{
-		fi, err := initiatorChannel.OpenTx()
+		tx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
-
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-			Inner:      fi,
+			Inner:      tx,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
@@ -857,122 +868,83 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
-	// Perform a number of iterations, much like two participants may.
-	// Exchange signed C_i and D_i for each
-	t.Log("Subsequent agreements...")
-	rBalanceCheck := responder.Contribution
-	iBalanceCheck := initiator.Contribution
-	endingIterationNumber := int64(20)
-	for i < endingIterationNumber {
-		i++
-		require.Equal(t, i, initiatorChannel.NextIterationNumber())
-		require.Equal(t, i, responderChannel.NextIterationNumber())
-		// get a random payment amount from 0 to 100 lumens
-		amount := randomPositiveInt64(t, 100_0000000)
-
-		paymentLog := ""
-		var sendingChannel, receivingChannel *state.Channel
-		if randomBool(t) {
-			paymentLog = "I payment to R of: "
-			sendingChannel = initiatorChannel
-			receivingChannel = responderChannel
-			rBalanceCheck += amount
-			iBalanceCheck -= amount
-		} else {
-			paymentLog = "R payment to I of: "
-			sendingChannel = responderChannel
-			receivingChannel = initiatorChannel
-			rBalanceCheck -= amount
-			iBalanceCheck += amount
-		}
-		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
-		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
-		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
-
-		// Sender: creates new Payment, signs, sends to other party
-		payment, err := sendingChannel.ProposePayment(amount)
+	// Perform a transaction.
+	{
+		payment, err := initiatorChannel.ProposePayment(8)
 		require.NoError(t, err)
-
-		// Receiver: receives new payment, validates, then confirms by signing
-		payment, err = receivingChannel.ConfirmPayment(payment)
+		payment, err = responderChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
-
-		// Sender: stores signatures from receiver
-		_, err = sendingChannel.ConfirmPayment(payment)
+		_, err = initiatorChannel.ConfirmPayment(payment)
 		require.NoError(t, err)
 	}
 
-	// Uncoordinated Close
-	t.Log("Begin close process ...")
-
-	t.Log("Initiator proposes a coordinated close")
-	ca, err := initiatorChannel.ProposeClose()
-	require.NoError(t, err)
-
-	_, err = responderChannel.ConfirmClose(ca)
-	require.NoError(t, err)
-
-	t.Log("Responder does not return close signatures and submits declaration transaction")
-	lastD, test, err := responderChannel.CloseTxs()
-	require.NoError(t, err)
-
-	// TODO - remove
-	fmt.Printf("%+v\n", test)
-	fmt.Printf("%+v\n", lastD)
-
-	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-		Inner:      lastD,
-		FeeAccount: responder.KP.Address(),
-		BaseFee:    txnbuild.MinBaseFee,
-	})
-	require.NoError(t, err)
-	fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-	require.NoError(t, err)
-	_, err = client.SubmitFeeBumpTransaction(fbtx)
-	require.NoError(t, err)
-
-	t.Log("Initiator gets close signature from network")
-	txRequest := horizonclient.TransactionRequest{ForAccount: responder.KP.Address()}
-	txs, err := client.Transactions(txRequest)
-	require.NoError(t, err)
-	lastTx := txs.Embedded.Records[len(txs.Embedded.Records)-1]
-	tx := lastTx.InnerTransaction
-
-	txClose, err := initiatorChannel.LatestUnauthorizedCloseTx()
-	require.NoError(t, err)
-
-	// TODO - remove
-	fmt.Printf("%+v\n", txClose)
-
-	for _, s := range tx.Signatures {
-		signed, err := initiatorChannel.VerifySigned(txClose, []xdr.Signature{xdr.Signature([]byte(s))}, responder.KP)
+	// Perform another transaction.
+	{
+		payment, err := initiatorChannel.ProposePayment(2)
 		require.NoError(t, err)
-		if signed {
-			fmt.Println(s)
-		} else {
-			fmt.Println("not a match")
-		}
+		_, err = responderChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		// Pretend the responder doesn't pass back their response to the
+		// initiator. The initiator never sees their signatures, so the
+		// initiator never calls confirm payment with the responders signature.
+		// The responder has a last authorized agreement with total balance
+		// owing as 10. The initiator has a last authorized agreement with total
+		// balance owing as 8, and an unauthorized agreement with total balance
+		// as 10.
+		assert.Equal(t, initiatorChannel.LatestCloseAgreement().Details.Balance, int64(8))
+		assert.Equal(t, responderChannel.LatestCloseAgreement().Details.Balance, int64(10))
 	}
 
-	// t.Log("Responder closing channel with new coordinated close transaction")
-	// _, txCoordinated, err := responderChannel.CloseTxs()
-	// require.NoError(t, err)
-	// fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-	// 	Inner:      txCoordinated,
-	// 	FeeAccount: responder.KP.Address(),
-	// 	BaseFee:    txnbuild.MinBaseFee,
-	// })
-	// require.NoError(t, err)
-	// fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-	// require.NoError(t, err)
-	// _, err = client.SubmitFeeBumpTransaction(fbtx)
-	// if err != nil {
-	// 	hErr := horizonclient.GetError(err)
-	// 	t.Log("Submitting Close:", txCoordinated.SourceAccount().Sequence, "Error:", err)
-	// 	t.Log(hErr.ResultString())
-	// 	require.NoError(t, err)
-	// }
-	// t.Log("Coordinated close successful")
+	// Responder starts but doesn't finish closing the channel.
+	{
+		t.Log("Responder starts but doesn't complete an uncoordinated close...")
+		t.Log("Responder submits the declaration transaction for the agreement that the initiator does not have all the signatures...")
+		declTx, closeTx, err := responderChannel.CloseTxs()
+		require.NoError(t, err)
+		declHash, _ := declTx.HashHex(networkPassphrase)
+		t.Log("Responder submits the declaration:", declHash)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      declTx,
+			FeeAccount: responder.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
+		require.NoError(t, err)
+		closeHash, _ := closeTx.HashHex(networkPassphrase)
+		t.Log("Responder does not submit the close:", closeHash)
+	}
+
+	// Initiator must find the signatures for the close tx on network to complete.
+	{
+		t.Log("Initiator goes hunting")
+		declTx, closeTx, err := initiatorChannel.UnauthorizedCloseTxs()
+		require.NoError(t, err)
+
+		declHash, err := declTx.HashHex(networkPassphrase)
+		require.NoError(t, err)
+		t.Log("Looking for declaration:", declHash)
+		tx, err := client.TransactionDetail(declHash)
+		require.NoError(t, err)
+
+		closeHash, err := closeTx.Hash(networkPassphrase)
+		require.NoError(t, err)
+		t.Log("Looking for sig for close:", hex.EncodeToString(closeHash[:]))
+
+		require.NoError(t, err)
+
+		for _, sigStr := range tx.Signatures {
+			sig, err := base64.StdEncoding.DecodeString(sigStr)
+			require.NoError(t, err)
+			err = responder.KP.FromAddress().Verify(closeHash[:], sig)
+			if err == nil {
+				fmt.Println("found sig:", sigStr)
+				break
+			}
+		}
+	}
 
 	// // check final escrow fund amounts are correct
 	// accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
