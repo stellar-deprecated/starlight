@@ -947,14 +947,16 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		t.Log("Closed")
 	}
 
-	// // check final escrow fund amounts are correct
-	// accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
-	// responderEscrowResponse, err := client.AccountDetail(accountRequest)
-	// require.NoError(t, err)
-	// assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderEscrowResponse))
+	// Check the final state of the escrow accounts.
+	{
+		// Initiator should be down 10 (0.0000010).
+		initiatorEscrowResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()})
+		require.NoError(t, err)
+		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorEscrowResponse))
 
-	// accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
-	// initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
-	// require.NoError(t, err)
-	// assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
+		// Responder should be up 10 (0.0000010).
+		responderEscrowResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.Escrow.Address()})
+		require.NoError(t, err)
+		assert.Equal(t, "1000.0000010", assetBalance(asset, responderEscrowResponse))
+	}
 }
