@@ -82,22 +82,6 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 	return
 }
 
-func (c *Channel) UnauthorizedCloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
-	ca := c.latestUnauthorizedCloseAgreement
-	declTx, closeTx, err = c.closeTxs(c.openAgreement.Details, ca.Details)
-	if err != nil {
-		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
-	}
-
-	// Add the declaration signatures to the declaration tx.
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.ProposerSignatures.Declaration, ca.Details.ProposingSigner.Hint()))
-
-	// Add the close signatures to the close tx.
-	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.ProposerSignatures.Close, ca.Details.ProposingSigner.Hint()))
-
-	return
-}
-
 // ProposeClose proposes that the latest authorized close agreement be submitted
 // without waiting the observation period. This should be used when participants
 // are in agreement on the final close state, but would like to submit earlier

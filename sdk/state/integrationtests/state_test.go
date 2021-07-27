@@ -1,8 +1,6 @@
 package integrationtests
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"testing"
 	"time"
 
@@ -11,7 +9,6 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -896,6 +893,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Responder starts but doesn't finish closing the channel.
+	broadcastedTx := (*txnbuild.Transaction)(nil)
 	{
 		t.Log("Responder starts but doesn't complete an uncoordinated close...")
 		t.Log("Responder submits the declaration transaction for the agreement that the initiator does not have all the signatures...")
@@ -915,42 +913,20 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		require.NoError(t, err)
 		closeHash, _ := closeTx.HashHex(networkPassphrase)
 		t.Log("Responder does not submit the close:", closeHash)
+		broadcastedTx = declTx
 	}
 
 	// Initiator must find the signatures for the close tx on network to complete.
 	{
 		t.Log("Initiator sees the declaration and goes looking for the close signatures...")
-		declTx, closeTx, err := initiatorChannel.UnauthorizedCloseTxs()
+		err = initiatorChannel.IngestTx(broadcastedTx)
 		require.NoError(t, err)
-
-		declHash, err := declTx.HashHex(networkPassphrase)
-		require.NoError(t, err)
-		t.Log("Looking for declaration:", declHash)
-		tx, err := client.TransactionDetail(declHash)
-		require.NoError(t, err)
-
-		closeHash, err := closeTx.Hash(networkPassphrase)
-		require.NoError(t, err)
-		t.Log("Looking for sig for close:", hex.EncodeToString(closeHash[:]))
-		require.NoError(t, err)
-		closeSig := []byte(nil)
-		for _, sigStr := range tx.Signatures {
-			sig, err := base64.StdEncoding.DecodeString(sigStr)
-			require.NoError(t, err)
-			err = responder.KP.FromAddress().Verify(closeHash[:], sig)
-			if err == nil {
-				t.Log("Found sig:", sigStr)
-				closeSig = sig
-				break
-			}
-		}
-		require.NotNil(t, closeSig, "Could not find close sig")
 
 		t.Log("Initiator waits the observation period...")
 		time.Sleep(observationPeriodTime)
 
 		t.Log("Initiator submits close")
-		closeTx, err = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(closeSig, responder.KP.Hint()))
+		_, closeTx, err := initiatorChannel.CloseTxs()
 		require.NoError(t, err)
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      closeTx,

@@ -110,16 +110,64 @@ func (c *Channel) RemoteEscrowAccount() EscrowAccount {
 //
 // TODO: Return an error when the state of the channel has changed to closed or
 // closing.
-func (c *Channel) IngestTx(tx *txnbuild.Transaction, _ xdr.TransactionResult) error {
-	// If the tx's source account is the initiator's escrow account:
-	// - If the tx hash matches an authorized or unauthorized declaration, mark
-	// the channel as closing.
-	// - If the tx hash matches an unauthorized declaration, copy off the close tx
-	// signature.
-	// - If the tx hash matches an authorized or unauthorized close, mark the
+// TODO: Also accept the xdr.TransactionResult so code can determine if
+// successful or not.
+func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
+	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+		return nil
+	}
+
+	// TODO: If the tx hash matches an authorized or unauthorized declaration,
+	// mark the channel as closing.
+	// TODO: If the tx hash matches an authorized or unauthorized close, mark the
 	// channel as closed.
-	// - If the tx is for an older declaration, mark the channel as closing with
+	// TODO: If the tx is for an older declaration, mark the channel as closing with
 	// requiring bump.
+	// TODO: Use the transaction result to affect on success/failure.
+
+	// If the tx hash matches an unauthorized decl, copy the close signature.
+	if c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return nil
+	}
+	txHash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing tx: %w", err)
+	}
+	declTx, closeTx, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
+	if err != nil {
+		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
+	}
+	declTxHash, err := declTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
+	}
+	if txHash != declTxHash {
+		return nil
+	}
+	closeTxHash, err := closeTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing latest unauthorized close tx: %w", err)
+	}
+	ca := c.latestUnauthorizedCloseAgreement
+	for _, sig := range tx.Signatures() {
+		err = c.remoteSigner.Verify(declTxHash[:], sig.Signature)
+		if err == nil {
+			ca.ConfirmerSignatures.Declaration = sig.Signature
+			continue
+		}
+		err = c.remoteSigner.Verify(closeTxHash[:], sig.Signature)
+		if err == nil {
+			ca.ConfirmerSignatures.Close = sig.Signature
+			continue
+		}
+	}
+	if ca.ConfirmerSignatures.Declaration != nil &&
+		ca.ConfirmerSignatures.Close != nil {
+		_, err = c.ConfirmPayment(ca)
+		if err != nil {
+			return fmt.Errorf("confirming the last unauthorized close: %w", err)
+		}
+	}
 	return nil
 }
 
