@@ -108,13 +108,15 @@ func (c *Channel) RemoteEscrowAccount() EscrowAccount {
 // unsuccessful on the network. The function updates the internal state of the
 // channel if the transaction relates to the channel.
 //
-// TODO: Return an error when the state of the channel has changed to closed or
-// closing.
-// TODO: Also accept the xdr.TransactionResult so code can determine if
-// successful or not.
+// TODO: Signal when the state of the channel has changed to closed or closing.
+// TODO: Accept the xdr.TransactionResult and xdr.TransactionMeta so code can
+// determine if successful or not, and understand changes in the ledger as a
+// result.
 func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
-	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
-		return nil
+	// If the tx hash matches an unauthorized decl, copy the close signature.
+	err := c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
+	if err != nil {
+		return err
 	}
 
 	// TODO: If the tx hash matches an authorized or unauthorized declaration,
@@ -125,15 +127,22 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 	// requiring bump.
 	// TODO: Use the transaction result to affect on success/failure.
 
-	// If the tx hash matches an unauthorized decl, copy the close signature.
-	if c.latestUnauthorizedCloseAgreement.isEmpty() {
+	return nil
+}
+
+func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transaction) error {
+	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+		return nil
+	}
+	ca := c.latestUnauthorizedCloseAgreement
+	if ca.isEmpty() {
 		return nil
 	}
 	txHash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing tx: %w", err)
 	}
-	declTx, closeTx, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
+	declTx, closeTx, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
 	}
@@ -144,29 +153,30 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 	if txHash != declTxHash {
 		return nil
 	}
+	if err != nil {
+		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
+	}
 	closeTxHash, err := closeTx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing latest unauthorized close tx: %w", err)
 	}
-	ca := c.latestUnauthorizedCloseAgreement
 	for _, sig := range tx.Signatures() {
 		err = c.remoteSigner.Verify(declTxHash[:], sig.Signature)
 		if err == nil {
 			ca.ConfirmerSignatures.Declaration = sig.Signature
-			continue
+			break
 		}
+	}
+	for _, sig := range tx.Signatures() {
 		err = c.remoteSigner.Verify(closeTxHash[:], sig.Signature)
 		if err == nil {
 			ca.ConfirmerSignatures.Close = sig.Signature
-			continue
+			break
 		}
 	}
-	if ca.ConfirmerSignatures.Declaration != nil &&
-		ca.ConfirmerSignatures.Close != nil {
-		_, err = c.ConfirmPayment(ca)
-		if err != nil {
-			return fmt.Errorf("confirming the last unauthorized close: %w", err)
-		}
+	_, err = c.ConfirmPayment(ca)
+	if err != nil {
+		return fmt.Errorf("confirming the last unauthorized close: %w", err)
 	}
 	return nil
 }
