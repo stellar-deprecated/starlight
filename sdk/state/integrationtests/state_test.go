@@ -894,7 +894,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Responder starts but doesn't finish closing the channel.
-	broadcastedTx := (*txnbuild.Transaction)(nil)
+	var broadcastedTx *txnbuild.Transaction
 	{
 		t.Log("Responder starts but doesn't complete an uncoordinated close...")
 		t.Log("Responder submits the declaration transaction for the agreement that the initiator does not have all the signatures...")
