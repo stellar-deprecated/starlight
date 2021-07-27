@@ -843,9 +843,10 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			Asset:                      asset,
 			ExpiresAt:                  time.Now().Add(formationExpiry),
 		})
+		require.NoError(t, err)
 		open, err = responderChannel.ConfirmOpen(open)
 		require.NoError(t, err)
-		open, err = initiatorChannel.ConfirmOpen(open)
+		_, err = initiatorChannel.ConfirmOpen(open)
 		require.NoError(t, err)
 		tx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
