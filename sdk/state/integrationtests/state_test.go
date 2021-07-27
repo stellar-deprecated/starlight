@@ -1,6 +1,7 @@
 package integrationtests
 
 import (
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -922,6 +923,8 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		t.Log("Initiator sees the declaration and goes looking for the close signatures...")
 		err = initiatorChannel.IngestTx(broadcastedTx)
 		require.NoError(t, err)
+
+		t.Log("Initiator found signature:", hex.EncodeToString(initiatorChannel.LatestCloseAgreement().ConfirmerSignatures.Close))
 
 		t.Log("Initiator waits the observation period...")
 		time.Sleep(observationPeriodTime)
