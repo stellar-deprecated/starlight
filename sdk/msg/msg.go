@@ -1,4 +1,4 @@
-package main
+package msg
 
 import (
 	"encoding/json"
@@ -11,8 +11,7 @@ import (
 type Type int
 
 const (
-	TypeHelloRequest    Type = 100
-	TypeHelloResponse   Type = 101
+	TypeHello           Type = 100
 	TypeOpenRequest     Type = 200
 	TypeOpenResponse    Type = 201
 	TypePaymentRequest  Type = 300
@@ -24,8 +23,7 @@ const (
 type Message struct {
 	Type Type
 
-	HelloRequest  *Hello
-	HelloResponse *Hello
+	Hello *Hello
 
 	OpenRequest  *state.OpenAgreement
 	OpenResponse *state.OpenAgreement
