@@ -48,4 +48,4 @@ The forks have a more complete implementation of CAP-40 because it is a small ch
 - stc: https://github.com/leighmcculloch/xdrpp--stc/pull/1
 
 [CAP-21]: https://stellar.org/protocol/cap-21
-[CAP-40]: https://stellar.org/protocol/cap-21
+[CAP-40]: https://stellar.org/protocol/cap-40
