@@ -10,7 +10,13 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 )
 
-const horizonURL = "http://localhost:8000"
+var horizonURL = func() string {
+	url := os.Getenv("INTEGRATION_TESTS_HORIZON_URL")
+	if url == "" {
+		url = "http://localhost:8000"
+	}
+	return url
+}()
 
 var (
 	networkPassphrase string
