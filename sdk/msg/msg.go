@@ -23,16 +23,16 @@ const (
 type Message struct {
 	Type Type
 
-	Hello *Hello
+	Hello *Hello `json:",omitempty"`
 
-	OpenRequest  *state.OpenAgreement
-	OpenResponse *state.OpenAgreement
+	OpenRequest  *state.OpenAgreement `json:",omitempty"`
+	OpenResponse *state.OpenAgreement `json:",omitempty"`
 
-	PaymentRequest  *state.CloseAgreement
-	PaymentResponse *state.CloseAgreement
+	PaymentRequest  *state.CloseAgreement `json:",omitempty"`
+	PaymentResponse *state.CloseAgreement `json:",omitempty"`
 
-	CloseRequest  *state.CloseAgreement
-	CloseResponse *state.CloseAgreement
+	CloseRequest  *state.CloseAgreement `json:",omitempty"`
+	CloseResponse *state.CloseAgreement `json:",omitempty"`
 }
 
 type Hello struct {
