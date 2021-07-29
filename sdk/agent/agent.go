@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/msg"
@@ -36,6 +35,8 @@ type Agent struct {
 	Channel *state.Channel
 
 	Conn net.Conn
+
+	closeSignal chan struct{}
 }
 
 func (a *Agent) Listen(addr string) error {
@@ -150,77 +151,50 @@ func (a *Agent) StartClose() error {
 	if a.Channel == nil {
 		return fmt.Errorf("not introduced")
 	}
+	a.closeSignal = make(chan struct{})
 	// Submit declaration tx
 	declTx, closeTx, err := a.Channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building declaration tx: %w", err)
 	}
+	declHash, err := declTx.HashHex(a.NetworkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing close tx: %w", err)
+	}
+	fmt.Fprintln(a.LogWriter, "submitting declaration", declHash)
 	err = a.Submitter.SubmitFeeBumpTx(declTx)
 	if err != nil {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
 	// Revising agreement to close early
+	fmt.Fprintln(a.LogWriter, "proposing a revised close for immediate submission")
 	ca, err := a.Channel.ProposeClose()
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
-	timeStart := time.Now()
-	closeReady := make(chan bool)
-	go func() {
-		enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
-		dec := json.NewDecoder(io.TeeReader(a.Conn, a.LogWriter))
-		err = enc.Encode(msg.Message{
-			Type:         msg.TypeCloseRequest,
-			CloseRequest: &ca,
-		})
-		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error: sending the close proposal: %v\n", err)
-		}
-		err = a.Conn.SetReadDeadline(time.Now().Add(observationPeriodTime))
-		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error: setting read deadline of conn: %v\n", err)
-		}
-		authorized := false
-		m := msg.Message{}
-		err = dec.Decode(&m)
-		if errors.Is(err, os.ErrDeadlineExceeded) {
-			fmt.Fprintf(a.LogWriter, "error: timeout waiting for response: %v\n", err)
-		} else if errors.Is(err, io.EOF) {
-			fmt.Fprintf(a.LogWriter, "error: connection lost: %v\n", err)
-		} else if err != nil {
-			fmt.Fprintf(a.LogWriter, "error: decoding response: %v\n", err)
-		} else {
-			_, err = a.Channel.ConfirmClose(*m.CloseResponse)
-			if err != nil {
-				fmt.Fprintf(a.LogWriter, "error: confirming close response: %v\n", err)
-			}
-			authorized = true
-		}
-		closeReady <- authorized
-	}()
-	authorized := false
-	waitTime := observationPeriodTime * 2
+	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
+	err = enc.Encode(msg.Message{
+		Type:         msg.TypeCloseRequest,
+		CloseRequest: &ca,
+	})
+	if err != nil {
+		return fmt.Errorf("error: sending the close proposal: %w\n", err)
+	}
+	closeHash, err := closeTx.HashHex(a.NetworkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing close tx: %w", err)
+	}
+	fmt.Fprintln(a.LogWriter, "waiting observation period to submit delayed close tx", closeHash)
 	select {
-	case authorized = <-closeReady:
-	case <-time.After(waitTime):
+	case <-a.closeSignal:
+		fmt.Fprintln(a.LogWriter, "aborting sending delayed close tx", closeHash)
+		return nil
+	case <-time.After(observationPeriodTime):
 	}
-	if authorized {
-		fmt.Fprintf(a.LogWriter, "close authorized\n")
-		_, immediateCloseTx, err := a.Channel.CloseTxs()
-		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error: building immediate close tx: %v", err)
-		} else {
-			closeTx = immediateCloseTx
-		}
-	} else {
-		remainingWaitTime := waitTime - time.Since(timeStart)
-		fmt.Fprintf(a.LogWriter, "close not authorized, waiting %v\n", remainingWaitTime)
-		time.Sleep(remainingWaitTime)
-	}
-	// Submit close tx
+	fmt.Fprintln(a.LogWriter, "submitting delayed close tx", closeHash)
 	err = a.Submitter.SubmitFeeBumpTx(closeTx)
 	if err != nil {
-		return fmt.Errorf("submitting close tx: %w", err)
+		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
 	return nil
 }
@@ -398,5 +372,22 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *json.Encoder) error {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close ready")
+	_, closeTx, err := a.Channel.CloseTxs()
+	if err != nil {
+		return fmt.Errorf("building close tx: %w", err)
+	}
+	hash, err := closeTx.HashHex(a.NetworkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing close tx: %w", err)
+	}
+	fmt.Fprintln(a.LogWriter, "submitting close", hash)
+	err = a.Submitter.SubmitFeeBumpTx(closeTx)
+	if err != nil {
+		return fmt.Errorf("submitting close tx: %w", err)
+	}
+	fmt.Fprintln(a.LogWriter, "close successful")
+	if a.closeSignal != nil {
+		close(a.closeSignal)
+	}
 	return nil
 }
