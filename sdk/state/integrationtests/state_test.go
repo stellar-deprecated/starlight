@@ -1,6 +1,8 @@
 package integrationtests
 
 import (
+	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -809,4 +812,196 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
+}
+
+func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
+	// Channel constants.
+	const observationPeriodTime = 20 * time.Second
+	const averageLedgerDuration = 5 * time.Second
+	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const formationExpiry = 5 * time.Minute
+
+	asset := state.NativeAsset
+	// native asset has no asset limit
+	rootResp, err := client.Root()
+	require.NoError(t, err)
+	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
+	initiator, responder := initAccounts(t, AssetParam{
+		Asset:       asset,
+		Distributor: distributor,
+	})
+	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
+
+	s := initiator.EscrowSequenceNumber + 1
+	i := int64(1)
+	e := int64(0)
+	t.Log("Vars: s:", s, "i:", i, "e:", e)
+
+	// Open
+	t.Log("Open...")
+	{
+		open, err := initiatorChannel.ProposeOpen(state.OpenParams{
+			ObservationPeriodTime:      observationPeriodTime,
+			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+			Asset:                      asset,
+			ExpiresAt:                  time.Now().Add(formationExpiry),
+		})
+		require.NoError(t, err)
+		open, err = responderChannel.ConfirmOpen(open)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(open)
+		require.NoError(t, err)
+		tx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
+		require.NoError(t, err)
+	}
+
+	// Update balances known for each other.
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+
+	// Perform a transaction.
+	{
+		payment, err := initiatorChannel.ProposePayment(8)
+		require.NoError(t, err)
+		payment, err = responderChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+	}
+
+	// Perform another transaction.
+	{
+		payment, err := initiatorChannel.ProposePayment(2)
+		require.NoError(t, err)
+		_, err = responderChannel.ConfirmPayment(payment)
+		require.NoError(t, err)
+		// Pretend the responder doesn't pass back their response to the
+		// initiator. The initiator never sees their signatures, so the
+		// initiator never calls confirm payment with the responders signature.
+		// The responder has a last authorized agreement with total balance
+		// owing as 10. The initiator has a last authorized agreement with total
+		// balance owing as 8, and an unauthorized agreement with total balance
+		// as 10.
+		assert.Equal(t, initiatorChannel.LatestCloseAgreement().Details.Balance, int64(8))
+		assert.Equal(t, responderChannel.LatestCloseAgreement().Details.Balance, int64(10))
+	}
+
+	// Responder starts but doesn't finish closing the channel.
+	var broadcastedTx *txnbuild.Transaction // << Pretend this broadcasted tx is how the initiator finds out about the tx.
+	{
+		t.Log("Responder starts but doesn't complete an uncoordinated close...")
+		t.Log("Responder submits the declaration transaction for the agreement that the initiator does not have all the signatures...")
+
+		{
+			declTx, _, err := responderChannel.CloseTxs()
+			require.NoError(t, err)
+			declHash, _ := declTx.HashHex(networkPassphrase)
+			t.Log("Responder tries to submit the declaration without disclosing signatures of the close tx:", declHash)
+			declTxXDR := declTx.ToXDR()
+			// Assume the declTx has 3 signatures, 2 to authorize the
+			// declaration, 1 that is a the close tx's signature disclosed.
+			assert.Len(t, declTxXDR.V1.Signatures, 3)
+			// Truncate the declTx signatures so the disclosure of the close tx
+			// does not occur.
+			declTxXDR.V1.Signatures = declTxXDR.V1.Signatures[:2]
+			declTxModified64, err := xdr.MarshalBase64(declTxXDR)
+			require.NoError(t, err)
+			declTxModifiedEnv, err := txnbuild.TransactionFromXDR(declTxModified64)
+			require.NoError(t, err)
+			declTxModified, ok := declTxModifiedEnv.Transaction()
+			require.True(t, ok)
+			// Submit the modified declaration transaction and confirm.
+			fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+				Inner:      declTxModified,
+				FeeAccount: responder.KP.Address(),
+				BaseFee:    txnbuild.MinBaseFee,
+			})
+			require.NoError(t, err)
+			fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+			require.NoError(t, err)
+			_, err = client.SubmitFeeBumpTransaction(fbtx)
+			require.Error(t, err)
+			resultsStr, err := horizonclient.GetError(err).ResultString()
+			require.NoError(t, err)
+			results := xdr.TransactionResult{}
+			_, err = xdr.Unmarshal(base64.NewDecoder(base64.StdEncoding, strings.NewReader(resultsStr)), &results)
+			require.NoError(t, err)
+			require.Equal(t, xdr.TransactionResultCodeTxBadAuth, results.Result.InnerResultPair.Result.Result.Code)
+			t.Log("Responder failed to submit tx, result:", results.Result.InnerResultPair.Result.Result.Code)
+		}
+
+		{
+			declTx, closeTx, err := responderChannel.CloseTxs()
+			require.NoError(t, err)
+			declHash, _ := declTx.HashHex(networkPassphrase)
+			t.Log("Responder tries to submit the declaration with all signatures:", declHash)
+			t.Log("Responder submits the declaration:", declHash)
+			fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+				Inner:      declTx,
+				FeeAccount: responder.KP.Address(),
+				BaseFee:    txnbuild.MinBaseFee,
+			})
+			require.NoError(t, err)
+			fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
+			require.NoError(t, err)
+			_, err = client.SubmitFeeBumpTransaction(fbtx)
+			require.NoError(t, err)
+			t.Log("Responder succeeds in submitting declaration")
+			closeHash, _ := closeTx.HashHex(networkPassphrase)
+			t.Log("Responder does not submit the close:", closeHash)
+			broadcastedTx = declTx
+		}
+	}
+
+	// Initiator must find the signatures for the close tx on network to complete.
+	{
+		t.Log("Initiator sees the declaration and goes looking for the close signatures...")
+		err = initiatorChannel.IngestTx(broadcastedTx)
+		require.NoError(t, err)
+
+		t.Log("Initiator found signature:", base64.StdEncoding.EncodeToString(initiatorChannel.LatestCloseAgreement().ConfirmerSignatures.Close))
+
+		t.Log("Initiator waits the observation period...")
+		time.Sleep(observationPeriodTime)
+
+		t.Log("Initiator submits close")
+		_, closeTx, err := initiatorChannel.CloseTxs()
+		require.NoError(t, err)
+		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+			Inner:      closeTx,
+			FeeAccount: initiator.KP.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		})
+		require.NoError(t, err)
+		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
+		require.NoError(t, err)
+		_, err = client.SubmitFeeBumpTransaction(fbtx)
+		if !assert.NoError(t, err) {
+			t.Log(horizonclient.GetError(err).ResultString())
+		}
+		t.Log("Closed")
+	}
+
+	// Check the final state of the escrow accounts.
+	{
+		// Initiator should be down 10 (0.0000010).
+		initiatorEscrowResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()})
+		require.NoError(t, err)
+		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorEscrowResponse))
+
+		// Responder should be up 10 (0.0000010).
+		responderEscrowResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.Escrow.Address()})
+		require.NoError(t, err)
+		assert.Equal(t, "1000.0000010", assetBalance(asset, responderEscrowResponse))
+	}
 }
