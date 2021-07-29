@@ -73,7 +73,6 @@ func TestChannel_IngestTx_updateUnauthorizedCloseAgreement(t *testing.T) {
 
 	// The initiator channel and responder channel should have the same close
 	// agreements.
-	initiatorChannel.Balance()
 	assert.Equal(t, int64(8), initiatorChannel.Balance())
 	assert.Equal(t, int64(8), responderChannel.Balance())
 	assert.Equal(t, initiatorChannel.LatestCloseAgreement(), responderChannel.LatestCloseAgreement())
