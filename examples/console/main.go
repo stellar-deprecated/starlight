@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -91,7 +92,7 @@ func run() error {
 	escrowAccountKey := keypair.MustRandom()
 	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 
-	submitter := &agent.Submitter{
+	submitter := &submit.Submitter{
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
 		BaseFee:           txnbuild.MinBaseFee,
@@ -123,7 +124,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("signing tx to create escrow account: %w", err)
 	}
-	err = submitter.SubmitFeeBumpTx(tx)
+	err = submitter.SubmitTx(tx)
 	if err != nil {
 		return fmt.Errorf("submitting tx to create escrow account: %w", err)
 	}
@@ -162,19 +163,19 @@ func run() error {
 				continue
 			}
 		case "open":
-			err := agent.StartOpen()
+			err := agent.Open()
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
 			}
 		case "pay":
-			err := agent.StartPayment(params[1])
+			err := agent.Payment(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
 			}
 		case "close":
-			err := agent.StartClose()
+			err := agent.Close()
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue

@@ -10,6 +10,7 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/msg"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
+	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -23,7 +24,7 @@ type Agent struct {
 	NetworkPassphrase          string
 
 	HorizonClient horizonclient.ClientInterface
-	Submitter     *Submitter
+	Submitter     *submit.Submitter
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -93,7 +94,7 @@ func (a *Agent) sendHello() error {
 	return nil
 }
 
-func (a *Agent) StartOpen() error {
+func (a *Agent) Open() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -120,7 +121,7 @@ func (a *Agent) StartOpen() error {
 	return nil
 }
 
-func (a *Agent) StartPayment(paymentAmount string) error {
+func (a *Agent) Payment(paymentAmount string) error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -146,7 +147,7 @@ func (a *Agent) StartPayment(paymentAmount string) error {
 	return nil
 }
 
-func (a *Agent) StartClose() error {
+func (a *Agent) Close() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -164,7 +165,7 @@ func (a *Agent) StartClose() error {
 		return fmt.Errorf("hashing close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "submitting declaration", declHash)
-	err = a.Submitter.SubmitFeeBumpTx(declTx)
+	err = a.Submitter.SubmitTx(declTx)
 	if err != nil {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
@@ -194,7 +195,7 @@ func (a *Agent) StartClose() error {
 	case <-time.After(a.ObservationPeriodTime):
 	}
 	fmt.Fprintln(a.LogWriter, "submitting delayed close tx", closeHash)
-	err = a.Submitter.SubmitFeeBumpTx(closeTx)
+	err = a.Submitter.SubmitTx(closeTx)
 	if err != nil {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
@@ -303,7 +304,7 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *json.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("building formation tx: %w", err)
 	}
-	err = a.Submitter.SubmitFeeBumpTx(formationTx)
+	err = a.Submitter.SubmitTx(formationTx)
 	if err != nil {
 		return fmt.Errorf("submitting formation tx: %w", err)
 	}
@@ -383,7 +384,7 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *json.Encoder) error {
 		return fmt.Errorf("hashing close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "submitting close", hash)
-	err = a.Submitter.SubmitFeeBumpTx(closeTx)
+	err = a.Submitter.SubmitTx(closeTx)
 	if err != nil {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
