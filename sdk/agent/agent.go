@@ -34,23 +34,24 @@ type Agent struct {
 
 	Channel *state.Channel
 
-	Conn net.Conn
+	conn net.Conn
 
 	closeSignal chan struct{}
 }
 
 func (a *Agent) Listen(addr string) error {
-	if a.Conn != nil {
+	if a.conn != nil {
 		return fmt.Errorf("already connected to a peer")
 	}
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listening on %s: %w", addr, err)
 	}
-	a.Conn, err = ln.Accept()
+	a.conn, err = ln.Accept()
 	if err != nil {
 		return fmt.Errorf("accepting incoming connection: %w", err)
 	}
+	fmt.Fprintf(a.LogWriter, "accepted connection from %v\n", a.conn.RemoteAddr())
 	err = a.sendHello()
 	if err != nil {
 		return fmt.Errorf("sending hello: %w", err)
@@ -60,14 +61,15 @@ func (a *Agent) Listen(addr string) error {
 }
 
 func (a *Agent) Connect(addr string) error {
-	if a.Conn != nil {
+	if a.conn != nil {
 		return fmt.Errorf("already connected to a peer")
 	}
 	var err error
-	a.Conn, err = net.Dial("tcp", addr)
+	a.conn, err = net.Dial("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("connecting to %s: %w", addr, err)
 	}
+	fmt.Fprintf(a.LogWriter, "connected to %v\n", a.conn.RemoteAddr())
 	err = a.sendHello()
 	if err != nil {
 		return fmt.Errorf("sending hello: %w", err)
@@ -77,7 +79,7 @@ func (a *Agent) Connect(addr string) error {
 }
 
 func (a *Agent) sendHello() error {
-	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
 		Hello: &msg.Hello{
@@ -92,7 +94,7 @@ func (a *Agent) sendHello() error {
 }
 
 func (a *Agent) StartOpen() error {
-	if a.Conn == nil {
+	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	if a.Channel == nil {
@@ -107,7 +109,7 @@ func (a *Agent) StartOpen() error {
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err = enc.Encode(msg.Message{
 		Type:        msg.TypeOpenRequest,
 		OpenRequest: &open,
@@ -119,7 +121,7 @@ func (a *Agent) StartOpen() error {
 }
 
 func (a *Agent) StartPayment(paymentAmount string) error {
-	if a.Conn == nil {
+	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	if a.Channel == nil {
@@ -133,7 +135,7 @@ func (a *Agent) StartPayment(paymentAmount string) error {
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err = enc.Encode(msg.Message{
 		Type:           msg.TypePaymentRequest,
 		PaymentRequest: &ca,
@@ -145,7 +147,7 @@ func (a *Agent) StartPayment(paymentAmount string) error {
 }
 
 func (a *Agent) StartClose() error {
-	if a.Conn == nil {
+	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	if a.Channel == nil {
@@ -172,7 +174,7 @@ func (a *Agent) StartClose() error {
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
+	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err = enc.Encode(msg.Message{
 		Type:         msg.TypeCloseRequest,
 		CloseRequest: &ca,
@@ -201,8 +203,8 @@ func (a *Agent) StartClose() error {
 
 func (a *Agent) loop() {
 	var err error
-	recv := json.NewDecoder(io.TeeReader(a.Conn, a.LogWriter))
-	send := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
+	recv := json.NewDecoder(io.TeeReader(a.conn, a.LogWriter))
+	send := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	for {
 		m := msg.Message{}
 		err = recv.Decode(&m)
