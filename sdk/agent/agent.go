@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -80,7 +79,7 @@ func (a *Agent) Connect(addr string) error {
 }
 
 func (a *Agent) sendHello() error {
-	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
 		Hello: &msg.Hello{
@@ -110,7 +109,7 @@ func (a *Agent) Open() error {
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err = enc.Encode(msg.Message{
 		Type:        msg.TypeOpenRequest,
 		OpenRequest: &open,
@@ -136,7 +135,7 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err = enc.Encode(msg.Message{
 		Type:           msg.TypePaymentRequest,
 		PaymentRequest: &ca,
@@ -175,7 +174,7 @@ func (a *Agent) Close() error {
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
-	enc := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err = enc.Encode(msg.Message{
 		Type:         msg.TypeCloseRequest,
 		CloseRequest: &ca,
@@ -204,8 +203,8 @@ func (a *Agent) Close() error {
 
 func (a *Agent) loop() {
 	var err error
-	recv := json.NewDecoder(io.TeeReader(a.conn, a.LogWriter))
-	send := json.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	recv := msg.NewDecoder(io.TeeReader(a.conn, a.LogWriter))
+	send := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	for {
 		m := msg.Message{}
 		err = recv.Decode(&m)
@@ -220,7 +219,7 @@ func (a *Agent) loop() {
 	}
 }
 
-func (a *Agent) handle(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "handling %v\n", m.Type)
 	handler := handlerMap[m.Type]
 	if handler == nil {
@@ -233,7 +232,7 @@ func (a *Agent) handle(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-var handlerMap = map[msg.Type]func(*Agent, msg.Message, *json.Encoder) error{
+var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
 	msg.TypeHello:           (*Agent).handleHello,
 	msg.TypeOpenRequest:     (*Agent).handleOpenRequest,
 	msg.TypeOpenResponse:    (*Agent).handleOpenResponse,
@@ -243,7 +242,7 @@ var handlerMap = map[msg.Type]func(*Agent, msg.Message, *json.Encoder) error{
 	msg.TypeCloseResponse:   (*Agent).handleCloseResponse,
 }
 
-func (a *Agent) handleHello(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	h := *m.Hello
 
 	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", h.Signer.Address())
@@ -276,7 +275,7 @@ func (a *Agent) handleHello(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handleOpenRequest(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	openIn := *m.OpenRequest
 	open, err := a.Channel.ConfirmOpen(openIn)
 	if err != nil {
@@ -293,7 +292,7 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handleOpenResponse(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 	openIn := *m.OpenResponse
 	_, err := a.Channel.ConfirmOpen(openIn)
 	if err != nil {
@@ -311,7 +310,7 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handlePaymentRequest(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	paymentIn := *m.PaymentRequest
 	payment, err := a.Channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
@@ -341,7 +340,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handlePaymentResponse(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 	paymentIn := *m.PaymentResponse
 	_, err := a.Channel.ConfirmPayment(paymentIn)
 	if err != nil {
@@ -351,7 +350,7 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handleCloseRequest(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 	closeIn := *m.CloseRequest
 	close, err := a.Channel.ConfirmClose(closeIn)
 	if err != nil {
@@ -368,7 +367,7 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *json.Encoder) error {
 	return nil
 }
 
-func (a *Agent) handleCloseResponse(m msg.Message, send *json.Encoder) error {
+func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 	closeIn := *m.CloseResponse
 	_, err := a.Channel.ConfirmClose(closeIn)
 	if err != nil {
