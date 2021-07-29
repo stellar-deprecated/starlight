@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -13,6 +14,12 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+)
+
+const (
+	observationPeriodTime      = 10 * time.Second
+	observationPeriodLedgerGap = 1
+	maxOpenExpiry              = 5 * time.Minute
 )
 
 func main() {
@@ -92,12 +99,15 @@ func run() error {
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
 	agent := &agent.Agent{
-		NetworkPassphrase:   networkDetails.NetworkPassphrase,
-		HorizonClient:       horizonClient,
-		Submitter:           submitter,
-		EscrowAccountKey:    escrowAccountKey.FromAddress(),
-		EscrowAccountSigner: signerKey,
-		LogWriter:           os.Stderr,
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		MaxOpenExpiry:              maxOpenExpiry,
+		NetworkPassphrase:          networkDetails.NetworkPassphrase,
+		HorizonClient:              horizonClient,
+		Submitter:                  submitter,
+		EscrowAccountKey:           escrowAccountKey.FromAddress(),
+		EscrowAccountSigner:        signerKey,
+		LogWriter:                  os.Stderr,
 	}
 
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{

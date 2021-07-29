@@ -16,16 +16,14 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 )
 
-const (
-	observationPeriodTime      = 10 * time.Second
-	observationPeriodLedgerGap = 1
-	openExpiry                 = 5 * time.Minute
-)
-
 type Agent struct {
-	NetworkPassphrase string
-	HorizonClient     horizonclient.ClientInterface
-	Submitter         *Submitter
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	MaxOpenExpiry              time.Duration
+	NetworkPassphrase          string
+
+	HorizonClient horizonclient.ClientInterface
+	Submitter     *Submitter
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -36,6 +34,8 @@ type Agent struct {
 
 	conn net.Conn
 
+	// closeSignal is not nil if closing or closed, and the chan is closed once
+	// the payment channel is closed.
 	closeSignal chan struct{}
 }
 
@@ -101,10 +101,10 @@ func (a *Agent) StartOpen() error {
 		return fmt.Errorf("not introduced")
 	}
 	open, err := a.Channel.ProposeOpen(state.OpenParams{
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		ObservationPeriodTime:      a.ObservationPeriodTime,
+		ObservationPeriodLedgerGap: a.ObservationPeriodLedgerGap,
 		Asset:                      "native",
-		ExpiresAt:                  time.Now().Add(openExpiry),
+		ExpiresAt:                  time.Now().Add(a.MaxOpenExpiry),
 	})
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)
@@ -191,7 +191,7 @@ func (a *Agent) StartClose() error {
 	case <-a.closeSignal:
 		fmt.Fprintln(a.LogWriter, "aborting sending delayed close tx", closeHash)
 		return nil
-	case <-time.After(observationPeriodTime):
+	case <-time.After(a.ObservationPeriodTime):
 	}
 	fmt.Fprintln(a.LogWriter, "submitting delayed close tx", closeHash)
 	err = a.Submitter.SubmitFeeBumpTx(closeTx)
@@ -259,7 +259,7 @@ func (a *Agent) handleHello(m msg.Message, send *json.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
 	a.Channel = state.NewChannel(state.Config{
 		NetworkPassphrase: a.NetworkPassphrase,
-		MaxOpenExpiry:     openExpiry,
+		MaxOpenExpiry:     a.MaxOpenExpiry,
 		Initiator:         a.EscrowAccountKey.Address() > h.EscrowAccount.Address(),
 		LocalEscrowAccount: &state.EscrowAccount{
 			Address:        a.EscrowAccountKey,
