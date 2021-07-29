@@ -107,7 +107,10 @@ func (a *Agent) StartOpen() error {
 		return fmt.Errorf("proposing open: %w", err)
 	}
 	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
-	err = enc.Encode(msg.Message{Type: msg.TypeOpenRequest, OpenRequest: &open})
+	err = enc.Encode(msg.Message{
+		Type:        msg.TypeOpenRequest,
+		OpenRequest: &open,
+	})
 	if err != nil {
 		return fmt.Errorf("sending open: %w", err)
 	}
@@ -130,7 +133,10 @@ func (a *Agent) StartPayment(paymentAmount string) error {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
 	enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
-	err = enc.Encode(msg.Message{PaymentRequest: &ca})
+	err = enc.Encode(msg.Message{
+		Type:           msg.TypePaymentRequest,
+		PaymentRequest: &ca,
+	})
 	if err != nil {
 		return fmt.Errorf("sending payment: %w", err)
 	}
@@ -163,7 +169,10 @@ func (a *Agent) StartClose() error {
 	go func() {
 		enc := json.NewEncoder(io.MultiWriter(a.Conn, a.LogWriter))
 		dec := json.NewDecoder(io.TeeReader(a.Conn, a.LogWriter))
-		err = enc.Encode(msg.Message{CloseRequest: &ca})
+		err = enc.Encode(msg.Message{
+			Type:         msg.TypeCloseRequest,
+			CloseRequest: &ca,
+		})
 		if err != nil {
 			fmt.Fprintf(a.LogWriter, "error: sending the close proposal: %v\n", err)
 		}
@@ -297,7 +306,10 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *json.Encoder) error {
 		return fmt.Errorf("confirming open: %w", err)
 	}
 	fmt.Fprintf(a.LogWriter, "open authorized\n")
-	err = send.Encode(msg.Message{Type: msg.TypeOpenResponse, OpenResponse: &open})
+	err = send.Encode(msg.Message{
+		Type:         msg.TypeOpenResponse,
+		OpenResponse: &open,
+	})
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
 	}
@@ -368,7 +380,10 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *json.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
-	err = send.Encode(msg.Message{Type: msg.TypeCloseResponse, CloseResponse: &close})
+	err = send.Encode(msg.Message{
+		Type:          msg.TypeCloseResponse,
+		CloseResponse: &close,
+	})
 	if err != nil {
 		return fmt.Errorf("encoding close to send back: %v\n", err)
 	}
