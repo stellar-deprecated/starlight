@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -83,14 +84,14 @@ func run() error {
 	escrowAccountKey := keypair.MustRandom()
 	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 
-	submitter := &Submitter{
+	submitter := &agent.Submitter{
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
 		BaseFee:           txnbuild.MinBaseFee,
 		FeeAccount:        accountKey,
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
-	agent := &Agent{
+	agent := &agent.Agent{
 		NetworkPassphrase:   networkDetails.NetworkPassphrase,
 		HorizonClient:       horizonClient,
 		Submitter:           submitter,
@@ -144,14 +145,14 @@ func run() error {
 				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
+			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn.RemoteAddr())
 		case "connect":
 			err := agent.Connect(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
+			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn.RemoteAddr())
 		case "open":
 			err := agent.StartOpen()
 			if err != nil {
@@ -200,8 +201,8 @@ func run() error {
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			newBalance := agent.channel.LocalEscrowAccount().Balance + depositAmountInt
-			agent.channel.UpdateLocalEscrowAccountBalance(newBalance)
+			newBalance := agent.Channel.LocalEscrowAccount().Balance + depositAmountInt
+			agent.Channel.UpdateLocalEscrowAccountBalance(newBalance)
 			fmt.Println("new balance of", amount.StringFromInt64(newBalance))
 		case "exit":
 			return nil
