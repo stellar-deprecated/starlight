@@ -97,7 +97,7 @@ func run() error {
 		HorizonClient: horizonClient,
 	}
 	submitter := &submit.Submitter{
-		Submitter:         horizon,
+		SubmitTxer:        horizon,
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
 		BaseFee:           txnbuild.MinBaseFee,
 		FeeAccount:        accountKey,

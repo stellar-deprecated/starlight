@@ -16,7 +16,7 @@ import (
 // The BaseFee is the base fee that will be used for any submission where the
 // transaction has a lower base fee.
 type Submitter struct {
-	Submitter         interface{ SubmitTx(xdr string) error }
+	SubmitTxer        interface{ SubmitTx(xdr string) error }
 	NetworkPassphrase string
 	BaseFee           int64
 	FeeAccount        *keypair.FromAddress
@@ -38,7 +38,7 @@ func (s *Submitter) submitTx(tx *txnbuild.Transaction) error {
 	if err != nil {
 		return fmt.Errorf("encoding tx as base64: %w", err)
 	}
-	err = s.Submitter.SubmitTx(txeBase64)
+	err = s.SubmitTxer.SubmitTx(txeBase64)
 	if err != nil {
 		return fmt.Errorf("submitting tx: %w", buildErr(err))
 	}
@@ -62,7 +62,7 @@ func (s *Submitter) submitTxWithFeeBump(tx *txnbuild.Transaction) error {
 	if err != nil {
 		return fmt.Errorf("encoding fee bump tx as base64: %w", err)
 	}
-	err = s.Submitter.SubmitTx(txeBase64)
+	err = s.SubmitTxer.SubmitTx(txeBase64)
 	if err != nil {
 		return fmt.Errorf("submitting fee bump tx: %w", buildErr(err))
 	}
