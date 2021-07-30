@@ -1,10 +1,15 @@
+// Package agent contains a rudimentary and experimental implementation of an
+// agent that coordinates a TCP network connection, initial handshake, and
+// channel opens, payments, and closes.
+//
+// The agent is intended for use in examples only at this point and is not
+// intended to be stable or reliable.
 package agent
 
 import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/msg"
@@ -30,55 +35,20 @@ type Agent struct {
 
 	LogWriter io.Writer
 
-	Channel *state.Channel
+	channel *state.Channel
 
-	conn net.Conn
+	conn io.ReadWriter
 
 	// closeSignal is not nil if closing or closed, and the chan is closed once
 	// the payment channel is closed.
 	closeSignal chan struct{}
 }
 
-func (a *Agent) Listen(addr string) error {
-	if a.conn != nil {
-		return fmt.Errorf("already connected to a peer")
-	}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("listening on %s: %w", addr, err)
-	}
-	a.conn, err = ln.Accept()
-	if err != nil {
-		return fmt.Errorf("accepting incoming connection: %w", err)
-	}
-	fmt.Fprintf(a.LogWriter, "accepted connection from %v\n", a.conn.RemoteAddr())
-	err = a.sendHello()
-	if err != nil {
-		return fmt.Errorf("sending hello: %w", err)
-	}
-	go a.loop()
-	return nil
+func (a *Agent) Channel() *state.Channel {
+	return a.channel
 }
 
-func (a *Agent) Connect(addr string) error {
-	if a.conn != nil {
-		return fmt.Errorf("already connected to a peer")
-	}
-	var err error
-	a.conn, err = net.Dial("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("connecting to %s: %w", addr, err)
-	}
-	fmt.Fprintf(a.LogWriter, "connected to %v\n", a.conn.RemoteAddr())
-	err = a.sendHello()
-	if err != nil {
-		return fmt.Errorf("sending hello: %w", err)
-	}
-	go a.loop()
-	return nil
-}
-
-func (a *Agent) sendHello() error {
+func (a *Agent) hello() error {
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
@@ -97,10 +67,10 @@ func (a *Agent) Open() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	if a.Channel == nil {
-		return fmt.Errorf("not introduced")
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
 	}
-	open, err := a.Channel.ProposeOpen(state.OpenParams{
+	open, err := a.channel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      a.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: a.ObservationPeriodLedgerGap,
 		Asset:                      "native",
@@ -124,14 +94,14 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	if a.Channel == nil {
-		return fmt.Errorf("not introduced")
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
 	}
 	amountValue, err := amount.ParseInt64(paymentAmount)
 	if err != nil {
 		return fmt.Errorf("parsing amount %s: %w", paymentAmount, err)
 	}
-	ca, err := a.Channel.ProposePayment(amountValue)
+	ca, err := a.channel.ProposePayment(amountValue)
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
@@ -150,12 +120,12 @@ func (a *Agent) Close() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	if a.Channel == nil {
-		return fmt.Errorf("not introduced")
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
 	}
 	a.closeSignal = make(chan struct{})
 	// Submit declaration tx
-	declTx, closeTx, err := a.Channel.CloseTxs()
+	declTx, closeTx, err := a.channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building declaration tx: %w", err)
 	}
@@ -170,7 +140,7 @@ func (a *Agent) Close() error {
 	}
 	// Revising agreement to close early
 	fmt.Fprintln(a.LogWriter, "proposing a revised close for immediate submission")
-	ca, err := a.Channel.ProposeClose()
+	ca, err := a.channel.ProposeClose()
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
@@ -209,7 +179,7 @@ func (a *Agent) loop() {
 		m := msg.Message{}
 		err = recv.Decode(&m)
 		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error decoding message: %v\n", err)
+			fmt.Fprintf(a.LogWriter, "error reading: %v\n", err)
 			break
 		}
 		err = a.handle(m, send)
@@ -243,6 +213,10 @@ var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
 }
 
 func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
+	if a.channel != nil {
+		return fmt.Errorf("extra hello received when channel already setup")
+	}
+
 	h := *m.Hello
 
 	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", h.Signer.Address())
@@ -257,7 +231,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	}
 	fmt.Fprintf(a.LogWriter, "escrow account seq: %v\n", escrowAccountSeqNum)
 	fmt.Fprintf(a.LogWriter, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
-	a.Channel = state.NewChannel(state.Config{
+	a.channel = state.NewChannel(state.Config{
 		NetworkPassphrase: a.NetworkPassphrase,
 		MaxOpenExpiry:     a.MaxOpenExpiry,
 		Initiator:         a.EscrowAccountKey.Address() > h.EscrowAccount.Address(),
@@ -276,8 +250,12 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
+	}
+
 	openIn := *m.OpenRequest
-	open, err := a.Channel.ConfirmOpen(openIn)
+	open, err := a.channel.ConfirmOpen(openIn)
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
@@ -293,13 +271,17 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
+	}
+
 	openIn := *m.OpenResponse
-	_, err := a.Channel.ConfirmOpen(openIn)
+	_, err := a.channel.ConfirmOpen(openIn)
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
 	fmt.Fprintf(a.LogWriter, "open authorized\n")
-	formationTx, err := a.Channel.OpenTx()
+	formationTx, err := a.channel.OpenTx()
 	if err != nil {
 		return fmt.Errorf("building formation tx: %w", err)
 	}
@@ -311,12 +293,16 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
+	}
+
 	paymentIn := *m.PaymentRequest
-	payment, err := a.Channel.ConfirmPayment(paymentIn)
+	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.LogWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
 		var account horizon.Account
-		account, err = a.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: a.Channel.RemoteEscrowAccount().Address.Address()})
+		account, err = a.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: a.channel.RemoteEscrowAccount().Address.Address()})
 		if err != nil {
 			return fmt.Errorf("getting state of remote escrow account: %w", err)
 		}
@@ -326,8 +312,8 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		if err != nil {
 			return fmt.Errorf("parsing balance of remote escrow account: %w", err)
 		}
-		a.Channel.UpdateRemoteEscrowAccountBalance(balance)
-		payment, err = a.Channel.ConfirmPayment(paymentIn)
+		a.channel.UpdateRemoteEscrowAccountBalance(balance)
+		payment, err = a.channel.ConfirmPayment(paymentIn)
 	}
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
@@ -341,8 +327,12 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
+	}
+
 	paymentIn := *m.PaymentResponse
-	_, err := a.Channel.ConfirmPayment(paymentIn)
+	_, err := a.channel.ConfirmPayment(paymentIn)
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
@@ -351,8 +341,12 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
+	}
+
 	closeIn := *m.CloseRequest
-	close, err := a.Channel.ConfirmClose(closeIn)
+	close, err := a.channel.ConfirmClose(closeIn)
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
@@ -368,13 +362,17 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
+	if a.channel == nil {
+		return fmt.Errorf("no channel")
+	}
+
 	closeIn := *m.CloseResponse
-	_, err := a.Channel.ConfirmClose(closeIn)
+	_, err := a.channel.ConfirmClose(closeIn)
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close ready")
-	_, closeTx, err := a.Channel.CloseTxs()
+	_, closeTx, err := a.channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building close tx: %w", err)
 	}

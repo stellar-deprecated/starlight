@@ -151,13 +151,13 @@ func run() error {
 			fmt.Fprintf(os.Stdout, "close - close the channel\n")
 			fmt.Fprintf(os.Stdout, "exit - exit the application\n")
 		case "listen":
-			err := agent.Listen(params[1])
+			err := agent.ServeTCP(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
 		case "connect":
-			err := agent.Connect(params[1])
+			err := agent.ConnectTCP(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
@@ -210,8 +210,8 @@ func run() error {
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			newBalance := agent.Channel.LocalEscrowAccount().Balance + depositAmountInt
-			agent.Channel.UpdateLocalEscrowAccountBalance(newBalance)
+			newBalance := agent.Channel().LocalEscrowAccount().Balance + depositAmountInt
+			agent.Channel().UpdateLocalEscrowAccountBalance(newBalance)
 			fmt.Println("new balance of", amount.StringFromInt64(newBalance))
 		case "exit":
 			return nil
