@@ -6,12 +6,22 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/horizon"
+	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+)
+
+const (
+	observationPeriodTime      = 10 * time.Second
+	observationPeriodLedgerGap = 1
+	maxOpenExpiry              = 5 * time.Minute
 )
 
 func main() {
@@ -83,20 +93,27 @@ func run() error {
 	escrowAccountKey := keypair.MustRandom()
 	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 
-	submitter := &Submitter{
-		HorizonClient:     horizonClient,
+	horizon := &horizon.Horizon{
+		HorizonClient: horizonClient,
+	}
+	submitter := &submit.Submitter{
+		SubmitTxer:        horizon,
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
 		BaseFee:           txnbuild.MinBaseFee,
 		FeeAccount:        accountKey,
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
-	agent := &Agent{
-		NetworkPassphrase:   networkDetails.NetworkPassphrase,
-		HorizonClient:       horizonClient,
-		Submitter:           submitter,
-		EscrowAccountKey:    escrowAccountKey.FromAddress(),
-		EscrowAccountSigner: signerKey,
-		LogWriter:           os.Stderr,
+	agent := &agent.Agent{
+		ObservationPeriodTime:      observationPeriodTime,
+		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+		MaxOpenExpiry:              maxOpenExpiry,
+		NetworkPassphrase:          networkDetails.NetworkPassphrase,
+		SequenceNumberCollector:    horizon,
+		BalanceCollector:           horizon,
+		Submitter:                  submitter,
+		EscrowAccountKey:           escrowAccountKey.FromAddress(),
+		EscrowAccountSigner:        signerKey,
+		LogWriter:                  os.Stderr,
 	}
 
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
@@ -112,7 +129,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("signing tx to create escrow account: %w", err)
 	}
-	err = submitter.SubmitFeeBumpTx(tx)
+	err = submitter.SubmitTx(tx)
 	if err != nil {
 		return fmt.Errorf("submitting tx to create escrow account: %w", err)
 	}
@@ -139,33 +156,31 @@ func run() error {
 			fmt.Fprintf(os.Stdout, "close - close the channel\n")
 			fmt.Fprintf(os.Stdout, "exit - exit the application\n")
 		case "listen":
-			err := agent.Listen(params[1])
+			err := agent.ServeTCP(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
 		case "connect":
-			err := agent.Connect(params[1])
+			err := agent.ConnectTCP(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v", err)
 				continue
 			}
-			fmt.Fprintf(os.Stdout, "connected to %v\n", agent.Conn().RemoteAddr())
 		case "open":
-			err := agent.StartOpen()
+			err := agent.Open()
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
 			}
 		case "pay":
-			err := agent.StartPayment(params[1])
+			err := agent.Payment(params[1])
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
 			}
 		case "close":
-			err := agent.StartClose()
+			err := agent.Close()
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
@@ -200,8 +215,8 @@ func run() error {
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			newBalance := agent.channel.LocalEscrowAccount().Balance + depositAmountInt
-			agent.channel.UpdateLocalEscrowAccountBalance(newBalance)
+			newBalance := agent.Channel().LocalEscrowAccount().Balance + depositAmountInt
+			agent.Channel().UpdateLocalEscrowAccountBalance(newBalance)
 			fmt.Println("new balance of", amount.StringFromInt64(newBalance))
 		case "exit":
 			return nil
