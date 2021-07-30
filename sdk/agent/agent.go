@@ -14,21 +14,36 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/msg"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
-	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/txnbuild"
 )
 
+// BalanceCollector gets the balance of an asset for an account.
+type BalanceCollector interface {
+	GetBalance(account *keypair.FromAddress, asset state.Asset) (int64, error)
+}
+
+// SequenceNumberCollector gets the sequence number for an account.
+type SequenceNumberCollector interface {
+	GetSequenceNumber(account *keypair.FromAddress) (int64, error)
+}
+
+// Submitter submits a transaction to the network.
+type Submitter interface {
+	SubmitTx(tx *txnbuild.Transaction) error
+}
+
+// Agent coordinates a payment channel over a TCP connection.
 type Agent struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	MaxOpenExpiry              time.Duration
 	NetworkPassphrase          string
 
-	HorizonClient horizonclient.ClientInterface
-	Submitter     *submit.Submitter
+	SequenceNumberCollector SequenceNumberCollector
+	BalanceCollector        BalanceCollector
+	Submitter               Submitter
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -44,10 +59,14 @@ type Agent struct {
 	closeSignal chan struct{}
 }
 
+// Channel returns the channel the agent is managing. The channel will be nil if
+// the agent has not established a connection or coordinated a channel with
+// another participant.
 func (a *Agent) Channel() *state.Channel {
 	return a.channel
 }
 
+// hello sends a hello message to the remote participant over the connection.
 func (a *Agent) hello() error {
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(msg.Message{
@@ -63,6 +82,8 @@ func (a *Agent) hello() error {
 	return nil
 }
 
+// Open kicks off the open process which will continue after the function
+// returns.
 func (a *Agent) Open() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
@@ -90,6 +111,11 @@ func (a *Agent) Open() error {
 	return nil
 }
 
+// Payment makes a payment of the payment amount to the remote participant using
+// the open channel. The process is asynchronous and the function returns
+// immediately after the payment is signed and sent to the remote participant.
+// The payment is not authorized until the remote participant signs the payment
+// and returns the payment.
 func (a *Agent) Payment(paymentAmount string) error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
@@ -116,6 +142,10 @@ func (a *Agent) Payment(paymentAmount string) error {
 	return nil
 }
 
+// Close kicks off the close process by synchronously submitting a tx to the
+// network to begin the close process, then synchronously coordinating with the
+// remote participant to coordinate the close, then synchronously submitting the
+// final close tx either after the observation period is waited out.
 func (a *Agent) Close() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
@@ -221,13 +251,13 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 
 	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", h.Signer.Address())
 	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", h.EscrowAccount.Address())
-	escrowAccountSeqNum, err := getSeqNum(a.HorizonClient, a.EscrowAccountKey.Address())
+	escrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(a.EscrowAccountKey)
 	if err != nil {
-		return fmt.Errorf("getting sequence number of escrow account: %w", err)
+		return err
 	}
-	otherEscrowAccountSeqNum, err := getSeqNum(a.HorizonClient, h.EscrowAccount.Address())
+	otherEscrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(&h.EscrowAccount)
 	if err != nil {
-		return fmt.Errorf("getting sequence number of other's escrow account: %w", err)
+		return err
 	}
 	fmt.Fprintf(a.LogWriter, "escrow account seq: %v\n", escrowAccountSeqNum)
 	fmt.Fprintf(a.LogWriter, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
@@ -301,16 +331,10 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.LogWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
-		var account horizon.Account
-		account, err = a.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: a.channel.RemoteEscrowAccount().Address.Address()})
-		if err != nil {
-			return fmt.Errorf("getting state of remote escrow account: %w", err)
-		}
-		fmt.Fprintf(a.LogWriter, "updating remote escrow balance to: %s\n", account.Balances[0].Balance)
 		var balance int64
-		balance, err = amount.ParseInt64(account.Balances[0].Balance)
+		balance, err = a.BalanceCollector.GetBalance(a.channel.RemoteEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
 		if err != nil {
-			return fmt.Errorf("parsing balance of remote escrow account: %w", err)
+			return err
 		}
 		a.channel.UpdateRemoteEscrowAccountBalance(balance)
 		payment, err = a.channel.ConfirmPayment(paymentIn)

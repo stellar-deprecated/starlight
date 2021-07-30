@@ -16,7 +16,7 @@ import (
 // The BaseFee is the base fee that will be used for any submission where the
 // transaction has a lower base fee.
 type Submitter struct {
-	HorizonClient     horizonclient.ClientInterface
+	Submitter         interface{ SubmitTx(xdr string) error }
 	NetworkPassphrase string
 	BaseFee           int64
 	FeeAccount        *keypair.FromAddress
@@ -34,7 +34,11 @@ func (s *Submitter) SubmitTx(tx *txnbuild.Transaction) error {
 }
 
 func (s *Submitter) submitTx(tx *txnbuild.Transaction) error {
-	_, err := s.HorizonClient.SubmitTransaction(tx)
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return fmt.Errorf("encoding tx as base64: %w", err)
+	}
+	err = s.Submitter.SubmitTx(txeBase64)
 	if err != nil {
 		return fmt.Errorf("submitting tx: %w", buildErr(err))
 	}
@@ -54,7 +58,11 @@ func (s *Submitter) submitTxWithFeeBump(tx *txnbuild.Transaction) error {
 	if err != nil {
 		return fmt.Errorf("signing fee bump tx: %w", err)
 	}
-	_, err = s.HorizonClient.SubmitFeeBumpTransaction(feeBumpTx)
+	txeBase64, err := feeBumpTx.Base64()
+	if err != nil {
+		return fmt.Errorf("encoding fee bump tx as base64: %w", err)
+	}
+	err = s.Submitter.SubmitTx(txeBase64)
 	if err != nil {
 		return fmt.Errorf("submitting fee bump tx: %w", buildErr(err))
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
@@ -92,8 +93,11 @@ func run() error {
 	escrowAccountKey := keypair.MustRandom()
 	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 
+	horizon := &horizon.Horizon{
+		HorizonClient: horizonClient,
+	}
 	submitter := &submit.Submitter{
-		HorizonClient:     horizonClient,
+		Submitter:         horizon,
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
 		BaseFee:           txnbuild.MinBaseFee,
 		FeeAccount:        accountKey,
@@ -104,7 +108,8 @@ func run() error {
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		MaxOpenExpiry:              maxOpenExpiry,
 		NetworkPassphrase:          networkDetails.NetworkPassphrase,
-		HorizonClient:              horizonClient,
+		SequenceNumberCollector:    horizon,
+		BalanceCollector:           horizon,
 		Submitter:                  submitter,
 		EscrowAccountKey:           escrowAccountKey.FromAddress(),
 		EscrowAccountSigner:        signerKey,
