@@ -20,12 +20,16 @@ func (h *Horizon) GetBalance(accountID *keypair.FromAddress, asset state.Asset) 
 	if err != nil {
 		return 0, fmt.Errorf("getting account details of %s: %w", accountID, err)
 	}
-	// TODO: Support other assets.
-	balance, err := amount.ParseInt64(account.Balances[0].Balance)
-	if err != nil {
-		return 0, fmt.Errorf("parsing %s balance of %s: %w", asset, accountID, err)
+	for _, b := range account.Balances {
+		if b.Asset.Code == asset.Code() || b.Asset.Issuer == asset.Issuer() {
+			balance, err := amount.ParseInt64(account.Balances[0].Balance)
+			if err != nil {
+				return 0, fmt.Errorf("parsing %s balance of %s: %w", asset, accountID, err)
+			}
+			return balance, nil
+		}
 	}
-	return balance, nil
+	return 0, nil
 }
 
 func (h *Horizon) GetSequenceNumber(accountID *keypair.FromAddress) (int64, error) {
