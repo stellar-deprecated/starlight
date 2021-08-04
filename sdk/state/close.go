@@ -87,6 +87,11 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 // are in agreement on the final close state, but would like to submit earlier
 // than the original observation time.
 func (c *Channel) ProposeClose() (CloseAgreement, error) {
+	// If an unfinished unauthorized agreement exists, error.
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return CloseAgreement{}, fmt.Errorf("cannot propose coordinated close while an unfinished payment exists")
+	}
+
 	d := c.latestAuthorizedCloseAgreement.Details
 	d.ObservationPeriodTime = 0
 	d.ObservationPeriodLedgerGap = 0

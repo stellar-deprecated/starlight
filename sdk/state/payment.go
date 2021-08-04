@@ -107,6 +107,11 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		return CloseAgreement{}, fmt.Errorf("cannot propose payment after proposing a coordinated close")
 	}
 
+	// If an unfinished unauthorized agreement exists, error.
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return CloseAgreement{}, fmt.Errorf("cannot start a new payment while an unfinished one exists")
+	}
+
 	newBalance := int64(0)
 	if c.initiator {
 		newBalance = c.Balance() + amount

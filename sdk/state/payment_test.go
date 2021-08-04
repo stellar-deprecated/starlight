@@ -846,3 +846,62 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 	_, err = senderChannel.ConfirmPayment(p)
 	require.EqualError(t, err, "validating payment: cannot confirm payment after an accepted coordinated close")
 }
+
+func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        int64(100),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        int64(100),
+	}
+
+	senderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
+
+	// Open channel.
+	m, err := senderChannel.ProposeOpen(OpenParams{
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Second),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
+	})
+	require.NoError(t, err)
+	m, err = receiverChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+	_, err = senderChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+
+	// sender proposes payment
+	_, err = senderChannel.ProposePayment(10)
+	require.NoError(t, err)
+
+	// sender should not be able to propose a second payment until the first is finished
+	_, err = senderChannel.ProposePayment(20)
+	require.EqualError(t, err, "cannot start a new payment while an unfinished one exists")
+
+	// sender should not be able to propose coordinated close while unfinished payment exists
+	_, err = senderChannel.ProposeClose()
+	require.EqualError(t, err, "cannot propose coordinated close while an unfinished payment exists")
+}
