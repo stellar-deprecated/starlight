@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// functions to be used in the state_test integration tests
+// functions to be used in the sdk/state/integrationtests integration tests
 
 type AssetParam struct {
 	Asset       state.Asset

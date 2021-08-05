@@ -130,3 +130,37 @@ func TestChannel_ProposeClose(t *testing.T) {
 	assert.Equal(t, remoteSigner.FromAddress(), closeByRemote.Details.ProposingSigner)
 	assert.Equal(t, localSigner.FromAddress(), closeByRemote.Details.ConfirmingSigner)
 }
+
+func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+		Balance:        int64(100),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+		Balance:        int64(100),
+	}
+
+	senderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+
+	// Before open, proposing a coordinated close should error.
+	_, err := senderChannel.ProposeClose()
+	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
+
+	// Before open, confirming a coordinated close should error.
+	_, err = senderChannel.ConfirmClose(CloseAgreement{})
+	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
+
+}
