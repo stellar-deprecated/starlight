@@ -421,7 +421,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 
 	// A channel without a full open agreement should be able to propose an open
 	channel.openAgreement.ConfirmerSignatures = OpenAgreementSignatures{}
-	p, err := channel.ProposeOpen(OpenParams{
+	_, err = channel.ProposeOpen(OpenParams{
 		Asset:     NativeAsset,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
