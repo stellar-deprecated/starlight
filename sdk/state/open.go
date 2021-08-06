@@ -35,6 +35,10 @@ type OpenAgreementSignatures struct {
 	Formation   xdr.Signature
 }
 
+func (oas OpenAgreementSignatures) isFull() bool {
+	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
+}
+
 func signOpenAgreementTxs(decl, close, formation *txnbuild.Transaction, networkPassphrase string, signer *keypair.Full) (s OpenAgreementSignatures, err error) {
 	s.Declaration, err = signTx(decl, networkPassphrase, signer)
 	if err != nil {
@@ -75,6 +79,12 @@ type OpenAgreement struct {
 
 func (oa OpenAgreement) isEmpty() bool {
 	return oa.Equal(OpenAgreement{})
+}
+
+// isFull checks if the open agreement has the max amount of signatures,
+// indicating it is fully signed by all parties.
+func (oa OpenAgreement) isFull() bool {
+	return oa.ProposerSignatures.isFull() && oa.ConfirmerSignatures.isFull()
 }
 
 func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
@@ -181,6 +191,10 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
+	// if the channel is already open, error.
+	if c.openAgreement.isFull() {
+		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
+	}
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	d := OpenAgreementDetails{
@@ -209,6 +223,11 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 }
 
 func (c *Channel) validateOpen(m OpenAgreement) error {
+	// if the channel is already open, error.
+	if c.openAgreement.isFull() {
+		return fmt.Errorf("cannot confirm a new open if channel is already opened")
+	}
+
 	// If the open agreement details don't match the open agreement in progress, error.
 	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
 		return fmt.Errorf("input open agreement details do not match the saved open agreement details")
