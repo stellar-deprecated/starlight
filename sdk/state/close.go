@@ -90,6 +90,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	// If an unfinished unauthorized agreement exists, error.
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
 		return CloseAgreement{}, fmt.Errorf("cannot propose coordinated close while an unfinished payment exists")
+	}
 
 	// If the channel is not open yet, error.
 	if c.latestAuthorizedCloseAgreement.isEmpty() {
