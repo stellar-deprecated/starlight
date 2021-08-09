@@ -750,7 +750,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 	assert.Equal(t, caFinal, caResponse)
 }
 
-func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testing.T) {
+func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
@@ -782,6 +782,14 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfAfterCoordinatedClose(t *testi
 		LocalEscrowAccount:  remoteEscrowAccount,
 		RemoteEscrowAccount: localEscrowAccount,
 	})
+
+	// Before open, proposing a payment should error.
+	_, err := senderChannel.ProposePayment(10)
+	require.EqualError(t, err, "cannot propose a payment before channel is opened")
+
+	// Before open, confirming a payment should error.
+	_, err = senderChannel.ConfirmPayment(CloseAgreement{})
+	require.EqualError(t, err, "validating payment: cannot confirm a payment before channel is opened")
 
 	// Open channel.
 	m, err := senderChannel.ProposeOpen(OpenParams{

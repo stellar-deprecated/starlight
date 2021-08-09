@@ -348,3 +348,82 @@ func TestChannel_OpenTx(t *testing.T) {
 		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
 	}, formationTx.Signatures())
 }
+
+func TestChannel_OpenAgreementIsFull(t *testing.T) {
+	oa := OpenAgreement{}
+	assert.False(t, oa.isFull())
+
+	oa = OpenAgreement{
+		ProposerSignatures: OpenAgreementSignatures{
+			Close:       xdr.Signature{1},
+			Declaration: xdr.Signature{1},
+			Formation:   xdr.Signature{1},
+		},
+	}
+	assert.False(t, oa.isFull())
+
+	oa.ConfirmerSignatures = OpenAgreementSignatures{
+		Close:       xdr.Signature{1},
+		Declaration: xdr.Signature{1},
+	}
+	assert.False(t, oa.isFull())
+
+	oa.ConfirmerSignatures.Formation = xdr.Signature{1}
+	assert.True(t, oa.isFull())
+}
+
+func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	remoteEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+
+	channel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	channel.openAgreement = OpenAgreement{
+		Details: OpenAgreementDetails{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now(),
+			ProposingSigner:            localSigner.FromAddress(),
+			ConfirmingSigner:           remoteSigner.FromAddress(),
+		},
+		ProposerSignatures: OpenAgreementSignatures{
+			Declaration: xdr.Signature{0},
+			Close:       xdr.Signature{1},
+			Formation:   xdr.Signature{2},
+		},
+		ConfirmerSignatures: OpenAgreementSignatures{
+			Declaration: xdr.Signature{3},
+			Close:       xdr.Signature{4},
+			Formation:   xdr.Signature{5},
+		},
+	}
+
+	_, err := channel.ProposeOpen(OpenParams{})
+	require.EqualError(t, err, "cannot propose a new open if channel is already opened")
+
+	_, err = channel.ConfirmOpen(OpenAgreement{})
+	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")
+
+	// A channel without a full open agreement should be able to propose an open
+	channel.openAgreement.ConfirmerSignatures = OpenAgreementSignatures{}
+	_, err = channel.ProposeOpen(OpenParams{
+		Asset:     NativeAsset,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
+	})
+	require.NoError(t, err)
+}

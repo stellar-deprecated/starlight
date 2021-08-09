@@ -90,6 +90,10 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	// If an unfinished unauthorized agreement exists, error.
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
 		return CloseAgreement{}, fmt.Errorf("cannot propose coordinated close while an unfinished payment exists")
+
+	// If the channel is not open yet, error.
+	if c.latestAuthorizedCloseAgreement.isEmpty() {
+		return CloseAgreement{}, fmt.Errorf("cannot propose a coordinated close before channel is opened")
 	}
 
 	d := c.latestAuthorizedCloseAgreement.Details
@@ -116,6 +120,10 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 }
 
 func (c *Channel) validateClose(ca CloseAgreement) error {
+	// If the channel is not open yet, error.
+	if c.latestAuthorizedCloseAgreement.isEmpty() {
+		return fmt.Errorf("cannot confirm a coordinated close before channel is opened")
+	}
 	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Details.IterationNumber {
 		return fmt.Errorf("close agreement iteration number does not match saved latest authorized close agreement")
 	}
