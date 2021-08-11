@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"encoding/base64"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -961,11 +960,6 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			closeHash, _ := closeTx.HashHex(networkPassphrase)
 			t.Log("Responder does not submit the close:", closeHash)
 			broadcastedTx = declTx
-
-			// TODO - remove
-			fmt.Println("alec here:")
-			fmt.Printf("%+v\n", declTx)
-
 		}
 	}
 
