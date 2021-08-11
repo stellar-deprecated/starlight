@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
@@ -60,6 +61,8 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(close)
 	require.NoError(t, err)
+	assert.Equal(t, int64(0), initiatorChannel.Balance())
+	assert.Equal(t, int64(8), responderChannel.Balance())
 
 	// Pretend that responder broadcasts the declaration tx from the authorized
 	// agreement to the network, making it visible to initiator.
@@ -68,6 +71,12 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	err = initiatorChannel.IngestTx(declTx)
 	require.NoError(t, err)
 	require.Equal(t, 1, int(initiatorChannel.closeState))
+
+	// The initiator channel and responder channel should have the same close
+	// agreements.
+	assert.Equal(t, int64(8), initiatorChannel.Balance())
+	assert.Equal(t, int64(8), responderChannel.Balance())
+	assert.Equal(t, initiatorChannel.LatestCloseAgreement(), responderChannel.LatestCloseAgreement())
 
 	// TODO - initiatorChannel should be in a close state now, so shouldn't be able to propose/confirm new payments
 }
@@ -113,11 +122,10 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	_, err = initiatorChannel.ConfirmOpen(open)
 	require.NoError(t, err)
 
-	// Responder broadcasts latest declTx, starting an uncoordinated close.
+	// Pretend responder broadcasts latest declTx, and
+	// initiator ingests it.
 	declTx, _, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
-
-	// Initiator ingests broadcasted declTx.
 	err = initiatorChannel.IngestTx(declTx)
 	require.NoError(t, err)
 	require.Equal(t, 1, int(initiatorChannel.closeState))
