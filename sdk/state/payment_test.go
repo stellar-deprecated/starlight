@@ -907,6 +907,8 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 	_, err = senderChannel.ProposePayment(10)
 	require.NoError(t, err)
 
+	ucaOriginal := senderChannel.latestUnauthorizedCloseAgreement
+
 	// sender should not be able to propose a second payment until the first is finished
 	_, err = senderChannel.ProposePayment(20)
 	require.EqualError(t, err, "cannot start a new payment while an unfinished one exists")
@@ -917,4 +919,7 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 
 	// sender should still have the original close agreement
 	require.Equal(t, senderChannel.latestAuthorizedCloseAgreement, caOriginal)
+
+	// sender should still have the latestUnauthorizedCloseAgreement
+	require.Equal(t, senderChannel.latestUnauthorizedCloseAgreement, ucaOriginal)
 }
