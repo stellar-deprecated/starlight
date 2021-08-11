@@ -15,84 +15,83 @@ import (
 // determine if successful or not, and understand changes in the ledger as a
 // result.
 func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
-	txHash, err := tx.Hash(c.networkPassphrase)
+	err := c.ingestTxToUpdateCloseState(tx)
 	if err != nil {
-		return fmt.Errorf("hashing tx: %w", err)
+		return err
 	}
-
-	// If the transaction is the declTx of our latest unauthorized, update our latest unauthorized
-	// and mark the channel as closing.
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
-		unauthorizedDeclTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
-		if err != nil {
-			return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
-		}
-		unauthorizedDeclTxHash, err := unauthorizedDeclTx.Hash(c.networkPassphrase)
-		if err != nil {
-			return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
-		}
-		if txHash == unauthorizedDeclTxHash {
-			// Use the tx to update the latest unauthorized close agreement if possible.
-			err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
-			if err != nil {
-				return err
-			}
-			c.setCloseState(1)
-			return nil
-		}
-	}
-
-	// If the transaction is the declTx of our latest authorized, mark the channel as closing.
-	authorizedDeclTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
-	if err != nil {
-		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
-	}
-	authorizedDeclTxHash, err := authorizedDeclTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
-	}
-	if txHash == authorizedDeclTxHash {
-		c.setCloseState(1)
-		return nil
-	}
-
-	// If the transaction is an older declTx, mark the channel as needs closing.
-	c.setCloseState(2)
 
 	// TODO: Use the transaction result to affect on success/failure.
 
 	return nil
 }
 
-// ingestTxToUpdateUnauthorizedCloseAgreement uses the signatures in the
-// transaction to authorize an unauthorized close agreement if the channel has
-// one. This process helps to give a participant who proposed an agreement the
-// ability to close the channel if they did not receive the confirmers
-// signatures for a close agreement when the agreement was being negotiated. If
-// the transaction cannot be used to do this the function returns a nil error.
-// If the transaction should be able to provide this data and cannot, the
-// function errors.
-func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transaction) error {
+func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
 	// If the transaction's source account is not the initiator's escrow
-	// account, then the transaction will not be a transaction for a close
-	// agreement and won't be able to update any unauthorized close agreement.
+	// account, then the transaction is not a part of a close agreement.
 	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+		return fmt.Errorf(`transaction source account is not the initiator escrow account,
+			found: %s, should be: %s`, tx.SourceAccount().AccountID, c.initiatorEscrowAccount().Address.Address())
+	}
+
+	found, err := c.checkUnauthorizedAgreement(tx)
+	if err != nil {
+		return err
+	}
+	if found {
+		c.setCloseState(1)
+		err = c.updateUnauthorizedAgreement(tx)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
-	ca := c.latestUnauthorizedCloseAgreement
-
-	// If there is no unauthorized close agreement, then there's no need to try
-	// and update it.
-	if ca.isEmpty() {
+	found, err = c.checkAuthorizedAgreement(tx)
+	if err != nil {
+		return err
+	}
+	if found {
+		c.setCloseState(1)
 		return nil
+	}
+
+	// If declTx not found above, then its an older declTx. Set the channel state
+	// to closing.
+	c.setCloseState(2)
+	return nil
+}
+
+func (c *Channel) checkAuthorizedAgreement(tx *txnbuild.Transaction) (bool, error) {
+	txHash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return false, fmt.Errorf("hashing tx: %w", err)
+	}
+
+	declTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
+	if err != nil {
+		return false, fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
+	}
+	declTxHash, err := declTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return false, fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
+	}
+	if txHash != declTxHash {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (c *Channel) checkUnauthorizedAgreement(tx *txnbuild.Transaction) (bool, error) {
+	if c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return false, nil
 	}
 
 	// Load the declaration and close transactions for the unauthorized close
 	// agreement.
-	declTx, closeTx, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	declTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
 	if err != nil {
-		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
+		return false, fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
 	}
 
 	// Compare the hash of the tx with the hash of the declaration tx from the
@@ -100,18 +99,45 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 	// declaration tx.
 	txHash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
-		return fmt.Errorf("hashing tx: %w", err)
+		return false, fmt.Errorf("hashing tx: %w", err)
 	}
 	declTxHash, err := declTx.Hash(c.networkPassphrase)
 	if err != nil {
-		return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
+		return false, fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
 	}
 	if txHash != declTxHash {
-		return nil
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// updateUnauthorizedAgreement uses the signatures in the transaction to
+// authorize an unauthorized close agreement if the channel has one.
+// This process helps to give a participant who proposed an agreement the
+// ability to close the channel if they did not receive the confirmers
+// signatures for a close agreement when the agreement was being negotiated. If
+// the transaction cannot be used to do this the function returns a nil error.
+// If the transaction should be able to provide this data and cannot, the
+// function errors.
+func (c *Channel) updateUnauthorizedAgreement(tx *txnbuild.Transaction) error {
+	if c.latestUnauthorizedCloseAgreement.isEmpty() {
+		return fmt.Errorf("unauthorized close agreement is empty")
+	}
+
+	ca := c.latestUnauthorizedCloseAgreement
+
+	declTx, closeTx, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
+	if err != nil {
+		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
 	}
 
 	// Look for the signatures on the tx that are required to fully authorize
 	// the unauthorized close agreement, then confirm the close agreement.
+	declTxHash, err := declTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
+	}
 	closeTxHash, err := closeTx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing latest unauthorized close tx: %w", err)
@@ -134,5 +160,6 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 	if err != nil {
 		return fmt.Errorf("confirming the last unauthorized close: %w", err)
 	}
+
 	return nil
 }
