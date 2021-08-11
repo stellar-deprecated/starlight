@@ -6,8 +6,8 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
