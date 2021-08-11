@@ -248,6 +248,7 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	close, err = responderChannel.ConfirmPayment(close)
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(close)
+	require.NoError(t, err)
 
 	// Pretend that responder broadcasts the old declTx, and
 	// initiator ingests it.
