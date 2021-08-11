@@ -139,8 +139,6 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	require.Equal(t, 1, int(initiatorChannel.closeState))
 
 	// TODO - initiatorChannel should be in a close state now, so shouldn't be able to propose/confirm new payments
-	// TODO - when proposing/confirming a close, set state to Closing
-	// TODO - anyway to not set a "close state" field and make it part of the agreements?
 }
 
 func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
