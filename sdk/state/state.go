@@ -35,6 +35,24 @@ type Channel struct {
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
+
+	closeState CloseState
+}
+
+type CloseState int
+
+const (
+	NONE          CloseState = 0
+	CLOSING       CloseState = 1
+	NEEDS_CLOSING CloseState = 2
+)
+
+func (c *Channel) setCloseState(closeState CloseState) {
+	c.closeState = closeState
+}
+
+func (c *Channel) CloseState() CloseState {
+	return c.closeState
 }
 
 type Config struct {

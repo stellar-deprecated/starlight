@@ -1,6 +1,8 @@
 package txbuild
 
 import (
+	"fmt"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -16,6 +18,13 @@ type DeclarationParams struct {
 }
 
 func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
+	if p.InitiatorEscrow == nil {
+		return nil, fmt.Errorf("nil initiator escrow")
+	}
+	if p.ConfirmingSigner == nil {
+		return nil, fmt.Errorf("nil confirming signer")
+	}
+
 	minSequenceNumber := startSequenceOfIteration(p.StartSequence, p.IterationNumberExecuted)
 
 	// Build the extra signature required for signing the declaration

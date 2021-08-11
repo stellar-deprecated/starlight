@@ -15,18 +15,50 @@ import (
 // determine if successful or not, and understand changes in the ledger as a
 // result.
 func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
-	// Use the tx to update the latest unauthorized close agreement if possible.
-	err := c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
+	txHash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
-		return err
+		return fmt.Errorf("hashing tx: %w", err)
 	}
 
-	// TODO: If the tx hash matches an authorized or unauthorized declaration,
-	// mark the channel as closing.
-	// TODO: If the tx hash matches an authorized or unauthorized close, mark the
-	// channel as closed.
-	// TODO: If the tx is for an older declaration, mark the channel as closing with
-	// requiring bump.
+	// If the transaction is the declTx of our latest unauthorized, update our latest unauthorized
+	// and mark the channel as closing.
+	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
+		unauthorizedDeclTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
+		if err != nil {
+			return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
+		}
+		unauthorizedDeclTxHash, err := unauthorizedDeclTx.Hash(c.networkPassphrase)
+		if err != nil {
+			return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
+		}
+		if txHash == unauthorizedDeclTxHash {
+			// Use the tx to update the latest unauthorized close agreement if possible.
+			err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
+			if err != nil {
+				return err
+			}
+			c.setCloseState(1)
+			return nil
+		}
+	}
+
+	// If the transaction is the declTx of our latest authorized, mark the channel as closing.
+	authorizedDeclTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
+	if err != nil {
+		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
+	}
+	authorizedDeclTxHash, err := authorizedDeclTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
+	}
+	if txHash == authorizedDeclTxHash {
+		c.setCloseState(1)
+		return nil
+	}
+
+	// If the transaction is an older declTx, mark the channel as needs closing.
+	c.setCloseState(2)
+
 	// TODO: Use the transaction result to affect on success/failure.
 
 	return nil
