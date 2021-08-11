@@ -56,7 +56,7 @@ func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
 	}
 
 	// If declTx not found above, then its an older declTx. Set the channel state
-	// to closing.
+	// to NEEDS_CLOSING.
 	c.setCloseState(2)
 	return nil
 }
