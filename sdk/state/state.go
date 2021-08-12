@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
@@ -20,7 +21,9 @@ type Channel struct {
 	networkPassphrase string
 	maxOpenExpiry     time.Duration
 
-	startingSequence int64
+	startingSequence      int64
+	networkEscrowSequence int64 // the network sequence number of the initiator escrow account
+
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
 
@@ -35,24 +38,44 @@ type Channel struct {
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
-
-	closeState CloseState
 }
 
 type CloseState int
 
 const (
-	NONE          CloseState = 0
-	CLOSING       CloseState = 1
-	NEEDS_CLOSING CloseState = 2
+	CloseError CloseState = iota - 1
+	CloseNone
+	CloseEarlyClosing // a proposed declTx before fully confirmed
+	CloseClosing      // latest declTx is submitted
+	CloseNeedsClosing // an earlier declTx is submitted
+	CloseClosed
 )
 
-func (c *Channel) setCloseState(closeState CloseState) {
-	c.closeState = closeState
+// CloseState infers the close state from the network sequence number and the expected EI seq num
+func (c *Channel) CloseState() CloseState {
+	latestDeclTx := txbuild.StartSequenceOfIteration(c.startingSequence, c.latestAuthorizedCloseAgreement.Details.IterationNumber)
+	latestCloseTx := latestDeclTx + 1
+
+	switch c.networkEscrowSequence {
+	case c.startingSequence:
+		return CloseNone
+	case latestDeclTx:
+		return CloseClosing
+	case latestCloseTx:
+		return CloseClosed
+	case latestCloseTx + 1:
+		return CloseEarlyClosing
+	}
+
+	if c.networkEscrowSequence > c.startingSequence && c.networkEscrowSequence < latestDeclTx {
+		return CloseNeedsClosing
+	}
+
+	return CloseError
 }
 
-func (c *Channel) CloseState() CloseState {
-	return c.closeState
+func (c *Channel) setNetworkEscrowSequence(seqNum int64) {
+	c.networkEscrowSequence = seqNum
 }
 
 type Config struct {

@@ -15,12 +15,12 @@ import (
 // determine if successful or not, and understand changes in the ledger as a
 // result.
 func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
+	// TODO: Use the transaction result to affect on success/failure.
+
 	err := c.ingestTxToUpdateCloseState(tx)
 	if err != nil {
 		return err
 	}
-
-	// TODO: Use the transaction result to affect on success/failure.
 
 	return nil
 }
@@ -33,83 +33,18 @@ func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
 			found: %s, should be: %s`, tx.SourceAccount().AccountID, c.initiatorEscrowAccount().Address.Address())
 	}
 
-	found, err := c.checkUnauthorizedAgreement(tx)
-	if err != nil {
-		return err
-	}
-	if found {
-		c.setCloseState(1)
-		err = c.updateUnauthorizedAgreement(tx)
+	c.setNetworkEscrowSequence(tx.SourceAccount().Sequence)
+
+	// If we found an unauthorized close agreement has begun closing, update our unauthorized to
+	// become authorized.
+	if c.CloseState() == CloseEarlyClosing {
+		err := c.updateUnauthorizedAgreement(tx)
 		if err != nil {
 			return err
 		}
-		return nil
 	}
 
-	found, err = c.checkAuthorizedAgreement(tx)
-	if err != nil {
-		return err
-	}
-	if found {
-		c.setCloseState(1)
-		return nil
-	}
-
-	// If declTx not found above, then its an older declTx. Set the channel state
-	// to NEEDS_CLOSING.
-	c.setCloseState(2)
 	return nil
-}
-
-func (c *Channel) checkAuthorizedAgreement(tx *txnbuild.Transaction) (bool, error) {
-	txHash, err := tx.Hash(c.networkPassphrase)
-	if err != nil {
-		return false, fmt.Errorf("hashing tx: %w", err)
-	}
-
-	declTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
-	if err != nil {
-		return false, fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
-	}
-	declTxHash, err := declTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return false, fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
-	}
-	if txHash != declTxHash {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (c *Channel) checkUnauthorizedAgreement(tx *txnbuild.Transaction) (bool, error) {
-	if c.latestUnauthorizedCloseAgreement.isEmpty() {
-		return false, nil
-	}
-
-	// Load the declaration and close transactions for the unauthorized close
-	// agreement.
-	declTx, _, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
-	if err != nil {
-		return false, fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
-	}
-
-	// Compare the hash of the tx with the hash of the declaration tx from the
-	// latest unauthorized close agreement. If they match, then the tx is the
-	// declaration tx.
-	txHash, err := tx.Hash(c.networkPassphrase)
-	if err != nil {
-		return false, fmt.Errorf("hashing tx: %w", err)
-	}
-	declTxHash, err := declTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return false, fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
-	}
-	if txHash != declTxHash {
-		return false, nil
-	}
-
-	return true, nil
 }
 
 // updateUnauthorizedAgreement uses the signatures in the transaction to
