@@ -1,11 +1,13 @@
 package state
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -196,4 +198,84 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	require.Equal(t, CloseNeedsClosing, initiatorChannel.CloseState())
 
 	// TODO - initiator should not be able to propose/confirm new close agreements
+}
+
+func TestChannel_IngestTx_updateBalances(t *testing.T) {
+	// Setup
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+	initiatorEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	responderEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrowAccount,
+		RemoteEscrowAccount: responderEscrowAccount,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrowAccount,
+		RemoteEscrowAccount: initiatorEscrowAccount,
+	})
+	open, err := initiatorChannel.ProposeOpen(OpenParams{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		ExpiresAt:                  time.Now().Add(time.Minute),
+	})
+	require.NoError(t, err)
+	open, err = responderChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+	_, err = initiatorChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+
+	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
+	responderChannel.UpdateLocalEscrowAccountBalance(100)
+	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+
+	// // TODO - remove
+
+	fmt.Printf("%+v\n", initiatorChannel.localEscrowAccount)
+	fmt.Printf("%+v\n", initiatorChannel.remoteEscrowAccount)
+
+	// Initiator finds transaction that withdraws funds from the initiator escrow account.
+	// TODO - need to account for an operation having the source account (different or escrow one)
+	randomKP := keypair.MustRandom()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: initiatorChannel.localEscrowAccount.Address.Address(),
+				Sequence:  initiatorChannel.localEscrowAccount.SequenceNumber,
+			},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: randomKP.Address(),
+					Amount:      "7",
+					Asset:       txnbuild.NativeAsset{},
+				},
+			},
+			BaseFee:    100000,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+
+	initiatorChannel.IngestTx(tx)
+
+	// TODO do for both escrow accounts, for both channels
+
 }

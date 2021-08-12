@@ -22,6 +22,11 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 		return err
 	}
 
+	err = c.ingestTxToUpdateBalances(tx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -97,6 +102,50 @@ func (c *Channel) updateUnauthorizedAgreement(tx *txnbuild.Transaction) error {
 	_, err = c.ConfirmPayment(ca)
 	if err != nil {
 		return fmt.Errorf("confirming the last unauthorized close: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Channel) ingestTxToUpdateBalances(tx *txnbuild.Transaction) error {
+	// TODO - validations
+	// If transaction is not a payment transaction, return.
+	// If transaction is not sending from one of the escrow accounts, return.
+	// If transaction is not sending to one of the escrow accounts, return.
+	fmt.Printf("%+v\n", tx)
+
+	localEscrowAddress := c.localEscrowAccount.Address.Address()
+	remoteEscrowAddress := c.remoteEscrowAccount.Address.Address()
+
+	txSourceIsLocal := tx.SourceAccount().Address == localEscrowAddress
+	txSourceIsRemote := tx.SourceAccount().Address == remoteEscrowAddress
+
+	for _, op := range tx.Operations() {
+		if paymentOp, ok := op.(*txnbuild.Payment); ok {
+			fmt.Printf("operation: %+v\n", paymentOp)
+			// check withdrawals
+			if paymentOp.SourceAccount == localEscrowAddress ||
+				paymentOp.SourceAccount == nil && txSourceIsLocal {
+				// update local for withdrawal
+				continue
+			}
+
+			if paymentOp.SourceAccount == remoteEscrowAddress ||
+				paymentOp.SourceAccount == nil && txSourceIsRemote {
+				// update remote for withdrawal
+			}
+
+			// check deposits
+			if paymentOp.Destination == localEscrowAddress {
+				// update local escrow for deposit
+				continue
+			}
+			if paymentOp.Destination == remoteEscrowAddress {
+				// update remote escrow for deposit
+				continue
+			}
+		}
+
 	}
 
 	return nil
