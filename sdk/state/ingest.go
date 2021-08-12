@@ -42,6 +42,9 @@ func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
 		if err != nil {
 			return err
 		}
+		if c.CloseState() != CloseClosing {
+			return fmt.Errorf("converting unauthorized agreement to authorized should put channel in closing state")
+		}
 	}
 
 	return nil
