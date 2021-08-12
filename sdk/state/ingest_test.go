@@ -254,6 +254,9 @@ func TestChannel_IngestTx_updateBalances(t *testing.T) {
 	// Initiator finds transaction that withdraws funds from the initiator escrow account.
 	// TODO - need to account for an operation having the source account (different or escrow one)
 	randomKP := keypair.MustRandom()
+
+	// Withdrawals
+	// Tx source account is an escrow account.
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
@@ -273,6 +276,50 @@ func TestChannel_IngestTx_updateBalances(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
+
+	testWithdrawalOperations := []txnbuild.Operation{
+		&txnbuild.Payment{
+			Destination: randomKP.Address(),
+			Amount:      "7",
+			Asset:       txnbuild.NativeAsset{},
+		},
+		&txnbuild.Payment{
+			Destination:   randomKP.Address(),
+			Amount:        "7",
+			Asset:         txnbuild.NativeAsset{},
+			SourceAccount: initiatorChannel.localEscrowAccount.Address.Address(),
+		},
+		&txnbuild.Payment{
+			Destination:   randomKP.Address(),
+			Amount:        "7",
+			Asset:         txnbuild.NativeAsset{},
+			SourceAccount: initiatorChannel.remoteEscrowAccount.Address.Address(),
+		},
+	}
+
+	testDepositOperations := []txnbuild.Operation{
+		&txnbuild.Payment{
+			Destination: initiatorChannel.localEscrowAccount.Address.Address(),
+			Amount:      "7",
+			Asset:       txnbuild.NativeAsset{},
+		},
+		&txnbuild.Payment{
+			Destination: initiatorChannel.remoteEscrowAccount.Address.Address(),
+			Amount:      "7",
+			Asset:       txnbuild.NativeAsset{},
+		},
+		&txnbuild.Payment{
+			Destination: randomKP.Address(),
+			Amount:      "7",
+			Asset:       txnbuild.NativeAsset{},
+		},
+	}
+
+	// Different tx source account and operation source account is an escrow account.
+
+	// Deposits
+
+	// Transaction with no withdrawals or deposits.
 
 	initiatorChannel.IngestTx(tx)
 

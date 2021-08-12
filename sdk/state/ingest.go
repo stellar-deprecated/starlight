@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/txnbuild"
 )
 
@@ -108,12 +109,6 @@ func (c *Channel) updateUnauthorizedAgreement(tx *txnbuild.Transaction) error {
 }
 
 func (c *Channel) ingestTxToUpdateBalances(tx *txnbuild.Transaction) error {
-	// TODO - validations
-	// If transaction is not a payment transaction, return.
-	// If transaction is not sending from one of the escrow accounts, return.
-	// If transaction is not sending to one of the escrow accounts, return.
-	fmt.Printf("%+v\n", tx)
-
 	localEscrowAddress := c.localEscrowAccount.Address.Address()
 	remoteEscrowAddress := c.remoteEscrowAccount.Address.Address()
 
@@ -123,29 +118,28 @@ func (c *Channel) ingestTxToUpdateBalances(tx *txnbuild.Transaction) error {
 	for _, op := range tx.Operations() {
 		if paymentOp, ok := op.(*txnbuild.Payment); ok {
 			fmt.Printf("operation: %+v\n", paymentOp)
-			// check withdrawals
+			// Check for a withdrawal.
 			if paymentOp.SourceAccount == localEscrowAddress ||
-				paymentOp.SourceAccount == nil && txSourceIsLocal {
-				// update local for withdrawal
+				paymentOp.SourceAccount == "" && txSourceIsLocal {
+				c.localEscrowAccount.Balance -= amount.ParseInt64(paymentOp.Amount)
+				continue
+			}
+			if paymentOp.SourceAccount == remoteEscrowAddress ||
+				paymentOp.SourceAccount == "" && txSourceIsRemote {
+				c.remoteEscrowAccount.Balance -= amount.ParseInt64(paymentOp.Amount)
 				continue
 			}
 
-			if paymentOp.SourceAccount == remoteEscrowAddress ||
-				paymentOp.SourceAccount == nil && txSourceIsRemote {
-				// update remote for withdrawal
-			}
-
-			// check deposits
+			// Check for a deposit.
 			if paymentOp.Destination == localEscrowAddress {
-				// update local escrow for deposit
+				c.localEscrowAccount.Balance += amount.ParseInt64(paymentOp.Amount)
 				continue
 			}
 			if paymentOp.Destination == remoteEscrowAddress {
-				// update remote escrow for deposit
+				c.remoteEscrowAccount.Balance += amount.ParseInt64(paymentOp.Amount)
 				continue
 			}
 		}
-
 	}
 
 	return nil
