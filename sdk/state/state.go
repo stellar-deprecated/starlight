@@ -45,7 +45,7 @@ type CloseState int
 const (
 	CloseError CloseState = iota - 1
 	CloseNone
-	CloseEarlyClosing // a proposed declTx before fully confirmed
+	CloseEarlyClosing // a proposed declTx before fully confirmed is submitted
 	CloseClosing      // latest declTx is submitted
 	CloseNeedsClosing // an earlier declTx is submitted
 	CloseClosed
@@ -53,21 +53,23 @@ const (
 
 // CloseState infers the close state from the network sequence number and the expected EI seq num
 func (c *Channel) CloseState() CloseState {
-	latestDeclTx := txbuild.StartSequenceOfIteration(c.startingSequence, c.latestAuthorizedCloseAgreement.Details.IterationNumber)
-	latestCloseTx := latestDeclTx + 1
+	latestDeclSequence := txbuild.StartSequenceOfIteration(c.startingSequence, c.latestAuthorizedCloseAgreement.Details.IterationNumber)
+	latestCloseSequence := latestDeclSequence + 1
+
+	latestUnauthorizedDeclSequence := txbuild.StartSequenceOfIteration(c.startingSequence, c.latestUnauthorizedCloseAgreement.Details.IterationNumber)
 
 	switch c.networkEscrowSequence {
 	case c.startingSequence:
 		return CloseNone
-	case latestDeclTx:
+	case latestDeclSequence:
 		return CloseClosing
-	case latestCloseTx:
+	case latestCloseSequence:
 		return CloseClosed
-	case latestCloseTx + 1:
+	case latestUnauthorizedDeclSequence:
 		return CloseEarlyClosing
 	}
 
-	if c.networkEscrowSequence > c.startingSequence && c.networkEscrowSequence < latestDeclTx {
+	if c.networkEscrowSequence > c.startingSequence && c.networkEscrowSequence < latestDeclSequence {
 		return CloseNeedsClosing
 	}
 
