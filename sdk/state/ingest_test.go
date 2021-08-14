@@ -350,7 +350,7 @@ func TestChannel_IngestTx_updateBalances(t *testing.T) {
 			wantRemoteBalance: 95_0000000,
 		},
 
-		// Neither deposit not withdrawal.
+		// Neither deposit nor withdrawal.
 		{
 			txSourceAccount: keypair.MustRandom().Address(),
 			operation: &txnbuild.Payment{
