@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -241,88 +240,151 @@ func TestChannel_IngestTx_updateBalances(t *testing.T) {
 	_, err = initiatorChannel.ConfirmOpen(open)
 	require.NoError(t, err)
 
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
-	responderChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	type TestCase struct {
+		txSourceAccount   string
+		operation         txnbuild.Operation
+		wantLocalBalance  int64
+		wantRemoteBalance int64
+	}
 
-	// // TODO - remove
+	localAddress := initiatorChannel.localEscrowAccount.Address.Address()
+	remoteAddress := initiatorChannel.remoteEscrowAccount.Address.Address()
 
-	fmt.Printf("%+v\n", initiatorChannel.localEscrowAccount)
-	fmt.Printf("%+v\n", initiatorChannel.remoteEscrowAccount)
-
-	// Initiator finds transaction that withdraws funds from the initiator escrow account.
-	// TODO - need to account for an operation having the source account (different or escrow one)
-	randomKP := keypair.MustRandom()
-
-	// Withdrawals
-	// Tx source account is an escrow account.
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount: &txnbuild.SimpleAccount{
-				AccountID: initiatorChannel.localEscrowAccount.Address.Address(),
-				Sequence:  initiatorChannel.localEscrowAccount.SequenceNumber,
+	testCases := []TestCase{
+		// Withdrawals.
+		{
+			txSourceAccount: localAddress,
+			operation: &txnbuild.Payment{
+				Destination: keypair.MustRandom().Address(),
+				Amount:      "7",
+				Asset:       txnbuild.NativeAsset{},
 			},
-			IncrementSequenceNum: true,
-			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{
-					Destination: randomKP.Address(),
-					Amount:      "7",
-					Asset:       txnbuild.NativeAsset{},
-				},
+			wantLocalBalance:  93_0000000,
+			wantRemoteBalance: 100_0000000,
+		},
+		{
+			txSourceAccount: keypair.MustRandom().Address(),
+			operation: &txnbuild.Payment{
+				Destination:   keypair.MustRandom().Address(),
+				Amount:        "8",
+				Asset:         txnbuild.NativeAsset{},
+				SourceAccount: localAddress,
 			},
-			BaseFee:    100000,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
+			wantLocalBalance:  92_0000000,
+			wantRemoteBalance: 100_0000000,
 		},
-	)
-	require.NoError(t, err)
+		{
+			txSourceAccount: remoteAddress,
+			operation: &txnbuild.Payment{
+				Destination: keypair.MustRandom().Address(),
+				Amount:      "7",
+				Asset:       txnbuild.NativeAsset{},
+			},
+			wantLocalBalance:  100_0000000,
+			wantRemoteBalance: 93_0000000,
+		},
+		{
+			txSourceAccount: keypair.MustRandom().Address(),
+			operation: &txnbuild.Payment{
+				Destination:   keypair.MustRandom().Address(),
+				Amount:        "4",
+				Asset:         txnbuild.NativeAsset{},
+				SourceAccount: remoteAddress,
+			},
+			wantLocalBalance:  100_0000000,
+			wantRemoteBalance: 96_0000000,
+		},
+		{
+			txSourceAccount: localAddress,
+			operation: &txnbuild.Payment{
+				Destination:   keypair.MustRandom().Address(),
+				Amount:        "11",
+				Asset:         txnbuild.NativeAsset{},
+				SourceAccount: localAddress,
+			},
+			wantLocalBalance:  89_0000000,
+			wantRemoteBalance: 100_0000000,
+		},
 
-	testWithdrawalOperations := []txnbuild.Operation{
-		&txnbuild.Payment{
-			Destination: randomKP.Address(),
-			Amount:      "7",
-			Asset:       txnbuild.NativeAsset{},
+		// Deposits.
+		{
+			txSourceAccount: keypair.MustRandom().Address(),
+			operation: &txnbuild.Payment{
+				Destination: localAddress,
+				Amount:      "7",
+				Asset:       txnbuild.NativeAsset{},
+			},
+			wantLocalBalance:  107_0000000,
+			wantRemoteBalance: 100_0000000,
 		},
-		&txnbuild.Payment{
-			Destination:   randomKP.Address(),
-			Amount:        "7",
-			Asset:         txnbuild.NativeAsset{},
-			SourceAccount: initiatorChannel.localEscrowAccount.Address.Address(),
+		{
+			txSourceAccount: keypair.MustRandom().Address(),
+			operation: &txnbuild.Payment{
+				Destination: remoteAddress,
+				Amount:      "7",
+				Asset:       txnbuild.NativeAsset{},
+			},
+			wantLocalBalance:  100_0000000,
+			wantRemoteBalance: 107_0000000,
 		},
-		&txnbuild.Payment{
-			Destination:   randomKP.Address(),
-			Amount:        "7",
-			Asset:         txnbuild.NativeAsset{},
-			SourceAccount: initiatorChannel.remoteEscrowAccount.Address.Address(),
+
+		// Deposit and withdrawal.
+		{
+			txSourceAccount: localAddress,
+			operation: &txnbuild.Payment{
+				Destination: remoteAddress,
+				Amount:      "7",
+				Asset:       txnbuild.NativeAsset{},
+			},
+			wantLocalBalance:  93_0000000,
+			wantRemoteBalance: 107_0000000,
+		},
+		{
+			txSourceAccount: remoteAddress,
+			operation: &txnbuild.Payment{
+				Destination: localAddress,
+				Amount:      "5",
+				Asset:       txnbuild.NativeAsset{},
+			},
+			wantLocalBalance:  105_0000000,
+			wantRemoteBalance: 95_0000000,
+		},
+
+		// Neither deposit not withdrawal.
+		{
+			txSourceAccount: keypair.MustRandom().Address(),
+			operation: &txnbuild.Payment{
+				Destination: keypair.MustRandom().Address(),
+				Amount:      "10",
+				Asset:       txnbuild.NativeAsset{},
+			},
+			wantLocalBalance:  100_0000000,
+			wantRemoteBalance: 100_0000000,
 		},
 	}
 
-	testDepositOperations := []txnbuild.Operation{
-		&txnbuild.Payment{
-			Destination: initiatorChannel.localEscrowAccount.Address.Address(),
-			Amount:      "7",
-			Asset:       txnbuild.NativeAsset{},
-		},
-		&txnbuild.Payment{
-			Destination: initiatorChannel.remoteEscrowAccount.Address.Address(),
-			Amount:      "7",
-			Asset:       txnbuild.NativeAsset{},
-		},
-		&txnbuild.Payment{
-			Destination: randomKP.Address(),
-			Amount:      "7",
-			Asset:       txnbuild.NativeAsset{},
-		},
+	tp := txnbuild.TransactionParams{
+		IncrementSequenceNum: true,
+		BaseFee:              100000,
+		Timebounds:           txnbuild.NewInfiniteTimeout(),
 	}
 
-	// Different tx source account and operation source account is an escrow account.
+	for _, testCase := range testCases {
+		initiatorChannel.UpdateLocalEscrowAccountBalance(100_0000000)
+		initiatorChannel.UpdateRemoteEscrowAccountBalance(100_0000000)
 
-	// Deposits
+		tp.SourceAccount = &txnbuild.SimpleAccount{
+			AccountID: testCase.txSourceAccount,
+			Sequence:  1,
+		}
+		tp.Operations = []txnbuild.Operation{testCase.operation}
+		tx, err := txnbuild.NewTransaction(tp)
+		require.NoError(t, err)
 
-	// Transaction with no withdrawals or deposits.
+		err = initiatorChannel.ingestTxToUpdateBalances(tx)
+		require.NoError(t, err)
 
-	initiatorChannel.IngestTx(tx)
-
-	// TODO do for both escrow accounts, for both channels
-
+		assert.Equal(t, testCase.wantLocalBalance, initiatorChannel.localEscrowAccount.Balance)
+		assert.Equal(t, testCase.wantRemoteBalance, initiatorChannel.remoteEscrowAccount.Balance)
+	}
 }

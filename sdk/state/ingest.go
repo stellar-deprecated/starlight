@@ -112,32 +112,29 @@ func (c *Channel) ingestTxToUpdateBalances(tx *txnbuild.Transaction) error {
 	localEscrowAddress := c.localEscrowAccount.Address.Address()
 	remoteEscrowAddress := c.remoteEscrowAccount.Address.Address()
 
-	txSourceIsLocal := tx.SourceAccount().Address == localEscrowAddress
-	txSourceIsRemote := tx.SourceAccount().Address == remoteEscrowAddress
-
 	for _, op := range tx.Operations() {
 		if paymentOp, ok := op.(*txnbuild.Payment); ok {
-			fmt.Printf("operation: %+v\n", paymentOp)
-			// Check for a withdrawal.
-			if paymentOp.SourceAccount == localEscrowAddress ||
-				paymentOp.SourceAccount == "" && txSourceIsLocal {
-				c.localEscrowAccount.Balance -= amount.ParseInt64(paymentOp.Amount)
-				continue
+			amount, err := amount.ParseInt64(paymentOp.Amount)
+			if err != nil {
+				return fmt.Errorf("payment operation amount is not parsable")
 			}
-			if paymentOp.SourceAccount == remoteEscrowAddress ||
-				paymentOp.SourceAccount == "" && txSourceIsRemote {
-				c.remoteEscrowAccount.Balance -= amount.ParseInt64(paymentOp.Amount)
-				continue
+
+			// Check for a withdrawal. Check operation source first then tx source.
+			if paymentOp.SourceAccount == localEscrowAddress {
+				c.localEscrowAccount.Balance -= amount
+			} else if paymentOp.SourceAccount == remoteEscrowAddress {
+				c.remoteEscrowAccount.Balance -= amount
+			} else if tx.SourceAccount().AccountID == localEscrowAddress {
+				c.localEscrowAccount.Balance -= amount
+			} else if tx.SourceAccount().AccountID == remoteEscrowAddress {
+				c.remoteEscrowAccount.Balance -= amount
 			}
 
 			// Check for a deposit.
 			if paymentOp.Destination == localEscrowAddress {
-				c.localEscrowAccount.Balance += amount.ParseInt64(paymentOp.Amount)
-				continue
-			}
-			if paymentOp.Destination == remoteEscrowAddress {
-				c.remoteEscrowAccount.Balance += amount.ParseInt64(paymentOp.Amount)
-				continue
+				c.localEscrowAccount.Balance += amount
+			} else if paymentOp.Destination == remoteEscrowAddress {
+				c.remoteEscrowAccount.Balance += amount
 			}
 		}
 	}
