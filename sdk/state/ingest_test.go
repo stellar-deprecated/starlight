@@ -70,7 +70,9 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(declTx)
 	require.NoError(t, err)
-	require.Equal(t, CloseClosing, initiatorChannel.CloseState())
+	closeState, err := initiatorChannel.CloseState()
+	require.NoError(t, err)
+	require.Equal(t, CloseClosing, closeState)
 
 	// The initiator channel and responder channel should have the same close
 	// agreements.
@@ -128,7 +130,9 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(declTx)
 	require.NoError(t, err)
-	require.Equal(t, CloseClosing, initiatorChannel.CloseState())
+	closeState, err := initiatorChannel.CloseState()
+	require.NoError(t, err)
+	require.Equal(t, CloseClosing, closeState)
 
 	// TODO - initiator should not be able to propose/confirm new close agreements
 }
@@ -193,7 +197,9 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// initiator ingests it.
 	err = initiatorChannel.IngestTx(oldDeclTx)
 	require.NoError(t, err)
-	require.Equal(t, CloseNeedsClosing, initiatorChannel.CloseState())
+	closeState, err := initiatorChannel.CloseState()
+	require.NoError(t, err)
+	require.Equal(t, CloseNeedsClosing, closeState)
 
 	// TODO - initiator should not be able to propose/confirm new close agreements
 }
