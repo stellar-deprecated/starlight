@@ -78,11 +78,7 @@ func (c *Channel) CloseState() (CloseState, error) {
 }
 
 func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
-	if c.initiator {
-		c.localEscrowAccount.SequenceNumber = seqNum
-	} else {
-		c.remoteEscrowAccount.SequenceNumber = seqNum
-	}
+	c.initiatorEscrowAccount().SequenceNumber = seqNum
 }
 
 type Config struct {
