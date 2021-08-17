@@ -21,6 +21,7 @@ type Channel struct {
 	maxOpenExpiry     time.Duration
 
 	startingSequence int64
+
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
 
@@ -35,6 +36,49 @@ type Channel struct {
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
+}
+
+type CloseState int
+
+const (
+	CloseStateNone                     CloseState = iota
+	CloseStateClosing                             // latest declTx is submitted
+	CloseStateClosingWithOutdatedState            // an earlier declTx is submitted
+	CloseStateClosed
+)
+
+// CloseState infers the close state by comparing the initator escrow sequence
+// number and the close agreement sequence numbers.
+func (c *Channel) CloseState() (CloseState, error) {
+	// Get the sequence numbers for the latest close agreement transactions.
+	declTxAuthorized, closeTxAuthorized, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
+	if err != nil {
+		return -1, fmt.Errorf("building declaration and close txs for latest authorized close agreement: %w", err)
+	}
+	latestDeclSequence := declTxAuthorized.SequenceNumber()
+	latestCloseSequence := closeTxAuthorized.SequenceNumber()
+
+	// Compare with the initiator escrow account.
+	switch c.initiatorEscrowAccount().SequenceNumber {
+	case c.startingSequence:
+		return CloseStateNone, nil
+	case latestDeclSequence:
+		return CloseStateClosing, nil
+	case latestCloseSequence:
+		return CloseStateClosed, nil
+	}
+
+	// See if in between the startingSequence and the latest unauthorized close
+	// agreement, indicating an early close agreement has been submitted.
+	if c.initiatorEscrowAccount().SequenceNumber > c.startingSequence && c.initiatorEscrowAccount().SequenceNumber < latestDeclSequence {
+		return CloseStateClosingWithOutdatedState, nil
+	}
+
+	return -1, fmt.Errorf("initiator escrow account sequence has unexpected value")
+}
+
+func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
+	c.initiatorEscrowAccount().SequenceNumber = seqNum
 }
 
 type Config struct {
