@@ -41,9 +41,9 @@ type Channel struct {
 type CloseState int
 
 const (
-	CloseStateNone         CloseState = iota
-	CloseStateClosing                 // latest declTx is submitted
-	CloseStateNeedsClosing            // an earlier declTx is submitted
+	CloseStateNone                     CloseState = iota
+	CloseStateClosing                             // latest declTx is submitted
+	CloseStateClosingWithOutdatedState            // an earlier declTx is submitted
 	CloseStateClosed
 )
 
@@ -71,7 +71,7 @@ func (c *Channel) CloseState() (CloseState, error) {
 	// See if in between the startingSequence and the latest unauthorized close
 	// agreement, indicating an early close agreement has been submitted.
 	if c.initiatorEscrowAccount().SequenceNumber > c.startingSequence && c.initiatorEscrowAccount().SequenceNumber < latestDeclSequence {
-		return CloseStateNeedsClosing, nil
+		return CloseStateClosingWithOutdatedState, nil
 	}
 
 	return -1, fmt.Errorf("initiator escrow account sequence has unexpected value")
