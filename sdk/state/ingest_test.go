@@ -79,8 +79,6 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	assert.Equal(t, int64(8), initiatorChannel.Balance())
 	assert.Equal(t, int64(8), responderChannel.Balance())
 	assert.Equal(t, initiatorChannel.LatestCloseAgreement(), responderChannel.LatestCloseAgreement())
-
-	// TODO - initiatorChannel should be in a close state now, so shouldn't be able to propose/confirm new payments
 }
 
 func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
@@ -133,8 +131,6 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	closeState, err := initiatorChannel.CloseState()
 	require.NoError(t, err)
 	require.Equal(t, CloseStateClosing, closeState)
-
-	// TODO - initiator should not be able to propose/confirm new close agreements
 }
 
 func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
@@ -200,6 +196,4 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	closeState, err := initiatorChannel.CloseState()
 	require.NoError(t, err)
 	require.Equal(t, CloseStateClosingWithOutdatedState, closeState)
-
-	// TODO - initiator should not be able to propose/confirm new close agreements
 }
