@@ -42,7 +42,6 @@ type CloseState int
 
 const (
 	CloseStateNone         CloseState = iota
-	CloseStateEarlyClosing            // a proposed declTx before fully confirmed is submitted
 	CloseStateClosing                 // latest declTx is submitted
 	CloseStateNeedsClosing            // an earlier declTx is submitted
 	CloseStateClosed
@@ -67,18 +66,6 @@ func (c *Channel) CloseState() (CloseState, error) {
 		return CloseStateClosing, nil
 	case latestCloseSequence:
 		return CloseStateClosed, nil
-	}
-
-	// Compare the initiator escrow account sequence with the latest unauthorized
-	// close agreement.
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
-		declTxUnauthorized, _, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
-		if err != nil {
-			return -1, fmt.Errorf("building declaration and close txs for latest unauthorized close agreement: %w", err)
-		}
-		if c.initiatorEscrowAccount().SequenceNumber == declTxUnauthorized.SequenceNumber() {
-			return CloseStateEarlyClosing, nil
-		}
 	}
 
 	// See if in between the startingSequence and the latest unauthorized close
