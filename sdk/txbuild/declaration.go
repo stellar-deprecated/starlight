@@ -16,7 +16,7 @@ type DeclarationParams struct {
 }
 
 func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
-	minSequenceNumber := StartSequenceOfIteration(p.StartSequence, p.IterationNumberExecuted)
+	minSequenceNumber := startSequenceOfIteration(p.StartSequence, p.IterationNumberExecuted)
 
 	// Build the extra signature required for signing the declaration
 	// transaction that will be required in addition to the signers for the
@@ -38,7 +38,7 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: p.InitiatorEscrow.Address(),
-			Sequence:  StartSequenceOfIteration(p.StartSequence, p.IterationNumber) + 0, // Declaration is the first transaction in an iteration's transaction set.
+			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 0, // Declaration is the first transaction in an iteration's transaction set.
 		},
 		BaseFee:           0,
 		Timebounds:        txnbuild.NewInfiniteTimeout(),
