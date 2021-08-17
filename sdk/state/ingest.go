@@ -33,7 +33,7 @@ func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
 			found: %s, should be: %s`, tx.SourceAccount().AccountID, c.initiatorEscrowAccount().Address.Address())
 	}
 
-	c.setNetworkEscrowSequence(tx.SourceAccount().Sequence)
+	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
 
 	// If we found an unauthorized close agreement has begun closing, update our unauthorized to
 	// become authorized.

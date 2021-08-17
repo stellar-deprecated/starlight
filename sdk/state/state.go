@@ -21,8 +21,7 @@ type Channel struct {
 	networkPassphrase string
 	maxOpenExpiry     time.Duration
 
-	startingSequence      int64
-	networkEscrowSequence int64 // the network sequence number of the initiator escrow account
+	startingSequence int64
 
 	// TODO - leave execution out for now
 	// iterationNumberExecuted int64
@@ -58,7 +57,7 @@ func (c *Channel) CloseState() CloseState {
 
 	latestUnauthorizedDeclSequence := txbuild.StartSequenceOfIteration(c.startingSequence, c.latestUnauthorizedCloseAgreement.Details.IterationNumber)
 
-	switch c.networkEscrowSequence {
+	switch c.initiatorEscrowAccount().SequenceNumber {
 	case c.startingSequence:
 		return CloseNone
 	case latestDeclSequence:
@@ -69,15 +68,19 @@ func (c *Channel) CloseState() CloseState {
 		return CloseEarlyClosing
 	}
 
-	if c.networkEscrowSequence > c.startingSequence && c.networkEscrowSequence < latestDeclSequence {
+	if c.initiatorEscrowAccount().SequenceNumber > c.startingSequence && c.initiatorEscrowAccount().SequenceNumber < latestDeclSequence {
 		return CloseNeedsClosing
 	}
 
 	return CloseError
 }
 
-func (c *Channel) setNetworkEscrowSequence(seqNum int64) {
-	c.networkEscrowSequence = seqNum
+func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
+	if c.initiator {
+		c.localEscrowAccount.SequenceNumber = seqNum
+	} else {
+		c.remoteEscrowAccount.SequenceNumber = seqNum
+	}
 }
 
 type Config struct {
