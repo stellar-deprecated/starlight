@@ -29,7 +29,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 
 func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Transaction) {
 	// If the transaction's source account is not the initiator's escrow
-	// account, then the transaction is not a part of a close agreement.
+	// account, return.
 	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
 		return
 	}
@@ -46,6 +46,12 @@ func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Tr
 // If the transaction should be able to provide this data and cannot, the
 // function errors.
 func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transaction) error {
+	// If the transaction's source account is not the initiator's escrow
+	// account, then the transaction is not a part of a close agreement.
+	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+		return nil
+	}
+
 	ca := c.latestUnauthorizedCloseAgreement
 
 	// If there is no unauthorized close agreement, then there's no need to try
