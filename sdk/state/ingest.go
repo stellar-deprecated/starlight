@@ -26,7 +26,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 		return fmt.Errorf("getting close state: %w", err)
 	}
 
-	if closeState == CloseEarlyClosing {
+	if closeState == CloseStateEarlyClosing {
 		err := c.updateUnauthorizedAgreement(tx)
 		if err != nil {
 			return err
@@ -35,7 +35,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 		if err != nil {
 			return fmt.Errorf("getting close state: %w", err)
 		}
-		if closeState != CloseClosing {
+		if closeState != CloseStateClosing {
 			return fmt.Errorf("converting unauthorized agreement to authorized should put channel in closing state")
 		}
 	}

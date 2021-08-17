@@ -41,12 +41,12 @@ type Channel struct {
 type CloseState int
 
 const (
-	CloseError CloseState = iota - 1
-	CloseNone
-	CloseEarlyClosing // a proposed declTx before fully confirmed is submitted
-	CloseClosing      // latest declTx is submitted
-	CloseNeedsClosing // an earlier declTx is submitted
-	CloseClosed
+	CloseStateError CloseState = iota - 1
+	CloseStateNone
+	CloseStateEarlyClosing // a proposed declTx before fully confirmed is submitted
+	CloseStateClosing      // latest declTx is submitted
+	CloseStateNeedsClosing // an earlier declTx is submitted
+	CloseStateClosed
 )
 
 // CloseState infers the close state by comparing the initator escrow sequence
@@ -55,7 +55,7 @@ func (c *Channel) CloseState() (CloseState, error) {
 	// Get the sequence numbers for the latest close agreement transactions.
 	declTxAuthorized, closeTxAuthorized, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
 	if err != nil {
-		return CloseError, fmt.Errorf("building declaration and close txs for latest authorized close agreement: %w", err)
+		return CloseStateError, fmt.Errorf("building declaration and close txs for latest authorized close agreement: %w", err)
 	}
 	latestDeclSequence := declTxAuthorized.SequenceNumber()
 	latestCloseSequence := closeTxAuthorized.SequenceNumber()
@@ -63,11 +63,11 @@ func (c *Channel) CloseState() (CloseState, error) {
 	// Compare with the initiator escrow account.
 	switch c.initiatorEscrowAccount().SequenceNumber {
 	case c.startingSequence:
-		return CloseNone, nil
+		return CloseStateNone, nil
 	case latestDeclSequence:
-		return CloseClosing, nil
+		return CloseStateClosing, nil
 	case latestCloseSequence:
-		return CloseClosed, nil
+		return CloseStateClosed, nil
 	}
 
 	// Compare the initiator escrow account sequence with the latest unauthorized
@@ -75,20 +75,20 @@ func (c *Channel) CloseState() (CloseState, error) {
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
 		declTxUnauthorized, _, err := c.closeTxs(c.openAgreement.Details, c.latestUnauthorizedCloseAgreement.Details)
 		if err != nil {
-			return CloseError, fmt.Errorf("building declaration and close txs for latest unauthorized close agreement: %w", err)
+			return CloseStateError, fmt.Errorf("building declaration and close txs for latest unauthorized close agreement: %w", err)
 		}
 		if c.initiatorEscrowAccount().SequenceNumber == declTxUnauthorized.SequenceNumber() {
-			return CloseEarlyClosing, nil
+			return CloseStateEarlyClosing, nil
 		}
 	}
 
 	// See if in between the startingSequence and the latest unauthorized close
 	// agreement, indicating an early close agreement has been submitted.
 	if c.initiatorEscrowAccount().SequenceNumber > c.startingSequence && c.initiatorEscrowAccount().SequenceNumber < latestDeclSequence {
-		return CloseNeedsClosing, nil
+		return CloseStateNeedsClosing, nil
 	}
 
-	return CloseError, fmt.Errorf("initiator escrow account sequence has unexpected value")
+	return CloseStateError, fmt.Errorf("initiator escrow account sequence has unexpected value")
 }
 
 func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
