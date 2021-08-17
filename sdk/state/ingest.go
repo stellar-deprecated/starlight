@@ -17,23 +17,7 @@ import (
 func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 	// TODO: Use the transaction result to affect on success/failure.
 
-	err := c.ingestTxToUpdateCloseState(tx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
-	// If the transaction's source account is not the initiator's escrow
-	// account, then the transaction is not a part of a close agreement.
-	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
-		return fmt.Errorf(`transaction source account is not the initiator escrow account,
-			found: %s, should be: %s`, tx.SourceAccount().AccountID, c.initiatorEscrowAccount().Address.Address())
-	}
-
-	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
+	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
 
 	// If we found an unauthorized close agreement has begun closing, update our unauthorized to
 	// become authorized.
@@ -48,6 +32,16 @@ func (c *Channel) ingestTxToUpdateCloseState(tx *txnbuild.Transaction) error {
 	}
 
 	return nil
+}
+
+func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Transaction) {
+	// If the transaction's source account is not the initiator's escrow
+	// account, then the transaction is not a part of a close agreement.
+	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+		return
+	}
+
+	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
 }
 
 // updateUnauthorizedAgreement uses the signatures in the transaction to
