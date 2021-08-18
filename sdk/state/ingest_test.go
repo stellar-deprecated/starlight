@@ -71,15 +71,15 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(declTx)
 	require.NoError(t, err)
-	require.Equal(t, CloseClosing, initiatorChannel.CloseState())
+	closeState, err := initiatorChannel.CloseState()
+	require.NoError(t, err)
+	require.Equal(t, CloseStateClosing, closeState)
 
 	// The initiator channel and responder channel should have the same close
 	// agreements.
 	assert.Equal(t, int64(8), initiatorChannel.Balance())
 	assert.Equal(t, int64(8), responderChannel.Balance())
 	assert.Equal(t, initiatorChannel.LatestCloseAgreement(), responderChannel.LatestCloseAgreement())
-
-	// TODO - initiatorChannel should be in a close state now, so shouldn't be able to propose/confirm new payments
 }
 
 func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
@@ -129,9 +129,9 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(declTx)
 	require.NoError(t, err)
-	require.Equal(t, CloseClosing, initiatorChannel.CloseState())
-
-	// TODO - initiator should not be able to propose/confirm new close agreements
+	closeState, err := initiatorChannel.CloseState()
+	require.NoError(t, err)
+	require.Equal(t, CloseStateClosing, closeState)
 }
 
 func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
@@ -194,9 +194,9 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// initiator ingests it.
 	err = initiatorChannel.IngestTx(oldDeclTx)
 	require.NoError(t, err)
-	require.Equal(t, CloseNeedsClosing, initiatorChannel.CloseState())
-
-	// TODO - initiator should not be able to propose/confirm new close agreements
+	closeState, err := initiatorChannel.CloseState()
+	require.NoError(t, err)
+	require.Equal(t, CloseStateClosingWithOutdatedState, closeState)
 }
 
 func TestChannel_IngestTx_updateBalances(t *testing.T) {
