@@ -15,6 +15,7 @@ import (
 // TODO: Accept the xdr.TransactionResult and xdr.TransactionMeta so code can
 // determine if successful or not, and understand changes in the ledger as a
 // result.
+// TODO: Make sure the ingested tx is fee bumped.
 func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 	// TODO: Use the transaction result to affect on success/failure.
 

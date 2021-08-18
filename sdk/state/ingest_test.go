@@ -381,7 +381,7 @@ func TestChannel_IngestTx_updateBalances(t *testing.T) {
 		tx, err := txnbuild.NewTransaction(tp)
 		require.NoError(t, err)
 
-		err = initiatorChannel.ingestTxToUpdateBalances(tx)
+		err = initiatorChannel.IngestTx(tx)
 		require.NoError(t, err)
 
 		assert.Equal(t, testCase.wantLocalBalance, initiatorChannel.localEscrowAccount.Balance)
