@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// note: transaction result meta xdr strings for these tests were generated
+// with Protocol 17.
+
 func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
