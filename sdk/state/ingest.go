@@ -141,5 +141,4 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) {
 			}
 		}
 	}
-	return
 }

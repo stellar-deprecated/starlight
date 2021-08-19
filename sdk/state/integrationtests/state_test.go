@@ -966,7 +966,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	// Initiator must find the signatures for the close tx on network to complete.
 	{
 		t.Log("Initiator sees the declaration and goes looking for the close signatures...")
-		err = initiatorChannel.IngestTx(broadcastedTx)
+		err = initiatorChannel.IngestTx(broadcastedTx, "")
 		require.NoError(t, err)
 
 		t.Log("Initiator found signature:", base64.StdEncoding.EncodeToString(initiatorChannel.LatestCloseAgreement().ConfirmerSignatures.Close))
