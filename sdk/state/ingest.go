@@ -3,8 +3,8 @@ package state
 import (
 	"fmt"
 
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 // IngestTx accepts any transaction that has been seen as successful or
@@ -16,7 +16,7 @@ import (
 // determine if successful or not, and understand changes in the ledger as a
 // result.
 // TODO: Make sure the ingested tx is fee bumped.
-func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
+func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error {
 	// TODO: Use the transaction result to affect on success/failure.
 
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
@@ -26,7 +26,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
 		return err
 	}
 
-	err = c.ingestTxToUpdateBalances(tx)
+	err = c.ingestTxMetaToUpdateBalances(resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -116,36 +116,32 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 	return nil
 }
 
-func (c *Channel) ingestTxToUpdateBalances(tx *txnbuild.Transaction) error {
-	localEscrowAddress := c.localEscrowAccount.Address.Address()
-	remoteEscrowAddress := c.remoteEscrowAccount.Address.Address()
+// ingestTxMetaToUpdateBalances uses the transaction result meta data
+// from a transaction response to update local and remote escrow account
+// balances.
+func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
+	var txMeta xdr.TransactionMeta
+	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
+	if err != nil {
+		return fmt.Errorf("parsing resultMetaXDR: %w", err)
+	}
 
-	for _, op := range tx.Operations() {
-		if paymentOp, ok := op.(*txnbuild.Payment); ok {
-			amount, err := amount.ParseInt64(paymentOp.Amount)
-			if err != nil {
-				return fmt.Errorf("payment operation amount is not parsable")
+	// Find leder changes for the local and remote escrow accounts, if any,
+	// to update their balance.
+	for _, o := range txMeta.V2.Operations {
+		for _, change := range o.Changes {
+			updated, ok := change.GetUpdated()
+			if !ok {
+				continue
 			}
 
-			// Check for a withdrawal. Check operation source first then tx source.
-			if paymentOp.SourceAccount == localEscrowAddress {
-				c.localEscrowAccount.Balance -= amount
-			} else if paymentOp.SourceAccount == remoteEscrowAddress {
-				c.remoteEscrowAccount.Balance -= amount
-			} else if tx.SourceAccount().AccountID == localEscrowAddress {
-				c.localEscrowAccount.Balance -= amount
-			} else if tx.SourceAccount().AccountID == remoteEscrowAddress {
-				c.remoteEscrowAccount.Balance -= amount
-			}
-
-			// Check for a deposit.
-			if paymentOp.Destination == localEscrowAddress {
-				c.localEscrowAccount.Balance += amount
-			} else if paymentOp.Destination == remoteEscrowAddress {
-				c.remoteEscrowAccount.Balance += amount
+			switch updated.Data.Account.AccountId.Address() {
+			case c.localEscrowAccount.Address.Address():
+				c.UpdateLocalEscrowAccountBalance(int64(updated.Data.Account.Balance))
+			case c.remoteEscrowAccount.Address.Address():
+				c.UpdateRemoteEscrowAccountBalance(int64(updated.Data.Account.Balance))
 			}
 		}
 	}
-
 	return nil
 }
