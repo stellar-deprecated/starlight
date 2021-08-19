@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 // IngestTx accepts any transaction that has been seen as successful or
@@ -14,12 +15,17 @@ import (
 // TODO: Accept the xdr.TransactionResult and xdr.TransactionMeta so code can
 // determine if successful or not, and understand changes in the ledger as a
 // result.
-func (c *Channel) IngestTx(tx *txnbuild.Transaction) error {
+func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error {
 	// TODO: Use the transaction result to affect on success/failure.
 
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
 
 	err := c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
+	if err != nil {
+		return err
+	}
+
+	err = c.ingestTxMetaToUpdateBalances(resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -106,5 +112,36 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 		return fmt.Errorf("confirming the last unauthorized close: %w", err)
 	}
 
+	return nil
+}
+
+// ingestTxMetaToUpdateBalances uses the transaction result meta data
+// from a transaction response to update local and remote escrow account
+// balances.
+func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
+	// If not a valid resultMetaXDR string, return.
+	var txMeta xdr.TransactionMeta
+	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
+	if err != nil {
+		return fmt.Errorf("parsing the result meta xdr: %w", err)
+	}
+
+	// Find leder changes for the local and remote escrow accounts, if any,
+	// to update their balance.
+	for _, o := range txMeta.V2.Operations {
+		for _, change := range o.Changes {
+			updated, ok := change.GetUpdated()
+			if !ok {
+				continue
+			}
+
+			switch updated.Data.Account.AccountId.Address() {
+			case c.localEscrowAccount.Address.Address():
+				c.UpdateLocalEscrowAccountBalance(int64(updated.Data.Account.Balance))
+			case c.remoteEscrowAccount.Address.Address():
+				c.UpdateRemoteEscrowAccountBalance(int64(updated.Data.Account.Balance))
+			}
+		}
+	}
 	return nil
 }
