@@ -25,7 +25,10 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 		return err
 	}
 
-	c.ingestTxMetaToUpdateBalances(resultMetaXDR)
+	err = c.ingestTxMetaToUpdateBalances(resultMetaXDR)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -115,12 +118,12 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 // ingestTxMetaToUpdateBalances uses the transaction result meta data
 // from a transaction response to update local and remote escrow account
 // balances.
-func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) {
+func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 	// If not a valid resultMetaXDR string, return.
 	var txMeta xdr.TransactionMeta
 	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
 	if err != nil {
-		return
+		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
 
 	// Find leder changes for the local and remote escrow accounts, if any,
@@ -140,4 +143,5 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) {
 			}
 		}
 	}
+	return nil
 }
