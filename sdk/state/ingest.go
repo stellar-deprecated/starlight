@@ -128,7 +128,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 
 	channelAsset := c.openAgreement.Details.Asset
 
-	// Find ledger changes for the escrow account channel asset balances,
+	// Find ledger changes for the escrow accounts' balances,
 	// if any, and then update.
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
