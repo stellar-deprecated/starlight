@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -127,10 +126,10 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
 
-	// channelAsset := c.openAgreement.Details.Asset
+	channelAsset := c.openAgreement.Details.Asset
 
-	// Find leder changes for the local and remote escrow accounts, if any,
-	// to update their balance.
+	// Find ledger changes for the escrow account channel asset balances,
+	// if any, and then update.
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
 			updated, ok := change.GetUpdated()
@@ -138,22 +137,34 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 				continue
 			}
 
-			tl, ok := updated.Data.GetTrustLine()
-			if !ok {
-				continue
-			}
-			fmt.Println(reflect.TypeOf(tl))
-			fmt.Println(tl.AccountId.Address())
-			fmt.Println(reflect.TypeOf(tl.Asset))
-			fmt.Println(xdr.TrustLineAsset(tl.Asset))
-			fmt.Println(tl.Balance)
+			var ledgerEntryAddress string
+			var ledgerEntryBalance int64
 
-			// switch updated.Data.Account.AccountId.Address() {
-			// case c.localEscrowAccount.Address.Address():
-			// 	c.UpdateLocalEscrowAccountBalance(int64(updated.Data.Account.Balance))
-			// case c.remoteEscrowAccount.Address.Address():
-			// 	c.UpdateRemoteEscrowAccountBalance(int64(updated.Data.Account.Balance))
-			// }
+			if channelAsset.IsNative() {
+				account, ok := updated.Data.GetAccount()
+				if !ok {
+					continue
+				}
+				ledgerEntryAddress = account.AccountId.Address()
+				ledgerEntryBalance = int64(account.Balance)
+			} else {
+				tl, ok := updated.Data.GetTrustLine()
+				if !ok {
+					continue
+				}
+				if string(channelAsset) != tl.Asset.StringCanonical() {
+					continue
+				}
+				ledgerEntryAddress = tl.AccountId.Address()
+				ledgerEntryBalance = int64(tl.Balance)
+			}
+
+			switch ledgerEntryAddress {
+			case c.localEscrowAccount.Address.Address():
+				c.UpdateLocalEscrowAccountBalance(ledgerEntryBalance)
+			case c.remoteEscrowAccount.Address.Address():
+				c.UpdateRemoteEscrowAccountBalance(ledgerEntryBalance)
+			}
 		}
 	}
 	return nil
