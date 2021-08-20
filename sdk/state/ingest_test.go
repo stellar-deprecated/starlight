@@ -210,7 +210,7 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	require.Equal(t, CloseStateClosingWithOutdatedState, closeState)
 }
 
-func TestChannel_IngestTx_updateBalances(t *testing.T) {
+func TestChannel_IngestTx_updateBalancesNative(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
@@ -287,4 +287,70 @@ func TestChannel_IngestTx_updateBalances(t *testing.T) {
 	require.Contains(t, err.Error(), "parsing the result meta xdr:")
 	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localEscrowAccount.Balance)
 	assert.Equal(t, int64(9_100_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+}
+
+func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+
+	initiatorEscrow, err := keypair.ParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	require.NoError(t, err)
+	responderEscrow, err := keypair.ParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+	require.NoError(t, err)
+
+	initiatorEscrowAccount := &EscrowAccount{
+		Address:        initiatorEscrow.FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	responderEscrowAccount := &EscrowAccount{
+		Address:        responderEscrow.FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrowAccount,
+		RemoteEscrowAccount: responderEscrowAccount,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrowAccount,
+		RemoteEscrowAccount: initiatorEscrowAccount,
+	})
+
+	asset := Asset("TEST:GAOWNZMMFW25MWBAWKRYBMIEKY2KKEWKOINP2IDTRYOQ4DOEW26NV437")
+
+	open, err := initiatorChannel.ProposeOpen(OpenParams{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		Asset:                      asset,
+		ExpiresAt:                  time.Now().Add(time.Minute),
+	})
+	require.NoError(t, err)
+	open, err = responderChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+	_, err = initiatorChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+
+	initiatorChannel.UpdateLocalEscrowAccountBalance(1_000_0000000)
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(1_000_0000000)
+
+	// Deposit, payment of 10 TEST to issuer escrow.
+	paymentResultMeta := "AAAAAgAAAAIAAAADABA5KgAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHbmDAAQOA4AAAADAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABA5KgAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHbmDAAQOA4AAAAEAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAEDj9AAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAlQL5AB//////////wAAAAEAAAAAAAAAAAAAAAEAEDkqAAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAloBxQB//////////wAAAAEAAAAAAAAAAAAAAAA="
+	err = initiatorChannel.ingestTxMetaToUpdateBalances(paymentResultMeta)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1_010_0000000), initiatorChannel.localEscrowAccount.Balance)
+	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+
+	// TODO repeat the types of payments above but now with non native
+
+	// TODO - what happens if there's a payment of native? Should not affect balance.
+
 }

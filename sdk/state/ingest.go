@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -126,6 +127,8 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
 
+	// channelAsset := c.openAgreement.Details.Asset
+
 	// Find leder changes for the local and remote escrow accounts, if any,
 	// to update their balance.
 	for _, o := range txMeta.V2.Operations {
@@ -135,12 +138,22 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 				continue
 			}
 
-			switch updated.Data.Account.AccountId.Address() {
-			case c.localEscrowAccount.Address.Address():
-				c.UpdateLocalEscrowAccountBalance(int64(updated.Data.Account.Balance))
-			case c.remoteEscrowAccount.Address.Address():
-				c.UpdateRemoteEscrowAccountBalance(int64(updated.Data.Account.Balance))
+			tl, ok := updated.Data.GetTrustLine()
+			if !ok {
+				continue
 			}
+			fmt.Println(reflect.TypeOf(tl))
+			fmt.Println(tl.AccountId.Address())
+			fmt.Println(reflect.TypeOf(tl.Asset))
+			fmt.Println(xdr.TrustLineAsset(tl.Asset))
+			fmt.Println(tl.Balance)
+
+			// switch updated.Data.Account.AccountId.Address() {
+			// case c.localEscrowAccount.Address.Address():
+			// 	c.UpdateLocalEscrowAccountBalance(int64(updated.Data.Account.Balance))
+			// case c.remoteEscrowAccount.Address.Address():
+			// 	c.UpdateRemoteEscrowAccountBalance(int64(updated.Data.Account.Balance))
+			// }
 		}
 	}
 	return nil
