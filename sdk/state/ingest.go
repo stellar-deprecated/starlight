@@ -126,8 +126,10 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
 
-	// Find leder changes for the local and remote escrow accounts, if any,
-	// to update their balance.
+	channelAsset := c.openAgreement.Details.Asset
+
+	// Find ledger changes for the escrow accounts' balances,
+	// if any, and then update.
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
 			updated, ok := change.GetUpdated()
@@ -135,11 +137,33 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 				continue
 			}
 
-			switch updated.Data.Account.AccountId.Address() {
+			var ledgerEntryAddress string
+			var ledgerEntryBalance int64
+
+			if channelAsset.IsNative() {
+				account, ok := updated.Data.GetAccount()
+				if !ok {
+					continue
+				}
+				ledgerEntryAddress = account.AccountId.Address()
+				ledgerEntryBalance = int64(account.Balance)
+			} else {
+				tl, ok := updated.Data.GetTrustLine()
+				if !ok {
+					continue
+				}
+				if string(channelAsset) != tl.Asset.StringCanonical() {
+					continue
+				}
+				ledgerEntryAddress = tl.AccountId.Address()
+				ledgerEntryBalance = int64(tl.Balance)
+			}
+
+			switch ledgerEntryAddress {
 			case c.localEscrowAccount.Address.Address():
-				c.UpdateLocalEscrowAccountBalance(int64(updated.Data.Account.Balance))
+				c.UpdateLocalEscrowAccountBalance(ledgerEntryBalance)
 			case c.remoteEscrowAccount.Address.Address():
-				c.UpdateRemoteEscrowAccountBalance(int64(updated.Data.Account.Balance))
+				c.UpdateRemoteEscrowAccountBalance(ledgerEntryBalance)
 			}
 		}
 	}
