@@ -50,6 +50,14 @@ type Agent struct {
 
 	LogWriter io.Writer
 
+	HandleHelloError       func(*Agent, error)
+	HandleOpenError        func(*Agent, error)
+	HandleOpenConfirmed    func(*Agent, *state.OpenAgreement)
+	HandlePaymentError     func(*Agent, error)
+	HandlePaymentConfirmed func(*Agent, *state.CloseAgreement)
+	HandleCloseError       func(*Agent, error)
+	HandleCloseConfirmed   func(*Agent, *state.CloseAgreement)
+
 	channel *state.Channel
 
 	conn io.ReadWriter
@@ -233,22 +241,42 @@ func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	if handler == nil {
 		return fmt.Errorf("unrecognized message type %v", m.Type)
 	}
-	err := handler(a, m, send)
-	if err != nil {
-		return fmt.Errorf("handling message type %v: %w", m.Type, err)
-	}
+	handler(a, m, send)
 	return nil
 }
 
 var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
-	msg.TypeHello:           (*Agent).handleHello,
-	msg.TypeOpenRequest:     (*Agent).handleOpenRequest,
-	msg.TypeOpenResponse:    (*Agent).handleOpenResponse,
-	msg.TypePaymentRequest:  (*Agent).handlePaymentRequest,
-	msg.TypePaymentResponse: (*Agent).handlePaymentResponse,
-	msg.TypeCloseRequest:    (*Agent).handleCloseRequest,
-	msg.TypeCloseResponse:   (*Agent).handleCloseResponse,
+	msg.TypeHello:           handleMessageAndErrAndSuccess((*Agent).handleHello, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypeOpenRequest:     handleMessageAndErrAndSuccess((*Agent).handleOpenRequest, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypeOpenResponse:    handleMessageAndErrAndSuccess((*Agent).handleOpenResponse, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypePaymentRequest:  handleMessageAndErrAndSuccess((*Agent).handlePaymentRequest, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypePaymentResponse: handleMessageAndErrAndSuccess((*Agent).handlePaymentResponse, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypeCloseRequest:    handleMessageAndErrAndSuccess((*Agent).handleCloseRequest, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypeCloseResponse:   handleMessageAndErrAndSuccess((*Agent).handleCloseResponse, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
 }
+
+func handleMessageAndErrAndSuccess(
+	handleMessage func(*Agent, msg.Message, *msg.Encoder) error,
+	handleErr func(*Agent, error),
+	handleSuccess func(*Agent),
+) func(*Agent, msg.Message, *msg.Encoder) error {
+	return func(a *Agent, m msg.Message, e *msg.Encoder) error {
+		err := handleMessage(a, m, e)
+		if err != nil {
+			handleErr(a, err)
+			return err
+		}
+		handleSuccess(a)
+		return nil
+	}
+}
+func (a *Agent) handleHelloError       func(*Agent, error)
+func (a *Agent) handleOpenError        func(*Agent, error)
+func (a *Agent) handleOpenConfirmed    func(*Agent, *state.OpenAgreement)
+func (a *Agent) handlePaymentError     func(*Agent, error)
+func (a *Agent) handlePaymentConfirmed func(*Agent, *state.CloseAgreement)
+func (a *Agent) handleCloseError       func(*Agent, error)
+func (a *Agent) handleCloseConfirmed   func(*Agent, *state.CloseAgreement)
 
 func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	if a.channel != nil {
