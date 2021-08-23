@@ -153,6 +153,7 @@ func run() error {
 			fmt.Fprintf(os.Stdout, "open - open a channel with asset\n")
 			fmt.Fprintf(os.Stdout, "deposit <amount> - deposit asset into escrow account\n")
 			fmt.Fprintf(os.Stdout, "pay <amount> - pay amount of asset to peer\n")
+			fmt.Fprintf(os.Stdout, "declareclose - declare to close the channel\n")
 			fmt.Fprintf(os.Stdout, "close - close the channel\n")
 			fmt.Fprintf(os.Stdout, "exit - exit the application\n")
 		case "listen":
@@ -175,6 +176,12 @@ func run() error {
 			}
 		case "pay":
 			err := agent.Payment(params[1])
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "error: %v\n", err)
+				continue
+			}
+		case "declareclose":
+			err := agent.DeclareClose()
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "error: %v\n", err)
 				continue
