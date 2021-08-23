@@ -250,6 +250,10 @@ var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
 	msg.TypeCloseResponse:   (*Agent).handleCloseResponse,
 }
 
+func isInitiator(self, other *keypair.FromAddress) bool {
+	return self.Address() > other.Address()
+}
+
 func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	if a.channel != nil {
 		return fmt.Errorf("extra hello received when channel already setup")
@@ -272,7 +276,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	a.channel = state.NewChannel(state.Config{
 		NetworkPassphrase: a.NetworkPassphrase,
 		MaxOpenExpiry:     a.MaxOpenExpiry,
-		Initiator:         a.EscrowAccountKey.Address() > h.EscrowAccount.Address(),
+		Initiator:         isInitiator(a.EscrowAccountKey, &h.EscrowAccount),
 		LocalEscrowAccount: &state.EscrowAccount{
 			Address:        a.EscrowAccountKey,
 			SequenceNumber: escrowAccountSeqNum,
