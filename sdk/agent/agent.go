@@ -138,10 +138,10 @@ func (a *Agent) Payment(paymentAmount string) error {
 	return nil
 }
 
-// DeclareClose kicks off the close process by synchronously submitting a tx to
-// the network to begin the close process, then asynchronously coordinating with
-// the remote participant to coordinate the close. If the participant responds
-// the agent will automatically submit the final close tx that can be submitted
+// DeclareClose kicks off the close process by submitting a tx to the network to
+// begin the close process, then asynchronously coordinating with the remote
+// participant to coordinate the close. If the participant responds the agent
+// will automatically submit the final close tx that can be submitted
 // immediately. If no closed notification occurs before the observation period,
 // manually submit the close by calling Close.
 func (a *Agent) DeclareClose() error {
