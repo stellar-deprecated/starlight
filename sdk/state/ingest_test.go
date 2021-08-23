@@ -398,3 +398,54 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localEscrowAccount.Balance)
 	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
 }
+
+// ALEC TODO - correct name?
+func TestChannel_IngestTx_updateOpenState(t *testing.T) {
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+
+	initiatorEscrow, err := keypair.ParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	require.NoError(t, err)
+	responderEscrow, err := keypair.ParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+	require.NoError(t, err)
+
+	initiatorEscrowAccount := &EscrowAccount{
+		Address:        initiatorEscrow.FromAddress(),
+		SequenceNumber: int64(101),
+	}
+
+	responderEscrowAccount := &EscrowAccount{
+		Address:        responderEscrow.FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrowAccount,
+		RemoteEscrowAccount: responderEscrowAccount,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrowAccount,
+		RemoteEscrowAccount: initiatorEscrowAccount,
+	})
+
+	open, err := initiatorChannel.ProposeOpen(OpenParams{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		ExpiresAt:                  time.Now().Add(time.Minute),
+	})
+	require.NoError(t, err)
+	open, err = responderChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+	_, err = initiatorChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+
+}
