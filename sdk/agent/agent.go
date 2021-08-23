@@ -50,13 +50,11 @@ type Agent struct {
 
 	LogWriter io.Writer
 
-	HandleHelloError       func(*Agent, error)
-	HandleOpenError        func(*Agent, error)
-	HandleOpenConfirmed    func(*Agent, *state.OpenAgreement)
-	HandlePaymentError     func(*Agent, error)
-	HandlePaymentConfirmed func(*Agent, *state.CloseAgreement)
-	HandleCloseError       func(*Agent, error)
-	HandleCloseConfirmed   func(*Agent, *state.CloseAgreement)
+	OnError            func(*Agent, error)
+	OnInitialized      func(*Agent)
+	OnOpened           func(*Agent)
+	OnPaymentConfirmed func(*Agent, *state.CloseAgreement)
+	OnCloseConfirmed   func(*Agent, *state.CloseAgreement)
 
 	channel *state.Channel
 
@@ -146,10 +144,10 @@ func (a *Agent) Payment(paymentAmount string) error {
 	return nil
 }
 
-// DeclareClose kicks off the close process by synchronously submitting a tx to
-// the network to begin the close process, then asynchronously coordinating with
-// the remote participant to coordinate the close. If the participant responds
-// the agent will automatically submit the final close tx that can be submitted
+// DeclareClose kicks off the close process by submitting a tx to the network to
+// begin the close process, then asynchronously coordinating with the remote
+// participant to coordinate the close. If the participant responds the agent
+// will automatically submit the final close tx that can be submitted
 // immediately. If no closed notification occurs before the observation period,
 // manually submit the close by calling Close.
 func (a *Agent) DeclareClose() error {
@@ -241,42 +239,29 @@ func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	if handler == nil {
 		return fmt.Errorf("unrecognized message type %v", m.Type)
 	}
-	handler(a, m, send)
+	err := handler(a, m, send)
+	if err != nil {
+		if a.OnError != nil {
+			a.OnError(a, err)
+		}
+		return fmt.Errorf("handling message %d: %w", m.Type, err)
+	}
 	return nil
 }
 
 var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
-	msg.TypeHello:           handleMessageAndErrAndSuccess((*Agent).handleHello, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
-	msg.TypeOpenRequest:     handleMessageAndErrAndSuccess((*Agent).handleOpenRequest, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
-	msg.TypeOpenResponse:    handleMessageAndErrAndSuccess((*Agent).handleOpenResponse, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
-	msg.TypePaymentRequest:  handleMessageAndErrAndSuccess((*Agent).handlePaymentRequest, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
-	msg.TypePaymentResponse: handleMessageAndErrAndSuccess((*Agent).handlePaymentResponse, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
-	msg.TypeCloseRequest:    handleMessageAndErrAndSuccess((*Agent).handleCloseRequest, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
-	msg.TypeCloseResponse:   handleMessageAndErrAndSuccess((*Agent).handleCloseResponse, (*Agent).HandleHelloError, (*Agent).HandleCloseConfirmed),
+	msg.TypeHello:           (*Agent).handleHello,
+	msg.TypeOpenRequest:     (*Agent).handleOpenRequest,
+	msg.TypeOpenResponse:    (*Agent).handleOpenResponse,
+	msg.TypePaymentRequest:  (*Agent).handlePaymentRequest,
+	msg.TypePaymentResponse: (*Agent).handlePaymentResponse,
+	msg.TypeCloseRequest:    (*Agent).handleCloseRequest,
+	msg.TypeCloseResponse:   (*Agent).handleCloseResponse,
 }
 
-func handleMessageAndErrAndSuccess(
-	handleMessage func(*Agent, msg.Message, *msg.Encoder) error,
-	handleErr func(*Agent, error),
-	handleSuccess func(*Agent),
-) func(*Agent, msg.Message, *msg.Encoder) error {
-	return func(a *Agent, m msg.Message, e *msg.Encoder) error {
-		err := handleMessage(a, m, e)
-		if err != nil {
-			handleErr(a, err)
-			return err
-		}
-		handleSuccess(a)
-		return nil
-	}
+func isInitiator(self, other *keypair.FromAddress) bool {
+	return self.Address() > other.Address()
 }
-func (a *Agent) handleHelloError       func(*Agent, error)
-func (a *Agent) handleOpenError        func(*Agent, error)
-func (a *Agent) handleOpenConfirmed    func(*Agent, *state.OpenAgreement)
-func (a *Agent) handlePaymentError     func(*Agent, error)
-func (a *Agent) handlePaymentConfirmed func(*Agent, *state.CloseAgreement)
-func (a *Agent) handleCloseError       func(*Agent, error)
-func (a *Agent) handleCloseConfirmed   func(*Agent, *state.CloseAgreement)
 
 func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	if a.channel != nil {
@@ -300,7 +285,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	a.channel = state.NewChannel(state.Config{
 		NetworkPassphrase: a.NetworkPassphrase,
 		MaxOpenExpiry:     a.MaxOpenExpiry,
-		Initiator:         a.EscrowAccountKey.Address() > h.EscrowAccount.Address(),
+		Initiator:         isInitiator(a.EscrowAccountKey, &h.EscrowAccount),
 		LocalEscrowAccount: &state.EscrowAccount{
 			Address:        a.EscrowAccountKey,
 			SequenceNumber: escrowAccountSeqNum,
@@ -312,6 +297,9 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 		LocalSigner:  a.EscrowAccountSigner,
 		RemoteSigner: &h.Signer,
 	})
+	if a.OnInitialized != nil {
+		a.OnInitialized(a)
+	}
 	return nil
 }
 
