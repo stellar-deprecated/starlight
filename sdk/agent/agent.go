@@ -321,6 +321,15 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
 	}
+	// TODO: Remove this trigger of the event handler from here once ingesting
+	// transactions is added and the event is triggered from there. Note that
+	// technically the channel isn't open at this point and triggering the event
+	// here is just a hold over until we can trigger it based on ingestion.
+	// Triggering here assumes that the other participant, the initiator,
+	// submits the transaction.
+	if a.OnOpened != nil {
+		a.OnOpened(a)
+	}
 	return nil
 }
 
@@ -342,6 +351,11 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 	err = a.Submitter.SubmitTx(formationTx)
 	if err != nil {
 		return fmt.Errorf("submitting formation tx: %w", err)
+	}
+	// TODO: Move the triggering of this event handler to wherever we end up
+	// ingesting transactions, and trigger it after the channel becomes opened.
+	if a.OnOpened != nil {
+		a.OnOpened(a)
 	}
 	return nil
 }
