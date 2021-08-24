@@ -32,10 +32,29 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	openAgreement OpenAgreement
+	openAgreement      OpenAgreement
+	formationTxSuccess bool
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
+}
+
+// TODO - combine with CloseState
+type OpenState int
+
+const (
+	OpenStateNone OpenState = iota
+	OpenStateOpen
+	// TODO - set if formationTx validation fails?
+	OpenStateFailed
+)
+
+func (c *Channel) OpenState() OpenState {
+	if c.formationTxSuccess && !c.openAgreement.isEmpty() && c.initiatorEscrowAccount().SequenceNumber >= c.startingSequence {
+		return OpenStateOpen
+	} else {
+		return OpenStateNone
+	}
 }
 
 type CloseState int
