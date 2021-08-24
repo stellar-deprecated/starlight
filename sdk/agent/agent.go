@@ -272,7 +272,7 @@ func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "handling %v\n", m.Type)
 	handler := handlerMap[m.Type]
 	if handler == nil {
-		err := fmt.Errorf("unrecognized message type %v", m.Type)
+		err := fmt.Errorf("handling message %d: unrecognized message type", m.Type)
 		if a.OnError != nil {
 			a.OnError(a, err)
 		}
