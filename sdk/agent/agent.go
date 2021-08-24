@@ -403,10 +403,10 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	fmt.Fprintf(a.LogWriter, "payment authorized\n")
-	if a.OnPaymentReceivedAndConfirmed != nil {
-		defer a.OnPaymentReceivedAndConfirmed(a, payment)
-	}
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment})
+	if a.OnPaymentReceivedAndConfirmed != nil {
+		a.OnPaymentReceivedAndConfirmed(a, payment)
+	}
 	if err != nil {
 		return fmt.Errorf("encoding payment to send back: %w", err)
 	}
