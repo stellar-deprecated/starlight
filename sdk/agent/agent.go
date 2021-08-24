@@ -79,11 +79,7 @@ func (a *Agent) hello() error {
 	return nil
 }
 
-func isInitiator(self, other *keypair.FromAddress) bool {
-	return self.Address() > other.Address()
-}
-
-func (a *Agent) initChannel() error {
+func (a *Agent) initChannel(initiator bool) error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already created")
 	}
@@ -98,7 +94,7 @@ func (a *Agent) initChannel() error {
 	a.channel = state.NewChannel(state.Config{
 		NetworkPassphrase: a.NetworkPassphrase,
 		MaxOpenExpiry:     a.MaxOpenExpiry,
-		Initiator:         isInitiator(a.EscrowAccountKey, a.otherEscrowAccount),
+		Initiator:         initiator,
 		LocalEscrowAccount: &state.EscrowAccount{
 			Address:        a.EscrowAccountKey,
 			SequenceNumber: escrowAccountSeqNum,
@@ -122,7 +118,7 @@ func (a *Agent) Open() error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
 	}
-	err := a.initChannel()
+	err := a.initChannel(true)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
 	}
@@ -306,7 +302,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
-	err := a.initChannel()
+	err := a.initChannel(false)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
 	}
