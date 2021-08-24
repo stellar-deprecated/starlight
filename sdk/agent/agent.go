@@ -50,11 +50,11 @@ type Agent struct {
 
 	LogWriter io.Writer
 
-	OnError            func(*Agent, error)
-	OnInitialized      func(*Agent)
-	OnOpened           func(*Agent)
-	OnPaymentConfirmed func(*Agent, *state.CloseAgreement)
-	OnCloseConfirmed   func(*Agent, *state.CloseAgreement)
+	OnError       func(*Agent, error)
+	OnInitialized func(*Agent)
+	OnOpened      func(*Agent)
+	OnPayment     func(*Agent, state.CloseAgreement)
+	OnClosed      func(*Agent)
 
 	channel *state.Channel
 
@@ -387,6 +387,9 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("encoding payment to send back: %w", err)
 	}
+	if a.OnPayment != nil {
+		a.OnPayment(a, payment)
+	}
 	return nil
 }
 
@@ -439,6 +442,11 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close successful")
+	// TODO: Move the triggering of this event handler to wherever we end up
+	// ingesting transactions, and trigger it after the channel becomes closed.
+	if a.OnClosed != nil {
+		a.OnClosed(a)
+	}
 	return nil
 }
 
@@ -470,5 +478,10 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close successful")
+	// TODO: Move the triggering of this event handler to wherever we end up
+	// ingesting transactions, and trigger it after the channel becomes closed.
+	if a.OnClosed != nil {
+		a.OnClosed(a)
+	}
 	return nil
 }
