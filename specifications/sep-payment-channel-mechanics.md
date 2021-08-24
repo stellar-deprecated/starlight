@@ -2,7 +2,7 @@
 
 ```
 SEP: ????
-Title: Payment Channel Transactions
+Title: Payment Channel Mechanics
 Author: David Mazières <@standford-scs>, Leigh McCulloch <@leighmcculloch>
 Track: Standard
 Status: Draft
@@ -14,8 +14,8 @@ Version: 0.4.0
 
 ## Summary
 
-This protocol defines the Stellar transactions that two participants use to
-open and close a payment channel.
+This protocol defines the mechanics that two participants use to open and close
+a payment channel.
 
 ## Dependencies
 
