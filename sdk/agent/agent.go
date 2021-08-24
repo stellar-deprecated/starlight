@@ -56,10 +56,10 @@ type Agent struct {
 	OnPayment   func(*Agent, state.CloseAgreement)
 	OnClosed    func(*Agent)
 
-	channel                  *state.Channel
+	conn                     io.ReadWriter
 	otherEscrowAccount       *keypair.FromAddress
 	otherEscrowAccountSigner *keypair.FromAddress
-	conn                     io.ReadWriter
+	channel                  *state.Channel
 }
 
 // Channel returns the channel the agent is managing. The channel will be nil if
