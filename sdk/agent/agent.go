@@ -50,11 +50,14 @@ type Agent struct {
 
 	LogWriter io.Writer
 
-	OnError     func(*Agent, error)
-	OnConnected func(*Agent)
-	OnOpened    func(*Agent)
-	OnPayment   func(*Agent, state.CloseAgreement)
-	OnClosed    func(*Agent)
+	OnError                       func(*Agent, error)
+	OnConnected                   func(*Agent)
+	OnOpened                      func(*Agent)
+	OnPaymentReceivedAndConfirmed func(*Agent, state.CloseAgreement)
+	OnPaymentSentAndConfirmed     func(*Agent, state.CloseAgreement)
+	// TODO: Add closing event when ingestion is implemented.
+	// OnClosing   func(*Agent)
+	OnClosed func(*Agent)
 
 	conn                     io.ReadWriter
 	otherEscrowAccount       *keypair.FromAddress
@@ -400,12 +403,12 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	fmt.Fprintf(a.LogWriter, "payment authorized\n")
+	if a.OnPaymentReceivedAndConfirmed != nil {
+		defer a.OnPaymentReceivedAndConfirmed(a, payment)
+	}
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment})
 	if err != nil {
 		return fmt.Errorf("encoding payment to send back: %w", err)
-	}
-	if a.OnPayment != nil {
-		a.OnPayment(a, payment)
 	}
 	return nil
 }
@@ -416,11 +419,14 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 	}
 
 	paymentIn := *m.PaymentResponse
-	_, err := a.channel.ConfirmPayment(paymentIn)
+	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	fmt.Fprintf(a.LogWriter, "payment authorized\n")
+	if a.OnPaymentSentAndConfirmed != nil {
+		a.OnPaymentSentAndConfirmed(a, payment)
+	}
 	return nil
 }
 
