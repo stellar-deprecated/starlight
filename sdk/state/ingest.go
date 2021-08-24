@@ -38,17 +38,21 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 	return nil
 }
 
-func (c *Channel) ingestFormationTx(resultMetaXDR string) error {
+func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
+	defer func() {
+		if err != nil {
+			c.formationTxError = err
+		}
+	}()
+
 	// TODO - identify if this is a formation transaction, if not return
 
 	// If not a valid resultMetaXDR string, return error.
 	var txMeta xdr.TransactionMeta
-	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
+	err = xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
 	if err != nil {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
-
-	// TODO - can check the extraSignatures fields?
 
 	var initiatorEscrowAccountEntry, responderEscrowAccountEntry xdr.AccountEntry
 	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry xdr.TrustLineEntry

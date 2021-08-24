@@ -34,6 +34,7 @@ type Channel struct {
 
 	openAgreement      OpenAgreement
 	formationTxSuccess bool
+	formationTxError   error
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
@@ -43,14 +44,15 @@ type Channel struct {
 type OpenState int
 
 const (
-	OpenStateNone OpenState = iota
+	OpenStateFailed OpenState = iota - 1
+	OpenStateNone
 	OpenStateOpen
-	// TODO - set if formationTx validation fails?
-	OpenStateFailed
 )
 
 func (c *Channel) OpenState() OpenState {
-	if c.formationTxSuccess && !c.openAgreement.isEmpty() && c.initiatorEscrowAccount().SequenceNumber >= c.startingSequence {
+	if c.formationTxError != nil {
+		return OpenStateFailed
+	} else if c.formationTxSuccess && !c.openAgreement.isEmpty() && c.initiatorEscrowAccount().SequenceNumber >= c.startingSequence {
 		return OpenStateOpen
 	} else {
 		return OpenStateNone
