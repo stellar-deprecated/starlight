@@ -687,6 +687,19 @@ could submit a subset of the transactions required by the process and the
 participant will not have any other capability to authorize and submit the
 remaining transactions.
 
+### Queueing Multiple Payments
+
+This protocol implicitly supports participants sending multiple payments to the
+other participant without the other participant confirming each payment
+immediately. This introduces some risk to the sending participant because the
+receiving participant can prevent the channel from being closed for
+approximately the observation period multiplied by the number of uncomfirmed
+payments. The receiving participant could do this by submitting each payment's
+declaration transaction in order and wait just less than the observation period
+between each submission. The sending participant would not be in possession of
+the most recent authorized declaration transaction and so could not jump ahead
+to that most recent payment.
+
 ## Limitations
 
 This protocol defines the mechanisms of the Stellar network's core protocol that
