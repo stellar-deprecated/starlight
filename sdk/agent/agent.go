@@ -268,28 +268,25 @@ func (a *Agent) loop() {
 	}
 }
 
-func (a *Agent) handle(m msg.Message, send *msg.Encoder) (err error) {
+func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "handling %v\n", m.Type)
-
-	defer func() {
-		if err != nil && a.OnError != nil {
-			a.OnError(a, err)
-		}
-	}()
-
 	handler := handlerMap[m.Type]
 	if handler == nil {
 		err = fmt.Errorf("unrecognized message type %v", m.Type)
-		return
+		if a.OnError != nil {
+			a.OnError(a, err)
+		}
+		return err
 	}
-
 	err = handler(a, m, send)
 	if err != nil {
 		err = fmt.Errorf("handling message %d: %w", m.Type, err)
-		return
+		if a.OnError != nil {
+			a.OnError(a, err)
+		}
+		return err
 	}
-
-	return
+	return nil
 }
 
 var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
