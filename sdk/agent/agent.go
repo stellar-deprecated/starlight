@@ -50,9 +50,10 @@ type Agent struct {
 
 	LogWriter io.Writer
 
-	channel *state.Channel
-
-	conn io.ReadWriter
+	conn                     io.ReadWriter
+	otherEscrowAccount       *keypair.FromAddress
+	otherEscrowAccountSigner *keypair.FromAddress
+	channel                  *state.Channel
 }
 
 // Channel returns the channel the agent is managing. The channel will be nil if
@@ -78,14 +79,52 @@ func (a *Agent) hello() error {
 	return nil
 }
 
+func isInitiator(self, other *keypair.FromAddress) bool {
+	return self.Address() > other.Address()
+}
+
+func (a *Agent) initChannel() error {
+	if a.channel != nil {
+		return fmt.Errorf("channel already created")
+	}
+	escrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(a.EscrowAccountKey)
+	if err != nil {
+		return err
+	}
+	otherEscrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(a.otherEscrowAccount)
+	if err != nil {
+		return err
+	}
+	a.channel = state.NewChannel(state.Config{
+		NetworkPassphrase: a.NetworkPassphrase,
+		MaxOpenExpiry:     a.MaxOpenExpiry,
+		Initiator:         isInitiator(a.EscrowAccountKey, a.otherEscrowAccount),
+		LocalEscrowAccount: &state.EscrowAccount{
+			Address:        a.EscrowAccountKey,
+			SequenceNumber: escrowAccountSeqNum,
+		},
+		RemoteEscrowAccount: &state.EscrowAccount{
+			Address:        a.otherEscrowAccount,
+			SequenceNumber: otherEscrowAccountSeqNum,
+		},
+		LocalSigner:  a.EscrowAccountSigner,
+		RemoteSigner: a.otherEscrowAccountSigner,
+	})
+	return nil
+}
+
 // Open kicks off the open process which will continue after the function
 // returns.
 func (a *Agent) Open() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	if a.channel == nil {
-		return fmt.Errorf("no channel")
+	if a.channel != nil {
+		return fmt.Errorf("channel already exists")
+	}
+	err := a.initChannel()
+	if err != nil {
+		return fmt.Errorf("init channel: %w", err)
 	}
 	open, err := a.channel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      a.ObservationPeriodTime,
@@ -250,50 +289,26 @@ var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
 	msg.TypeCloseResponse:   (*Agent).handleCloseResponse,
 }
 
-func isInitiator(self, other *keypair.FromAddress) bool {
-	return self.Address() > other.Address()
-}
-
 func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	if a.channel != nil {
 		return fmt.Errorf("extra hello received when channel already setup")
 	}
 
-	h := *m.Hello
+	h := m.Hello
+
+	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", h.EscrowAccount.Address())
+	a.otherEscrowAccount = &h.EscrowAccount
 
 	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", h.Signer.Address())
-	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", h.EscrowAccount.Address())
-	escrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(a.EscrowAccountKey)
-	if err != nil {
-		return err
-	}
-	otherEscrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(&h.EscrowAccount)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(a.LogWriter, "escrow account seq: %v\n", escrowAccountSeqNum)
-	fmt.Fprintf(a.LogWriter, "other's escrow account seq: %v\n", otherEscrowAccountSeqNum)
-	a.channel = state.NewChannel(state.Config{
-		NetworkPassphrase: a.NetworkPassphrase,
-		MaxOpenExpiry:     a.MaxOpenExpiry,
-		Initiator:         isInitiator(a.EscrowAccountKey, &h.EscrowAccount),
-		LocalEscrowAccount: &state.EscrowAccount{
-			Address:        a.EscrowAccountKey,
-			SequenceNumber: escrowAccountSeqNum,
-		},
-		RemoteEscrowAccount: &state.EscrowAccount{
-			Address:        &h.EscrowAccount,
-			SequenceNumber: otherEscrowAccountSeqNum,
-		},
-		LocalSigner:  a.EscrowAccountSigner,
-		RemoteSigner: &h.Signer,
-	})
+	a.otherEscrowAccountSigner = &h.Signer
+
 	return nil
 }
 
 func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
-	if a.channel == nil {
-		return fmt.Errorf("no channel")
+	err := a.initChannel()
+	if err != nil {
+		return fmt.Errorf("init channel: %w", err)
 	}
 
 	openIn := *m.OpenRequest
