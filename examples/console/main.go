@@ -114,6 +114,9 @@ func run() error {
 		EscrowAccountKey:           escrowAccountKey.FromAddress(),
 		EscrowAccountSigner:        signerKey,
 		LogWriter:                  os.Stderr,
+		OnError: func(a *agent.Agent, err error) {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		},
 	}
 
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
