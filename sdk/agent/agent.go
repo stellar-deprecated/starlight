@@ -292,11 +292,11 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 
 	h := m.Hello
 
-	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", h.EscrowAccount.Address())
 	a.otherEscrowAccount = &h.EscrowAccount
-
-	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", h.Signer.Address())
 	a.otherEscrowAccountSigner = &h.Signer
+
+	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", a.otherEscrowAccount.Address())
+	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", a.otherEscrowAccountSigner.Address())
 
 	return nil
 }
