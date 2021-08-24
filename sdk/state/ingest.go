@@ -30,9 +30,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 		return err
 	}
 
-	// TODO - change name?
-	// get the state of the formation tx
-	err = c.ingestFormationTxToUpdateOpenState(resultMetaXDR)
+	err = c.ingestFormationTx(resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -40,7 +38,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 	return nil
 }
 
-func (c *Channel) ingestFormationTxToUpdateOpenState(resultMetaXDR string) error {
+func (c *Channel) ingestFormationTx(resultMetaXDR string) error {
 	// TODO - identify if this is a formation transaction, if not return
 
 	// If not a valid resultMetaXDR string, return error.
@@ -115,7 +113,13 @@ func (c *Channel) ingestFormationTxToUpdateOpenState(resultMetaXDR string) error
 		}
 	}
 
-	if !c.openAgreement.Details.Asset.IsNative() {
+	// Validate the trustlines are correct.
+	if c.openAgreement.Details.Asset.IsNative() {
+		var empty xdr.TrustLineEntry
+		if initiatorEscrowTrustlineEntry != empty || responderEscrowTrustlineEntry != empty {
+			return fmt.Errorf("extraneous trustline found for native asset channel")
+		}
+	} else {
 		trustlineEntries := [2]xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
 			if string(c.openAgreement.Details.Asset) != te.Asset.StringCanonical() {
@@ -123,7 +127,6 @@ func (c *Channel) ingestFormationTxToUpdateOpenState(resultMetaXDR string) error
 			}
 		}
 	}
-	// TODO - should error if trustlines found and channel is native?
 
 	c.formationTxSuccess = true
 	return nil
