@@ -45,6 +45,8 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 		}
 	}()
 
+	const requiredNumOfSigners = 2
+
 	// TODO - identify if this is a formation transaction, if not return
 
 	// If not a valid resultMetaXDR string, return error.
@@ -94,7 +96,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	escrowAccounts := [2]xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
 	for _, ea := range escrowAccounts {
 		// Validate the escrow account thresholds are correct.
-		if ea.Thresholds != xdr.Thresholds([4]byte{0, 2, 2, 2}) {
+		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredNumOfSigners, requiredNumOfSigners, requiredNumOfSigners}) {
 			return fmt.Errorf("incorrect initiator escrow account thresholds found")
 		}
 
@@ -112,8 +114,11 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 				responderSignerFound = true
 			}
 		}
-		if !initiatorSignerFound || !responderSignerFound || len(ea.Signers) != 2 {
+		if !initiatorSignerFound || !responderSignerFound {
 			return fmt.Errorf("incorrect signer weights found")
+		}
+		if len(ea.Signers) != requiredNumOfSigners {
+			return fmt.Errorf("incorrect number of signers, found: %d want: %d", len(ea.Signers), requiredNumOfSigners)
 		}
 	}
 
@@ -136,6 +141,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	return nil
 }
 
+// TODO - need to bump the initiator escrow seqNum on seeing the formation transaction.
 func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Transaction) {
 	// If the transaction's source account is not the initiator's escrow
 	// account, return.
