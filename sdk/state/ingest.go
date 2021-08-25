@@ -25,7 +25,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 		return err
 	}
 
-	err = c.ingestFormationTx(resultMetaXDR)
+	err = c.ingestFormationTx(tx, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,24 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 	return nil
 }
 
-func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
+func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultMetaXDR string) (err error) {
+	// If the transaction is not the formation transaction, return.
+	myFormationTx, err := c.OpenTx()
+	if err != nil {
+		return fmt.Errorf("creating formation tx: %w", err)
+	}
+	formationHash, err := formationTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("getting transaction hash: %w", err)
+	}
+	myFormationHash, err := myFormationTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("getting transaction hash: %w", err)
+	}
+	if formationHash != myFormationHash {
+		return nil
+	}
+
 	const requiredSignerWeight = 1
 	const requiredNumOfSigners = 2
 	const requiredThresholds = requiredNumOfSigners * requiredSignerWeight
