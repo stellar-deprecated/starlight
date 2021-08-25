@@ -260,7 +260,6 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	}
 
 	// Validate the trustlines are correct.
-	// TODO - should an initiator escrow be allowed to have extraneous trustlines (if not add test)?
 	if c.openAgreement.Details.Asset.IsNative() {
 		var empty xdr.TrustLineEntry
 		if initiatorEscrowTrustlineEntry != empty || responderEscrowTrustlineEntry != empty {
@@ -269,8 +268,14 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	} else {
 		trustlineEntries := [2]xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
+			// Validate correct asset.
 			if string(c.openAgreement.Details.Asset) != te.Asset.StringCanonical() {
 				return fmt.Errorf("incorrect trustline asset found for nonnative asset channel")
+			}
+
+			// Validate trustline is authorized.
+			if te.Flags != xdr.Uint32(1) {
+				return fmt.Errorf("incorrect trustline flag, needs to be authorized")
 			}
 		}
 	}
