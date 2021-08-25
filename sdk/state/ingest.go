@@ -10,7 +10,7 @@ import (
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
 // channel if the transaction relates to the channel.
-func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error {
+func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) error {
 	// TODO: Use the transaction result to affect on success/failure.
 
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
@@ -25,7 +25,7 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 		return err
 	}
 
-	err = c.ingestFormationTx(tx, resultMetaXDR)
+	err = c.ingestFormationTx(tx, resultXDR, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,14 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 	return nil
 }
 
-func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultMetaXDR string) (err error) {
+// ingestFormationTx accepts a transaction, resultXDR, and resultMetaXDR. The
+// method returns with no error if either 1. the resultXDR shows the transaction
+// was unsuccessful, or 2. the transaction is not the formation transaction this
+// channel is expecting, the method returns with no error. Lastly, this method
+// will validate that the resulting account and trustlines after the formation
+// transaction was submitted are in this channel's expected states to mark the
+// channel as open.
+func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
 	// If the transaction is not the formation transaction, return.
 	myFormationTx, err := c.OpenTx()
 	if err != nil {
@@ -185,6 +192,16 @@ func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultMet
 		return fmt.Errorf("getting transaction hash: %w", err)
 	}
 	if formationHash != myFormationHash {
+		return nil
+	}
+
+	// If the transaction was not successful, return.
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(resultXDR, &txResult)
+	if err != nil {
+		return fmt.Errorf("parsing the result xdr: %w", err)
+	}
+	if !txResult.Successful() {
 		return nil
 	}
 
