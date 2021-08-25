@@ -179,12 +179,16 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	if err != nil {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
+	txMetaV2, ok := txMeta.GetV2()
+	if !ok {
+		return fmt.Errorf("TransationMetaV2 not available")
+	}
 
 	// Find escrow account ledger changes. Grabs the latest entry, which gives
 	// the latest ledger entry state.
 	var initiatorEscrowAccountEntry, responderEscrowAccountEntry *xdr.AccountEntry
 	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry *xdr.TrustLineEntry
-	for _, o := range txMeta.V2.Operations {
+	for _, o := range txMetaV2.Operations {
 		for _, change := range o.Changes {
 			updated, ok := change.GetUpdated()
 			if !ok {
