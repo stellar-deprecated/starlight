@@ -236,7 +236,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 		}
 
 		// Validate the escrow account has the correct signers and signer weights.
-		var initiatorSignerFound, responderSignerFound bool
+		var initiatorSignerCorrect, responderSignerCorrect bool
 		for _, signer := range ea.Signers {
 			address, err := signer.Key.GetAddress()
 			if err != nil {
@@ -244,18 +244,17 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 				return nil
 			}
 
-			if address == c.initiatorSigner().Address() && signer.Weight == requiredSignerWeight {
-				initiatorSignerFound = true
-			} else if address == c.responderSigner().Address() && signer.Weight == requiredSignerWeight {
-				responderSignerFound = true
+			if address == c.initiatorSigner().Address() {
+				initiatorSignerCorrect = signer.Weight == requiredSignerWeight
+			} else if address == c.responderSigner().Address() {
+				responderSignerCorrect = signer.Weight == requiredSignerWeight
+			} else {
+				c.openExecutedWithError = fmt.Errorf("non channel participant signer found")
+				return nil
 			}
 		}
-		if !initiatorSignerFound || !responderSignerFound {
-			c.openExecutedWithError = fmt.Errorf("incorrect signer weights found")
-			return nil
-		}
-		if len(ea.Signers) != requiredNumOfSigners {
-			c.openExecutedWithError = fmt.Errorf("incorrect number of signers, found: %d want: %d", len(ea.Signers), requiredNumOfSigners)
+		if !initiatorSignerCorrect || !responderSignerCorrect {
+			c.openExecutedWithError = fmt.Errorf("signer not found or incorrect weight")
 			return nil
 		}
 	}
