@@ -258,13 +258,8 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 		}
 	}
 
-	// Validate the trustlines are correct.
-	if c.openAgreement.Details.Asset.IsNative() {
-		if initiatorEscrowTrustlineEntry != nil || responderEscrowTrustlineEntry != nil {
-			c.openExecutedWithError = fmt.Errorf("extraneous trustline found for native asset channel")
-			return nil
-		}
-	} else {
+	// Validate the required trustlines are correct for a non-native channel.
+	if !c.openAgreement.Details.Asset.IsNative() {
 		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
 			// Validate correct asset.
