@@ -171,7 +171,9 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 }
 
 func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
+	const requiredSignerWeight = 1
 	const requiredNumOfSigners = 2
+	const requiredThresholds = requiredNumOfSigners * requiredSignerWeight
 
 	// If not a valid resultMetaXDR string, return error.
 	var txMeta xdr.TransactionMeta
@@ -228,7 +230,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	for _, ea := range escrowAccounts {
 		// Validate the escrow account thresholds are equal to the number of
 		// signers so that all signers are required to sign all transactions.
-		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredNumOfSigners, requiredNumOfSigners, requiredNumOfSigners}) {
+		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredThresholds, requiredThresholds, requiredThresholds}) {
 			c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account thresholds found")
 			return nil
 		}
@@ -242,9 +244,9 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 				return nil
 			}
 
-			if address == c.initiatorSigner().Address() && signer.Weight == xdr.Uint32(1) {
+			if address == c.initiatorSigner().Address() && signer.Weight == requiredSignerWeight {
 				initiatorSignerFound = true
-			} else if address == c.responderSigner().Address() && signer.Weight == xdr.Uint32(1) {
+			} else if address == c.responderSigner().Address() && signer.Weight == requiredSignerWeight {
 				responderSignerFound = true
 			}
 		}
@@ -269,7 +271,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 			}
 
 			// Validate trustline is authorized.
-			if te.Flags != xdr.Uint32(1) {
+			if te.Flags != xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag) {
 				c.openExecutedWithError = fmt.Errorf("incorrect trustline flag, needs to be authorized")
 				return nil
 			}
