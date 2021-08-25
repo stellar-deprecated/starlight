@@ -52,7 +52,7 @@ const (
 func (c *Channel) OpenState() OpenState {
 	if c.openExecutedWithError != nil {
 		return OpenStateFailed
-	} else if c.openExecutedAndValidated && !c.openAgreement.isEmpty() && c.initiatorEscrowAccount().SequenceNumber >= c.startingSequence {
+	} else if c.openExecutedAndValidated {
 		return OpenStateOpen
 	} else {
 		return OpenStateNone
