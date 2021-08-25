@@ -171,12 +171,6 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 }
 
 func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
-	defer func() {
-		if err != nil {
-			c.formationTxError = err
-		}
-	}()
-
 	const requiredNumOfSigners = 2
 
 	// If not a valid resultMetaXDR string, return error.
@@ -226,15 +220,17 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 
 	// Validate the initiator escrow account sequence number is correct.
 	if int64(initiatorEscrowAccountEntry.SeqNum) != c.startingSequence {
-		return fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
+		c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
 			int64(initiatorEscrowAccountEntry.SeqNum), c.startingSequence)
+		return nil
 	}
 
 	escrowAccounts := [2]xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
 	for _, ea := range escrowAccounts {
 		// Validate the escrow account thresholds are correct.
 		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredNumOfSigners, requiredNumOfSigners, requiredNumOfSigners}) {
-			return fmt.Errorf("incorrect initiator escrow account thresholds found")
+			c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account thresholds found")
+			return nil
 		}
 
 		// Validate the escrow account has the correct signers and signer weights.
@@ -242,7 +238,8 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 		for _, signer := range ea.Signers {
 			address, err := signer.Key.GetAddress()
 			if err != nil {
-				return fmt.Errorf("parsing formation transaction escrow account signer keys: %w", err)
+				c.openExecutedWithError = fmt.Errorf("parsing formation transaction escrow account signer keys: %w", err)
+				return nil
 			}
 
 			if address == c.initiatorSigner().Address() && signer.Weight == xdr.Uint32(1) {
@@ -252,10 +249,12 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 			}
 		}
 		if !initiatorSignerFound || !responderSignerFound {
-			return fmt.Errorf("incorrect signer weights found")
+			c.openExecutedWithError = fmt.Errorf("incorrect signer weights found")
+			return nil
 		}
 		if len(ea.Signers) != requiredNumOfSigners {
-			return fmt.Errorf("incorrect number of signers, found: %d want: %d", len(ea.Signers), requiredNumOfSigners)
+			c.openExecutedWithError = fmt.Errorf("incorrect number of signers, found: %d want: %d", len(ea.Signers), requiredNumOfSigners)
+			return nil
 		}
 	}
 
@@ -263,19 +262,22 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	if c.openAgreement.Details.Asset.IsNative() {
 		var empty xdr.TrustLineEntry
 		if initiatorEscrowTrustlineEntry != empty || responderEscrowTrustlineEntry != empty {
-			return fmt.Errorf("extraneous trustline found for native asset channel")
+			c.openExecutedWithError = fmt.Errorf("extraneous trustline found for native asset channel")
+			return nil
 		}
 	} else {
 		trustlineEntries := [2]xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
 			// Validate correct asset.
 			if string(c.openAgreement.Details.Asset) != te.Asset.StringCanonical() {
-				return fmt.Errorf("incorrect trustline asset found for nonnative asset channel")
+				c.openExecutedWithError = fmt.Errorf("incorrect trustline asset found for nonnative asset channel")
+				return nil
 			}
 
 			// Validate trustline is authorized.
 			if te.Flags != xdr.Uint32(1) {
-				return fmt.Errorf("incorrect trustline flag, needs to be authorized")
+				c.openExecutedWithError = fmt.Errorf("incorrect trustline flag, needs to be authorized")
+				return nil
 			}
 		}
 	}
@@ -284,6 +286,6 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	// TODO - combine with ingestTxToUpdateInitiatorEscrowAccountSequence so we're updating in one spot.
 	c.setInitiatorEscrowAccountSequence(int64(initiatorEscrowAccountEntry.SeqNum))
 
-	c.formationTxSuccess = true
+	c.openExecutedAndValidated = true
 	return nil
 }

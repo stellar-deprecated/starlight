@@ -32,9 +32,9 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	openAgreement      OpenAgreement
-	formationTxSuccess bool
-	formationTxError   error
+	openAgreement            OpenAgreement
+	openExecutedAndValidated bool
+	openExecutedWithError    error
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
@@ -50,9 +50,9 @@ const (
 )
 
 func (c *Channel) OpenState() OpenState {
-	if c.formationTxError != nil {
+	if c.openExecutedWithError != nil {
 		return OpenStateFailed
-	} else if c.formationTxSuccess && !c.openAgreement.isEmpty() && c.initiatorEscrowAccount().SequenceNumber >= c.startingSequence {
+	} else if c.openExecutedAndValidated && !c.openAgreement.isEmpty() && c.initiatorEscrowAccount().SequenceNumber >= c.startingSequence {
 		return OpenStateOpen
 	} else {
 		return OpenStateNone
