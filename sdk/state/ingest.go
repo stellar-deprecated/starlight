@@ -226,7 +226,8 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 
 	escrowAccounts := [2]*xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
 	for _, ea := range escrowAccounts {
-		// Validate the escrow account thresholds are correct.
+		// Validate the escrow account thresholds are equal to the number of
+		// signers so that all signers are required to sign all transactions.
 		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredNumOfSigners, requiredNumOfSigners, requiredNumOfSigners}) {
 			c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account thresholds found")
 			return nil
