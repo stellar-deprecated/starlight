@@ -691,7 +691,8 @@ remaining transactions.
 
 This protocol implicitly supports participants sending multiple payments to the
 other participant without the other participant confirming each payment
-immediately. This introduces some risk to the sending participant because the
+immediately. This introduces some risk to the sending participant if they
+queue multiple payments to the receiver without any replies, because the
 receiving participant can prevent the channel from being closed for
 approximately the observation period multiplied by the number of uncomfirmed
 payments. The receiving participant could do this by submitting each payment's
