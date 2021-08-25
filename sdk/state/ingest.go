@@ -180,9 +180,10 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
 
-	// Find escrow account ledger changes.
-	var initiatorEscrowAccountEntry, responderEscrowAccountEntry xdr.AccountEntry
-	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry xdr.TrustLineEntry
+	// Find escrow account ledger changes. Grabs the latest entry, which gives
+	// the latest ledger entry state.
+	var initiatorEscrowAccountEntry, responderEscrowAccountEntry *xdr.AccountEntry
+	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry *xdr.TrustLineEntry
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
 			updated, ok := change.GetUpdated()
@@ -190,31 +191,25 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 				continue
 			}
 
-			// Grab any trustline updates in case the channel asset is non-native.
-			trustline, ok := updated.Data.GetTrustLine()
-			if ok {
-				if trustline.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
-					initiatorEscrowTrustlineEntry = trustline
-				} else if trustline.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
-					responderEscrowTrustlineEntry = trustline
+			switch updated.Data.Type {
+			case xdr.LedgerEntryTypeTrustline:
+				if updated.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
+					initiatorEscrowTrustlineEntry = updated.Data.TrustLine
+				} else if updated.Data.TrustLine.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
+					responderEscrowTrustlineEntry = updated.Data.TrustLine
 				}
-			}
-
-			account, ok := updated.Data.GetAccount()
-			if !ok {
-				continue
-			}
-			if account.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
-				initiatorEscrowAccountEntry = account
-			} else if account.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
-				responderEscrowAccountEntry = account
+			case xdr.LedgerEntryTypeAccount:
+				if updated.Data.Account.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
+					initiatorEscrowAccountEntry = updated.Data.Account
+				} else if updated.Data.Account.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
+					responderEscrowAccountEntry = updated.Data.Account
+				}
 			}
 		}
 	}
 
 	// If initiator escrow account not found, return.
-	var empty xdr.AccountId
-	if initiatorEscrowAccountEntry.AccountId == empty {
+	if initiatorEscrowAccountEntry == nil {
 		return nil
 	}
 
@@ -225,7 +220,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 		return nil
 	}
 
-	escrowAccounts := [2]xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
+	escrowAccounts := [2]*xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
 	for _, ea := range escrowAccounts {
 		// Validate the escrow account thresholds are correct.
 		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredNumOfSigners, requiredNumOfSigners, requiredNumOfSigners}) {
@@ -260,13 +255,12 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 
 	// Validate the trustlines are correct.
 	if c.openAgreement.Details.Asset.IsNative() {
-		var empty xdr.TrustLineEntry
-		if initiatorEscrowTrustlineEntry != empty || responderEscrowTrustlineEntry != empty {
+		if initiatorEscrowTrustlineEntry != nil || responderEscrowTrustlineEntry != nil {
 			c.openExecutedWithError = fmt.Errorf("extraneous trustline found for native asset channel")
 			return nil
 		}
 	} else {
-		trustlineEntries := [2]xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
+		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
 			// Validate correct asset.
 			if string(c.openAgreement.Details.Asset) != te.Asset.StringCanonical() {
