@@ -648,7 +648,9 @@ may also produce closing transactions that could fail if trustline limits would
 be exceeded because of excessive deposits.
 
 In both cases a party who is not a participant can deposit an amount into the
-escrow accounts to cause the closing transaction's payment to fail.
+escrow accounts to cause the closing transaction's payment to fail. Also a
+trustlines buying liabilities could also result in some of the available limit
+being consumed causing the closing transaction's payment to fail.
 
 ### Clawback
 
@@ -672,6 +674,18 @@ guarantee that the other participant has not altered its state. For example, the
 other participant could add an additional signer to their account. Or, for
 example, the other participant could intentionally or accidentally cause flags
 on their trustline to be changed, such as the clawback enabled flag.
+
+### Escrow Account and Trustline Balance
+
+Participants should inspect the state of the escrow account's and their
+trustlines after formation to determine the starting balance of each
+participants contribution.
+
+To calculate the balance available for spending participants should get the
+trustline's balance and subtract the trustline's selling liabilities. Selling
+liabilities are the sum of all selling offers for the asset and therefore
+represent the maximum amount the balance could be reduced if all offers were
+consumed.
 
 ### Transaction Signature Disclosure
 
