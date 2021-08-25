@@ -123,6 +123,7 @@ func (c *Channel) ingestFormationTx(resultMetaXDR string) (err error) {
 	}
 
 	// Validate the trustlines are correct.
+	// TODO - should an initiator escrow be allowed to have extraneous trustlines (if not add test)?
 	if c.openAgreement.Details.Asset.IsNative() {
 		var empty xdr.TrustLineEntry
 		if initiatorEscrowTrustlineEntry != empty || responderEscrowTrustlineEntry != empty {

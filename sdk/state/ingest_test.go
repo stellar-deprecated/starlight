@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -400,7 +399,6 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
 }
 
-// ALEC TODO - correct name?
 func TestChannel_IngestTx_updateOpenState_nativeAsset(t *testing.T) {
 	initiatorSigner, err := keypair.ParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
 	require.NoError(t, err)
@@ -411,13 +409,6 @@ func TestChannel_IngestTx_updateOpenState_nativeAsset(t *testing.T) {
 	require.NoError(t, err)
 	responderEscrow, err := keypair.ParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
 	require.NoError(t, err)
-
-	// TODO - remove
-	fmt.Println("initiatorSigner: ", initiatorSigner.Address())
-	fmt.Println("responderSigner: ", responderSigner.Address())
-	fmt.Println("initiatorEscrow: ", initiatorEscrow.Address())
-	fmt.Println("responderEscrow: ", responderEscrow.Address())
-	fmt.Println()
 
 	initiatorEscrowAccount := &EscrowAccount{
 		Address:        initiatorEscrow.FromAddress(),
@@ -471,9 +462,8 @@ func TestChannel_IngestTx_updateOpenState_nativeAsset(t *testing.T) {
 	err = initiatorChannel.ingestFormationTx(resultMetaXDR)
 	require.NoError(t, err)
 
-	// TODO - test a native asset channel that has an extra trustline
+	// TODO - check an initiator escrow doesn't have other trustlines?
 
-	// assert.Equal(t, OpenStateOpen, initiatorChannel.OpenState())
 }
 
 func TestChannel_IngestTx_updateOpenState_nonNativeAsset(t *testing.T) {
@@ -486,13 +476,6 @@ func TestChannel_IngestTx_updateOpenState_nonNativeAsset(t *testing.T) {
 	require.NoError(t, err)
 	responderEscrow, err := keypair.ParseAddress("GBEWOADTWFUS5EKEDB63X5KDWAKBJ32A5WDZKXENOCU3XQTM26GKBV2X")
 	require.NoError(t, err)
-
-	// TODO - remove
-	fmt.Println("initiatorSigner: ", initiatorSigner.Address())
-	fmt.Println("responderSigner: ", responderSigner.Address())
-	fmt.Println("initiatorEscrow: ", initiatorEscrow.Address())
-	fmt.Println("responderEscrow: ", responderEscrow.Address())
-	fmt.Println()
 
 	initiatorEscrowAccount := &EscrowAccount{
 		Address:        initiatorEscrow.FromAddress(),
@@ -535,6 +518,7 @@ func TestChannel_IngestTx_updateOpenState_nonNativeAsset(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, OpenStateNone, initiatorChannel.OpenState())
 
+	// Open steps.
 	open, err = responderChannel.ConfirmOpen(open)
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmOpen(open)
@@ -549,14 +533,8 @@ func TestChannel_IngestTx_updateOpenState_nonNativeAsset(t *testing.T) {
 	err = initiatorChannel.ingestFormationTx(resultMetaXDR)
 	require.NoError(t, err)
 
-	// TODO - need a way to differntiate between formation tx and a non-formation tx ...
-	// ... then can use channel.IngestTx which should update the escrow seq num
-	// // TODO - remove
+	// TODO - differentiate between formation tx and other tx results,
 	// assert.Equal(t, OpenStateOpen, initiatorChannel.OpenState())
-	// fmt.Println(initiatorChannel.initiatorEscrowAccount().SequenceNumber)
-	// fmt.Println(initiatorChannel.startingSequence)
-
-	// TODO - test no extra signer on the account (are old signers already on the account showing up in operations meta?)
 
 	require.NoError(t, initiatorChannel.formationTxError)
 
