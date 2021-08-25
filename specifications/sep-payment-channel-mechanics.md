@@ -673,12 +673,13 @@ other participant could add an additional signer to their account. Or, for
 example, the other participant could intentionally or accidentally cause flags
 on their trustline to be changed, such as the clawback enabled flag.
 
-## Transaction Signature Disclosure
+### Transaction Signature Disclosure
 
-Processes that require the signing of multiple transactions make use of an ed25519
-signed payload signer proposed in [CAP-40] and the `extraSigners` precondition
-proposed in [CAP-21] so that all signatures required from the receiving
-participant are disclosed in the first transaction required by the process.
+Processes that require the signing of multiple transactions make use of an
+ed25519 signed payload signer proposed in [CAP-40] and the `extraSigners`
+precondition proposed in [CAP-21] so that all signatures required from the
+receiving participant are disclosed in the first transaction required by the
+process.
 
 Participants must observe the network for submissions of the first transaction
 so as to collect the signatures in the event that the other participant does not
