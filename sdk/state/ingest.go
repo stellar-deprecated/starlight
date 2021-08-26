@@ -303,7 +303,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 		for _, te := range trustlineEntries {
 			// Validate trustline exists.
 			if te == nil {
-				c.openExecutedWithError = fmt.Errorf("trustline not found for nonnative asset channel")
+				c.openExecutedWithError = fmt.Errorf("trustline not found for asset %v", c.openAgreement.Details.Asset)
 				return nil
 			}
 
