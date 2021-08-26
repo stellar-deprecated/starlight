@@ -117,10 +117,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	// Expect connected event.
 	{
 		localEvent, ok := <-localEvents
-		assert.True(t, ok)
+		require.True(t, ok)
 		assert.Equal(t, localEvent, ConnectedEvent{})
 		remoteEvent, ok := <-remoteEvents
-		assert.True(t, ok)
+		require.True(t, ok)
 		assert.Equal(t, remoteEvent, ConnectedEvent{})
 	}
 
@@ -135,10 +135,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	// Expect opened event.
 	{
 		localEvent, ok := <-localEvents
-		assert.True(t, ok)
+		require.True(t, ok)
 		assert.Equal(t, localEvent, OpenedEvent{})
 		remoteEvent, ok := <-remoteEvents
-		assert.True(t, ok)
+		require.True(t, ok)
 		assert.Equal(t, remoteEvent, OpenedEvent{})
 	}
 
@@ -158,14 +158,16 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Expect payment events.
 	{
-		localEvent, ok := (<-localEvents).(PaymentSentAndConfirmedEvent)
-		assert.True(t, ok)
-		assert.Equal(t, int64(2), localEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(50_0000000), localEvent.CloseAgreement.Details.Balance)
-		remoteEvent, ok := (<-remoteEvents).(PaymentReceivedAndConfirmedEvent)
-		assert.True(t, ok)
-		assert.Equal(t, int64(2), remoteEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(50_0000000), remoteEvent.CloseAgreement.Details.Balance)
+		localEvent, ok := <-localEvents
+		localPaymentEvent, ok := localEvent.(PaymentSentAndConfirmedEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
+		remoteEvent, ok := <-remoteEvents
+		remotePaymentEvent, ok := remoteEvent.(PaymentReceivedAndConfirmedEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(2), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
 	}
 
 	// Make another payment.
@@ -178,14 +180,17 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Expect payment events.
 	{
-		localEvent, ok := (<-localEvents).(PaymentReceivedAndConfirmedEvent)
-		assert.True(t, ok)
-		assert.Equal(t, int64(3), localEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(30_0000000), localEvent.CloseAgreement.Details.Balance)
-		remoteEvent, ok := (<-remoteEvents).(PaymentSentAndConfirmedEvent)
-		assert.True(t, ok)
-		assert.Equal(t, int64(3), remoteEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(30_0000000), remoteEvent.CloseAgreement.Details.Balance)
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		localPaymentEvent, ok := localEvent.(PaymentReceivedAndConfirmedEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(3), localPaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
+		remoteEvent, ok := <-remoteEvents
+		remotePaymentEvent, ok := remoteEvent.(PaymentSentAndConfirmedEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(3), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
 	}
 
 	// Expect no txs to have been submitted for payments.
@@ -219,10 +224,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	// Expect closed event.
 	{
 		localEvent, ok := <-localEvents
-		assert.True(t, ok)
+		require.True(t, ok)
 		assert.Equal(t, localEvent, ClosedEvent{})
 		remoteEvent, ok := <-remoteEvents
-		assert.True(t, ok)
+		require.True(t, ok)
 		assert.Equal(t, remoteEvent, ClosedEvent{})
 	}
 }
