@@ -41,6 +41,11 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	// Setup the local agent.
 	localVars := struct {
 		submittedTx          *txnbuild.Transaction
+		err                  error
+		connected            bool
+		opened               bool
+		closed               bool
+		lastPaymentAgreement state.CloseAgreement
 	}{}
 	localAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
@@ -60,11 +65,37 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		EscrowAccountKey:    localEscrow.FromAddress(),
 		EscrowAccountSigner: localSigner,
 		LogWriter:           io.Discard,
+		OnError: func(a *Agent, err error) {
+			localVars.err = err
+		},
+		OnConnected: func(a *Agent) {
+			localVars.connected = true
+		},
+		OnOpened: func(a *Agent) {
+			localVars.opened = true
+		},
+		OnPaymentReceivedAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
+			localVars.lastPaymentAgreement = ca
+		},
+		OnPaymentSentAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
+			localVars.lastPaymentAgreement = ca
+		},
+		// TODO: Test when ingestion is added to
+		// OnClosing: func(a *Agent) {
+		// },
+		OnClosed: func(a *Agent) {
+			localVars.closed = true
+		},
 	}
 
 	// Setup the remote agent.
 	remoteVars := struct {
 		submittedTx          *txnbuild.Transaction
+		err                  error
+		connected            bool
+		opened               bool
+		closed               bool
+		lastPaymentAgreement state.CloseAgreement
 	}{}
 	remoteAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
@@ -84,6 +115,27 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
 		EscrowAccountSigner: remoteSigner,
 		LogWriter:           io.Discard,
+		OnError: func(a *Agent, err error) {
+			remoteVars.err = err
+		},
+		OnConnected: func(a *Agent) {
+			remoteVars.connected = true
+		},
+		OnOpened: func(a *Agent) {
+			remoteVars.opened = true
+		},
+		OnPaymentReceivedAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
+			remoteVars.lastPaymentAgreement = ca
+		},
+		OnPaymentSentAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
+			remoteVars.lastPaymentAgreement = ca
+		},
+		// TODO: Test when ingestion is added to
+		// OnClosing: func(a *Agent) {
+		// },
+		OnClosed: func(a *Agent) {
+			remoteVars.closed = true
+		},
 	}
 
 	// Connect the two agents.
@@ -110,6 +162,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.receive()
 	require.NoError(t, err)
 
+	// Expect connected event.
+	assert.True(t, localVars.connected)
+	assert.True(t, remoteVars.connected)
+
 	// Open the channel.
 	err = localAgent.Open()
 	require.NoError(t, err)
@@ -117,6 +173,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
+
+	// Expect opened event.
+	assert.True(t, localVars.opened)
+	assert.True(t, remoteVars.opened)
 
 	// Expect the open tx to have been submitted.
 	openTx, err := localAgent.channel.OpenTx()
@@ -132,6 +192,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.receive()
 	require.NoError(t, err)
 
+	// Expect payment events.
+	assert.Equal(t, int64(2), localVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(50_0000000), localVars.lastPaymentAgreement.Details.Balance)
+	assert.Equal(t, int64(2), remoteVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(50_0000000), remoteVars.lastPaymentAgreement.Details.Balance)
+
 	// Make another payment.
 	err = remoteAgent.Payment("20.0")
 	require.NoError(t, err)
@@ -139,6 +205,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.NoError(t, err)
+
+	// Expect payment events.
+	assert.Equal(t, int64(3), localVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(30_0000000), localVars.lastPaymentAgreement.Details.Balance)
+	assert.Equal(t, int64(3), remoteVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(30_0000000), remoteVars.lastPaymentAgreement.Details.Balance)
 
 	// Expect no txs to have been submitted for payments.
 	assert.Nil(t, localVars.submittedTx)
@@ -167,4 +239,8 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	assert.Equal(t, localCloseTx, remoteCloseTx)
 	assert.Equal(t, localCloseTx, localVars.submittedTx)
 	assert.Equal(t, remoteCloseTx, remoteVars.submittedTx)
+
+	// Expect closed event.
+	assert.True(t, localVars.closed)
+	assert.True(t, remoteVars.closed)
 }
