@@ -168,7 +168,17 @@ func (a *Agent) Payment(paymentAmount string) error {
 		return fmt.Errorf("parsing amount %s: %w", paymentAmount, err)
 	}
 	ca, err := a.channel.ProposePayment(amountValue)
-	if err != nil {
+	if errors.Is(err, state.ErrUnderfunded) {
+		// TODO: Remove this logic once the agent is ingesting transactions and
+		// updating account balance that way.
+		fmt.Fprintf(a.LogWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
+		var balance int64
+		balance, err = a.BalanceCollector.GetBalance(a.channel.LocalEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
+		if err != nil {
+			return err
+		}
+		a.channel.UpdateLocalEscrowAccountBalance(balance)
+	} else if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
@@ -253,20 +263,26 @@ func (a *Agent) Close() error {
 	return nil
 }
 
-func (a *Agent) loop() {
-	var err error
+func (a *Agent) receive() error {
 	recv := msg.NewDecoder(io.TeeReader(a.conn, a.LogWriter))
 	send := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	m := msg.Message{}
+	err := recv.Decode(&m)
+	if err != nil {
+		return fmt.Errorf("reading and decoding: %v\n", err)
+	}
+	err = a.handle(m, send)
+	if err != nil {
+		return fmt.Errorf("handling message: %v\n", err)
+	}
+	return nil
+}
+
+func (a *Agent) receiveLoop() {
 	for {
-		m := msg.Message{}
-		err = recv.Decode(&m)
+		err := a.receive()
 		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error reading: %v\n", err)
-			break
-		}
-		err = a.handle(m, send)
-		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error handling message: %v\n", err)
+			fmt.Fprintf(a.LogWriter, "error receiving: %v\n", err)
 		}
 	}
 }

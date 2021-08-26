@@ -23,7 +23,7 @@ func (a *Agent) ServeTCP(addr string) error {
 	if err != nil {
 		return fmt.Errorf("sending hello: %w", err)
 	}
-	go a.loop()
+	go a.receiveLoop()
 	return nil
 }
 
@@ -42,6 +42,6 @@ func (a *Agent) ConnectTCP(addr string) error {
 	if err != nil {
 		return fmt.Errorf("sending hello: %w", err)
 	}
-	go a.loop()
+	go a.receiveLoop()
 	return nil
 }
