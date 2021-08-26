@@ -164,6 +164,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Details.IterationNumber)
 		assert.Equal(t, int64(50_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
 		remotePaymentEvent, ok := remoteEvent.(PaymentReceivedAndConfirmedEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(2), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
@@ -187,6 +188,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		assert.Equal(t, int64(3), localPaymentEvent.CloseAgreement.Details.IterationNumber)
 		assert.Equal(t, int64(30_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
 		remotePaymentEvent, ok := remoteEvent.(PaymentSentAndConfirmedEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(3), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
