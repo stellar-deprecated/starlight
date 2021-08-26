@@ -103,6 +103,27 @@ func run() error {
 		FeeAccount:        accountKey,
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
+	events := make(chan agent.Event)
+	go func() {
+		for {
+			switch e := (<-events).(type) {
+			case agent.ErrorEvent:
+				fmt.Fprintf(os.Stderr, "agent error: %v\n", e.Err)
+			case agent.ConnectedEvent:
+				fmt.Fprintf(os.Stderr, "agent connected\n")
+			case agent.OpenedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel opened\n")
+			case agent.PaymentReceivedAndConfirmedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
+			case agent.PaymentSentAndConfirmedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
+			case agent.ClosingEvent:
+				fmt.Fprintf(os.Stderr, "agent channel closing\n")
+			case agent.ClosedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel closed\n")
+			}
+		}
+	}()
 	agent := &agent.Agent{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -114,6 +135,7 @@ func run() error {
 		EscrowAccountKey:           escrowAccountKey.FromAddress(),
 		EscrowAccountSigner:        signerKey,
 		LogWriter:                  os.Stderr,
+		Events:                     events,
 	}
 
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
