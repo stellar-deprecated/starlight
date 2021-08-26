@@ -287,7 +287,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 			} else if address == c.responderSigner().Address() {
 				responderSignerCorrect = signer.Weight == requiredSignerWeight
 			} else {
-				c.openExecutedWithError = fmt.Errorf("non channel participant signer found")
+				c.openExecutedWithError = fmt.Errorf("unexpected signer found on escrow account")
 				return nil
 			}
 		}
