@@ -309,7 +309,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 
 			// Validate trustline is authorized.
 			if te.Flags != xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag) {
-				c.openExecutedWithError = fmt.Errorf("incorrect trustline flag, needs to be authorized")
+				c.openExecutedWithError = fmt.Errorf("trustline not authorized")
 				return nil
 			}
 		}
