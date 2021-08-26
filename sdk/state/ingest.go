@@ -233,6 +233,9 @@ func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultXDR
 
 			switch updated.Data.Type {
 			case xdr.LedgerEntryTypeTrustline:
+				if updated.Data.TrustLine.Asset.StringCanonical() != string(c.openAgreement.Details.Asset) {
+					continue
+				}
 				if updated.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
 					initiatorEscrowTrustlineEntry = updated.Data.TrustLine
 				} else if updated.Data.TrustLine.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
@@ -297,9 +300,9 @@ func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultXDR
 	if !c.openAgreement.Details.Asset.IsNative() {
 		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
-			// Validate correct asset.
-			if string(c.openAgreement.Details.Asset) != te.Asset.StringCanonical() {
-				c.openExecutedWithError = fmt.Errorf("incorrect trustline asset found for nonnative asset channel")
+			// Validate trustline exists.
+			if te == nil {
+				c.openExecutedWithError = fmt.Errorf("trustline not found for nonnative asset channel")
 				return nil
 			}
 
