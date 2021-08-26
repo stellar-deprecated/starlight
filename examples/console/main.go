@@ -10,7 +10,6 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
@@ -115,28 +114,6 @@ func run() error {
 		EscrowAccountKey:           escrowAccountKey.FromAddress(),
 		EscrowAccountSigner:        signerKey,
 		LogWriter:                  os.Stderr,
-		OnError: func(a *agent.Agent, err error) {
-			fmt.Fprintf(os.Stderr, "agent error: %v\n", err)
-		},
-		OnConnected: func(a *agent.Agent) {
-			fmt.Fprintf(os.Stderr, "agent connected\n")
-		},
-		OnOpened: func(a *agent.Agent) {
-			fmt.Fprintf(os.Stderr, "agent channel opened\n")
-		},
-		OnPaymentReceivedAndConfirmed: func(a *agent.Agent, ca state.CloseAgreement) {
-			fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%d", ca.Details.IterationNumber, ca.Details.Balance)
-		},
-		OnPaymentSentAndConfirmed: func(a *agent.Agent, ca state.CloseAgreement) {
-			fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%d", ca.Details.IterationNumber, ca.Details.Balance)
-		},
-		// TODO: Add when ingestion is added to agent.
-		// OnClosing: func(a *agent.Agent) {
-		// 	fmt.Fprintf(os.Stderr, "agent channel closing\n")
-		// },
-		OnClosed: func(a *agent.Agent) {
-			fmt.Fprintf(os.Stderr, "agent channel closed\n")
-		},
 	}
 
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
