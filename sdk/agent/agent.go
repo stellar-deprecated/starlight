@@ -50,15 +50,6 @@ type Agent struct {
 
 	LogWriter io.Writer
 
-	OnError                       func(*Agent, error)
-	OnConnected                   func(*Agent)
-	OnOpened                      func(*Agent)
-	OnPaymentReceivedAndConfirmed func(*Agent, state.CloseAgreement)
-	OnPaymentSentAndConfirmed     func(*Agent, state.CloseAgreement)
-	// TODO: Add closing event when ingestion is implemented.
-	// OnClosing   func(*Agent)
-	OnClosed func(*Agent)
-
 	conn                     io.ReadWriter
 	otherEscrowAccount       *keypair.FromAddress
 	otherEscrowAccountSigner *keypair.FromAddress
@@ -291,19 +282,11 @@ func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "handling %v\n", m.Type)
 	handler := handlerMap[m.Type]
 	if handler == nil {
-		err := fmt.Errorf("handling message %d: unrecognized message type", m.Type)
-		if a.OnError != nil {
-			a.OnError(a, err)
-		}
-		return err
+		return fmt.Errorf("handling message %d: unrecognized message type", m.Type)
 	}
 	err := handler(a, m, send)
 	if err != nil {
-		err = fmt.Errorf("handling message %d: %w", m.Type, err)
-		if a.OnError != nil {
-			a.OnError(a, err)
-		}
-		return err
+		return fmt.Errorf("handling message %d: %w", m.Type, err)
 	}
 	return nil
 }
@@ -331,10 +314,6 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", a.otherEscrowAccount.Address())
 	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", a.otherEscrowAccountSigner.Address())
 
-	if a.OnConnected != nil {
-		a.OnConnected(a)
-	}
-
 	return nil
 }
 
@@ -357,15 +336,6 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
 	}
-	// TODO: Remove this trigger of the event handler from here once ingesting
-	// transactions is added and the event is triggered from there. Note that
-	// technically the channel isn't open at this point and triggering the event
-	// here is just a hold over until we can trigger it based on ingestion.
-	// Triggering here assumes that the other participant, the initiator,
-	// submits the transaction.
-	if a.OnOpened != nil {
-		a.OnOpened(a)
-	}
 	return nil
 }
 
@@ -387,11 +357,6 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 	err = a.Submitter.SubmitTx(formationTx)
 	if err != nil {
 		return fmt.Errorf("submitting formation tx: %w", err)
-	}
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes opened.
-	if a.OnOpened != nil {
-		a.OnOpened(a)
 	}
 	return nil
 }
@@ -418,9 +383,6 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	}
 	fmt.Fprintf(a.LogWriter, "payment authorized\n")
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment})
-	if a.OnPaymentReceivedAndConfirmed != nil {
-		a.OnPaymentReceivedAndConfirmed(a, payment)
-	}
 	if err != nil {
 		return fmt.Errorf("encoding payment to send back: %w", err)
 	}
@@ -433,14 +395,11 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 	}
 
 	paymentIn := *m.PaymentResponse
-	payment, err := a.channel.ConfirmPayment(paymentIn)
+	_, err := a.channel.ConfirmPayment(paymentIn)
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	fmt.Fprintf(a.LogWriter, "payment authorized\n")
-	if a.OnPaymentSentAndConfirmed != nil {
-		a.OnPaymentSentAndConfirmed(a, payment)
-	}
 	return nil
 }
 
@@ -479,11 +438,6 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close successful")
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes closed.
-	if a.OnClosed != nil {
-		a.OnClosed(a)
-	}
 	return nil
 }
 
@@ -515,10 +469,5 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close successful")
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes closed.
-	if a.OnClosed != nil {
-		a.OnClosed(a)
-	}
 	return nil
 }
