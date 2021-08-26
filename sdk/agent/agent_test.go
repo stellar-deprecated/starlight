@@ -64,6 +64,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		}),
 		EscrowAccountKey:    localEscrow.FromAddress(),
 		EscrowAccountSigner: localSigner,
+		LogWriter:           io.Discard,
 		OnError: func(a *Agent, err error) {
 			localVars.err = err
 		},
@@ -113,6 +114,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		}),
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
 		EscrowAccountSigner: remoteSigner,
+		LogWriter:           io.Discard,
 		OnError: func(a *Agent, err error) {
 			remoteVars.err = err
 		},
