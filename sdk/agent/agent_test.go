@@ -40,7 +40,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the local agent.
 	localVars := struct {
-		submittedTx          *txnbuild.Transaction
+		submittedTx *txnbuild.Transaction
 	}{}
 	localAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
@@ -64,7 +64,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the remote agent.
 	remoteVars := struct {
-		submittedTx          *txnbuild.Transaction
+		submittedTx *txnbuild.Transaction
 	}{}
 	remoteAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
