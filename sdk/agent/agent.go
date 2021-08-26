@@ -176,7 +176,9 @@ func (a *Agent) Payment(paymentAmount string) error {
 			return err
 		}
 		a.channel.UpdateLocalEscrowAccountBalance(balance)
-	} else if err != nil {
+		ca, err = a.channel.ProposePayment(amountValue)
+	}
+	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))

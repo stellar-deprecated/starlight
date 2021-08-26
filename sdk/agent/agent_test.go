@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"io"
-	"strings"
 	"testing"
 	"time"
 
@@ -41,7 +40,6 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the local agent.
 	localVars := struct {
-		logs                 strings.Builder
 		submittedTx          *txnbuild.Transaction
 		err                  error
 		connected            bool
@@ -66,7 +64,6 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		}),
 		EscrowAccountKey:    localEscrow.FromAddress(),
 		EscrowAccountSigner: localSigner,
-		LogWriter:           &localVars.logs,
 		OnError: func(a *Agent, err error) {
 			localVars.err = err
 		},
@@ -92,7 +89,6 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the remote agent.
 	remoteVars := struct {
-		logs                 strings.Builder
 		submittedTx          *txnbuild.Transaction
 		err                  error
 		connected            bool
@@ -117,7 +113,6 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		}),
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
 		EscrowAccountSigner: remoteSigner,
-		LogWriter:           &remoteVars.logs,
 		OnError: func(a *Agent, err error) {
 			remoteVars.err = err
 		},
@@ -141,12 +136,11 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		},
 	}
 
+	// Connect the two agents.
 	type ReadWriter struct {
 		io.Reader
 		io.Writer
 	}
-
-	// Connect the two agents.
 	localMsgs := bytes.Buffer{}
 	remoteMsgs := bytes.Buffer{}
 	localAgent.conn = ReadWriter{
@@ -166,6 +160,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.receive()
 	require.NoError(t, err)
 
+	// Expect connected event.
+	assert.True(t, localVars.connected)
+	assert.True(t, remoteVars.connected)
+
 	// Open the channel.
 	err = localAgent.Open()
 	require.NoError(t, err)
@@ -173,6 +171,16 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
+
+	// Expect opened event.
+	assert.True(t, localVars.opened)
+	assert.True(t, remoteVars.opened)
+
+	// Expect the open tx to have been submitted.
+	openTx, err := localAgent.channel.OpenTx()
+	require.NoError(t, err)
+	assert.Equal(t, openTx, localVars.submittedTx)
+	localVars.submittedTx = nil
 
 	// Make a payment.
 	err = localAgent.Payment("50.0")
@@ -182,6 +190,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.receive()
 	require.NoError(t, err)
 
+	// Expect payment events.
+	assert.Equal(t, int64(2), localVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(50_0000000), localVars.lastPaymentAgreement.Details.Balance)
+	assert.Equal(t, int64(2), remoteVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(50_0000000), remoteVars.lastPaymentAgreement.Details.Balance)
+
 	// Make another payment.
 	err = remoteAgent.Payment("20.0")
 	require.NoError(t, err)
@@ -190,14 +204,41 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = remoteAgent.receive()
 	require.NoError(t, err)
 
-	// Close.
+	// Expect payment events.
+	assert.Equal(t, int64(3), localVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(30_0000000), localVars.lastPaymentAgreement.Details.Balance)
+	assert.Equal(t, int64(3), remoteVars.lastPaymentAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(30_0000000), remoteVars.lastPaymentAgreement.Details.Balance)
+
+	// Expect no txs to have been submitted for payments.
+	assert.Nil(t, localVars.submittedTx)
+	assert.Nil(t, remoteVars.submittedTx)
+
+	// Declare the close, and start negotiating for an early close.
 	err = localAgent.DeclareClose()
 	require.NoError(t, err)
+
+	// Expect the declaration tx to have been submitted.
+	localDeclTx, _, err := localAgent.channel.CloseTxs()
+	require.NoError(t, err)
+	assert.Equal(t, localDeclTx, localVars.submittedTx)
+
+	// Receive the declaration at the remote and complete negotiation.
 	err = remoteAgent.receive()
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
 
-	assert.NotNil(t, localVars.submittedTx)
-	assert.NotNil(t, remoteVars.submittedTx)
+	// Expect the close tx to have been submitted.
+	_, localCloseTx, err := localAgent.channel.CloseTxs()
+	require.NoError(t, err)
+	_, remoteCloseTx, err := remoteAgent.channel.CloseTxs()
+	require.NoError(t, err)
+	assert.Equal(t, localCloseTx, remoteCloseTx)
+	assert.Equal(t, localCloseTx, localVars.submittedTx)
+	assert.Equal(t, remoteCloseTx, remoteVars.submittedTx)
+
+	// Expect closed event.
+	assert.True(t, localVars.closed)
+	assert.True(t, remoteVars.closed)
 }
