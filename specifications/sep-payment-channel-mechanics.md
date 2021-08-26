@@ -673,12 +673,13 @@ other participant could add an additional signer to their account. Or, for
 example, the other participant could intentionally or accidentally cause flags
 on their trustline to be changed, such as the clawback enabled flag.
 
-## Transaction Signature Disclosure
+### Transaction Signature Disclosure
 
-Processes that require the signing of multiple transactions make use of an ed25519
-signed payload signer proposed in [CAP-40] and the `extraSigners` precondition
-proposed in [CAP-21] so that all signatures required from the receiving
-participant are disclosed in the first transaction required by the process.
+Processes that require the signing of multiple transactions make use of an
+ed25519 signed payload signer proposed in [CAP-40] and the `extraSigners`
+precondition proposed in [CAP-21] so that all signatures required from the
+receiving participant are disclosed in the first transaction required by the
+process.
 
 Participants must observe the network for submissions of the first transaction
 so as to collect the signatures in the event that the other participant does not
@@ -686,6 +687,20 @@ share the signatures. If a participant fails to do this the other participant
 could submit a subset of the transactions required by the process and the
 participant will not have any other capability to authorize and submit the
 remaining transactions.
+
+### Queueing Multiple Payments
+
+This protocol implicitly supports participants sending multiple payments to the
+other participant without the other participant confirming each payment
+immediately. This introduces some risk to the sending participant if they
+queue multiple payments to the receiver without any replies, because the
+receiving participant can prevent the channel from being closed for
+approximately the observation period multiplied by the number of uncomfirmed
+payments. The receiving participant could do this by submitting each payment's
+declaration transaction in order and wait just less than the observation period
+between each submission. The sending participant would not be in possession of
+the most recent authorized declaration transaction and so could not jump ahead
+to that most recent payment.
 
 ## Limitations
 
