@@ -251,6 +251,12 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 		}
 	}
 
+	// Validate both escrow accounts have been updated.
+	if initiatorEscrowAccountEntry == nil || responderEscrowAccountEntry == nil {
+		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both escrow accounts")
+		return nil
+	}
+
 	// Validate the initiator escrow account sequence number is correct.
 	if int64(initiatorEscrowAccountEntry.SeqNum) != c.startingSequence {
 		c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
