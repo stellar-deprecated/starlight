@@ -217,7 +217,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 	}
 	txMetaV2, ok := txMeta.GetV2()
 	if !ok {
-		return fmt.Errorf("TransationMetaV2 not available")
+		return fmt.Errorf("result meta version unrecognized")
 	}
 
 	// Find escrow account ledger changes. Grabs the latest entry, which gives
