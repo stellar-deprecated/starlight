@@ -267,7 +267,8 @@ func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultXDR
 	for _, ea := range escrowAccounts {
 		// Validate the escrow account thresholds are equal to the number of
 		// signers so that all signers are required to sign all transactions.
-		if ea.Thresholds != xdr.Thresholds([4]byte{0, requiredThresholds, requiredThresholds, requiredThresholds}) {
+		// Thresholds are: Master Key, Low, Medium, High.
+		if ea.Thresholds != (xdr.Thresholds{0, requiredThresholds, requiredThresholds, requiredThresholds}) {
 			c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account thresholds found")
 			return nil
 		}
