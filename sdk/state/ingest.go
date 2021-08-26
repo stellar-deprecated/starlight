@@ -178,7 +178,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 // transaction was submitted are in this channel's expected states to mark the
 // channel as open.
 func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
-	// If the transaction is not the formation transaction, return.
+	// If the transaction is not the formation transaction, ignore.
 	myFormationTx, err := c.OpenTx()
 	if err != nil {
 		return fmt.Errorf("creating formation tx: %w", err)
