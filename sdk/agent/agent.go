@@ -159,6 +159,16 @@ func (a *Agent) Payment(paymentAmount string) error {
 		return fmt.Errorf("parsing amount %s: %w", paymentAmount, err)
 	}
 	ca, err := a.channel.ProposePayment(amountValue)
+	if errors.Is(err, state.ErrUnderfunded) {
+		fmt.Fprintf(a.LogWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
+		var balance int64
+		balance, err = a.BalanceCollector.GetBalance(a.channel.LocalEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
+		if err != nil {
+			return err
+		}
+		a.channel.UpdateLocalEscrowAccountBalance(balance)
+		ca, err = a.channel.ProposePayment(amountValue)
+	}
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
@@ -353,8 +363,6 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
-		// TODO: Remove this logic once the agent is ingesting transactions and
-		// updating account balance that way.
 		fmt.Fprintf(a.LogWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
 		var balance int64
 		balance, err = a.BalanceCollector.GetBalance(a.channel.RemoteEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
