@@ -177,21 +177,21 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 // will validate that the resulting account and trustlines after the formation
 // transaction was submitted are in this channel's expected states to mark the
 // channel as open.
-func (c *Channel) ingestFormationTx(formationTx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
+func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
 	// If the transaction is not the formation transaction, return.
-	myFormationTx, err := c.OpenTx()
+	formationTx, err := c.OpenTx()
 	if err != nil {
 		return fmt.Errorf("creating formation tx: %w", err)
+	}
+	txHash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("getting transaction hash: %w", err)
 	}
 	formationHash, err := formationTx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("getting transaction hash: %w", err)
 	}
-	myFormationHash, err := myFormationTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return fmt.Errorf("getting transaction hash: %w", err)
-	}
-	if formationHash != myFormationHash {
+	if txHash != formationHash {
 		return nil
 	}
 
