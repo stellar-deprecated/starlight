@@ -10,12 +10,7 @@ import (
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
 // channel if the transaction relates to the channel.
-//
-// TODO: Signal when the state of the channel has changed to closed or closing.
-// TODO: Accept the xdr.TransactionResult and xdr.TransactionMeta so code can
-// determine if successful or not, and understand changes in the ledger as a
-// result.
-func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error {
+func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) error {
 	// TODO: Use the transaction result to affect on success/failure.
 
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
@@ -26,6 +21,11 @@ func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultMetaXDR string) error
 	}
 
 	err = c.ingestTxMetaToUpdateBalances(resultMetaXDR)
+	if err != nil {
+		return err
+	}
+
+	err = c.ingestFormationTx(tx, resultXDR, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 				if !ok {
 					continue
 				}
-				if string(channelAsset) != tl.Asset.StringCanonical() {
+				if channelAsset.StringCanonical() != tl.Asset.StringCanonical() {
 					continue
 				}
 				ledgerEntryAddress = tl.AccountId.Address()
@@ -167,5 +167,159 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 			}
 		}
 	}
+	return nil
+}
+
+// ingestFormationTx accepts a transaction, resultXDR, and resultMetaXDR. The
+// method returns with no error if either 1. the resultXDR shows the transaction
+// was unsuccessful, or 2. the transaction is not the formation transaction this
+// channel is expecting, the method returns with no error. Lastly, this method
+// will validate that the resulting account and trustlines after the formation
+// transaction was submitted are in this channel's expected states to mark the
+// channel as open.
+func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
+	// If the transaction is not the formation transaction, ignore.
+	formationTx, err := c.OpenTx()
+	if err != nil {
+		return fmt.Errorf("creating formation tx: %w", err)
+	}
+	txHash, err := tx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("getting transaction hash: %w", err)
+	}
+	formationHash, err := formationTx.Hash(c.networkPassphrase)
+	if err != nil {
+		return fmt.Errorf("getting transaction hash: %w", err)
+	}
+	if txHash != formationHash {
+		return nil
+	}
+
+	// If the transaction was not successful, return.
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(resultXDR, &txResult)
+	if err != nil {
+		return fmt.Errorf("parsing the result xdr: %w", err)
+	}
+	if !txResult.Successful() {
+		return nil
+	}
+
+	const requiredSignerWeight = 1
+	const requiredNumOfSigners = 2
+	const requiredThresholds = requiredNumOfSigners * requiredSignerWeight
+
+	// If not a valid resultMetaXDR string, return error.
+	var txMeta xdr.TransactionMeta
+	err = xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
+	if err != nil {
+		return fmt.Errorf("parsing the result meta xdr: %w", err)
+	}
+	txMetaV2, ok := txMeta.GetV2()
+	if !ok {
+		return fmt.Errorf("result meta version unrecognized")
+	}
+
+	// Find escrow account ledger changes. Grabs the latest entry, which gives
+	// the latest ledger entry state.
+	var initiatorEscrowAccountEntry, responderEscrowAccountEntry *xdr.AccountEntry
+	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry *xdr.TrustLineEntry
+	for _, o := range txMetaV2.Operations {
+		for _, change := range o.Changes {
+			updated, ok := change.GetUpdated()
+			if !ok {
+				continue
+			}
+
+			switch updated.Data.Type {
+			case xdr.LedgerEntryTypeTrustline:
+				if updated.Data.TrustLine.Asset.StringCanonical() != c.openAgreement.Details.Asset.StringCanonical() {
+					continue
+				}
+				if updated.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
+					initiatorEscrowTrustlineEntry = updated.Data.TrustLine
+				} else if updated.Data.TrustLine.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
+					responderEscrowTrustlineEntry = updated.Data.TrustLine
+				}
+			case xdr.LedgerEntryTypeAccount:
+				if updated.Data.Account.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
+					initiatorEscrowAccountEntry = updated.Data.Account
+				} else if updated.Data.Account.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
+					responderEscrowAccountEntry = updated.Data.Account
+				}
+			}
+		}
+	}
+
+	// Validate both escrow accounts have been updated.
+	if initiatorEscrowAccountEntry == nil || responderEscrowAccountEntry == nil {
+		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both escrow accounts")
+		return nil
+	}
+
+	// Validate the initiator escrow account sequence number is correct.
+	if int64(initiatorEscrowAccountEntry.SeqNum) != c.startingSequence {
+		c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
+			int64(initiatorEscrowAccountEntry.SeqNum), c.startingSequence)
+		return nil
+	}
+
+	escrowAccounts := [2]*xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
+	for _, ea := range escrowAccounts {
+		// Validate the escrow account thresholds are equal to the number of
+		// signers so that all signers are required to sign all transactions.
+		// Thresholds are: Master Key, Low, Medium, High.
+		if ea.Thresholds != (xdr.Thresholds{0, requiredThresholds, requiredThresholds, requiredThresholds}) {
+			c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account thresholds found")
+			return nil
+		}
+
+		// Validate the escrow account has the correct signers and signer weights.
+		var initiatorSignerCorrect, responderSignerCorrect bool
+		for _, signer := range ea.Signers {
+			address, err := signer.Key.GetAddress()
+			if err != nil {
+				c.openExecutedWithError = fmt.Errorf("parsing formation transaction escrow account signer keys: %w", err)
+				return nil
+			}
+
+			if address == c.initiatorSigner().Address() {
+				initiatorSignerCorrect = signer.Weight == requiredSignerWeight
+			} else if address == c.responderSigner().Address() {
+				responderSignerCorrect = signer.Weight == requiredSignerWeight
+			} else {
+				c.openExecutedWithError = fmt.Errorf("unexpected signer found on escrow account")
+				return nil
+			}
+		}
+		if !initiatorSignerCorrect || !responderSignerCorrect {
+			c.openExecutedWithError = fmt.Errorf("signer not found or incorrect weight")
+			return nil
+		}
+	}
+
+	// Validate the required trustlines are correct for a non-native channel.
+	if !c.openAgreement.Details.Asset.IsNative() {
+		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
+		for _, te := range trustlineEntries {
+			// Validate trustline exists.
+			if te == nil {
+				c.openExecutedWithError = fmt.Errorf("trustline not found for asset %v", c.openAgreement.Details.Asset)
+				return nil
+			}
+
+			// Validate trustline is authorized.
+			if !xdr.TrustLineFlags(te.Flags).IsAuthorized() {
+				c.openExecutedWithError = fmt.Errorf("trustline not authorized")
+				return nil
+			}
+		}
+	}
+
+	// Update the initiator escrow sequence number on the channel.
+	// TODO - combine with ingestTxToUpdateInitiatorEscrowAccountSequence so we're updating in one spot.
+	c.setInitiatorEscrowAccountSequence(int64(initiatorEscrowAccountEntry.SeqNum))
+
+	c.openExecutedAndValidated = true
 	return nil
 }

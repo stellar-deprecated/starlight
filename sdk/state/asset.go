@@ -1,9 +1,11 @@
 package state
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 type Asset string
@@ -31,4 +33,11 @@ func (a Asset) Asset() txnbuild.Asset {
 		Code:   parts[0],
 		Issuer: parts[1],
 	}
+}
+
+func (a Asset) StringCanonical() string {
+	if a.IsNative() {
+		return xdr.AssetTypeToString[xdr.AssetTypeAssetTypeNative]
+	}
+	return fmt.Sprintf("%s:%s", a.Code(), a.Issuer())
 }
