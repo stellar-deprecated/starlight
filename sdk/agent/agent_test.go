@@ -40,13 +40,9 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the local agent.
 	localVars := struct {
-		submittedTx          *txnbuild.Transaction
-		err                  error
-		connected            bool
-		opened               bool
-		closed               bool
-		lastPaymentAgreement state.CloseAgreement
+		submittedTx *txnbuild.Transaction
 	}{}
+	localEvents := make(chan Event, 1)
 	localAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
 		ObservationPeriodLedgerGap: 1,
@@ -65,38 +61,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		EscrowAccountKey:    localEscrow.FromAddress(),
 		EscrowAccountSigner: localSigner,
 		LogWriter:           io.Discard,
-		OnError: func(a *Agent, err error) {
-			localVars.err = err
-		},
-		OnConnected: func(a *Agent) {
-			localVars.connected = true
-		},
-		OnOpened: func(a *Agent) {
-			localVars.opened = true
-		},
-		OnPaymentReceivedAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
-			localVars.lastPaymentAgreement = ca
-		},
-		OnPaymentSentAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
-			localVars.lastPaymentAgreement = ca
-		},
-		// TODO: Test when ingestion is added to
-		// OnClosing: func(a *Agent) {
-		// },
-		OnClosed: func(a *Agent) {
-			localVars.closed = true
-		},
+		Events:              localEvents,
 	}
 
 	// Setup the remote agent.
 	remoteVars := struct {
-		submittedTx          *txnbuild.Transaction
-		err                  error
-		connected            bool
-		opened               bool
-		closed               bool
-		lastPaymentAgreement state.CloseAgreement
+		submittedTx *txnbuild.Transaction
 	}{}
+	remoteEvents := make(chan Event, 1)
 	remoteAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
 		ObservationPeriodLedgerGap: 1,
@@ -115,27 +87,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
 		EscrowAccountSigner: remoteSigner,
 		LogWriter:           io.Discard,
-		OnError: func(a *Agent, err error) {
-			remoteVars.err = err
-		},
-		OnConnected: func(a *Agent) {
-			remoteVars.connected = true
-		},
-		OnOpened: func(a *Agent) {
-			remoteVars.opened = true
-		},
-		OnPaymentReceivedAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
-			remoteVars.lastPaymentAgreement = ca
-		},
-		OnPaymentSentAndConfirmed: func(a *Agent, ca state.CloseAgreement) {
-			remoteVars.lastPaymentAgreement = ca
-		},
-		// TODO: Test when ingestion is added to
-		// OnClosing: func(a *Agent) {
-		// },
-		OnClosed: func(a *Agent) {
-			remoteVars.closed = true
-		},
+		Events:              remoteEvents,
 	}
 
 	// Connect the two agents.
@@ -163,8 +115,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect connected event.
-	assert.True(t, localVars.connected)
-	assert.True(t, remoteVars.connected)
+	{
+		localEvent, ok := <-localEvents
+		assert.True(t, ok)
+		assert.Equal(t, localEvent, ConnectedEvent{})
+		remoteEvent, ok := <-remoteEvents
+		assert.True(t, ok)
+		assert.Equal(t, remoteEvent, ConnectedEvent{})
+	}
 
 	// Open the channel.
 	err = localAgent.Open()
@@ -175,8 +133,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect opened event.
-	assert.True(t, localVars.opened)
-	assert.True(t, remoteVars.opened)
+	{
+		localEvent, ok := <-localEvents
+		assert.True(t, ok)
+		assert.Equal(t, localEvent, OpenedEvent{})
+		remoteEvent, ok := <-remoteEvents
+		assert.True(t, ok)
+		assert.Equal(t, remoteEvent, OpenedEvent{})
+	}
 
 	// Expect the open tx to have been submitted.
 	openTx, err := localAgent.channel.OpenTx()
@@ -193,10 +157,16 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect payment events.
-	assert.Equal(t, int64(2), localVars.lastPaymentAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(50_0000000), localVars.lastPaymentAgreement.Details.Balance)
-	assert.Equal(t, int64(2), remoteVars.lastPaymentAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(50_0000000), remoteVars.lastPaymentAgreement.Details.Balance)
+	{
+	localEvent, ok := (<-localEvents).(PaymentSentAndConfirmedEvent)
+	assert.True(t, ok)
+	assert.Equal(t, int64(2), localEvent.CloseAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(50_0000000), localEvent.CloseAgreement.Details.Balance)
+	remoteEvent, ok := (<-remoteEvents).(PaymentReceivedAndConfirmedEvent)
+	assert.True(t, ok)
+	assert.Equal(t, int64(2), remoteEvent.CloseAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(50_0000000), remoteEvent.CloseAgreement.Details.Balance)
+	}
 
 	// Make another payment.
 	err = remoteAgent.Payment("20.0")
@@ -207,10 +177,16 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect payment events.
-	assert.Equal(t, int64(3), localVars.lastPaymentAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(30_0000000), localVars.lastPaymentAgreement.Details.Balance)
-	assert.Equal(t, int64(3), remoteVars.lastPaymentAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(30_0000000), remoteVars.lastPaymentAgreement.Details.Balance)
+	{
+	localEvent, ok := (<-localEvents).(PaymentReceivedAndConfirmedEvent)
+	assert.True(t, ok)
+	assert.Equal(t, int64(3), localEvent.CloseAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(30_0000000), localEvent.CloseAgreement.Details.Balance)
+	remoteEvent, ok := (<-remoteEvents).(PaymentSentAndConfirmedEvent)
+	assert.True(t, ok)
+	assert.Equal(t, int64(3), remoteEvent.CloseAgreement.Details.IterationNumber)
+	assert.Equal(t, int64(30_0000000), remoteEvent.CloseAgreement.Details.Balance)
+	}
 
 	// Expect no txs to have been submitted for payments.
 	assert.Nil(t, localVars.submittedTx)
@@ -241,6 +217,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	assert.Equal(t, remoteCloseTx, remoteVars.submittedTx)
 
 	// Expect closed event.
-	assert.True(t, localVars.closed)
-	assert.True(t, remoteVars.closed)
+	{
+		localEvent, ok := <-localEvents
+		assert.True(t, ok)
+		assert.Equal(t, localEvent, ClosedEvent{})
+		remoteEvent, ok := <-remoteEvents
+		assert.True(t, ok)
+		assert.Equal(t, remoteEvent, ClosedEvent{})
+	}
 }
