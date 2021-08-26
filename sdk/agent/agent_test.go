@@ -158,14 +158,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Expect payment events.
 	{
-	localEvent, ok := (<-localEvents).(PaymentSentAndConfirmedEvent)
-	assert.True(t, ok)
-	assert.Equal(t, int64(2), localEvent.CloseAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(50_0000000), localEvent.CloseAgreement.Details.Balance)
-	remoteEvent, ok := (<-remoteEvents).(PaymentReceivedAndConfirmedEvent)
-	assert.True(t, ok)
-	assert.Equal(t, int64(2), remoteEvent.CloseAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(50_0000000), remoteEvent.CloseAgreement.Details.Balance)
+		localEvent, ok := (<-localEvents).(PaymentSentAndConfirmedEvent)
+		assert.True(t, ok)
+		assert.Equal(t, int64(2), localEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), localEvent.CloseAgreement.Details.Balance)
+		remoteEvent, ok := (<-remoteEvents).(PaymentReceivedAndConfirmedEvent)
+		assert.True(t, ok)
+		assert.Equal(t, int64(2), remoteEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), remoteEvent.CloseAgreement.Details.Balance)
 	}
 
 	// Make another payment.
@@ -178,14 +178,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Expect payment events.
 	{
-	localEvent, ok := (<-localEvents).(PaymentReceivedAndConfirmedEvent)
-	assert.True(t, ok)
-	assert.Equal(t, int64(3), localEvent.CloseAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(30_0000000), localEvent.CloseAgreement.Details.Balance)
-	remoteEvent, ok := (<-remoteEvents).(PaymentSentAndConfirmedEvent)
-	assert.True(t, ok)
-	assert.Equal(t, int64(3), remoteEvent.CloseAgreement.Details.IterationNumber)
-	assert.Equal(t, int64(30_0000000), remoteEvent.CloseAgreement.Details.Balance)
+		localEvent, ok := (<-localEvents).(PaymentReceivedAndConfirmedEvent)
+		assert.True(t, ok)
+		assert.Equal(t, int64(3), localEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), localEvent.CloseAgreement.Details.Balance)
+		remoteEvent, ok := (<-remoteEvents).(PaymentSentAndConfirmedEvent)
+		assert.True(t, ok)
+		assert.Equal(t, int64(3), remoteEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), remoteEvent.CloseAgreement.Details.Balance)
 	}
 
 	// Expect no txs to have been submitted for payments.
