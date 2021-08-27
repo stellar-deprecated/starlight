@@ -40,29 +40,29 @@ type Channel struct {
 	latestUnauthorizedCloseAgreement CloseAgreement
 }
 
-type ChannelState int
+type State int
 
 const (
-	ChannelStateError ChannelState = iota - 1
-	ChannelStateNone
-	ChannelStateOpen
-	ChannelStateClosing
-	ChannelStateClosingWithOutdatedState
-	ChannelStateClosed
+	StateError State = iota - 1
+	StateNone
+	StateOpen
+	StateClosing
+	StateClosingWithOutdatedState
+	StateClosed
 )
 
-// ChannelState returns a single value representing the overall state of the
+// State returns a single value representing the overall state of the
 // channel. If there was an error finding the state, or internal values are
 // unexpected, then a failed channel state is returned, indicating something is
 // wrong.
-func (c *Channel) ChannelState() (ChannelState, error) {
+func (c *Channel) State() (State, error) {
 	// Check if we are in an Open State.
 	if c.openExecutedWithError != nil {
-		return ChannelStateError, nil
+		return StateError, nil
 	}
 
 	if !c.openExecutedAndValidated {
-		return ChannelStateNone, nil
+		return StateNone, nil
 	}
 
 	// Get the sequence numbers for the latest close agreement transactions.
@@ -76,23 +76,23 @@ func (c *Channel) ChannelState() (ChannelState, error) {
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
 
 	if initiatorEscrowSeqNum <= c.startingSequence {
-		return ChannelStateOpen, nil
+		return StateOpen, nil
 	}
 
 	// Check if we are in a Close State.
 	if initiatorEscrowSeqNum == latestDeclSequence {
-		return ChannelStateClosing, nil
+		return StateClosing, nil
 	} else if initiatorEscrowSeqNum == latestCloseSequence {
-		return ChannelStateClosed, nil
+		return StateClosed, nil
 	}
 
 	// See if in between the startingSequence and the latest unauthorized close
 	// agreement, indicating an early close agreement has been submitted.
 	if initiatorEscrowSeqNum > c.startingSequence && initiatorEscrowSeqNum < latestDeclSequence {
-		return ChannelStateClosingWithOutdatedState, nil
+		return StateClosingWithOutdatedState, nil
 	}
 
-	return ChannelStateError, fmt.Errorf("initiator escrow account sequence has unexpected value")
+	return StateError, fmt.Errorf("initiator escrow account sequence has unexpected value")
 }
 
 func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
