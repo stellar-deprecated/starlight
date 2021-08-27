@@ -88,7 +88,7 @@ func (c *Channel) State() (State, error) {
 
 	// See if in between the startingSequence and the latest unauthorized close
 	// agreement, indicating an early close agreement has been submitted.
-	if initiatorEscrowSeqNum > c.startingSequence && initiatorEscrowSeqNum < latestDeclSequence {
+	if initiatorEscrowSeqNum < latestDeclSequence {
 		return StateClosingWithOutdatedState, nil
 	}
 
