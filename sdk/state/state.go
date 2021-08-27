@@ -32,10 +32,31 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	openAgreement OpenAgreement
+	openAgreement            OpenAgreement
+	openExecutedAndValidated bool
+	openExecutedWithError    error
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
+}
+
+// TODO - combine with CloseState
+type OpenState int
+
+const (
+	OpenStateFailed OpenState = iota - 1
+	OpenStateNone
+	OpenStateOpen
+)
+
+func (c *Channel) OpenState() OpenState {
+	if c.openExecutedWithError != nil {
+		return OpenStateFailed
+	} else if c.openExecutedAndValidated {
+		return OpenStateOpen
+	} else {
+		return OpenStateNone
+	}
 }
 
 type CloseState int

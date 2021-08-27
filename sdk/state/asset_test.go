@@ -33,3 +33,22 @@ func TestAsset(t *testing.T) {
 		})
 	}
 }
+
+func TestStringCanonical(t *testing.T) {
+	testCases := []struct {
+		Asset               state.Asset
+		WantStringCanonical string
+	}{
+		{state.Asset(""), "native"},
+		{state.Asset("native"), "native"},
+		{state.NativeAsset, "native"},
+		{state.Asset(":"), ":"},
+		{state.Asset("ABCD:GABCD"), "ABCD:GABCD"},
+		{state.Asset("ABCD:GABCD:AB"), "ABCD:GABCD:AB"},
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprint(tc.Asset), func(t *testing.T) {
+			assert.Equal(t, tc.WantStringCanonical, tc.Asset.StringCanonical())
+		})
+	}
+}
