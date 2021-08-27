@@ -321,7 +321,7 @@ func TestAgent_concurrency(t *testing.T) {
 				close(localConnected)
 			case OpenedEvent:
 				close(localOpened)
-			case PaymentSentAndConfirmedEvent, ErrorEvent:
+			case PaymentSentEvent, ErrorEvent:
 				close(localPaymentConfirmedOrError)
 			}
 		}
@@ -340,7 +340,7 @@ func TestAgent_concurrency(t *testing.T) {
 				close(remoteConnected)
 			case OpenedEvent:
 				close(remoteOpened)
-			case PaymentReceivedAndConfirmedEvent, ErrorEvent:
+			case PaymentReceivedEvent, ErrorEvent:
 				close(remotePaymentConfirmedOrError)
 			}
 		}
