@@ -254,20 +254,26 @@ func (a *Agent) Close() error {
 	return nil
 }
 
-func (a *Agent) loop() {
-	var err error
+func (a *Agent) receive() error {
 	recv := msg.NewDecoder(io.TeeReader(a.conn, a.LogWriter))
 	send := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	m := msg.Message{}
+	err := recv.Decode(&m)
+	if err != nil {
+		return fmt.Errorf("reading and decoding: %v\n", err)
+	}
+	err = a.handle(m, send)
+	if err != nil {
+		return fmt.Errorf("handling message: %v\n", err)
+	}
+	return nil
+}
+
+func (a *Agent) receiveLoop() {
 	for {
-		m := msg.Message{}
-		err = recv.Decode(&m)
+		err := a.receive()
 		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error reading: %v\n", err)
-			break
-		}
-		err = a.handle(m, send)
-		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error handling message: %v\n", err)
+			fmt.Fprintf(a.LogWriter, "error receiving: %v\n", err)
 		}
 	}
 }
@@ -276,11 +282,11 @@ func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.LogWriter, "handling %v\n", m.Type)
 	handler := handlerMap[m.Type]
 	if handler == nil {
-		return fmt.Errorf("unrecognized message type %v", m.Type)
+		return fmt.Errorf("handling message %d: unrecognized message type", m.Type)
 	}
 	err := handler(a, m, send)
 	if err != nil {
-		return fmt.Errorf("handling message type %v: %w", m.Type, err)
+		return fmt.Errorf("handling message %d: %w", m.Type, err)
 	}
 	return nil
 }
