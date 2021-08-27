@@ -80,7 +80,7 @@ func (c *Channel) State() (State, error) {
 		return StateClosingWithOutdatedState, nil
 	} else if initiatorEscrowSeqNum == latestDeclSequence {
 		return StateClosing, nil
-	} else if initiatorEscrowSeqNum == latestCloseSequence {
+	} else if initiatorEscrowSeqNum >= latestCloseSequence {
 		return StateClosed, nil
 	}
 
