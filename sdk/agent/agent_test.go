@@ -42,6 +42,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	localVars := struct {
 		submittedTx *txnbuild.Transaction
 	}{}
+	localEvents := make(chan Event, 1)
 	localAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
 		ObservationPeriodLedgerGap: 1,
@@ -60,12 +61,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		EscrowAccountKey:    localEscrow.FromAddress(),
 		EscrowAccountSigner: localSigner,
 		LogWriter:           io.Discard,
+		Events:              localEvents,
 	}
 
 	// Setup the remote agent.
 	remoteVars := struct {
 		submittedTx *txnbuild.Transaction
 	}{}
+	remoteEvents := make(chan Event, 1)
 	remoteAgent := &Agent{
 		ObservationPeriodTime:      20 * time.Second,
 		ObservationPeriodLedgerGap: 1,
@@ -84,6 +87,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
 		EscrowAccountSigner: remoteSigner,
 		LogWriter:           io.Discard,
+		Events:              remoteEvents,
 	}
 
 	// Connect the two agents.
@@ -110,6 +114,16 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.receive()
 	require.NoError(t, err)
 
+	// Expect connected event.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		assert.Equal(t, localEvent, ConnectedEvent{})
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		assert.Equal(t, remoteEvent, ConnectedEvent{})
+	}
+
 	// Open the channel.
 	err = localAgent.Open()
 	require.NoError(t, err)
@@ -117,6 +131,16 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
+
+	// Expect opened event.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		assert.Equal(t, localEvent, OpenedEvent{})
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		assert.Equal(t, remoteEvent, OpenedEvent{})
+	}
 
 	// Expect the open tx to have been submitted.
 	openTx, err := localAgent.channel.OpenTx()
@@ -132,6 +156,22 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.receive()
 	require.NoError(t, err)
 
+	// Expect payment events.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		localPaymentEvent, ok := localEvent.(PaymentSentEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		remotePaymentEvent, ok := remoteEvent.(PaymentReceivedEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(2), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
+	}
+
 	// Make another payment.
 	err = remoteAgent.Payment("20.0")
 	require.NoError(t, err)
@@ -139,6 +179,22 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.NoError(t, err)
+
+	// Expect payment events.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(3), localPaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
+		require.True(t, ok)
+		assert.Equal(t, int64(3), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
+	}
 
 	// Expect no txs to have been submitted for payments.
 	assert.Nil(t, localVars.submittedTx)
@@ -167,4 +223,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	assert.Equal(t, localCloseTx, remoteCloseTx)
 	assert.Equal(t, localCloseTx, localVars.submittedTx)
 	assert.Equal(t, remoteCloseTx, remoteVars.submittedTx)
+
+	// Expect closed event.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		assert.Equal(t, localEvent, ClosedEvent{})
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		assert.Equal(t, remoteEvent, ClosedEvent{})
+	}
 }
