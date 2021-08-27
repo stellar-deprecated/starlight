@@ -10,12 +10,27 @@ import (
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
 // channel if the transaction relates to the channel.
-func (c *Channel) IngestTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) error {
+func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 	// TODO: Use the transaction result to affect on success/failure.
+
+	gtx, err := txnbuild.TransactionFromXDR(txXDR)
+	if err != nil {
+		return fmt.Errorf("parsing transaction xdr")
+	}
+	var tx *txnbuild.Transaction
+	if feeBump, ok := gtx.FeeBump(); ok {
+		tx = feeBump.InnerTransaction()
+	}
+	if transaction, ok := gtx.Transaction(); ok {
+		tx = transaction
+	}
+	if tx == nil {
+		return fmt.Errorf("transaction unrecognized")
+	}
 
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
 
-	err := c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
+	err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
 	if err != nil {
 		return err
 	}
