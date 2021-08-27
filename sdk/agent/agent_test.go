@@ -159,6 +159,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	// Expect payment events.
 	{
 		localEvent, ok := <-localEvents
+		require.True(t, ok)
 		localPaymentEvent, ok := localEvent.(PaymentSentAndConfirmedEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Details.IterationNumber)
