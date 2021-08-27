@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -216,10 +215,6 @@ func run() error {
 			}
 		case "deposit":
 			depositAmountStr := params[1]
-			depositAmountInt, err := amount.ParseInt64(depositAmountStr)
-			if err != nil {
-				return fmt.Errorf("parsing deposit amount: %w", err)
-			}
 			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 			if err != nil {
 				return fmt.Errorf("getting state of local escrow account: %w", err)
@@ -244,9 +239,6 @@ func run() error {
 			if err != nil {
 				return fmt.Errorf("submitting deposit payment tx: %w", err)
 			}
-			newBalance := agent.Channel().LocalEscrowAccount().Balance + depositAmountInt
-			agent.Channel().UpdateLocalEscrowAccountBalance(newBalance)
-			fmt.Println("new balance of", amount.StringFromInt64(newBalance))
 		case "exit":
 			return nil
 		default:

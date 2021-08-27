@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/msg"
@@ -52,21 +53,23 @@ type Agent struct {
 
 	Events chan<- Event
 
+	// mu is a lock for the mutable fields of this type. It should be locked
+	// when reading or writing any of the mutable fields. The mutable fields are
+	// listed below. If pushing to a chan, such as Events, it is unnecessary to
+	// lock.
+	mu sync.Mutex
+
 	conn                     io.ReadWriter
 	otherEscrowAccount       *keypair.FromAddress
 	otherEscrowAccountSigner *keypair.FromAddress
 	channel                  *state.Channel
 }
 
-// Channel returns the channel the agent is managing. The channel will be nil if
-// the agent has not established a connection or coordinated a channel with
-// another participant.
-func (a *Agent) Channel() *state.Channel {
-	return a.channel
-}
-
 // hello sends a hello message to the remote participant over the connection.
 func (a *Agent) hello() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
@@ -114,6 +117,9 @@ func (a *Agent) initChannel(initiator bool) error {
 // Open kicks off the open process which will continue after the function
 // returns.
 func (a *Agent) Open() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -150,6 +156,9 @@ func (a *Agent) Open() error {
 // The payment is not authorized until the remote participant signs the payment
 // and returns the payment.
 func (a *Agent) Payment(paymentAmount string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -192,6 +201,9 @@ func (a *Agent) Payment(paymentAmount string) error {
 // immediately. If no closed notification occurs before the observation period,
 // manually submit the close by calling Close.
 func (a *Agent) DeclareClose() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -238,6 +250,9 @@ func (a *Agent) DeclareClose() error {
 // the same close which is already queued but not yet processed, or the
 // observation period has not yet passed since the close was declared.
 func (a *Agent) Close() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	_, closeTx, err := a.channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building close tx: %w", err)
@@ -312,6 +327,9 @@ var handlerMap = map[msg.Type]func(*Agent, msg.Message, *msg.Encoder) error{
 }
 
 func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.channel != nil {
 		return fmt.Errorf("extra hello received when channel already setup")
 	}
@@ -332,6 +350,9 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	err := a.initChannel(false)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
@@ -363,6 +384,9 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
@@ -390,6 +414,9 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
@@ -421,6 +448,9 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
@@ -438,6 +468,9 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
@@ -481,6 +514,9 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
