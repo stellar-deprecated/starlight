@@ -24,21 +24,22 @@ type OpenedEvent struct{}
 
 func (e OpenedEvent) event() {}
 
-// PaymentReceivedAndConfirmedEvent occurs when a payment is received and has
-// been confirmed as valid.
-type PaymentReceivedAndConfirmedEvent struct {
+// PaymentReceivedEvent occurs when a payment is received and the balance it
+// agrees to would be the resulting disbursements from the channel if closed.
+type PaymentReceivedEvent struct {
 	CloseAgreement state.CloseAgreement
 }
 
-func (e PaymentReceivedAndConfirmedEvent) event() {}
+func (e PaymentReceivedEvent) event() {}
 
-// PaymentSentAndConfirmedEvent occurs when a payment is sent and the other
-// participant has confirmed the payment.
-type PaymentSentAndConfirmedEvent struct {
+// PaymentSentEvent occurs when a payment is sent and the other participant has
+// confirmed it such that the balance the agreement agrees to would be the
+// resulting disbursements from the channel if closed.
+type PaymentSentEvent struct {
 	CloseAgreement state.CloseAgreement
 }
 
-func (e PaymentSentAndConfirmedEvent) event() {}
+func (e PaymentSentEvent) event() {}
 
 // ClosingEvent occurs when the channel is closing and no new payments should be
 // proposed or confirmed.
