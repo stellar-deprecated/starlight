@@ -56,7 +56,6 @@ const (
 // unexpected, then a failed channel state is returned, indicating something is
 // wrong.
 func (c *Channel) State() (State, error) {
-	// Check if we are in an Open State.
 	if c.openExecutedWithError != nil {
 		return StateError, nil
 	}
@@ -75,21 +74,14 @@ func (c *Channel) State() (State, error) {
 
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
 
-	if initiatorEscrowSeqNum <= c.startingSequence {
+	if initiatorEscrowSeqNum == c.startingSequence {
 		return StateOpen, nil
-	}
-
-	// Check if we are in a Close State.
-	if initiatorEscrowSeqNum == latestDeclSequence {
+	} else if initiatorEscrowSeqNum < latestDeclSequence {
+		return StateClosingWithOutdatedState, nil
+	} else if initiatorEscrowSeqNum == latestDeclSequence {
 		return StateClosing, nil
 	} else if initiatorEscrowSeqNum == latestCloseSequence {
 		return StateClosed, nil
-	}
-
-	// See if in between the startingSequence and the latest unauthorized close
-	// agreement, indicating an early close agreement has been submitted.
-	if initiatorEscrowSeqNum < latestDeclSequence {
-		return StateClosingWithOutdatedState, nil
 	}
 
 	return StateError, fmt.Errorf("initiator escrow account sequence has unexpected value")
