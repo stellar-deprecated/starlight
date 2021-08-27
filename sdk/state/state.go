@@ -43,11 +43,9 @@ type Channel struct {
 type ChannelState int
 
 const (
-	ChannelStateFailed ChannelState = iota - 1
-	// Open States
+	ChannelStateError ChannelState = iota - 1
 	ChannelStateNone
 	ChannelStateOpen
-	// Close States
 	ChannelStateClosing
 	ChannelStateClosingWithOutdatedState
 	ChannelStateClosed
@@ -60,7 +58,7 @@ const (
 func (c *Channel) ChannelState() (ChannelState, error) {
 	// Check if we are in an Open State.
 	if c.openExecutedWithError != nil {
-		return ChannelStateFailed, nil
+		return ChannelStateError, nil
 	}
 
 	if !c.openExecutedAndValidated {
@@ -94,7 +92,7 @@ func (c *Channel) ChannelState() (ChannelState, error) {
 		return ChannelStateClosingWithOutdatedState, nil
 	}
 
-	return ChannelStateFailed, fmt.Errorf("initiator escrow account sequence has unexpected value")
+	return ChannelStateError, fmt.Errorf("initiator escrow account sequence has unexpected value")
 }
 
 func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
