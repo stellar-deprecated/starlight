@@ -3,6 +3,7 @@ package horizon
 import (
 	"fmt"
 
+	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -61,4 +62,9 @@ func buildErr(err error) error {
 		return fmt.Errorf("%w (%v)", err, resultString)
 	}
 	return err
+}
+
+func (h *Horizon) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- agent.TransactionStreamed) (cancel func()) {
+	// TODO: Implement streaming of transactions for the accounts.
+	return nil
 }
