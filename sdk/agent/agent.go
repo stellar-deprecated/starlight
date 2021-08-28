@@ -35,6 +35,19 @@ type Submitter interface {
 	SubmitTx(tx *txnbuild.Transaction) error
 }
 
+// TransactionStreamer streams transactions that affect a set of accounts.
+type TransactionStreamer interface {
+	StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) (cancel func())
+}
+
+// TransactionStreamed is a transaction that has been seen by the
+// TransactionStreamer.
+type TransactionStreamed struct {
+	TransactionXDR string
+	ResultXDR      string
+	ResultMetaXDR  string
+}
+
 // Agent coordinates a payment channel over a TCP connection.
 type Agent struct {
 	ObservationPeriodTime      time.Duration
@@ -45,6 +58,7 @@ type Agent struct {
 	SequenceNumberCollector SequenceNumberCollector
 	BalanceCollector        BalanceCollector
 	Submitter               Submitter
+	TransactionStreamer     TransactionStreamer
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -59,10 +73,12 @@ type Agent struct {
 	// lock.
 	mu sync.Mutex
 
-	conn                     io.ReadWriter
-	otherEscrowAccount       *keypair.FromAddress
-	otherEscrowAccountSigner *keypair.FromAddress
-	channel                  *state.Channel
+	conn                            io.ReadWriter
+	otherEscrowAccount              *keypair.FromAddress
+	otherEscrowAccountSigner        *keypair.FromAddress
+	channel                         *state.Channel
+	transactionStreamerTransactions chan TransactionStreamed
+	transactionStreamerCancel       func()
 }
 
 // hello sends a hello message to the remote participant over the connection.
@@ -111,6 +127,12 @@ func (a *Agent) initChannel(initiator bool) error {
 		LocalSigner:  a.EscrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
+	a.transactionStreamerTransactions = make(chan TransactionStreamed)
+	a.transactionStreamerCancel = a.TransactionStreamer.StreamTransactions(
+		[]*keypair.FromAddress{a.EscrowAccountKey, a.otherEscrowAccount},
+		a.transactionStreamerTransactions,
+	)
+	go a.ingestLoop()
 	return nil
 }
 
@@ -371,15 +393,6 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
 	}
-	// TODO: Remove this trigger of the event handler from here once ingesting
-	// transactions is added and the event is triggered from there. Note that
-	// technically the channel isn't open at this point and triggering the event
-	// here is just a hold over until we can trigger it based on ingestion.
-	// Triggering here assumes that the other participant, the initiator,
-	// submits the transaction.
-	if a.Events != nil {
-		a.Events <- OpenedEvent{}
-	}
 	return nil
 }
 
@@ -404,11 +417,6 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 	err = a.Submitter.SubmitTx(formationTx)
 	if err != nil {
 		return fmt.Errorf("submitting formation tx: %w", err)
-	}
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes opened.
-	if a.Events != nil {
-		a.Events <- OpenedEvent{}
 	}
 	return nil
 }
@@ -505,11 +513,6 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close successful")
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes closed.
-	if a.Events != nil {
-		a.Events <- ClosedEvent{}
-	}
 	return nil
 }
 
@@ -544,10 +547,5 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
 	fmt.Fprintln(a.LogWriter, "close successful")
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes closed.
-	if a.Events != nil {
-		a.Events <- ClosedEvent{}
-	}
 	return nil
 }
