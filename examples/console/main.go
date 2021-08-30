@@ -131,6 +131,7 @@ func run() error {
 		SequenceNumberCollector:    horizon,
 		BalanceCollector:           horizon,
 		Submitter:                  submitter,
+		Streamer:                   horizon,
 		EscrowAccountKey:           escrowAccountKey.FromAddress(),
 		EscrowAccountSigner:        signerKey,
 		LogWriter:                  os.Stderr,
