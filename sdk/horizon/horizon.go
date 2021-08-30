@@ -67,40 +67,64 @@ func buildErr(err error) error {
 }
 
 func (h *Horizon) StreamTx(accounts []*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
+	// txsCh is the channel that streamed transactions will be written to.
 	txsCh := make(chan agent.StreamedTransaction)
+
+	// cancelCh will be used to signal to streamers to stop.
 	cancelCh := make(chan struct{})
-	cancel = func() {
-		close(cancelCh)
-	}
+
+	// For each account start a streamer that will write txs and stop when
+	// signaled to cancel.
 	wg := sync.WaitGroup{}
 	for _, a := range accounts {
+		a := a
 		wg.Add(1)
 		go func() {
-			ctx, ctxCancel := context.WithCancel(context.Background())
-			req := horizonclient.TransactionRequest{
-				ForAccount: a.Address(),
-			}
-			err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
-				streamedTx := agent.StreamedTransaction{
-					TransactionXDR: tx.EnvelopeXdr,
-					ResultXDR:      tx.ResultXdr,
-					ResultMetaXDR:  tx.ResultMetaXdr,
-				}
-				select {
-				case <-cancelCh:
-					ctxCancel()
-					return
-				case txsCh <- streamedTx:
-				}
-			})
-			wg.Done()
-			wg.Wait()
-			close(txsCh) // TODO
-			if err != nil {
-				// TODO: Handle errors.
-				panic(err)
-			}
+			defer wg.Done()
+			h.streamTx(a, txsCh, cancelCh)
 		}()
 	}
-	return txs, cancel
+
+	// If all streamers stop, due to being told to cancel or some other cause,
+	// close the txs channel so that consumers know there's no more transactions
+	// coming.
+	go func() {
+		defer close(txsCh)
+		wg.Wait()
+	}()
+
+	cancelOnce := sync.Once{}
+	cancel = func() {
+		cancelOnce.Do(func() {
+			close(cancelCh)
+		})
+	}
+	return txsCh, cancel
+}
+
+func (h *Horizon) streamTx(account *keypair.FromAddress, txs chan<- agent.StreamedTransaction, cancel <-chan struct{}) {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	go func() {
+		<-cancel
+		ctxCancel()
+	}()
+	req := horizonclient.TransactionRequest{
+		ForAccount: account.Address(),
+	}
+	err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
+		streamedTx := agent.StreamedTransaction{
+			TransactionXDR: tx.EnvelopeXdr,
+			ResultXDR:      tx.ResultXdr,
+			ResultMetaXDR:  tx.ResultMetaXdr,
+		}
+		select {
+		case <-cancel:
+			ctxCancel()
+		case txs <- streamedTx:
+		}
+	})
+	if err != nil {
+		// TODO: Handle errors.
+		panic(err)
+	}
 }
