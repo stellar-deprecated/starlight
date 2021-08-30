@@ -33,9 +33,9 @@ func (f submitterFunc) SubmitTx(tx *txnbuild.Transaction) error {
 	return f(tx)
 }
 
-type transactionStreamerFunc func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed)
+type streamerFunc func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed)
 
-func (f transactionStreamerFunc) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
+func (f streamerFunc) Stream(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
 	f(accounts, transactions)
 }
 
@@ -72,7 +72,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			localVars.submittedTx = tx
 			return nil
 		}),
-		TransactionStreamer: transactionStreamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
+		Streamer: streamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
 			localVars.transactionsStream = transactions
 		}),
 		EscrowAccountKey:    localEscrow.FromAddress(),
@@ -108,7 +108,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			remoteVars.submittedTx = tx
 			return nil
 		}),
-		TransactionStreamer: transactionStreamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
+		Streamer: streamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
 			remoteVars.transactionsStream = transactions
 		}),
 		EscrowAccountKey:    remoteEscrow.FromAddress(),

@@ -35,13 +35,13 @@ type Submitter interface {
 	SubmitTx(tx *txnbuild.Transaction) error
 }
 
-// TransactionStreamer streams transactions that affect a set of accounts.
-type TransactionStreamer interface {
-	StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed)
+// Streamer streams transactions that affect a set of accounts.
+type Streamer interface {
+	Stream(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed)
 }
 
 // TransactionStreamed is a transaction that has been seen by the
-// TransactionStreamer.
+// Streamer.
 type TransactionStreamed struct {
 	TransactionXDR string
 	ResultXDR      string
@@ -58,7 +58,7 @@ type Agent struct {
 	SequenceNumberCollector SequenceNumberCollector
 	BalanceCollector        BalanceCollector
 	Submitter               Submitter
-	TransactionStreamer     TransactionStreamer
+	Streamer                Streamer
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -127,7 +127,7 @@ func (a *Agent) initChannel(initiator bool) error {
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
 	a.transactionStreamerTransactions = make(chan TransactionStreamed)
-	a.TransactionStreamer.StreamTransactions(
+	a.Streamer.Stream(
 		[]*keypair.FromAddress{a.EscrowAccountKey, a.otherEscrowAccount},
 		a.transactionStreamerTransactions,
 	)
