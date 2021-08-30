@@ -14,28 +14,23 @@ func (a *Agent) ingest() error {
 	if !ok {
 		return ingestingFinished
 	}
-	fmt.Println("kjj")
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	fmt.Println("locked")
 	stateBefore, err := a.channel.State()
 	if err != nil {
 		a.Events <- ErrorEvent{Err: err}
 		return fmt.Errorf("ingesting tx: %s result: %s result meta: %s: %w", tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR, err)
 	}
-	fmt.Println("before", stateBefore)
 
 	err = a.channel.IngestTx(tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR)
-	fmt.Println("ingested err", err)
 	if err != nil {
 		a.Events <- ErrorEvent{Err: err}
 		return fmt.Errorf("ingesting tx: %s result: %s result meta: %s: %w", tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR, err)
 	}
 
 	stateAfter, err := a.channel.State()
-	fmt.Println("after", stateAfter)
 	if err != nil {
 		a.Events <- ErrorEvent{Err: err}
 		return fmt.Errorf("ingesting tx: %s result: %s result meta: %s: %w", tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR, err)
