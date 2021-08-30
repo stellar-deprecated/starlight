@@ -587,6 +587,7 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, StateOpen, cs)
 	require.NoError(t, initiatorChannel.openExecutedWithError)
+	assert.Equal(t, formationTx.SequenceNumber(), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
 
 	// Invalid Result XDR, should return with no state changes.
 	invalidResultXDR := "AAAAAAAAAGT////6AAAAAA=="
