@@ -6,12 +6,102 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // note: transaction result meta xdr strings for these tests were generated
 // with Protocol 17.
+
+func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
+	// Setup
+	feeAccount := keypair.MustRandom()
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+	initiatorEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(101),
+	}
+	responderEscrowAccount := &EscrowAccount{
+		Address:        keypair.MustRandom().FromAddress(),
+		SequenceNumber: int64(202),
+	}
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrowAccount,
+		RemoteEscrowAccount: responderEscrowAccount,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrowAccount,
+		RemoteEscrowAccount: initiatorEscrowAccount,
+	})
+	open, err := initiatorChannel.ProposeOpen(OpenParams{
+		ObservationPeriodTime:      1,
+		ObservationPeriodLedgerGap: 1,
+		ExpiresAt:                  time.Now().Add(time.Minute),
+	})
+	require.NoError(t, err)
+	open, err = responderChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+	_, err = initiatorChannel.ConfirmOpen(open)
+	require.NoError(t, err)
+	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
+	responderChannel.UpdateLocalEscrowAccountBalance(100)
+	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+
+	// Mock initiatorChannel ingested formation tx successfully.
+	initiatorChannel.openExecutedAndValidated = true
+
+	// To prevent xdr parsing error.
+	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
+
+	// Create a close agreement in initiator that will remain unauthorized in
+	// initiator even though it is authorized in responder.
+	close, err := initiatorChannel.ProposePayment(8)
+	require.NoError(t, err)
+	_, err = responderChannel.ConfirmPayment(close)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), initiatorChannel.Balance())
+	assert.Equal(t, int64(8), responderChannel.Balance())
+
+	// Pretend that responder broadcasts the declaration tx before returning
+	// it to the initiator.
+	declTx, _, err := responderChannel.CloseTxs()
+	require.NoError(t, err)
+	declTxFeeBump, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      declTx,
+		BaseFee:    txnbuild.MinBaseFee,
+		FeeAccount: feeAccount.Address(),
+	})
+	require.NoError(t, err)
+	declTxFeeBump, err = declTxFeeBump.Sign(network.TestNetworkPassphrase, feeAccount)
+	require.NoError(t, err)
+	declTxFeeBumpXDR, err := declTxFeeBump.Base64()
+	require.NoError(t, err)
+	validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
+	err = initiatorChannel.IngestTx(declTxFeeBumpXDR, validResultXDR, placeholderXDR)
+	require.NoError(t, err)
+	cs, err := initiatorChannel.State()
+	require.NoError(t, err)
+	require.Equal(t, StateClosing, cs)
+
+	// The initiator channel and responder channel should have the same close
+	// agreements.
+	assert.Equal(t, int64(8), initiatorChannel.Balance())
+	assert.Equal(t, int64(8), responderChannel.Balance())
+	assert.Equal(t, initiatorChannel.LatestCloseAgreement(), responderChannel.LatestCloseAgreement())
+}
 
 func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// Setup
@@ -77,8 +167,10 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// it to the initiator.
 	declTx, _, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
+	declTxXDR, err := declTx.Base64()
+	require.NoError(t, err)
 	validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
-	err = initiatorChannel.IngestTx(declTx, validResultXDR, placeholderXDR)
+	err = initiatorChannel.IngestTx(declTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
@@ -142,8 +234,10 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	// initiator ingests it.
 	declTx, _, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
+	declTxXDR, err := declTx.Base64()
+	require.NoError(t, err)
 	validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
-	err = initiatorChannel.IngestTx(declTx, validResultXDR, placeholderXDR)
+	err = initiatorChannel.IngestTx(declTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
@@ -203,6 +297,8 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 
 	oldDeclTx, _, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
+	oldDeclTxXDR, err := oldDeclTx.Base64()
+	require.NoError(t, err)
 
 	// New payment.
 	close, err := initiatorChannel.ProposePayment(8)
@@ -215,7 +311,7 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// Pretend that responder broadcasts the old declTx, and
 	// initiator ingests it.
 	validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
-	err = initiatorChannel.IngestTx(oldDeclTx, validResultXDR, placeholderXDR)
+	err = initiatorChannel.IngestTx(oldDeclTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
