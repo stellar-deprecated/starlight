@@ -71,7 +71,7 @@ func buildErr(err error) error {
 // the cancel function returned. If multiple accounts are given the same
 // transaction may be broadcasted in duplicate if the transaction affects
 // more than one account being monitored.
-func (h *Horizon) StreamTx(accounts []*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
+func (h *Horizon) StreamTx(accounts ...*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
 	// txsCh is the channel that streamed transactions will be written to.
 	txsCh := make(chan agent.StreamedTransaction)
 
