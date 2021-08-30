@@ -112,9 +112,9 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "agent connected\n")
 			case agent.OpenedEvent:
 				fmt.Fprintf(os.Stderr, "agent channel opened\n")
-			case agent.PaymentReceivedAndConfirmedEvent:
+			case agent.PaymentReceivedEvent:
 				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
-			case agent.PaymentSentAndConfirmedEvent:
+			case agent.PaymentSentEvent:
 				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
 			case agent.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "agent channel closing\n")

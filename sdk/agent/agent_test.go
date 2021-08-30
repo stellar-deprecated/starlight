@@ -197,13 +197,13 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	{
 		localEvent, ok := <-localEvents
 		require.True(t, ok)
-		localPaymentEvent, ok := localEvent.(PaymentSentAndConfirmedEvent)
+		localPaymentEvent, ok := localEvent.(PaymentSentEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Details.IterationNumber)
 		assert.Equal(t, int64(50_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
-		remotePaymentEvent, ok := remoteEvent.(PaymentReceivedAndConfirmedEvent)
+		remotePaymentEvent, ok := remoteEvent.(PaymentReceivedEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(2), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
 		assert.Equal(t, int64(50_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
@@ -221,13 +221,13 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	{
 		localEvent, ok := <-localEvents
 		require.True(t, ok)
-		localPaymentEvent, ok := localEvent.(PaymentReceivedAndConfirmedEvent)
+		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(3), localPaymentEvent.CloseAgreement.Details.IterationNumber)
 		assert.Equal(t, int64(30_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
-		remotePaymentEvent, ok := remoteEvent.(PaymentSentAndConfirmedEvent)
+		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
 		require.True(t, ok)
 		assert.Equal(t, int64(3), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
 		assert.Equal(t, int64(30_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
@@ -422,7 +422,7 @@ func TestAgent_concurrency(t *testing.T) {
 				close(localConnected)
 			case OpenedEvent:
 				close(localOpened)
-			case PaymentSentAndConfirmedEvent, ErrorEvent:
+			case PaymentSentEvent, ErrorEvent:
 				close(localPaymentConfirmedOrError)
 			}
 		}
@@ -441,7 +441,7 @@ func TestAgent_concurrency(t *testing.T) {
 				close(remoteConnected)
 			case OpenedEvent:
 				close(remoteOpened)
-			case PaymentReceivedAndConfirmedEvent, ErrorEvent:
+			case PaymentReceivedEvent, ErrorEvent:
 				close(remotePaymentConfirmedOrError)
 			}
 		}
