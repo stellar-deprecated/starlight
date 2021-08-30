@@ -370,8 +370,6 @@ func TestAgent_concurrency(t *testing.T) {
 	// Make a payment.
 	err = localAgent.Payment("50.0")
 	require.NoError(t, err)
-	err = remoteAgent.Payment("50.0")
-	require.NoError(t, err)
 
 	<-localPaymentConfirmedOrError
 	<-remotePaymentConfirmedOrError
