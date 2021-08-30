@@ -309,8 +309,7 @@ func TestAgent_concurrency(t *testing.T) {
 
 	localConnected := make(chan struct{})
 	localOpened := make(chan struct{})
-	localPaymentSent := make(chan struct{})
-	localPaymentReceived := make(chan struct{})
+	localPaymentConfirmedOrError := make(chan struct{})
 	localClosed := make(chan struct{})
 	localEvents := make(chan Event, 2)
 	localAgent.Events = localEvents
@@ -323,10 +322,8 @@ func TestAgent_concurrency(t *testing.T) {
 				close(localConnected)
 			case OpenedEvent:
 				close(localOpened)
-			case PaymentSentEvent:
-				close(localPaymentSent)
-			case PaymentReceivedEvent:
-				close(localPaymentReceived)
+			case PaymentSentEvent, ErrorEvent:
+				close(localPaymentConfirmedOrError)
 			case ClosedEvent:
 				close(localClosed)
 			}
@@ -334,8 +331,7 @@ func TestAgent_concurrency(t *testing.T) {
 	}()
 	remoteConnected := make(chan struct{})
 	remoteOpened := make(chan struct{})
-	remotePaymentSent := make(chan struct{})
-	remotePaymentReceived := make(chan struct{})
+	remotePaymentConfirmedOrError := make(chan struct{})
 	remoteClosed := make(chan struct{})
 	remoteEvents := make(chan Event, 2)
 	remoteAgent.Events = remoteEvents
@@ -348,10 +344,8 @@ func TestAgent_concurrency(t *testing.T) {
 				close(remoteConnected)
 			case OpenedEvent:
 				close(remoteOpened)
-			case PaymentSentEvent:
-				close(remotePaymentSent)
-			case PaymentReceivedEvent:
-				close(remotePaymentReceived)
+			case PaymentReceivedEvent, ErrorEvent:
+				close(remotePaymentConfirmedOrError)
 			case ClosedEvent:
 				close(remoteClosed)
 			}
@@ -379,10 +373,8 @@ func TestAgent_concurrency(t *testing.T) {
 	err = remoteAgent.Payment("50.0")
 	require.NoError(t, err)
 
-	<-localPaymentSent
-	<-remotePaymentReceived
-	<-localPaymentReceived
-	<-remotePaymentSent
+	<-localPaymentConfirmedOrError
+	<-remotePaymentConfirmedOrError
 
 	// Declare close.
 	err = localAgent.DeclareClose()
