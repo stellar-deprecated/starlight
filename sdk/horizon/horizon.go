@@ -3,6 +3,7 @@ package horizon
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
@@ -65,18 +66,41 @@ func buildErr(err error) error {
 	return err
 }
 
-func (h *Horizon) StreamTx(accounts []*keypair.FromAddress, transactions chan<- agent.StreamedTransaction) {
-	ctx := context.Background()
-	req := horizonclient.TransactionRequest{}
-	err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
-		transactions <- agent.StreamedTransaction{
-			TransactionXDR: tx.EnvelopeXdr,
-			ResultXDR:      tx.ResultXdr,
-			ResultMetaXDR:  tx.ResultMetaXdr,
-		}
-	})
-	if err != nil {
-		// TODO: Handle errors.
-		panic(err)
+func (h *Horizon) StreamTx(accounts []*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
+	txsCh := make(chan agent.StreamedTransaction)
+	cancelCh := make(chan struct{})
+	cancel = func() {
+		close(cancelCh)
 	}
+	wg := sync.WaitGroup{}
+	for _, a := range accounts {
+		wg.Add(1)
+		go func() {
+			ctx, ctxCancel := context.WithCancel(context.Background())
+			req := horizonclient.TransactionRequest{
+				ForAccount: a.Address(),
+			}
+			err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
+				streamedTx := agent.StreamedTransaction{
+					TransactionXDR: tx.EnvelopeXdr,
+					ResultXDR:      tx.ResultXdr,
+					ResultMetaXDR:  tx.ResultMetaXdr,
+				}
+				select {
+				case <-cancelCh:
+					ctxCancel()
+					return
+				case txsCh <- streamedTx:
+				}
+			})
+			wg.Done()
+			wg.Wait()
+			close(txsCh) // TODO
+			if err != nil {
+				// TODO: Handle errors.
+				panic(err)
+			}
+		}()
+	}
+	return txs, cancel
 }
