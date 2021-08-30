@@ -96,7 +96,11 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.isEmpty() {
+	cs, err := c.State()
+	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("getting channel state: %w", err)
+	}
+	if cs < StateOpen {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a payment before channel is opened")
 	}
 
@@ -158,7 +162,11 @@ var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 // on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.isEmpty() {
+	cs, err := c.State()
+	if err != nil {
+		return fmt.Errorf("getting channel state: %w", err)
+	}
+	if cs < StateOpen {
 		return fmt.Errorf("cannot confirm a payment before channel is opened")
 	}
 

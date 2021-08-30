@@ -192,9 +192,14 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	// if the channel is already open, error.
-	if c.openAgreement.isFull() {
-		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
+	cs, err := c.State()
+	if err != nil {
+		return OpenAgreement{}, fmt.Errorf("getting channel state: %w", err)
 	}
+	if cs >= StateOpen {
+		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel has already opened")
+	}
+
 	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	d := OpenAgreementDetails{
@@ -224,7 +229,11 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 
 func (c *Channel) validateOpen(m OpenAgreement) error {
 	// if the channel is already open, error.
-	if c.openAgreement.isFull() {
+	cs, err := c.State()
+	if err != nil {
+		return fmt.Errorf("getting channel state: %w", err)
+	}
+	if cs >= StateOpen {
 		return fmt.Errorf("cannot confirm a new open if channel is already opened")
 	}
 

@@ -617,6 +617,7 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 			ObservationPeriodLedgerGap: 10,
 		},
 	}
+
 	_, err := channel.ProposePayment(110)
 	assert.EqualError(t, err, "amount over commits: account is underfunded to make payment")
 	assert.ErrorIs(t, err, ErrUnderfunded)
