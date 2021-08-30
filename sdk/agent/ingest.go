@@ -58,6 +58,7 @@ func (a *Agent) ingest() error {
 			case state.StateClosingWithOutdatedState:
 				a.Events <- ClosingWithOutdatedStateEvent{}
 			case state.StateClosed:
+				a.streamerCancel()
 				a.Events <- ClosedEvent{}
 			}
 		}
