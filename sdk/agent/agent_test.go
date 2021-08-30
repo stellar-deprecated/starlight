@@ -33,10 +33,10 @@ func (f submitterFunc) SubmitTx(tx *txnbuild.Transaction) error {
 	return f(tx)
 }
 
-type transactionStreamerFunc func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) (cancel func())
+type transactionStreamerFunc func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed)
 
-func (f transactionStreamerFunc) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) (cancel func()) {
-	return f(accounts, transactions)
+func (f transactionStreamerFunc) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
+	f(accounts, transactions)
 }
 
 func TestAgent_openPaymentClose(t *testing.T) {
@@ -47,9 +47,8 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the local agent.
 	localVars := struct {
-		submittedTx                *txnbuild.Transaction
-		transactionsStream         chan<- TransactionStreamed
-		transactionsStreamCanceled bool
+		submittedTx        *txnbuild.Transaction
+		transactionsStream chan<- TransactionStreamed
 	}{}
 	localEvents := make(chan Event, 1)
 	localAgent := &Agent{
@@ -73,12 +72,8 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			localVars.submittedTx = tx
 			return nil
 		}),
-		TransactionStreamer: transactionStreamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) (cancel func()) {
+		TransactionStreamer: transactionStreamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
 			localVars.transactionsStream = transactions
-			localVars.transactionsStreamCanceled = false
-			return func() {
-				localVars.transactionsStreamCanceled = true
-			}
 		}),
 		EscrowAccountKey:    localEscrow.FromAddress(),
 		EscrowAccountSigner: localSigner,
@@ -88,9 +83,8 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Setup the remote agent.
 	remoteVars := struct {
-		submittedTx                *txnbuild.Transaction
-		transactionsStream         chan<- TransactionStreamed
-		transactionsStreamCanceled bool
+		submittedTx        *txnbuild.Transaction
+		transactionsStream chan<- TransactionStreamed
 	}{}
 	remoteEvents := make(chan Event, 1)
 	remoteAgent := &Agent{
@@ -114,12 +108,8 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			remoteVars.submittedTx = tx
 			return nil
 		}),
-		TransactionStreamer: transactionStreamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) (cancel func()) {
+		TransactionStreamer: transactionStreamerFunc(func(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed) {
 			remoteVars.transactionsStream = transactions
-			remoteVars.transactionsStreamCanceled = false
-			return func() {
-				remoteVars.transactionsStreamCanceled = true
-			}
 		}),
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
 		EscrowAccountSigner: remoteSigner,
