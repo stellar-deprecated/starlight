@@ -37,12 +37,12 @@ type Submitter interface {
 
 // Streamer streams transactions that affect a set of accounts.
 type Streamer interface {
-	Stream(accounts []*keypair.FromAddress, transactions chan<- TransactionStreamed)
+	Stream(accounts []*keypair.FromAddress, transactions chan<- StreamedTransaction)
 }
 
-// TransactionStreamed is a transaction that has been seen by the
+// StreamedTransaction is a transaction that has been seen by the
 // Streamer.
-type TransactionStreamed struct {
+type StreamedTransaction struct {
 	TransactionXDR string
 	ResultXDR      string
 	ResultMetaXDR  string
@@ -77,7 +77,7 @@ type Agent struct {
 	otherEscrowAccount              *keypair.FromAddress
 	otherEscrowAccountSigner        *keypair.FromAddress
 	channel                         *state.Channel
-	transactionStreamerTransactions chan TransactionStreamed
+	transactionStreamerTransactions chan StreamedTransaction
 }
 
 // hello sends a hello message to the remote participant over the connection.
@@ -126,7 +126,7 @@ func (a *Agent) initChannel(initiator bool) error {
 		LocalSigner:  a.EscrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
-	a.transactionStreamerTransactions = make(chan TransactionStreamed)
+	a.transactionStreamerTransactions = make(chan StreamedTransaction)
 	a.Streamer.Stream(
 		[]*keypair.FromAddress{a.EscrowAccountKey, a.otherEscrowAccount},
 		a.transactionStreamerTransactions,

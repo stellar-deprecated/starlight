@@ -64,7 +64,7 @@ func buildErr(err error) error {
 	return err
 }
 
-func (h *Horizon) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- agent.TransactionStreamed) (cancel func()) {
+func (h *Horizon) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- agent.StreamedTransaction) (cancel func()) {
 	// TODO: Implement streaming of transactions for the accounts.
 	return nil
 }
