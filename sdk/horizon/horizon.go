@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
@@ -64,6 +65,18 @@ func buildErr(err error) error {
 	return err
 }
 
-func (h *Horizon) StreamTransactions(accounts []*keypair.FromAddress, transactions chan<- agent.StreamedTransaction) {
-	// TODO: Implement streaming of transactions for the accounts.
+func (h *Horizon) StreamTx(accounts []*keypair.FromAddress, transactions chan<- agent.StreamedTransaction) {
+	ctx := context.Background()
+	req := horizonclient.TransactionRequest{}
+	err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
+		transactions <- agent.StreamedTransaction{
+			TransactionXDR: tx.EnvelopeXdr,
+			ResultXDR:      tx.ResultXdr,
+			ResultMetaXDR:  tx.ResultMetaXdr,
+		}
+	})
+	if err != nil {
+		// TODO: Handle errors.
+		panic(err)
+	}
 }

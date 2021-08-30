@@ -35,7 +35,7 @@ func (f submitterFunc) SubmitTx(tx *txnbuild.Transaction) error {
 
 type streamerFunc func(accounts []*keypair.FromAddress, transactions chan<- StreamedTransaction)
 
-func (f streamerFunc) Stream(accounts []*keypair.FromAddress, transactions chan<- StreamedTransaction) {
+func (f streamerFunc) StreamTx(accounts []*keypair.FromAddress, transactions chan<- StreamedTransaction) {
 	f(accounts, transactions)
 }
 
