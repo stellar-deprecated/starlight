@@ -69,12 +69,16 @@ func TestHorizon_StreamTx(t *testing.T) {
 	t.Log("Streaming...")
 	txsCh, cancel := h.StreamTx([]*keypair.FromAddress{accountA.FromAddress(), accountB.FromAddress()})
 
+	// Pull streamed transactions into slice.
 	t.Log("Pulling some transactions from stream...")
 	txs := []agent.StreamedTransaction{}
 	txs = append(txs, <-txsCh)
-	close(accountBStart) // Block accountB's client from producing until accountA produces at least one.
+
+	// Signal to accountB's client that it can start producing too and pull more.
+	close(accountBStart)
 	txs = append(txs, <-txsCh, <-txsCh)
 
+	// Check that the streamed transactions has transactions from A and B.
 	assert.ElementsMatch(
 		t,
 		[]agent.StreamedTransaction{
@@ -96,9 +100,18 @@ func TestHorizon_StreamTx(t *testing.T) {
 		},
 		txs,
 	)
+
+	// Cancel streaming, and check that multiple cancels are okay.
 	t.Log("Canceling...")
 	cancel()
-	cancel() // Check that multiple cancels are okay.
-	_, ok := <-txsCh
-	assert.False(t, ok, "txs channel not closed but should be after cancel called")
+	cancel()
+
+	// Check that the transaction stream channel is closed. It may still be
+	// producing transactions for a short period of time.
+	open := true
+	for open {
+		_, open = <-txsCh
+		t.Log("Still open, waiting for cancel...")
+	}
+	assert.False(t, open, "txs channel not closed but should be after cancel called")
 }
