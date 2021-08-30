@@ -42,7 +42,7 @@ func (a *Agent) ingest() error {
 	stateAfter, err := a.channel.State()
 	if err != nil {
 		a.Events <- ErrorEvent{Err: err}
-		return fmt.Errorf("getting state after ingesting tx: %w: %w", err)
+		return fmt.Errorf("getting state after ingesting tx: %w", err)
 	}
 
 	fmt.Fprintf(a.LogWriter, "state after: %v\n", stateAfter)

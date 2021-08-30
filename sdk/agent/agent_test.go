@@ -33,10 +33,10 @@ func (f submitterFunc) SubmitTx(tx *txnbuild.Transaction) error {
 	return f(tx)
 }
 
-type streamerFunc func(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
+type streamerFunc func(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
 
-func (f streamerFunc) StreamTx(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
-	return f(accounts)
+func (f streamerFunc) StreamTx(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+	return f(accounts...)
 }
 
 func TestAgent_openPaymentClose(t *testing.T) {
@@ -73,7 +73,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			localVars.submittedTx = tx
 			return nil
 		}),
-		Streamer: streamerFunc(func(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		Streamer: streamerFunc(func(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
 		EscrowAccountKey:    localEscrow.FromAddress(),
@@ -110,7 +110,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			remoteVars.submittedTx = tx
 			return nil
 		}),
-		Streamer: streamerFunc(func(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		Streamer: streamerFunc(func(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
 		EscrowAccountKey:    remoteEscrow.FromAddress(),
@@ -357,7 +357,7 @@ func TestAgent_concurrency(t *testing.T) {
 			}()
 			return nil
 		}),
-		Streamer: streamerFunc(func(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		Streamer: streamerFunc(func(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
 		EscrowAccountKey:    localEscrow.FromAddress(),
@@ -386,7 +386,7 @@ func TestAgent_concurrency(t *testing.T) {
 		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			return nil
 		}),
-		Streamer: streamerFunc(func(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		Streamer: streamerFunc(func(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
 		EscrowAccountKey:    remoteEscrow.FromAddress(),

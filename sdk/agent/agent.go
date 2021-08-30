@@ -37,7 +37,7 @@ type Submitter interface {
 
 // Streamer streams transactions that affect a set of accounts.
 type Streamer interface {
-	StreamTx(accounts []*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
+	StreamTx(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
 }
 
 // StreamedTransaction is a transaction that has been seen by the
@@ -127,7 +127,7 @@ func (a *Agent) initChannel(initiator bool) error {
 		LocalSigner:  a.EscrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
-	a.streamerTransactions, a.streamerCancel = a.Streamer.StreamTx([]*keypair.FromAddress{a.EscrowAccountKey, a.otherEscrowAccount})
+	a.streamerTransactions, a.streamerCancel = a.Streamer.StreamTx(a.EscrowAccountKey, a.otherEscrowAccount)
 	go a.ingestLoop()
 	return nil
 }
