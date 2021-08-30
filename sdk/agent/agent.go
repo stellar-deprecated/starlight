@@ -73,12 +73,12 @@ type Agent struct {
 	// lock.
 	mu sync.Mutex
 
-	conn                            io.ReadWriter
-	otherEscrowAccount              *keypair.FromAddress
-	otherEscrowAccountSigner        *keypair.FromAddress
-	channel                         *state.Channel
-	transactionStreamerTransactions <-chan StreamedTransaction
-	transactionStreamerCancel       func()
+	conn                     io.ReadWriter
+	otherEscrowAccount       *keypair.FromAddress
+	otherEscrowAccountSigner *keypair.FromAddress
+	channel                  *state.Channel
+	streamerTransactions     <-chan StreamedTransaction
+	streamerCancel           func()
 }
 
 // hello sends a hello message to the remote participant over the connection.
@@ -127,7 +127,7 @@ func (a *Agent) initChannel(initiator bool) error {
 		LocalSigner:  a.EscrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
-	a.transactionStreamerTransactions, a.transactionStreamerCancel = a.Streamer.StreamTx([]*keypair.FromAddress{a.EscrowAccountKey, a.otherEscrowAccount})
+	a.streamerTransactions, a.streamerCancel = a.Streamer.StreamTx([]*keypair.FromAddress{a.EscrowAccountKey, a.otherEscrowAccount})
 	go a.ingestLoop()
 	return nil
 }
