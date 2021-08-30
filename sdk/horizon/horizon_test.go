@@ -67,7 +67,7 @@ func TestHorizon_StreamTx(t *testing.T) {
 	})
 
 	t.Log("Streaming...")
-	txsCh, cancel := h.StreamTx([]*keypair.FromAddress{accountA.FromAddress(), accountB.FromAddress()})
+	txsCh, cancel := h.StreamTx(accountA.FromAddress(), accountB.FromAddress())
 
 	// Pull streamed transactions into slice.
 	t.Log("Pulling some transactions from stream...")
