@@ -331,10 +331,6 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 		}
 	}
 
-	// Update the initiator escrow sequence number on the channel.
-	// TODO - combine with ingestTxToUpdateInitiatorEscrowAccountSequence so we're updating in one spot.
-	c.setInitiatorEscrowAccountSequence(int64(initiatorEscrowAccountEntry.SeqNum))
-
 	c.openExecutedAndValidated = true
 	return nil
 }
