@@ -20,6 +20,7 @@ func (a *Agent) ingest() error {
 
 	txHash, err := hashTx(tx.TransactionXDR, a.networkPassphrase)
 	if err != nil {
+		err = fmt.Errorf("ingesting tx (cursor=%s): hashing tx: %w", tx.Cursor, err)
 		a.events <- ErrorEvent{Err: err}
 		return err
 	}
@@ -27,29 +28,30 @@ func (a *Agent) ingest() error {
 
 	stateBefore, err := a.channel.State()
 	if err != nil {
+		err = fmt.Errorf("ingesting tx (cursor=%s hash=%s): getting channel state before: %w", tx.Cursor, txHash, err)
 		a.events <- ErrorEvent{Err: err}
-		return fmt.Errorf("getting state: %w", err)
+		return err
 	}
-
 	fmt.Fprintf(a.logWriter, "state before: %v\n", stateBefore)
 
 	err = a.channel.IngestTx(tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR)
 	if err != nil {
+		err = fmt.Errorf("ingesting tx (cursor=%s hash=%s): ingesting xdr: %w", tx.Cursor, txHash, err)
 		a.events <- ErrorEvent{Err: err}
-		return fmt.Errorf("ingesting tx: %s result: %s result meta: %s: %w", tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR, err)
+		return err
 	}
 
 	stateAfter, err := a.channel.State()
 	if err != nil {
+		err = fmt.Errorf("ingesting tx (cursor=%s hash=%s): getting channel state after: %w", tx.Cursor, txHash, err)
 		a.events <- ErrorEvent{Err: err}
-		return fmt.Errorf("getting state after ingesting tx: %w", err)
+		return err
 	}
-
 	fmt.Fprintf(a.logWriter, "state after: %v\n", stateAfter)
 
 	if a.events != nil {
 		if stateAfter != stateBefore {
-			fmt.Fprintf(a.logWriter, "triggering event: %v\n", stateAfter)
+			fmt.Fprintf(a.logWriter, "writing event: %v\n", stateAfter)
 			switch stateAfter {
 			case state.StateOpen:
 				a.events <- OpenedEvent{}
