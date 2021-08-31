@@ -53,11 +53,11 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	localVars.transactionsStream = make(chan StreamedTransaction)
 	localEvents := make(chan Event, 1)
 	localAgent := &Agent{
-		ObservationPeriodTime:      20 * time.Second,
-		ObservationPeriodLedgerGap: 1,
-		MaxOpenExpiry:              5 * time.Minute,
-		NetworkPassphrase:          network.TestNetworkPassphrase,
-		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+		observationPeriodTime:      20 * time.Second,
+		observationPeriodLedgerGap: 1,
+		maxOpenExpiry:              5 * time.Minute,
+		networkPassphrase:          network.TestNetworkPassphrase,
+		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
 			if accountID.Equal(localEscrow) {
 				return 28037546508288, nil
 			}
@@ -66,20 +66,20 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			}
 			return 0, fmt.Errorf("unknown escrow account")
 		}),
-		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
 		}),
-		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+		submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			localVars.submittedTx = tx
 			return nil
 		}),
-		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
-		EscrowAccountKey:    localEscrow.FromAddress(),
-		EscrowAccountSigner: localSigner,
-		LogWriter:           io.Discard,
-		Events:              localEvents,
+		escrowAccountKey:    localEscrow.FromAddress(),
+		escrowAccountSigner: localSigner,
+		logWriter:           io.Discard,
+		events:              localEvents,
 	}
 
 	// Setup the remote agent.
@@ -90,11 +90,11 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	remoteVars.transactionsStream = make(chan StreamedTransaction)
 	remoteEvents := make(chan Event, 1)
 	remoteAgent := &Agent{
-		ObservationPeriodTime:      20 * time.Second,
-		ObservationPeriodLedgerGap: 1,
-		MaxOpenExpiry:              5 * time.Minute,
-		NetworkPassphrase:          network.TestNetworkPassphrase,
-		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+		observationPeriodTime:      20 * time.Second,
+		observationPeriodLedgerGap: 1,
+		maxOpenExpiry:              5 * time.Minute,
+		networkPassphrase:          network.TestNetworkPassphrase,
+		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
 			if accountID.Equal(localEscrow) {
 				return 28037546508288, nil
 			}
@@ -103,20 +103,20 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			}
 			return 0, fmt.Errorf("unknown escrow account")
 		}),
-		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
 		}),
-		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+		submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			remoteVars.submittedTx = tx
 			return nil
 		}),
-		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
-		EscrowAccountKey:    remoteEscrow.FromAddress(),
-		EscrowAccountSigner: remoteSigner,
-		LogWriter:           io.Discard,
-		Events:              remoteEvents,
+		escrowAccountKey:    remoteEscrow.FromAddress(),
+		escrowAccountSigner: remoteSigner,
+		logWriter:           io.Discard,
+		events:              remoteEvents,
 	}
 
 	// Connect the two agents.
@@ -327,11 +327,11 @@ func TestAgent_concurrency(t *testing.T) {
 
 	// Setup the local agent.
 	localAgent := &Agent{
-		ObservationPeriodTime:      20 * time.Second,
-		ObservationPeriodLedgerGap: 1,
-		MaxOpenExpiry:              5 * time.Minute,
-		NetworkPassphrase:          network.TestNetworkPassphrase,
-		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+		observationPeriodTime:      20 * time.Second,
+		observationPeriodLedgerGap: 1,
+		maxOpenExpiry:              5 * time.Minute,
+		networkPassphrase:          network.TestNetworkPassphrase,
+		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
 			if accountID.Equal(localEscrow) {
 				return 28037546508288, nil
 			}
@@ -340,10 +340,10 @@ func TestAgent_concurrency(t *testing.T) {
 			}
 			return 0, fmt.Errorf("unknown escrow account")
 		}),
-		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
 		}),
-		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+		submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			txXDR, err := tx.Base64()
 			require.NoError(t, err)
 			streamedTx := StreamedTransaction{
@@ -357,21 +357,21 @@ func TestAgent_concurrency(t *testing.T) {
 			}()
 			return nil
 		}),
-		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
-		EscrowAccountKey:    localEscrow.FromAddress(),
-		EscrowAccountSigner: localSigner,
-		LogWriter:           io.Discard,
+		escrowAccountKey:    localEscrow.FromAddress(),
+		escrowAccountSigner: localSigner,
+		logWriter:           io.Discard,
 	}
 
 	// Setup the remote agent.
 	remoteAgent := &Agent{
-		ObservationPeriodTime:      20 * time.Second,
-		ObservationPeriodLedgerGap: 1,
-		MaxOpenExpiry:              5 * time.Minute,
-		NetworkPassphrase:          network.TestNetworkPassphrase,
-		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+		observationPeriodTime:      20 * time.Second,
+		observationPeriodLedgerGap: 1,
+		maxOpenExpiry:              5 * time.Minute,
+		networkPassphrase:          network.TestNetworkPassphrase,
+		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
 			if accountID.Equal(localEscrow) {
 				return 28037546508288, nil
 			}
@@ -380,18 +380,18 @@ func TestAgent_concurrency(t *testing.T) {
 			}
 			return 0, fmt.Errorf("unknown escrow account")
 		}),
-		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
 		}),
-		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+		submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			return nil
 		}),
-		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
-		EscrowAccountKey:    remoteEscrow.FromAddress(),
-		EscrowAccountSigner: remoteSigner,
-		LogWriter:           io.Discard,
+		escrowAccountKey:    remoteEscrow.FromAddress(),
+		escrowAccountSigner: remoteSigner,
+		logWriter:           io.Discard,
 	}
 
 	// Connect the two agents.
@@ -416,7 +416,7 @@ func TestAgent_concurrency(t *testing.T) {
 	localOpened := make(chan struct{})
 	localPaymentConfirmedOrError := make(chan struct{})
 	localEvents := make(chan Event, 2)
-	localAgent.Events = localEvents
+	localAgent.events = localEvents
 	go func() {
 		for {
 			e := <-localEvents
@@ -435,7 +435,7 @@ func TestAgent_concurrency(t *testing.T) {
 	remoteOpened := make(chan struct{})
 	remotePaymentConfirmedOrError := make(chan struct{})
 	remoteEvents := make(chan Event, 2)
-	remoteAgent.Events = remoteEvents
+	remoteAgent.events = remoteEvents
 	go func() {
 		for {
 			e := <-remoteEvents

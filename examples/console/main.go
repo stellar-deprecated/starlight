@@ -123,7 +123,7 @@ func run() error {
 			}
 		}
 	}()
-	agent := &agent.Agent{
+	agent := agent.NewAgent(agent.Config{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		MaxOpenExpiry:              maxOpenExpiry,
@@ -136,7 +136,7 @@ func run() error {
 		EscrowAccountSigner:        signerKey,
 		LogWriter:                  os.Stderr,
 		Events:                     events,
-	}
+	})
 
 	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 		Creator:        accountKey.FromAddress(),
