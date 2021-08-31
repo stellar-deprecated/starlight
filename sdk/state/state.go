@@ -15,17 +15,9 @@ type Snapshoter interface {
 }
 
 type Snapshot struct {
-	NetworkPassphrase string
-	MaxOpenExpiry     time.Duration
-
 	StartingSequence int64
 
-	Initiator           bool
-	LocalEscrowAccount  *EscrowAccount
-	RemoteEscrowAccount *EscrowAccount
-
-	LocalSigner  *keypair.Full
-	RemoteSigner *keypair.FromAddress
+	Initiator bool
 
 	OpenAgreement            OpenAgreement
 	OpenExecutedAndValidated bool

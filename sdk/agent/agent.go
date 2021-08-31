@@ -56,20 +56,6 @@ type Snapshoter interface {
 	Snapshot(s Snapshot) error
 }
 
-// Snapshot is a snapshot of the agent and its dependencies. A Snapshot can be
-// restored into an Agent using NewAgentFromSnapshot.
-type Snapshot struct {
-	StateSnapshot              state.Snapshot
-	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
-	MaxOpenExpiry              time.Duration
-	NetworkPassphrase          string
-	EscrowAccountKey           *keypair.FromAddress
-	OtherEscrowAccount         *keypair.FromAddress
-	OtherEscrowAccountSigner   *keypair.FromAddress
-	StreamerCursor             string
-}
-
 type Config struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -107,8 +93,25 @@ func NewAgent(c Config) *Agent {
 	return agent
 }
 
-func NewAgentFromSnapshot(s Snapshot) *Agent {
-	return nil
+// Snapshot is a snapshot of the agent and its dependencies excluding any fields
+// provided in the Config when instantiating an agent. A Snapshot can be
+// restored into an Agent using NewAgentFromSnapshot.
+type Snapshot struct {
+	OtherEscrowAccount       *keypair.FromAddress
+	OtherEscrowAccountSigner *keypair.FromAddress
+	StreamerCursor           string
+
+	StateSnapshot state.Snapshot
+}
+
+// NewAgentWithSnapshot creates an agent using a previously generated snapshot
+// so that the new agent has the same state as the previous agent.
+func NewAgentWithSnapshot(c Config, s Snapshot) *Agent {
+	agent := NewAgent(c)
+	agent.otherEscrowAccount = s.OtherEscrowAccount
+	agent.otherEscrowAccountSigner = s.OtherEscrowAccountSigner
+	agent.streamerCursor = s.StreamerCursor
+	return agent
 }
 
 // Agent coordinates a payment channel over a TCP connection.
