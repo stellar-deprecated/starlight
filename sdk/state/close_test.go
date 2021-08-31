@@ -118,6 +118,10 @@ func TestChannel_ProposeClose(t *testing.T) {
 	_, err = localChannel.ConfirmOpen(open2)
 	require.NoError(t, err)
 
+	// Put channels into the Open state.
+	localChannel.openExecutedAndValidated = true
+	remoteChannel.openExecutedAndValidated = true
+
 	// If the local proposes a close, the agreement will have them as the proposer.
 	closeByLocal, err := localChannel.ProposeClose()
 	require.NoError(t, err)
