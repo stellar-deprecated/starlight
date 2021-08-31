@@ -234,3 +234,150 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		assert.Equal(t, remoteEvent, ClosedEvent{})
 	}
 }
+
+func TestAgent_concurrency(t *testing.T) {
+	localEscrow := keypair.MustRandom()
+	localSigner := keypair.MustRandom()
+	remoteEscrow := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+
+	// Setup the local agent.
+	localVars := struct {
+		submittedTx *txnbuild.Transaction
+	}{}
+	localAgent := &Agent{
+		ObservationPeriodTime:      20 * time.Second,
+		ObservationPeriodLedgerGap: 1,
+		MaxOpenExpiry:              5 * time.Minute,
+		NetworkPassphrase:          network.TestNetworkPassphrase,
+		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+			return 1, nil
+		}),
+		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+			return 100_0000000, nil
+		}),
+		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+			localVars.submittedTx = tx
+			return nil
+		}),
+		EscrowAccountKey:    localEscrow.FromAddress(),
+		EscrowAccountSigner: localSigner,
+		LogWriter:           io.Discard,
+	}
+
+	// Setup the remote agent.
+	remoteVars := struct {
+		submittedTx *txnbuild.Transaction
+	}{}
+	remoteAgent := &Agent{
+		ObservationPeriodTime:      20 * time.Second,
+		ObservationPeriodLedgerGap: 1,
+		MaxOpenExpiry:              5 * time.Minute,
+		NetworkPassphrase:          network.TestNetworkPassphrase,
+		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+			return 1, nil
+		}),
+		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+			return 100_0000000, nil
+		}),
+		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+			remoteVars.submittedTx = tx
+			return nil
+		}),
+		EscrowAccountKey:    remoteEscrow.FromAddress(),
+		EscrowAccountSigner: remoteSigner,
+		LogWriter:           io.Discard,
+	}
+
+	// Connect the two agents.
+	type ReadWriter struct {
+		io.Reader
+		io.Writer
+	}
+	localReader, localWriter := io.Pipe()
+	remoteReader, remoteWriter := io.Pipe()
+	localAgent.conn = ReadWriter{
+		Reader: remoteReader,
+		Writer: localWriter,
+	}
+	remoteAgent.conn = ReadWriter{
+		Reader: localReader,
+		Writer: remoteWriter,
+	}
+	go localAgent.receiveLoop()
+	go remoteAgent.receiveLoop()
+
+	localConnected := make(chan struct{})
+	localOpened := make(chan struct{})
+	localPaymentConfirmedOrError := make(chan struct{})
+	localClosed := make(chan struct{})
+	localEvents := make(chan Event, 2)
+	localAgent.Events = localEvents
+	go func() {
+		for {
+			e := <-localEvents
+			t.Logf("local event: %#v", e)
+			switch e.(type) {
+			case ConnectedEvent:
+				close(localConnected)
+			case OpenedEvent:
+				close(localOpened)
+			case PaymentSentEvent, ErrorEvent:
+				close(localPaymentConfirmedOrError)
+			case ClosedEvent:
+				close(localClosed)
+			}
+		}
+	}()
+	remoteConnected := make(chan struct{})
+	remoteOpened := make(chan struct{})
+	remotePaymentConfirmedOrError := make(chan struct{})
+	remoteClosed := make(chan struct{})
+	remoteEvents := make(chan Event, 2)
+	remoteAgent.Events = remoteEvents
+	go func() {
+		for {
+			e := <-remoteEvents
+			t.Logf("remote event: %#v", e)
+			switch e.(type) {
+			case ConnectedEvent:
+				close(remoteConnected)
+			case OpenedEvent:
+				close(remoteOpened)
+			case PaymentReceivedEvent, ErrorEvent:
+				close(remotePaymentConfirmedOrError)
+			case ClosedEvent:
+				close(remoteClosed)
+			}
+		}
+	}()
+
+	err := localAgent.hello()
+	require.NoError(t, err)
+	err = remoteAgent.hello()
+	require.NoError(t, err)
+
+	<-localConnected
+	<-remoteConnected
+
+	// Open the channel.
+	err = localAgent.Open()
+	require.NoError(t, err)
+
+	<-localOpened
+	<-remoteOpened
+
+	// Make a payment.
+	err = localAgent.Payment("50.0")
+	require.NoError(t, err)
+
+	<-localPaymentConfirmedOrError
+	<-remotePaymentConfirmedOrError
+
+	// Declare close.
+	err = localAgent.DeclareClose()
+	require.NoError(t, err)
+
+	<-localClosed
+	<-remoteClosed
+}
