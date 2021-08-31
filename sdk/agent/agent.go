@@ -50,10 +50,10 @@ type StreamedTransaction struct {
 }
 
 type Config struct {
-	NetworkPassphrase          string
-	MaxOpenExpiry              time.Duration
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
+	NetworkPassphrase          string
+	MaxOpenExpiry              time.Duration
 
 	SequenceNumberCollector SequenceNumberCollector
 	BalanceCollector        BalanceCollector
@@ -70,10 +70,10 @@ type Config struct {
 
 func NewAgent(c Config) *Agent {
 	agent := &Agent{
-		maxOpenExpiry:              c.MaxOpenExpiry,
-		networkPassphrase:          c.NetworkPassphrase,
 		observationPeriodTime:      c.ObservationPeriodTime,
 		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		maxOpenExpiry:              c.MaxOpenExpiry,
+		networkPassphrase:          c.NetworkPassphrase,
 		sequenceNumberCollector:    c.SequenceNumberCollector,
 		balanceCollector:           c.BalanceCollector,
 		submitter:                  c.Submitter,
