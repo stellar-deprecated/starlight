@@ -72,6 +72,11 @@ func buildErr(err error) error {
 // transaction may be broadcasted in duplicate if the transaction affects more
 // than one account being monitored. The given cursor suppors resuming a
 // previous stream.
+//
+// TODO: Improve StreamTx so that it only streams transactions that affect the
+// given accounts. At the moment, to reduce complexity and due to limitations in
+// Horizon, it streams all network transactions. See
+// https://github.com/stellar/go/issues/3874.
 func (h *Horizon) StreamTx(cursor string, accounts ...*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
 	// txsCh is the channel that streamed transactions will be written to.
 	txsCh := make(chan agent.StreamedTransaction)
