@@ -23,7 +23,7 @@ func (a *Agent) ingest() error {
 		a.Events <- ErrorEvent{Err: err}
 		return err
 	}
-	fmt.Fprintf(a.LogWriter, "ingesting tx: %s\n", txHash)
+	fmt.Fprintf(a.LogWriter, "ingesting cursor: %s tx: %s\n", tx.Cursor, txHash)
 
 	stateBefore, err := a.channel.State()
 	if err != nil {
