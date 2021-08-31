@@ -858,6 +858,7 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 			},
 		},
 	})
+	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(formationTxXDR, validResultXDR, resultMetaXDR)
 	require.NoError(t, err)
 	assert.EqualError(t, initiatorChannel.openExecutedWithError, "unexpected signer found on escrow account")

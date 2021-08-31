@@ -36,7 +36,7 @@ func BuildResultMetaXDR(ledgerEntryChanges xdr.LedgerEntryChanges) (string, erro
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
 			Operations: []xdr.OperationMeta{
-				xdr.OperationMeta{
+				{
 					Changes: ledgerEntryChanges,
 				},
 			},
