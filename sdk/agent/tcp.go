@@ -17,7 +17,7 @@ func (a *Agent) ServeTCP(addr string) error {
 	if err != nil {
 		return fmt.Errorf("accepting incoming connection: %w", err)
 	}
-	fmt.Fprintf(a.LogWriter, "accepted connection from %v\n", conn.RemoteAddr())
+	fmt.Fprintf(a.logWriter, "accepted connection from %v\n", conn.RemoteAddr())
 	a.conn = conn
 	err = a.hello()
 	if err != nil {
@@ -36,7 +36,7 @@ func (a *Agent) ConnectTCP(addr string) error {
 	if err != nil {
 		return fmt.Errorf("connecting to %s: %w", addr, err)
 	}
-	fmt.Fprintf(a.LogWriter, "connected to %v\n", conn.RemoteAddr())
+	fmt.Fprintf(a.logWriter, "connected to %v\n", conn.RemoteAddr())
 	a.conn = conn
 	err = a.hello()
 	if err != nil {
