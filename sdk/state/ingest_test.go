@@ -834,10 +834,7 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 						SeqNum:    102,
 						Signers: []xdr.Signer{
 							{
-								Key: xdr.SignerKey{
-									Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
-									Ed25519: xdr.MustAddress("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV").Ed25519,
-								},
+								Key:    xdr.MustSigner("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
 								Weight: 1,
 							},
 						},
