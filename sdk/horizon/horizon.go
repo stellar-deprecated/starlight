@@ -69,9 +69,10 @@ func buildErr(err error) error {
 // StreamTx streams transactions that affect the given accounts, sending each
 // transaction to the txs channel returned. StreamTx can be stopped by calling
 // the cancel function returned. If multiple accounts are given the same
-// transaction may be broadcasted in duplicate if the transaction affects
-// more than one account being monitored.
-func (h *Horizon) StreamTx(accounts ...*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
+// transaction may be broadcasted in duplicate if the transaction affects more
+// than one account being monitored. The given cursor suppors resuming a
+// previous stream.
+func (h *Horizon) StreamTx(cursor string, accounts ...*keypair.FromAddress) (txs <-chan agent.StreamedTransaction, cancel func()) {
 	// txsCh is the channel that streamed transactions will be written to.
 	txsCh := make(chan agent.StreamedTransaction)
 
@@ -81,16 +82,13 @@ func (h *Horizon) StreamTx(accounts ...*keypair.FromAddress) (txs <-chan agent.S
 	// For each account start a streamer that will write txs and stop when
 	// signaled to cancel.
 	wg := sync.WaitGroup{}
-	for _, a := range accounts {
-		a := a
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			h.streamTx(a, txsCh, cancelCh)
-		}()
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		h.streamTx(cursor, txsCh, cancelCh)
+	}()
 
-	// If all streamers stop, due to being told to cancel or some other cause,
+	// If the streamer stops, due to being told to cancel or some other cause,
 	// close the txs channel so that consumers know there's no more transactions
 	// coming.
 	go func() {
@@ -107,17 +105,18 @@ func (h *Horizon) StreamTx(accounts ...*keypair.FromAddress) (txs <-chan agent.S
 	return txsCh, cancel
 }
 
-func (h *Horizon) streamTx(account *keypair.FromAddress, txs chan<- agent.StreamedTransaction, cancel <-chan struct{}) {
+func (h *Horizon) streamTx(cursor string, txs chan<- agent.StreamedTransaction, cancel <-chan struct{}) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	go func() {
 		<-cancel
 		ctxCancel()
 	}()
 	req := horizonclient.TransactionRequest{
-		ForAccount: account.Address(),
+		Cursor: cursor,
 	}
 	err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
 		streamedTx := agent.StreamedTransaction{
+			Cursor:         tx.PagingToken(),
 			TransactionXDR: tx.EnvelopeXdr,
 			ResultXDR:      tx.ResultXdr,
 			ResultMetaXDR:  tx.ResultMetaXdr,

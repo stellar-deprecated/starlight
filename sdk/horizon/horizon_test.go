@@ -10,10 +10,9 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
-func TestHorizon_StreamTx(t *testing.T) {
+func TestHorizon_StreamTx_longBlock(t *testing.T) {
 	client := &horizonclient.MockClient{}
 	h := Horizon{HorizonClient: client}
 
@@ -21,12 +20,10 @@ func TestHorizon_StreamTx(t *testing.T) {
 	client.On(
 		"StreamTransactions",
 		mock.Anything,
-		horizonclient.TransactionRequest{ForAccount: accountA.Address()},
+		horizonclient.TransactionRequest{},
 		mock.Anything,
 	).Return(nil).Run(func(args mock.Arguments) {
 		ctx := args[0].(context.Context)
-		req := args[1].(horizonclient.TransactionRequest)
-		require.Equal(t, accountA.Address(), req.ForAccount)
 		handler := args[2].(horizonclient.TransactionHandler)
 		handler(horizon.Transaction{
 			EnvelopeXdr:   "a-txxdr",
@@ -37,20 +34,55 @@ func TestHorizon_StreamTx(t *testing.T) {
 		<-ctx.Done()
 	})
 
-	accountBStart := make(chan struct{})
+	t.Log("Streaming...")
+	txsCh, cancel := h.StreamTx("", accountA.FromAddress())
+
+	// Pull streamed transactions into slice.
+	t.Log("Pulling some transactions from stream...")
+	txs := []agent.StreamedTransaction{}
+	txs = append(txs, <-txsCh)
+
+	// Check that the streamed transactions has transactions from A and B.
+	assert.ElementsMatch(
+		t,
+		[]agent.StreamedTransaction{
+			{
+				TransactionXDR: "a-txxdr",
+				ResultXDR:      "a-resultxdr",
+				ResultMetaXDR:  "a-resultmetaxdr",
+			},
+		},
+		txs,
+	)
+
+	// Cancel streaming, and check that multiple cancels are okay.
+	t.Log("Canceling...")
+	cancel()
+	cancel()
+
+	// Check that the transaction stream channel is closed. It may still be
+	// producing transactions for a short period of time.
+	open := true
+	for open {
+		_, open = <-txsCh
+		t.Log("Still open, waiting for cancel...")
+	}
+	assert.False(t, open, "txs channel not closed but should be after cancel called")
+}
+
+func TestHorizon_StreamTx_manyTxs(t *testing.T) {
+	client := &horizonclient.MockClient{}
+	h := Horizon{HorizonClient: client}
+
 	accountB := keypair.MustRandom()
 	client.On(
 		"StreamTransactions",
 		mock.Anything,
-		horizonclient.TransactionRequest{ForAccount: accountB.Address()},
+		horizonclient.TransactionRequest{},
 		mock.Anything,
 	).Return(nil).Run(func(args mock.Arguments) {
 		ctx := args[0].(context.Context)
-		req := args[1].(horizonclient.TransactionRequest)
-		require.Equal(t, accountB.Address(), req.ForAccount)
 		handler := args[2].(horizonclient.TransactionHandler)
-		// Wait starting until signaled.
-		<-accountBStart
 		// Simulate many transactions coming from Horizon.
 		for {
 			select {
@@ -67,26 +99,17 @@ func TestHorizon_StreamTx(t *testing.T) {
 	})
 
 	t.Log("Streaming...")
-	txsCh, cancel := h.StreamTx(accountA.FromAddress(), accountB.FromAddress())
+	txsCh, cancel := h.StreamTx("", accountB.FromAddress())
 
 	// Pull streamed transactions into slice.
 	t.Log("Pulling some transactions from stream...")
 	txs := []agent.StreamedTransaction{}
-	txs = append(txs, <-txsCh)
-
-	// Signal to accountB's client that it can start producing too and pull more.
-	close(accountBStart)
 	txs = append(txs, <-txsCh, <-txsCh)
 
 	// Check that the streamed transactions has transactions from A and B.
 	assert.ElementsMatch(
 		t,
 		[]agent.StreamedTransaction{
-			{
-				TransactionXDR: "a-txxdr",
-				ResultXDR:      "a-resultxdr",
-				ResultMetaXDR:  "a-resultmetaxdr",
-			},
 			{
 				TransactionXDR: "b-txxdr",
 				ResultXDR:      "b-resultxdr",

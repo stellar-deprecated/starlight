@@ -37,12 +37,13 @@ type Submitter interface {
 
 // Streamer streams transactions that affect a set of accounts.
 type Streamer interface {
-	StreamTx(accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
+	StreamTx(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
 }
 
 // StreamedTransaction is a transaction that has been seen by the
 // Streamer.
 type StreamedTransaction struct {
+	Cursor         string
 	TransactionXDR string
 	ResultXDR      string
 	ResultMetaXDR  string
@@ -78,6 +79,7 @@ type Agent struct {
 	otherEscrowAccountSigner *keypair.FromAddress
 	channel                  *state.Channel
 	streamerTransactions     <-chan StreamedTransaction
+	streamerCursor           string
 	streamerCancel           func()
 }
 
@@ -127,7 +129,7 @@ func (a *Agent) initChannel(initiator bool) error {
 		LocalSigner:  a.EscrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
-	a.streamerTransactions, a.streamerCancel = a.Streamer.StreamTx(a.EscrowAccountKey, a.otherEscrowAccount)
+	a.streamerTransactions, a.streamerCancel = a.Streamer.StreamTx(a.streamerCursor)
 	go a.ingestLoop()
 	return nil
 }
