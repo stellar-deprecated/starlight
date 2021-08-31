@@ -84,7 +84,7 @@ func (h *Horizon) StreamTx(cursor string, accounts ...*keypair.FromAddress) (txs
 	// cancelCh will be used to signal the streamer to stop.
 	cancelCh := make(chan struct{})
 
-	// For each account start a streamer that will write txs and stop when
+	// Start a streamer that will write txs and stop when
 	// signaled to cancel.
 	go func() {
 		defer close(txsCh)
