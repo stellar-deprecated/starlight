@@ -24,7 +24,7 @@ func BuildResultXDR(success bool) (string, error) {
 	}
 	trXDR, err := xdr.MarshalBase64(tr)
 	if err != nil {
-		return "", fmt.Errorf("converting transaction result to base64 xdr: %w", err)
+		return "", fmt.Errorf("encoding transaction result to base64 xdr: %w", err)
 	}
 	return trXDR, nil
 }
@@ -45,7 +45,7 @@ func BuildResultMetaXDR(ledgerEntryChanges xdr.LedgerEntryChanges) (string, erro
 
 	tmXDR, err := xdr.MarshalBase64(tm)
 	if err != nil {
-		return "", fmt.Errorf("converting transaction meta to base64 xdr: %w", err)
+		return "", fmt.Errorf("encoding transaction meta to base64 xdr: %w", err)
 	}
 	return tmXDR, nil
 }
