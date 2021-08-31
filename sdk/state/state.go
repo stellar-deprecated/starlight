@@ -42,9 +42,6 @@ type Channel struct {
 
 	startingSequence int64
 
-	// TODO - leave execution out for now
-	// iterationNumberExecuted int64
-
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
 	remoteEscrowAccount *EscrowAccount
