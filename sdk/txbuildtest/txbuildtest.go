@@ -37,7 +37,7 @@ func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
 			Operations: []xdr.OperationMeta{
-				xdr.OperationMeta{},
+				{},
 			},
 		},
 	}
