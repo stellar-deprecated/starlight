@@ -76,24 +76,14 @@ func (h *Horizon) StreamTx(cursor string, accounts ...*keypair.FromAddress) (txs
 	// txsCh is the channel that streamed transactions will be written to.
 	txsCh := make(chan agent.StreamedTransaction)
 
-	// cancelCh will be used to signal to streamers to stop.
+	// cancelCh will be used to signal the streamer to stop.
 	cancelCh := make(chan struct{})
 
 	// For each account start a streamer that will write txs and stop when
 	// signaled to cancel.
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		h.streamTx(cursor, txsCh, cancelCh)
-	}()
-
-	// If the streamer stops, due to being told to cancel or some other cause,
-	// close the txs channel so that consumers know there's no more transactions
-	// coming.
 	go func() {
 		defer close(txsCh)
-		wg.Wait()
+		h.streamTx(cursor, txsCh, cancelCh)
 	}()
 
 	cancelOnce := sync.Once{}
