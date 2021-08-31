@@ -53,7 +53,7 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
-func NewChannelFromSnapshot(s Snapshot) *Channel {
+func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	return nil
 }
 
@@ -82,6 +82,21 @@ type Channel struct {
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
+}
+
+func (c *Channel) Snapshot() Snapshot {
+	return Snapshot{
+		StartingSequence: c.startingSequence,
+
+		Initiator: c.initiator,
+
+		OpenAgreement:            c.openAgreement,
+		OpenExecutedAndValidated: c.openExecutedAndValidated,
+		OpenExecutedWithError:    c.openExecutedWithError != nil,
+
+		LatestAuthorizedCloseAgreement:   c.latestAuthorizedCloseAgreement,
+		LatestUnauthorizedCloseAgreement: c.latestUnauthorizedCloseAgreement,
+	}
 }
 
 type State int
