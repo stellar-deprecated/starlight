@@ -10,6 +10,26 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+type Snapshoter interface {
+	Snapshot(s Snapshot) error
+}
+
+type Snapshot struct {
+	NetworkPassphrase                string
+	MaxOpenExpiry                    time.Duration
+	StartingSequence                 int64
+	Initiator                        bool
+	LocalEscrowAccount               *EscrowAccount
+	RemoteEscrowAccount              *EscrowAccount
+	LocalSigner                      *keypair.Full
+	RemoteSigner                     *keypair.FromAddress
+	OpenAgreement                    OpenAgreement
+	OpenExecutedAndValidated         bool
+	OpenExecutedWithError            bool
+	LatestAuthorizedCloseAgreement   CloseAgreement
+	LatestUnauthorizedCloseAgreement CloseAgreement
+}
+
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
@@ -115,6 +135,10 @@ func NewChannel(c Config) *Channel {
 		remoteSigner:        c.RemoteSigner,
 	}
 	return channel
+}
+
+func NewChannelFromSnapshot(s Snapshot) *Channel {
+	return nil
 }
 
 func (c *Channel) IsInitiator() bool {

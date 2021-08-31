@@ -49,6 +49,27 @@ type StreamedTransaction struct {
 	ResultMetaXDR  string
 }
 
+// Snapshoter is given a snapshot of the agent and its dependencies whenever its
+// meaningful state changes. Snapshots can be restore using
+// NewAgentFromSnapshot.
+type Snapshoter interface {
+	Snapshot(s Snapshot) error
+}
+
+// Snapshot is a snapshot of the agent and its dependencies. A Snapshot can be
+// restored into an Agent using NewAgentFromSnapshot.
+type Snapshot struct {
+	StateSnapshot              state.Snapshot
+	ObservationPeriodTime      time.Duration
+	ObservationPeriodLedgerGap int64
+	MaxOpenExpiry              time.Duration
+	NetworkPassphrase          string
+	EscrowAccountKey           *keypair.FromAddress
+	OtherEscrowAccount         *keypair.FromAddress
+	OtherEscrowAccountSigner   *keypair.FromAddress
+	StreamerCursor             string
+}
+
 type Config struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -84,6 +105,10 @@ func NewAgent(c Config) *Agent {
 		events:                     c.Events,
 	}
 	return agent
+}
+
+func NewAgentFromSnapshot(s Snapshot) *Agent {
+	return nil
 }
 
 // Agent coordinates a payment channel over a TCP connection.
