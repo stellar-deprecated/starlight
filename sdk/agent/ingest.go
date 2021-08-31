@@ -51,7 +51,7 @@ func (a *Agent) ingest() error {
 
 	if a.Events != nil {
 		if stateAfter != stateBefore {
-			fmt.Fprintf(a.LogWriter, "triggering event: %v\n", stateAfter)
+			fmt.Fprintf(a.LogWriter, "writing event: %v\n", stateAfter)
 			switch stateAfter {
 			case state.StateOpen:
 				a.Events <- OpenedEvent{}
