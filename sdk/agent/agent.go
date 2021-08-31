@@ -35,8 +35,21 @@ type Submitter interface {
 	SubmitTx(tx *txnbuild.Transaction) error
 }
 
-// Agent coordinates a payment channel over a TCP connection.
-type Agent struct {
+// Streamer streams transactions that affect a set of accounts.
+type Streamer interface {
+	StreamTx(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func())
+}
+
+// StreamedTransaction is a transaction that has been seen by the
+// Streamer.
+type StreamedTransaction struct {
+	Cursor         string
+	TransactionXDR string
+	ResultXDR      string
+	ResultMetaXDR  string
+}
+
+type Config struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	MaxOpenExpiry              time.Duration
@@ -45,6 +58,7 @@ type Agent struct {
 	SequenceNumberCollector SequenceNumberCollector
 	BalanceCollector        BalanceCollector
 	Submitter               Submitter
+	Streamer                Streamer
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -52,6 +66,48 @@ type Agent struct {
 	LogWriter io.Writer
 
 	Events chan<- Event
+}
+
+func NewAgent(c Config) *Agent {
+	agent := &Agent{
+		observationPeriodTime:      c.ObservationPeriodTime,
+		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
+		maxOpenExpiry:              c.MaxOpenExpiry,
+		networkPassphrase:          c.NetworkPassphrase,
+
+		sequenceNumberCollector: c.SequenceNumberCollector,
+		balanceCollector:        c.BalanceCollector,
+		submitter:               c.Submitter,
+		streamer:                c.Streamer,
+
+		escrowAccountKey:    c.EscrowAccountKey,
+		escrowAccountSigner: c.EscrowAccountSigner,
+
+		logWriter: c.LogWriter,
+
+		events: c.Events,
+	}
+	return agent
+}
+
+// Agent coordinates a payment channel over a TCP connection.
+type Agent struct {
+	observationPeriodTime      time.Duration
+	observationPeriodLedgerGap int64
+	maxOpenExpiry              time.Duration
+	networkPassphrase          string
+
+	sequenceNumberCollector SequenceNumberCollector
+	balanceCollector        BalanceCollector
+	submitter               Submitter
+	streamer                Streamer
+
+	escrowAccountKey    *keypair.FromAddress
+	escrowAccountSigner *keypair.Full
+
+	logWriter io.Writer
+
+	events chan<- Event
 
 	// mu is a lock for the mutable fields of this type. It should be locked
 	// when reading or writing any of the mutable fields. The mutable fields are
@@ -63,6 +119,9 @@ type Agent struct {
 	otherEscrowAccount       *keypair.FromAddress
 	otherEscrowAccountSigner *keypair.FromAddress
 	channel                  *state.Channel
+	streamerTransactions     <-chan StreamedTransaction
+	streamerCursor           string
+	streamerCancel           func()
 }
 
 // hello sends a hello message to the remote participant over the connection.
@@ -70,12 +129,12 @@ func (a *Agent) hello() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
 		Hello: &msg.Hello{
-			EscrowAccount: *a.EscrowAccountKey,
-			Signer:        *a.EscrowAccountSigner.FromAddress(),
+			EscrowAccount: *a.escrowAccountKey,
+			Signer:        *a.escrowAccountSigner.FromAddress(),
 		},
 	})
 	if err != nil {
@@ -88,29 +147,31 @@ func (a *Agent) initChannel(initiator bool) error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already created")
 	}
-	escrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(a.EscrowAccountKey)
+	escrowAccountSeqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.escrowAccountKey)
 	if err != nil {
 		return err
 	}
-	otherEscrowAccountSeqNum, err := a.SequenceNumberCollector.GetSequenceNumber(a.otherEscrowAccount)
+	otherEscrowAccountSeqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.otherEscrowAccount)
 	if err != nil {
 		return err
 	}
 	a.channel = state.NewChannel(state.Config{
-		NetworkPassphrase: a.NetworkPassphrase,
-		MaxOpenExpiry:     a.MaxOpenExpiry,
+		NetworkPassphrase: a.networkPassphrase,
+		MaxOpenExpiry:     a.maxOpenExpiry,
 		Initiator:         initiator,
 		LocalEscrowAccount: &state.EscrowAccount{
-			Address:        a.EscrowAccountKey,
+			Address:        a.escrowAccountKey,
 			SequenceNumber: escrowAccountSeqNum,
 		},
 		RemoteEscrowAccount: &state.EscrowAccount{
 			Address:        a.otherEscrowAccount,
 			SequenceNumber: otherEscrowAccountSeqNum,
 		},
-		LocalSigner:  a.EscrowAccountSigner,
+		LocalSigner:  a.escrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
 	})
+	a.streamerTransactions, a.streamerCancel = a.streamer.StreamTx(a.streamerCursor)
+	go a.ingestLoop()
 	return nil
 }
 
@@ -131,15 +192,15 @@ func (a *Agent) Open() error {
 		return fmt.Errorf("init channel: %w", err)
 	}
 	open, err := a.channel.ProposeOpen(state.OpenParams{
-		ObservationPeriodTime:      a.ObservationPeriodTime,
-		ObservationPeriodLedgerGap: a.ObservationPeriodLedgerGap,
+		ObservationPeriodTime:      a.observationPeriodTime,
+		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
 		Asset:                      "native",
-		ExpiresAt:                  time.Now().Add(a.MaxOpenExpiry),
+		ExpiresAt:                  time.Now().Add(a.maxOpenExpiry),
 	})
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)
 	}
-	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:        msg.TypeOpenRequest,
 		OpenRequest: &open,
@@ -171,9 +232,9 @@ func (a *Agent) Payment(paymentAmount string) error {
 	}
 	ca, err := a.channel.ProposePayment(amountValue)
 	if errors.Is(err, state.ErrUnderfunded) {
-		fmt.Fprintf(a.LogWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
+		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
 		var balance int64
-		balance, err = a.BalanceCollector.GetBalance(a.channel.LocalEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
+		balance, err = a.balanceCollector.GetBalance(a.channel.LocalEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
 		if err != nil {
 			return err
 		}
@@ -183,7 +244,7 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
 	}
-	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:           msg.TypePaymentRequest,
 		PaymentRequest: &ca,
@@ -216,23 +277,23 @@ func (a *Agent) DeclareClose() error {
 	if err != nil {
 		return fmt.Errorf("building declaration tx: %w", err)
 	}
-	declHash, err := declTx.HashHex(a.NetworkPassphrase)
+	declHash, err := declTx.HashHex(a.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing decl tx: %w", err)
 	}
-	fmt.Fprintln(a.LogWriter, "submitting declaration:", declHash)
-	err = a.Submitter.SubmitTx(declTx)
+	fmt.Fprintln(a.logWriter, "submitting declaration:", declHash)
+	err = a.submitter.SubmitTx(declTx)
 	if err != nil {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
 
 	// Attempt revising the close agreement to close early.
-	fmt.Fprintln(a.LogWriter, "proposing a revised close for immediate submission")
+	fmt.Fprintln(a.logWriter, "proposing a revised close for immediate submission")
 	ca, err := a.channel.ProposeClose()
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
-	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:         msg.TypeCloseRequest,
 		CloseRequest: &ca,
@@ -257,23 +318,23 @@ func (a *Agent) Close() error {
 	if err != nil {
 		return fmt.Errorf("building close tx: %w", err)
 	}
-	closeHash, err := closeTx.HashHex(a.NetworkPassphrase)
+	closeHash, err := closeTx.HashHex(a.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing close tx: %w", err)
 	}
-	fmt.Fprintln(a.LogWriter, "submitting close tx:", closeHash)
-	err = a.Submitter.SubmitTx(closeTx)
+	fmt.Fprintln(a.logWriter, "submitting close tx:", closeHash)
+	err = a.submitter.SubmitTx(closeTx)
 	if err != nil {
-		fmt.Fprintln(a.LogWriter, "error submitting close tx:", closeHash, ",", err)
+		fmt.Fprintln(a.logWriter, "error submitting close tx:", closeHash, ",", err)
 		return fmt.Errorf("submitting close tx %s: %w", closeHash, err)
 	}
-	fmt.Fprintln(a.LogWriter, "submitted close tx:", closeHash)
+	fmt.Fprintln(a.logWriter, "submitted close tx:", closeHash)
 	return nil
 }
 
 func (a *Agent) receive() error {
-	recv := msg.NewDecoder(io.TeeReader(a.conn, a.LogWriter))
-	send := msg.NewEncoder(io.MultiWriter(a.conn, a.LogWriter))
+	recv := msg.NewDecoder(io.TeeReader(a.conn, a.logWriter))
+	send := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	m := msg.Message{}
 	err := recv.Decode(&m)
 	if err != nil {
@@ -290,26 +351,26 @@ func (a *Agent) receiveLoop() {
 	for {
 		err := a.receive()
 		if err != nil {
-			fmt.Fprintf(a.LogWriter, "error receiving: %v\n", err)
+			fmt.Fprintf(a.logWriter, "error receiving: %v\n", err)
 		}
 	}
 }
 
 func (a *Agent) handle(m msg.Message, send *msg.Encoder) error {
-	fmt.Fprintf(a.LogWriter, "handling %v\n", m.Type)
+	fmt.Fprintf(a.logWriter, "handling %v\n", m.Type)
 	handler := handlerMap[m.Type]
 	if handler == nil {
 		err := fmt.Errorf("handling message %d: unrecognized message type", m.Type)
-		if a.Events != nil {
-			a.Events <- ErrorEvent{Err: err}
+		if a.events != nil {
+			a.events <- ErrorEvent{Err: err}
 		}
 		return err
 	}
 	err := handler(a, m, send)
 	if err != nil {
 		err = fmt.Errorf("handling message %d: %w", m.Type, err)
-		if a.Events != nil {
-			a.Events <- ErrorEvent{Err: err}
+		if a.events != nil {
+			a.events <- ErrorEvent{Err: err}
 		}
 		return err
 	}
@@ -339,11 +400,11 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	a.otherEscrowAccount = &h.EscrowAccount
 	a.otherEscrowAccountSigner = &h.Signer
 
-	fmt.Fprintf(a.LogWriter, "other's escrow account: %v\n", a.otherEscrowAccount.Address())
-	fmt.Fprintf(a.LogWriter, "other's signer: %v\n", a.otherEscrowAccountSigner.Address())
+	fmt.Fprintf(a.logWriter, "other's escrow account: %v\n", a.otherEscrowAccount.Address())
+	fmt.Fprintf(a.logWriter, "other's signer: %v\n", a.otherEscrowAccountSigner.Address())
 
-	if a.Events != nil {
-		a.Events <- ConnectedEvent{}
+	if a.events != nil {
+		a.events <- ConnectedEvent{}
 	}
 
 	return nil
@@ -363,22 +424,13 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
-	fmt.Fprintf(a.LogWriter, "open authorized\n")
+	fmt.Fprintf(a.logWriter, "open authorized\n")
 	err = send.Encode(msg.Message{
 		Type:         msg.TypeOpenResponse,
 		OpenResponse: &open,
 	})
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
-	}
-	// TODO: Remove this trigger of the event handler from here once ingesting
-	// transactions is added and the event is triggered from there. Note that
-	// technically the channel isn't open at this point and triggering the event
-	// here is just a hold over until we can trigger it based on ingestion.
-	// Triggering here assumes that the other participant, the initiator,
-	// submits the transaction.
-	if a.Events != nil {
-		a.Events <- OpenedEvent{}
 	}
 	return nil
 }
@@ -396,19 +448,14 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
-	fmt.Fprintf(a.LogWriter, "open authorized\n")
+	fmt.Fprintf(a.logWriter, "open authorized\n")
 	formationTx, err := a.channel.OpenTx()
 	if err != nil {
 		return fmt.Errorf("building formation tx: %w", err)
 	}
-	err = a.Submitter.SubmitTx(formationTx)
+	err = a.submitter.SubmitTx(formationTx)
 	if err != nil {
 		return fmt.Errorf("submitting formation tx: %w", err)
-	}
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes opened.
-	if a.Events != nil {
-		a.Events <- OpenedEvent{}
 	}
 	return nil
 }
@@ -424,9 +471,9 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
-		fmt.Fprintf(a.LogWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
+		fmt.Fprintf(a.logWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
 		var balance int64
-		balance, err = a.BalanceCollector.GetBalance(a.channel.RemoteEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
+		balance, err = a.balanceCollector.GetBalance(a.channel.RemoteEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
 		if err != nil {
 			return err
 		}
@@ -436,10 +483,10 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
-	fmt.Fprintf(a.LogWriter, "payment authorized\n")
+	fmt.Fprintf(a.logWriter, "payment authorized\n")
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment})
-	if a.Events != nil {
-		a.Events <- PaymentReceivedEvent{CloseAgreement: payment}
+	if a.events != nil {
+		a.events <- PaymentReceivedEvent{CloseAgreement: payment}
 	}
 	if err != nil {
 		return fmt.Errorf("encoding payment to send back: %w", err)
@@ -460,9 +507,9 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
-	fmt.Fprintf(a.LogWriter, "payment authorized\n")
-	if a.Events != nil {
-		a.Events <- PaymentSentEvent{CloseAgreement: payment}
+	fmt.Fprintf(a.logWriter, "payment authorized\n")
+	if a.events != nil {
+		a.events <- PaymentSentEvent{CloseAgreement: payment}
 	}
 	return nil
 }
@@ -488,28 +535,23 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("encoding close to send back: %v\n", err)
 	}
-	fmt.Fprintln(a.LogWriter, "close ready")
+	fmt.Fprintln(a.logWriter, "close ready")
 
 	// Submit the close immediately since it is valid immediately.
 	_, closeTx, err := a.channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building close tx: %w", err)
 	}
-	hash, err := closeTx.HashHex(a.NetworkPassphrase)
+	hash, err := closeTx.HashHex(a.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing close tx: %w", err)
 	}
-	fmt.Fprintln(a.LogWriter, "submitting close", hash)
-	err = a.Submitter.SubmitTx(closeTx)
+	fmt.Fprintln(a.logWriter, "submitting close", hash)
+	err = a.submitter.SubmitTx(closeTx)
 	if err != nil {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
-	fmt.Fprintln(a.LogWriter, "close successful")
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes closed.
-	if a.Events != nil {
-		a.Events <- ClosedEvent{}
-	}
+	fmt.Fprintln(a.logWriter, "close successful")
 	return nil
 }
 
@@ -527,27 +569,22 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
-	fmt.Fprintln(a.LogWriter, "close ready")
+	fmt.Fprintln(a.logWriter, "close ready")
 
 	// Submit the close immediately since it is valid immediately.
 	_, closeTx, err := a.channel.CloseTxs()
 	if err != nil {
 		return fmt.Errorf("building close tx: %w", err)
 	}
-	hash, err := closeTx.HashHex(a.NetworkPassphrase)
+	hash, err := closeTx.HashHex(a.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing close tx: %w", err)
 	}
-	fmt.Fprintln(a.LogWriter, "submitting close", hash)
-	err = a.Submitter.SubmitTx(closeTx)
+	fmt.Fprintln(a.logWriter, "submitting close", hash)
+	err = a.submitter.SubmitTx(closeTx)
 	if err != nil {
 		return fmt.Errorf("submitting close tx: %w", err)
 	}
-	fmt.Fprintln(a.LogWriter, "close successful")
-	// TODO: Move the triggering of this event handler to wherever we end up
-	// ingesting transactions, and trigger it after the channel becomes closed.
-	if a.Events != nil {
-		a.Events <- ClosedEvent{}
-	}
+	fmt.Fprintln(a.logWriter, "close successful")
 	return nil
 }

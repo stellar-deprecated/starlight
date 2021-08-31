@@ -47,6 +47,12 @@ type ClosingEvent struct{}
 
 func (e ClosingEvent) event() {}
 
+// ClosingWithOutdatedStateEvent occurs when the channel is closing and no new payments should be
+// proposed or confirmed, and the state it is closing in is not the latest known state.
+type ClosingWithOutdatedStateEvent struct{}
+
+func (e ClosingWithOutdatedStateEvent) event() {}
+
 // ClosedEvent occurs when the channel is successfully closed.
 type ClosedEvent struct{}
 
