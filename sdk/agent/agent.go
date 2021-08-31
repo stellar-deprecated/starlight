@@ -52,8 +52,8 @@ type StreamedTransaction struct {
 type Config struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
-	NetworkPassphrase          string
 	MaxOpenExpiry              time.Duration
+	NetworkPassphrase          string
 
 	SequenceNumberCollector SequenceNumberCollector
 	BalanceCollector        BalanceCollector
