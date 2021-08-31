@@ -27,6 +27,36 @@ type Snapshot struct {
 	LatestUnauthorizedCloseAgreement CloseAgreement
 }
 
+type Config struct {
+	NetworkPassphrase string
+	MaxOpenExpiry     time.Duration
+
+	Initiator bool
+
+	LocalEscrowAccount  *EscrowAccount
+	RemoteEscrowAccount *EscrowAccount
+
+	LocalSigner  *keypair.Full
+	RemoteSigner *keypair.FromAddress
+}
+
+func NewChannel(c Config) *Channel {
+	channel := &Channel{
+		networkPassphrase:   c.NetworkPassphrase,
+		maxOpenExpiry:       c.MaxOpenExpiry,
+		initiator:           c.Initiator,
+		localEscrowAccount:  c.LocalEscrowAccount,
+		remoteEscrowAccount: c.RemoteEscrowAccount,
+		localSigner:         c.LocalSigner,
+		remoteSigner:        c.RemoteSigner,
+	}
+	return channel
+}
+
+func NewChannelFromSnapshot(s Snapshot) *Channel {
+	return nil
+}
+
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
@@ -103,36 +133,6 @@ func (c *Channel) State() (State, error) {
 
 func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
 	c.initiatorEscrowAccount().SequenceNumber = seqNum
-}
-
-type Config struct {
-	NetworkPassphrase string
-	MaxOpenExpiry     time.Duration
-
-	Initiator bool
-
-	LocalEscrowAccount  *EscrowAccount
-	RemoteEscrowAccount *EscrowAccount
-
-	LocalSigner  *keypair.Full
-	RemoteSigner *keypair.FromAddress
-}
-
-func NewChannel(c Config) *Channel {
-	channel := &Channel{
-		networkPassphrase:   c.NetworkPassphrase,
-		maxOpenExpiry:       c.MaxOpenExpiry,
-		initiator:           c.Initiator,
-		localEscrowAccount:  c.LocalEscrowAccount,
-		remoteEscrowAccount: c.RemoteEscrowAccount,
-		localSigner:         c.LocalSigner,
-		remoteSigner:        c.RemoteSigner,
-	}
-	return channel
-}
-
-func NewChannelFromSnapshot(s Snapshot) *Channel {
-	return nil
 }
 
 func (c *Channel) IsInitiator() bool {

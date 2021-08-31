@@ -81,13 +81,17 @@ func NewAgent(c Config) *Agent {
 		observationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
 		maxOpenExpiry:              c.MaxOpenExpiry,
 		networkPassphrase:          c.NetworkPassphrase,
+
 		sequenceNumberCollector:    c.SequenceNumberCollector,
 		balanceCollector:           c.BalanceCollector,
 		submitter:                  c.Submitter,
 		streamer:                   c.Streamer,
+
 		escrowAccountKey:           c.EscrowAccountKey,
 		escrowAccountSigner:        c.EscrowAccountSigner,
+
 		logWriter:                  c.LogWriter,
+
 		events:                     c.Events,
 	}
 	return agent
