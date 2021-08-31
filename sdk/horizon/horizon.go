@@ -69,7 +69,7 @@ func buildErr(err error) error {
 // StreamTx streams transactions that affect the given accounts, sending each
 // transaction to the txs channel returned. StreamTx can be stopped by calling
 // the cancel function returned. If multiple accounts are given the same
-// transaction may be broadcasted in duplicate if the transaction affects more
+// transaction it may be broadcasted in duplicate if the transaction affects more
 // than one account being monitored. The given cursor suppors resuming a
 // previous stream.
 //
