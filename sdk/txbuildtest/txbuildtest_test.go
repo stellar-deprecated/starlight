@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_txbuildtest_buildResult(t *testing.T) {
-	r, err := BuildResult(true)
+func Test_txbuildtest_buildResultXDR(t *testing.T) {
+	r, err := BuildResultXDR(true)
 	require.NoError(t, err)
 
 	var txResult xdr.TransactionResult
@@ -17,7 +17,7 @@ func Test_txbuildtest_buildResult(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, txResult.Successful())
 
-	r, err = BuildResult(false)
+	r, err = BuildResultXDR(false)
 	require.NoError(t, err)
 
 	err = xdr.SafeUnmarshalBase64(r, &txResult)
@@ -25,7 +25,7 @@ func Test_txbuildtest_buildResult(t *testing.T) {
 	assert.False(t, txResult.Successful())
 }
 
-func Test_txbuildtest_buildMeta(t *testing.T) {
+func Test_txbuildtest_buildResultMetaXDR(t *testing.T) {
 	lec := xdr.LedgerEntryChanges{
 		xdr.LedgerEntryChange{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
@@ -52,7 +52,7 @@ func Test_txbuildtest_buildMeta(t *testing.T) {
 		},
 	}
 
-	m, err := BuildResultMeta(lec)
+	m, err := BuildResultMetaXDR(lec)
 	require.NoError(t, err)
 
 	// Validate the ledger entry changes are correct.

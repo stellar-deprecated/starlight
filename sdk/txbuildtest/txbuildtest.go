@@ -6,8 +6,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// BuildResult returns a result XDR base64 encoded that is successful or not based on the input parameter.
-func BuildResult(success bool) (string, error) {
+// BuildResult returns a result XDR base64 encoded that is successful or not
+// based on the input parameter.
+func BuildResultXDR(success bool) (string, error) {
 	var code xdr.TransactionResultCode
 	if success {
 		code = xdr.TransactionResultCodeTxSuccess
@@ -28,8 +29,9 @@ func BuildResult(success bool) (string, error) {
 	return trXDR, nil
 }
 
-// BuildResultMeta returns a result meta XDR base64 encoded that contains arbitrary operations that result in the given account and trustline state.
-func BuildResultMeta(ledgerEntryChanges xdr.LedgerEntryChanges) (string, error) {
+// BuildResultMetaXDR returns a result meta XDR base64 encoded that contains
+// the input ledger entry changes.
+func BuildResultMetaXDR(ledgerEntryChanges xdr.LedgerEntryChanges) (string, error) {
 	tm := xdr.TransactionMeta{
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
