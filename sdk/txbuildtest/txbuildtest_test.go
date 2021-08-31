@@ -26,33 +26,23 @@ func Test_txbuildtest_buildResultXDR(t *testing.T) {
 }
 
 func Test_txbuildtest_buildResultMetaXDR(t *testing.T) {
-	lec := xdr.LedgerEntryChanges{
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Updated: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeAccount,
-					Account: &xdr.AccountEntry{
-						AccountId: xdr.MustAddress("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
-					},
-				},
+	led := []xdr.LedgerEntryData{
+		{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId: xdr.MustAddress("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
 			},
 		},
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Updated: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeTrustline,
-					TrustLine: &xdr.TrustLineEntry{
-						AccountId: xdr.MustAddress("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
-						Balance:   xdr.Int64(100),
-					},
-				},
+		{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: xdr.MustAddress("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
+				Balance:   xdr.Int64(100),
 			},
 		},
 	}
 
-	m, err := BuildResultMetaXDR(lec)
+	m, err := BuildResultMetaXDR(led)
 	require.NoError(t, err)
 
 	// Validate the ledger entry changes are correct.
@@ -65,7 +55,9 @@ func Test_txbuildtest_buildResultMetaXDR(t *testing.T) {
 
 	for _, o := range txMetaV2.Operations {
 		for i, change := range o.Changes {
-			assert.Equal(t, lec[i], change)
+			updated, ok := change.GetUpdated()
+			require.True(t, ok)
+			assert.Equal(t, led[i], updated.Data)
 		}
 	}
 }

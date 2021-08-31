@@ -30,17 +30,25 @@ func BuildResultXDR(success bool) (string, error) {
 }
 
 // BuildResultMetaXDR returns a result meta XDR base64 encoded that contains
-// the input ledger entry changes.
-func BuildResultMetaXDR(ledgerEntryChanges xdr.LedgerEntryChanges) (string, error) {
+// the input ledger entry changes. Only creates one operation meta for
+// simiplicity.
+func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error) {
 	tm := xdr.TransactionMeta{
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
 			Operations: []xdr.OperationMeta{
-				{
-					Changes: ledgerEntryChanges,
-				},
+				xdr.OperationMeta{},
 			},
 		},
+	}
+
+	for _, result := range ledgerEntryResults {
+		tm.V2.Operations[0].Changes = append(tm.V2.Operations[0].Changes, xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				Data: result,
+			},
+		})
 	}
 
 	tmXDR, err := xdr.MarshalBase64(tm)

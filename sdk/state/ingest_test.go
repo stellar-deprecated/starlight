@@ -823,35 +823,25 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 	// Initiator Escrow has an extra signer before the formation tx, should fail.
 	validResultXDR, err := txbuildtest.BuildResultXDR(true)
 	require.NoError(t, err)
-	resultMetaXDR, err := txbuildtest.BuildResultMetaXDR(xdr.LedgerEntryChanges{
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Updated: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeAccount,
-					Account: &xdr.AccountEntry{
-						AccountId: xdr.MustAddress(initiatorEscrow.Address()),
-						SeqNum:    102,
-						Signers: []xdr.Signer{
-							{
-								Key:    xdr.MustSigner("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
-								Weight: 1,
-							},
-						},
-						Thresholds: xdr.Thresholds{0, 2, 2, 2},
+	resultMetaXDR, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{
+		{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId: xdr.MustAddress(initiatorEscrow.Address()),
+				SeqNum:    102,
+				Signers: []xdr.Signer{
+					{
+						Key:    xdr.MustSigner("GAKDNXUGEIRGESAXOPUHU4GOWLVYGQFJVHQOGFXKBXDGZ7AKMPPSDDPV"),
+						Weight: 1,
 					},
 				},
+				Thresholds: xdr.Thresholds{0, 2, 2, 2},
 			},
 		},
-		xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Updated: &xdr.LedgerEntry{
-				Data: xdr.LedgerEntryData{
-					Type: xdr.LedgerEntryTypeAccount,
-					Account: &xdr.AccountEntry{
-						AccountId: xdr.MustAddress(responderEscrow.Address()),
-					},
-				},
+		{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId: xdr.MustAddress(responderEscrow.Address()),
 			},
 		},
 	})
