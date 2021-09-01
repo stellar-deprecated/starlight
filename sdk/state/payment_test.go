@@ -943,40 +943,42 @@ func TestLastConfirmedPayment(t *testing.T) {
 		MaxOpenExpiry:       2 * time.Hour,
 	})
 
-	// Open steps.
-	m, err := sendingChannel.ProposeOpen(OpenParams{
-		Asset:                      NativeAsset,
-		ExpiresAt:                  time.Now().Add(5 * time.Minute),
-		ObservationPeriodTime:      10,
-		ObservationPeriodLedgerGap: 10,
-	})
-	require.NoError(t, err)
-	m, err = receiverChannel.ConfirmOpen(m)
-	require.NoError(t, err)
-	_, err = sendingChannel.ConfirmOpen(m)
-	require.NoError(t, err)
+	// Put channel into the Open state.
+	{
+		m, err := sendingChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		})
+		require.NoError(t, err)
+		m, err = receiverChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+		_, err = sendingChannel.ConfirmOpen(m)
+		require.NoError(t, err)
 
-	ftx, err := sendingChannel.OpenTx()
-	require.NoError(t, err)
-	ftxXDR, err := ftx.Base64()
-	require.NoError(t, err)
+		ftx, err := sendingChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
 
-	successResultXDR, err := txbuildtest.BuildResultXDR(true)
-	require.NoError(t, err)
-	resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
-		InitiatorSigner: localSigner.Address(),
-		ResponderSigner: remoteSigner.Address(),
-		InitiatorEscrow: localEscrowAccount.Address.Address(),
-		ResponderEscrow: remoteEscrowAccount.Address.Address(),
-		StartSequence:   localEscrowAccount.SequenceNumber + 1,
-		Asset:           txnbuild.NativeAsset{},
-	})
-	require.NoError(t, err)
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
 
-	err = sendingChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-	require.NoError(t, err)
-	err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-	require.NoError(t, err)
+		err = sendingChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
 
 	sendingChannel.UpdateLocalEscrowAccountBalance(1000)
 	sendingChannel.UpdateRemoteEscrowAccountBalance(1000)
