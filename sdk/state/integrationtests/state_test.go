@@ -60,6 +60,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
 		ExpiresAt:                  time.Now().Add(formationExpiry),
+		StartingSequence:           s,
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
@@ -333,6 +334,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
 		ExpiresAt:                  time.Now().Add(formationExpiry),
+		StartingSequence:           s,
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
@@ -545,6 +547,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
 		ExpiresAt:                  time.Now().Add(formationExpiry),
+		StartingSequence:           s,
 	})
 
 	require.NoError(t, err)
@@ -760,6 +763,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
 		ExpiresAt:                  time.Now().Add(formationExpiry),
+		StartingSequence:           s,
 	})
 
 	require.NoError(t, err)
@@ -978,6 +982,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 			Asset:                      asset,
 			ExpiresAt:                  time.Now().Add(formationExpiry),
+			StartingSequence:           s,
 		})
 		require.NoError(t, err)
 		open, err = responderChannel.ConfirmOpen(open)
