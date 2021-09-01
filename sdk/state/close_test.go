@@ -170,12 +170,44 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
 
 	// Before open, proposing a coordinated close should error.
 	_, err := senderChannel.ProposeClose()
 	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
 
 	// Before open, confirming a coordinated close should error.
+	_, err = senderChannel.ConfirmClose(CloseAgreement{})
+	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
+
+	// Open channel.
+	{
+		m, err := senderChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Second),
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		})
+		require.NoError(t, err)
+		m, err = receiverChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+		_, err = senderChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+	}
+
+	// Before an open is executed and validated, proposing and confirming a payment should error.
+	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.isEmpty())
+	_, err = senderChannel.ProposeClose()
+	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
+
 	_, err = senderChannel.ConfirmClose(CloseAgreement{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
 }

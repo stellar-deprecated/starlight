@@ -93,7 +93,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.isEmpty() {
+	if c.latestAuthorizedCloseAgreement.isEmpty() || !c.openExecutedAndValidated {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a coordinated close before channel is opened")
 	}
 
@@ -122,7 +122,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 func (c *Channel) validateClose(ca CloseAgreement) error {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.isEmpty() {
+	if c.latestAuthorizedCloseAgreement.isEmpty() || !c.openExecutedAndValidated {
 		return fmt.Errorf("cannot confirm a coordinated close before channel is opened")
 	}
 	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Details.IterationNumber {
