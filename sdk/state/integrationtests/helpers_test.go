@@ -133,21 +133,12 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 }
 
 func initChannels(t *testing.T, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
-	initiatorEscrowAccount := state.EscrowAccount{
-		Address:        initiator.Escrow.FromAddress(),
-		SequenceNumber: initiator.EscrowSequenceNumber,
-	}
-	responderEscrowAccount := state.EscrowAccount{
-		Address:        responder.Escrow.FromAddress(),
-		SequenceNumber: responder.EscrowSequenceNumber,
-	}
-
 	initiatorChannel = state.NewChannel(state.Config{
 		NetworkPassphrase:   networkPassphrase,
 		MaxOpenExpiry:       5 * time.Minute,
 		Initiator:           true,
-		LocalEscrowAccount:  &initiatorEscrowAccount,
-		RemoteEscrowAccount: &responderEscrowAccount,
+		LocalEscrowAccount:  initiator.Escrow.FromAddress(),
+		RemoteEscrowAccount: responder.Escrow.FromAddress(),
 		LocalSigner:         initiator.KP,
 		RemoteSigner:        responder.KP.FromAddress(),
 	})
@@ -155,8 +146,8 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 		NetworkPassphrase:   networkPassphrase,
 		MaxOpenExpiry:       5 * time.Minute,
 		Initiator:           false,
-		LocalEscrowAccount:  &responderEscrowAccount,
-		RemoteEscrowAccount: &initiatorEscrowAccount,
+		LocalEscrowAccount:  responder.Escrow.FromAddress(),
+		RemoteEscrowAccount: initiator.Escrow.FromAddress(),
 		LocalSigner:         responder.KP,
 		RemoteSigner:        initiator.KP.FromAddress(),
 	})
