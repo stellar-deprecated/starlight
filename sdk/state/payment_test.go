@@ -218,7 +218,7 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		SequenceNumber: int64(202),
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -392,7 +392,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		SequenceNumber: int64(202),
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
