@@ -16,14 +16,8 @@ import (
 func TestChannel_CloseTx(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -81,14 +75,8 @@ func TestChannel_CloseTx(t *testing.T) {
 func TestChannel_ProposeClose(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	localChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -115,6 +103,7 @@ func TestChannel_ProposeClose(t *testing.T) {
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			ExpiresAt:                  time.Now().Add(time.Hour),
+			StartingSequence:           101,
 		})
 		require.NoError(t, err)
 		open2, err := remoteChannel.ConfirmOpen(open1)
@@ -132,9 +121,9 @@ func TestChannel_ProposeClose(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -169,16 +158,8 @@ func TestChannel_ProposeClose(t *testing.T) {
 func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        int64(100),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        int64(100),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -189,12 +170,44 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
 
 	// Before open, proposing a coordinated close should error.
 	_, err := senderChannel.ProposeClose()
 	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
 
 	// Before open, confirming a coordinated close should error.
+	_, err = senderChannel.ConfirmClose(CloseAgreement{})
+	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
+
+	// Open channel.
+	{
+		m, err := senderChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Second),
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		})
+		require.NoError(t, err)
+		m, err = receiverChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+		_, err = senderChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+	}
+
+	// Before an open is executed and validated, proposing and confirming a payment should error.
+	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.isEmpty())
+	_, err = senderChannel.ProposeClose()
+	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
+
 	_, err = senderChannel.ConfirmClose(CloseAgreement{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
 }

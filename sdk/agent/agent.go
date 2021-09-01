@@ -176,28 +176,14 @@ func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already created")
 	}
-	escrowAccountSeqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.escrowAccountKey)
-	if err != nil {
-		return err
-	}
-	otherEscrowAccountSeqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.otherEscrowAccount)
-	if err != nil {
-		return err
-	}
 	config := state.Config{
-		NetworkPassphrase: a.networkPassphrase,
-		MaxOpenExpiry:     a.maxOpenExpiry,
-		Initiator:         initiator,
-		LocalEscrowAccount: &state.EscrowAccount{
-			Address:        a.escrowAccountKey,
-			SequenceNumber: escrowAccountSeqNum,
-		},
-		RemoteEscrowAccount: &state.EscrowAccount{
-			Address:        a.otherEscrowAccount,
-			SequenceNumber: otherEscrowAccountSeqNum,
-		},
-		LocalSigner:  a.escrowAccountSigner,
-		RemoteSigner: a.otherEscrowAccountSigner,
+		NetworkPassphrase:   a.networkPassphrase,
+		MaxOpenExpiry:       a.maxOpenExpiry,
+		Initiator:           initiator,
+		LocalEscrowAccount:  a.escrowAccountKey,
+		RemoteEscrowAccount: a.otherEscrowAccount,
+		LocalSigner:         a.escrowAccountSigner,
+		RemoteSigner:        a.otherEscrowAccountSigner,
 	}
 	if snapshot == nil {
 		a.channel = state.NewChannel(config)
@@ -221,7 +207,11 @@ func (a *Agent) Open() error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
 	}
-	err := a.initChannel(true, nil)
+	seqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.escrowAccountKey)
+	if err != nil {
+		return fmt.Errorf("getting sequence number of escrow account: %w", err)
+	}
+	err = a.initChannel(true, nil)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
 	}
@@ -230,6 +220,7 @@ func (a *Agent) Open() error {
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
 		Asset:                      "native",
 		ExpiresAt:                  time.Now().Add(a.maxOpenExpiry),
+		StartingSequence:           seqNum + 1,
 	})
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)

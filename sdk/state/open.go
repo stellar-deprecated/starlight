@@ -16,6 +16,7 @@ type OpenAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
 	ExpiresAt                  time.Time
+	StartingSequence           int64
 	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
 }
@@ -25,6 +26,7 @@ func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
 		d.ExpiresAt.Equal(d2.ExpiresAt) &&
+		d.StartingSequence == d2.StartingSequence &&
 		d.ProposingSigner.Equal(d2.ProposingSigner) &&
 		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
 }
@@ -109,6 +111,7 @@ type OpenParams struct {
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
 	ExpiresAt                  time.Time
+	StartingSequence           int64
 }
 
 func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbuild.Transaction, err error) {
@@ -141,7 +144,7 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (decl, close, formation *txnbu
 		ResponderSigner:   c.responderSigner(),
 		InitiatorEscrow:   c.initiatorEscrowAccount().Address,
 		ResponderEscrow:   c.responderEscrowAccount().Address,
-		StartSequence:     c.startingSequence,
+		StartSequence:     d.StartingSequence,
 		Asset:             d.Asset.Asset(),
 		ExpiresAt:         d.ExpiresAt,
 		DeclarationTxHash: declHash,
@@ -195,13 +198,13 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	if c.openAgreement.isFull() {
 		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
 	}
-	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	d := OpenAgreementDetails{
 		ObservationPeriodTime:      p.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
 		Asset:                      p.Asset,
 		ExpiresAt:                  p.ExpiresAt,
+		StartingSequence:           p.StartingSequence,
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
@@ -250,8 +253,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	if err != nil {
 		return OpenAgreement{}, fmt.Errorf("validating open agreement: %w", err)
 	}
-
-	c.startingSequence = c.initiatorEscrowAccount().SequenceNumber + 1
 
 	txDecl, txClose, formation, err := c.openTxs(m.Details)
 	if err != nil {

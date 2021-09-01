@@ -165,14 +165,8 @@ func TestOpenAgreement_Equal(t *testing.T) {
 func TestProposeOpen_validAsset(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 	sendingChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -212,14 +206,8 @@ func TestProposeOpen_validAsset(t *testing.T) {
 func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -263,14 +251,8 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -294,14 +276,8 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 func TestChannel_OpenTx(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -377,14 +353,8 @@ func TestChannel_OpenAgreementIsFull(t *testing.T) {
 func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -411,6 +381,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		ExpiresAt:                  time.Now().Add(5 * time.Second),
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
+		StartingSequence:           101,
 	})
 	require.NoError(t, err)
 	m, err = responderChannel.ConfirmOpen(m)
@@ -430,9 +401,9 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)

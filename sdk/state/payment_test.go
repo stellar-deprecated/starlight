@@ -209,14 +209,8 @@ func TestCloseAgreement_Equal(t *testing.T) {
 func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -241,8 +235,9 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -260,9 +255,9 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -318,14 +313,8 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -350,8 +339,9 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -369,9 +359,9 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -424,14 +414,8 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsResponder(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -456,8 +440,9 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -475,9 +460,9 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -529,14 +514,8 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsInitiator(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -561,8 +540,9 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -580,9 +560,9 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-			ResponderEscrow: localEscrowAccount.Address.Address(),
-			StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -634,16 +614,8 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -668,8 +640,9 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -687,9 +660,9 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -753,16 +726,8 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -787,8 +752,9 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -806,9 +772,9 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-			ResponderEscrow: localEscrowAccount.Address.Address(),
-			StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -872,16 +838,8 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -906,8 +864,9 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -925,9 +884,9 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -965,16 +924,8 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -999,8 +950,9 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 	// Put channel into the Open state.
 	{
 		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:     NativeAsset,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Asset:            NativeAsset,
+			ExpiresAt:        time.Now().Add(5 * time.Minute),
+			StartingSequence: 101,
 		})
 		require.NoError(t, err)
 		m, err = responderChannel.ConfirmOpen(m)
@@ -1018,9 +970,9 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-			ResponderEscrow: localEscrowAccount.Address.Address(),
-			StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -1058,16 +1010,8 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        0,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        0,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 	sendingChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -1094,6 +1038,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 			ExpiresAt:                  time.Now().Add(5 * time.Minute),
 			ObservationPeriodTime:      10,
 			ObservationPeriodLedgerGap: 10,
+			StartingSequence:           101,
 		})
 		require.NoError(t, err)
 		m, err = receiverChannel.ConfirmOpen(m)
@@ -1111,9 +1056,9 @@ func TestLastConfirmedPayment(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -1134,6 +1079,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 
 	sendingChannel.UpdateLocalEscrowAccountBalance(1000)
 	sendingChannel.UpdateRemoteEscrowAccountBalance(1000)
+	receiverChannel.UpdateLocalEscrowAccountBalance(1000)
+	receiverChannel.UpdateRemoteEscrowAccountBalance(1000)
 
 	// Test the returned close agreemenets are as expected.
 	ca, err := sendingChannel.ProposePayment(200)
@@ -1170,16 +1117,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        int64(100),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        int64(100),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -1214,12 +1153,21 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(5 * time.Second),
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
+		StartingSequence:           101,
 	})
 	require.NoError(t, err)
 	m, err = receiverChannel.ConfirmOpen(m)
 	require.NoError(t, err)
 	_, err = senderChannel.ConfirmOpen(m)
 	require.NoError(t, err)
+
+	// Before an open is executed and validated, proposing and confirming a payment should error.
+	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.isEmpty())
+	_, err = senderChannel.ProposePayment(10)
+	require.EqualError(t, err, "cannot propose a payment before channel is opened")
+
+	_, err = senderChannel.ConfirmPayment(CloseAgreement{})
+	require.EqualError(t, err, "validating payment: cannot confirm a payment before channel is opened")
 
 	// Put channel into the Open state.
 	{
@@ -1233,9 +1181,9 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -1308,16 +1256,8 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        int64(100),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        int64(100),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -1344,6 +1284,7 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(5 * time.Second),
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
+		StartingSequence:           101,
 	})
 	require.NoError(t, err)
 	m, err = receiverChannel.ConfirmOpen(m)
@@ -1363,9 +1304,9 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
