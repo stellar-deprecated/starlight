@@ -16,14 +16,8 @@ import (
 func TestChannel_CloseTx(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -81,12 +75,8 @@ func TestChannel_CloseTx(t *testing.T) {
 func TestChannel_ProposeClose(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	localChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -131,8 +121,8 @@ func TestChannel_ProposeClose(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -168,14 +158,8 @@ func TestChannel_ProposeClose(t *testing.T) {
 func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: int64(100),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: int64(100),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,

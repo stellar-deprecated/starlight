@@ -209,12 +209,8 @@ func TestCloseAgreement_Equal(t *testing.T) {
 func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -259,8 +255,8 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -317,12 +313,8 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -367,8 +359,8 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -422,12 +414,8 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsResponder(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -472,8 +460,8 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -526,12 +514,8 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsInitiator(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -576,8 +560,8 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-			ResponderEscrow: localEscrowAccount.Address.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -630,14 +614,8 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -682,8 +660,8 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -748,14 +726,8 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -800,8 +772,8 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-			ResponderEscrow: localEscrowAccount.Address.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -866,14 +838,8 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
@@ -918,8 +884,8 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -958,14 +924,8 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 100,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -1010,8 +970,8 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-			ResponderEscrow: localEscrowAccount.Address.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -1050,14 +1010,8 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 0,
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: 0,
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 	sendingChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -1102,8 +1056,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -1125,6 +1079,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 
 	sendingChannel.UpdateLocalEscrowAccountBalance(1000)
 	sendingChannel.UpdateRemoteEscrowAccountBalance(1000)
+	receiverChannel.UpdateLocalEscrowAccountBalance(1000)
+	receiverChannel.UpdateRemoteEscrowAccountBalance(1000)
 
 	// Test the returned close agreemenets are as expected.
 	ca, err := sendingChannel.ProposePayment(200)
@@ -1161,14 +1117,8 @@ func TestLastConfirmedPayment(t *testing.T) {
 func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: int64(100),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: int64(100),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -1223,8 +1173,8 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
@@ -1298,14 +1248,8 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: int64(100),
-	}
-	remoteEscrowAccount := &EscrowAccount{
-		Address: keypair.MustRandom().FromAddress(),
-		Balance: int64(100),
-	}
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -1352,8 +1296,8 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
 			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})

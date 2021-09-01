@@ -148,17 +148,13 @@ func (a *Agent) initChannel(initiator bool) error {
 		return fmt.Errorf("channel already created")
 	}
 	a.channel = state.NewChannel(state.Config{
-		NetworkPassphrase: a.networkPassphrase,
-		MaxOpenExpiry:     a.maxOpenExpiry,
-		Initiator:         initiator,
-		LocalEscrowAccount: &state.EscrowAccount{
-			Address: a.escrowAccountKey,
-		},
-		RemoteEscrowAccount: &state.EscrowAccount{
-			Address: a.otherEscrowAccount,
-		},
-		LocalSigner:  a.escrowAccountSigner,
-		RemoteSigner: a.otherEscrowAccountSigner,
+		NetworkPassphrase:   a.networkPassphrase,
+		MaxOpenExpiry:       a.maxOpenExpiry,
+		Initiator:           initiator,
+		LocalEscrowAccount:  a.escrowAccountKey,
+		RemoteEscrowAccount: a.otherEscrowAccount,
+		LocalSigner:         a.escrowAccountSigner,
+		RemoteSigner:        a.otherEscrowAccountSigner,
 	})
 	a.streamerTransactions, a.streamerCancel = a.streamer.StreamTx(a.streamerCursor)
 	go a.ingestLoop()
