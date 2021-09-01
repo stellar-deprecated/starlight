@@ -115,6 +115,7 @@ func NewAgentWithSnapshot(c Config, s Snapshot) *Agent {
 	agent.otherEscrowAccount = s.OtherEscrowAccount
 	agent.otherEscrowAccountSigner = s.OtherEscrowAccountSigner
 	agent.streamerCursor = s.StreamerCursor
+	agent.initChannel(s.StateSnapshot.Initiator, &s.StateSnapshot)
 	return agent
 }
 
@@ -171,7 +172,7 @@ func (a *Agent) hello() error {
 	return nil
 }
 
-func (a *Agent) initChannel(initiator bool) error {
+func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already created")
 	}
@@ -183,7 +184,7 @@ func (a *Agent) initChannel(initiator bool) error {
 	if err != nil {
 		return err
 	}
-	a.channel = state.NewChannel(state.Config{
+	config := state.Config{
 		NetworkPassphrase: a.networkPassphrase,
 		MaxOpenExpiry:     a.maxOpenExpiry,
 		Initiator:         initiator,
@@ -197,7 +198,12 @@ func (a *Agent) initChannel(initiator bool) error {
 		},
 		LocalSigner:  a.escrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
-	})
+	}
+	if snapshot == nil {
+		a.channel = state.NewChannel(config)
+	} else {
+		a.channel = state.NewChannelFromSnapshot(config, *snapshot)
+	}
 	a.streamerTransactions, a.streamerCancel = a.streamer.StreamTx(a.streamerCursor)
 	go a.ingestLoop()
 	return nil
@@ -215,7 +221,7 @@ func (a *Agent) Open() error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
 	}
-	err := a.initChannel(true)
+	err := a.initChannel(true, nil)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
 	}
@@ -442,7 +448,7 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	err := a.initChannel(false)
+	err := a.initChannel(false, nil)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
 	}
