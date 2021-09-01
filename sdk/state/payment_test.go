@@ -227,17 +227,16 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-	channel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
-			ObservationPeriodTime:      1,
-			ObservationPeriodLedgerGap: 1,
-			ConfirmingSigner:           localSigner.FromAddress(),
-		},
-	}
 
 	// Put channel into the Open state.
 	{
-		ftx, err := senderChannel.OpenTx()
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
 		require.NoError(t, err)
@@ -254,15 +253,21 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = senderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
-		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 	}
 
 	// A close agreement from the remote participant should be accepted if the
 	// observation period matches the channels observation period.
 	{
+		channel.latestAuthorizedCloseAgreement = CloseAgreement{
+			Details: CloseAgreementDetails{
+				ObservationPeriodTime:      1,
+				ObservationPeriodLedgerGap: 1,
+				ConfirmingSigner:           localSigner.FromAddress(),
+			},
+		}
+
 		txDecl, txClose, err := channel.closeTxs(channel.openAgreement.Details, CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      1,
