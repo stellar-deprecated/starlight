@@ -132,6 +132,14 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
@@ -392,6 +400,14 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		require.NoError(t, err)
 		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	// Update balances known for each other.
@@ -598,6 +614,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		require.NoError(t, err)
 		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	// Update balances known for each other.
@@ -804,6 +828,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		require.NoError(t, err)
 		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	// Update balances known for each other.
@@ -989,6 +1021,14 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		require.NoError(t, err)
 		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	// Update balances known for each other.

@@ -418,28 +418,38 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 	_, err = initiatorChannel.ConfirmOpen(m)
 	require.NoError(t, err)
 
-	// Ingest the formationTx successfully to enter the Open state.
-	ftx, err := initiatorChannel.OpenTx()
-	require.NoError(t, err)
-	ftxXDR, err := ftx.Base64()
-	require.NoError(t, err)
+	{
+		// Ingest the formationTx successfully to enter the Open state.
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
 
-	successResultXDR, err := txbuildtest.BuildResultXDR(true)
-	require.NoError(t, err)
-	resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
-		InitiatorSigner: localSigner.Address(),
-		ResponderSigner: remoteSigner.Address(),
-		InitiatorEscrow: localEscrowAccount.Address.Address(),
-		ResponderEscrow: remoteEscrowAccount.Address.Address(),
-		StartSequence:   localEscrowAccount.SequenceNumber + 1,
-		Asset:           txnbuild.NativeAsset{},
-	})
-	require.NoError(t, err)
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
 
-	err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-	require.NoError(t, err)
-	err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-	require.NoError(t, err)
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
 
 	_, err = initiatorChannel.ProposeOpen(OpenParams{
 		Asset:                      NativeAsset,
@@ -447,7 +457,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
 	})
-	require.EqualError(t, err, "cannot propose a new open if channel has already opened")
+	require.EqualError(t, err, "cannot propose a new open if channel is already opened")
 
 	_, err = responderChannel.ConfirmOpen(m)
 	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")

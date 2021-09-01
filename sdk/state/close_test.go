@@ -143,6 +143,14 @@ func TestChannel_ProposeClose(t *testing.T) {
 		require.NoError(t, err)
 		err = remoteChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
+
+		cs, err := localChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = remoteChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
 	}
 
 	// If the local proposes a close, the agreement will have them as the proposer.
