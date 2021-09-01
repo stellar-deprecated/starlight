@@ -100,7 +100,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("getting channel state: %w", err)
 	}
-	if cs < StateOpen {
+	if cs != StateOpen {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a payment before channel is opened")
 	}
 

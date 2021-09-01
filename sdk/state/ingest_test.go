@@ -65,6 +65,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 
 	// Mock initiatorChannel ingested formation tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
+	initiatorChannel.setInitiatorEscrowAccountSequence(initiatorEscrowAccount.SequenceNumber + 1)
 	responderChannel.openExecutedAndValidated = true
 
 	// To prevent xdr parsing error.
@@ -154,6 +155,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 
 	// Mock initiatorChannel ingested formation tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
+	initiatorChannel.setInitiatorEscrowAccountSequence(initiatorEscrowAccount.SequenceNumber + 1)
 	responderChannel.openExecutedAndValidated = true
 
 	// To prevent xdr parsing error.
@@ -296,6 +298,7 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 
 	// Mock initiatorChannel ingested formation tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
+	initiatorChannel.setInitiatorEscrowAccountSequence(initiatorEscrowAccount.SequenceNumber + 1)
 	responderChannel.openExecutedAndValidated = true
 
 	// To prevent xdr parsing error.
