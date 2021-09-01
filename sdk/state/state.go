@@ -84,8 +84,6 @@ type Channel struct {
 
 func (c *Channel) Snapshot() Snapshot {
 	return Snapshot{
-		StartingSequence: c.startingSequence,
-
 		Initiator: c.initiator,
 
 		OpenAgreement:            c.openAgreement,
