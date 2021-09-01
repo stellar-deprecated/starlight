@@ -5,8 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -384,44 +386,85 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		SequenceNumber: int64(202),
 	}
 
-	channel := NewChannel(Config{
+	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
 		LocalSigner:         localSigner,
 		RemoteSigner:        remoteSigner.FromAddress(),
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
 	})
-	channel.openAgreement = OpenAgreement{
-		Details: OpenAgreementDetails{
-			ObservationPeriodTime:      1,
-			ObservationPeriodLedgerGap: 1,
-			Asset:                      NativeAsset,
-			ExpiresAt:                  time.Now(),
-			ProposingSigner:            localSigner.FromAddress(),
-			ConfirmingSigner:           remoteSigner.FromAddress(),
-		},
-		ProposerSignatures: OpenAgreementSignatures{
-			Declaration: xdr.Signature{0},
-			Close:       xdr.Signature{1},
-			Formation:   xdr.Signature{2},
-		},
-		ConfirmerSignatures: OpenAgreementSignatures{
-			Declaration: xdr.Signature{3},
-			Close:       xdr.Signature{4},
-			Formation:   xdr.Signature{5},
-		},
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Open channel.
+	m, err := initiatorChannel.ProposeOpen(OpenParams{
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Second),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
+	})
+	require.NoError(t, err)
+	m, err = responderChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+	_, err = initiatorChannel.ConfirmOpen(m)
+	require.NoError(t, err)
+
+	{
+		// Ingest the formationTx successfully to enter the Open state.
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
 	}
 
-	_, err := channel.ProposeOpen(OpenParams{})
+	_, err = initiatorChannel.ProposeOpen(OpenParams{
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Second),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
+	})
 	require.EqualError(t, err, "cannot propose a new open if channel is already opened")
 
-	_, err = channel.ConfirmOpen(OpenAgreement{})
+	_, err = responderChannel.ConfirmOpen(m)
 	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")
 
 	// A channel without a full open agreement should be able to propose an open
-	channel.openAgreement.ConfirmerSignatures = OpenAgreementSignatures{}
-	_, err = channel.ProposeOpen(OpenParams{
+	initiatorChannel.openAgreement.ConfirmerSignatures = OpenAgreementSignatures{}
+	_, err = initiatorChannel.ProposeOpen(OpenParams{
 		Asset:     NativeAsset,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})

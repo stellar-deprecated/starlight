@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
+	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -106,6 +107,39 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
+	}
+
+	{
+		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiator.KP.Address(),
+			ResponderSigner: responder.KP.Address(),
+			InitiatorEscrow: initiator.Escrow.Address(),
+			ResponderEscrow: responder.Escrow.Address(),
+			StartSequence:   s,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	t.Log("Iteration", i, "Declarations:", txSeqs(declarationTxs))
@@ -343,6 +377,39 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	{
+		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiator.KP.Address(),
+			ResponderSigner: responder.KP.Address(),
+			InitiatorEscrow: initiator.Escrow.Address(),
+			ResponderEscrow: responder.Escrow.Address(),
+			StartSequence:   s,
+			Asset:           txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+	}
+
 	// Update balances known for each other.
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
@@ -522,6 +589,39 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		require.NoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
+	}
+
+	{
+		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiator.KP.Address(),
+			ResponderSigner: responder.KP.Address(),
+			InitiatorEscrow: initiator.Escrow.Address(),
+			ResponderEscrow: responder.Escrow.Address(),
+			StartSequence:   s,
+			Asset:           txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	// Update balances known for each other.
@@ -705,6 +805,39 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		require.NoError(t, err)
 	}
 
+	{
+		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiator.KP.Address(),
+			ResponderSigner: responder.KP.Address(),
+			InitiatorEscrow: initiator.Escrow.Address(),
+			ResponderEscrow: responder.Escrow.Address(),
+			StartSequence:   s,
+			Asset:           txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+	}
+
 	// Update balances known for each other.
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
@@ -863,6 +996,39 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		require.NoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		require.NoError(t, err)
+	}
+
+	{
+		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiator.KP.Address(),
+			ResponderSigner: responder.KP.Address(),
+			InitiatorEscrow: initiator.Escrow.Address(),
+			ResponderEscrow: responder.Escrow.Address(),
+			StartSequence:   s,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, state.StateOpen, cs)
 	}
 
 	// Update balances known for each other.
