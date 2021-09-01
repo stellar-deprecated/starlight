@@ -46,8 +46,6 @@ type Channel struct {
 	networkPassphrase string
 	maxOpenExpiry     time.Duration
 
-	startingSequence int64
-
 	initiator           bool
 	localEscrowAccount  *EscrowAccount
 	remoteEscrowAccount *EscrowAccount
@@ -97,7 +95,7 @@ func (c *Channel) State() (State, error) {
 
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
 
-	if initiatorEscrowSeqNum == c.startingSequence {
+	if initiatorEscrowSeqNum == c.openAgreement.Details.StartingSequence {
 		return StateOpen, nil
 	} else if initiatorEscrowSeqNum < latestDeclSequence {
 		return StateClosingWithOutdatedState, nil
