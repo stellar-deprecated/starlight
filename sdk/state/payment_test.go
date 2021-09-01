@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -283,7 +282,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		SequenceNumber: int64(202),
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -292,6 +291,36 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
+
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			ObservationPeriodTime:      1,
@@ -299,9 +328,6 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 			ConfirmingSigner:           localSigner.FromAddress(),
 		},
 	}
-
-	// Put channel into the Open state.
-	channel.openExecutedAndValidated = true
 
 	// A close agreement from the remote participant should be rejected if the
 	// observation period doesn't match the channels observation period.
@@ -354,13 +380,37 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
+
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
-	channel.openAgreement = OpenAgreement{
-		Details: OpenAgreementDetails{
-			Asset: NativeAsset,
-		},
-	}
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber:            1,
@@ -370,9 +420,6 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 			ConfirmingSigner:           localSigner.FromAddress(),
 		},
 	}
-
-	// Put channel into the Open state.
-	channel.openExecutedAndValidated = true
 
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
@@ -410,7 +457,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		SequenceNumber: int64(202),
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           false,
@@ -420,13 +467,37 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
+			ResponderEscrow: localEscrowAccount.Address.Address(),
+			StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
+
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
-	channel.openAgreement = OpenAgreement{
-		Details: OpenAgreementDetails{
-			Asset: NativeAsset,
-		},
-	}
 	channel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Details: CloseAgreementDetails{
 			IterationNumber:            1,
@@ -478,7 +549,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		Balance:        100,
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -487,6 +558,35 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
 
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
@@ -499,9 +599,6 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 			ConfirmingSigner:           localSigner.FromAddress(),
 		},
 	}
-
-	// Put channel into the Open state.
-	channel.openExecutedAndValidated = true
 
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
@@ -553,7 +650,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		Balance:        100,
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           false,
@@ -562,6 +659,35 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
+			ResponderEscrow: localEscrowAccount.Address.Address(),
+			StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
 
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
@@ -574,9 +700,6 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 			ConfirmingSigner:           localSigner.FromAddress(),
 		},
 	}
-
-	// Put channel into the Open state.
-	channel.openExecutedAndValidated = true
 
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
@@ -628,7 +751,7 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 		Balance:        100,
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -637,6 +760,35 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
 
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
@@ -650,34 +802,7 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 		},
 	}
 
-	// Put the channel into the Open state.
-	_, err := channel.ProposeOpen(OpenParams{
-		Asset:     NativeAsset,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
-	})
-	require.NoError(t, err)
-
-	ftx, err := channel.OpenTx()
-	require.NoError(t, err)
-	ftxXDR, err := ftx.Base64()
-	require.NoError(t, err)
-
-	successResultXDR, err := txbuildtest.BuildResultXDR(true)
-	require.NoError(t, err)
-	resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
-		InitiatorSigner: localSigner.Address(),
-		ResponderSigner: remoteSigner.Address(),
-		InitiatorEscrow: localEscrowAccount.Address.Address(),
-		ResponderEscrow: remoteEscrowAccount.Address.Address(),
-		StartSequence:   localEscrowAccount.SequenceNumber + 1,
-		Asset:           txnbuild.NativeAsset{},
-	})
-	require.NoError(t, err)
-
-	err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-	require.NoError(t, err)
-
-	_, err = channel.ProposePayment(110)
+	_, err := channel.ProposePayment(110)
 	assert.EqualError(t, err, "amount over commits: account is underfunded to make payment")
 	assert.ErrorIs(t, err, ErrUnderfunded)
 
@@ -701,7 +826,7 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 		Balance:        100,
 	}
 
-	// Given a channel with observation periods set to 1, that is already open.
+	// Given a channel with observation periods set to 1.
 	channel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           false,
@@ -710,6 +835,35 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
+
+	// Put the channel into the Open state.
+	{
+		_, err := channel.ProposeOpen(OpenParams{
+			Asset:     NativeAsset,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+		})
+		require.NoError(t, err)
+
+		ftx, err := channel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address.Address(),
+			ResponderEscrow: localEscrowAccount.Address.Address(),
+			StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
 
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
@@ -723,37 +877,7 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 		},
 	}
 
-	// Put the channel into the Open state.
-	_, err := channel.ProposeOpen(OpenParams{
-		Asset:     NativeAsset,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
-	})
-	require.NoError(t, err)
-
-	ftx, err := channel.OpenTx()
-	require.NoError(t, err)
-	ftxXDR, err := ftx.Base64()
-	require.NoError(t, err)
-
-	successResultXDR, err := txbuildtest.BuildResultXDR(true)
-	require.NoError(t, err)
-	resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
-		InitiatorSigner: remoteSigner.Address(),
-		ResponderSigner: localSigner.Address(),
-		InitiatorEscrow: remoteEscrowAccount.Address.Address(),
-		ResponderEscrow: localEscrowAccount.Address.Address(),
-		StartSequence:   remoteEscrowAccount.SequenceNumber + 1,
-		Asset:           txnbuild.NativeAsset{},
-	})
-	require.NoError(t, err)
-
-	err = channel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-	require.NoError(t, err)
-
-	// TODO - remove
-	fmt.Println(channel.openExecutedWithError)
-
-	_, err = channel.ProposePayment(110)
+	_, err := channel.ProposePayment(110)
 	assert.EqualError(t, err, "amount over commits: account is underfunded to make payment")
 	assert.ErrorIs(t, err, ErrUnderfunded)
 
