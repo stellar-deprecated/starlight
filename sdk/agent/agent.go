@@ -82,17 +82,17 @@ func NewAgent(c Config) *Agent {
 		maxOpenExpiry:              c.MaxOpenExpiry,
 		networkPassphrase:          c.NetworkPassphrase,
 
-		sequenceNumberCollector:    c.SequenceNumberCollector,
-		balanceCollector:           c.BalanceCollector,
-		submitter:                  c.Submitter,
-		streamer:                   c.Streamer,
+		sequenceNumberCollector: c.SequenceNumberCollector,
+		balanceCollector:        c.BalanceCollector,
+		submitter:               c.Submitter,
+		streamer:                c.Streamer,
 
-		escrowAccountKey:           c.EscrowAccountKey,
-		escrowAccountSigner:        c.EscrowAccountSigner,
+		escrowAccountKey:    c.EscrowAccountKey,
+		escrowAccountSigner: c.EscrowAccountSigner,
 
-		logWriter:                  c.LogWriter,
+		logWriter: c.LogWriter,
 
-		events:                     c.Events,
+		events: c.Events,
 	}
 	return agent
 }
