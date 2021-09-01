@@ -15,8 +15,6 @@ type Snapshoter interface {
 }
 
 type Snapshot struct {
-	StartingSequence int64
-
 	Initiator bool
 
 	OpenAgreement            OpenAgreement
