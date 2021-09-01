@@ -461,4 +461,12 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 
 	_, err = responderChannel.ConfirmOpen(m)
 	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")
+
+	// A channel without a full open agreement should be able to propose an open
+	initiatorChannel.openAgreement.ConfirmerSignatures = OpenAgreementSignatures{}
+	_, err = initiatorChannel.ProposeOpen(OpenParams{
+		Asset:     NativeAsset,
+		ExpiresAt: time.Now().Add(5 * time.Minute),
+	})
+	require.NoError(t, err)
 }
