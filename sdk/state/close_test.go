@@ -4,8 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,16 +109,49 @@ func TestChannel_ProposeClose(t *testing.T) {
 		MaxOpenExpiry:       2 * time.Hour,
 	})
 
-	open1, err := localChannel.ProposeOpen(OpenParams{
-		ObservationPeriodTime:      1,
-		ObservationPeriodLedgerGap: 1,
-		ExpiresAt:                  time.Now().Add(time.Hour),
-	})
-	require.NoError(t, err)
-	open2, err := remoteChannel.ConfirmOpen(open1)
-	require.NoError(t, err)
-	_, err = localChannel.ConfirmOpen(open2)
-	require.NoError(t, err)
+	// Put channel into the Open state.
+	{
+		open1, err := localChannel.ProposeOpen(OpenParams{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+			ExpiresAt:                  time.Now().Add(time.Hour),
+		})
+		require.NoError(t, err)
+		open2, err := remoteChannel.ConfirmOpen(open1)
+		require.NoError(t, err)
+		_, err = localChannel.ConfirmOpen(open2)
+		require.NoError(t, err)
+
+		ftx, err := localChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address.Address(),
+			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = localChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = remoteChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := localChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = remoteChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
 
 	// If the local proposes a close, the agreement will have them as the proposer.
 	closeByLocal, err := localChannel.ProposeClose()

@@ -165,7 +165,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	// If a coordinated close has been proposed by this channel already, error.
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
 		c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
-		return fmt.Errorf("cannot propose payment after proposing a coordinated close")
+		return fmt.Errorf("cannot confirm payment after proposing a coordinated close")
 	}
 
 	// If a coordinated close has been accepted already, error.
