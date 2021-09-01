@@ -96,11 +96,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	// If the channel is not open yet, error.
-	cs, err := c.State()
-	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("getting channel state: %w", err)
-	}
-	if cs != StateOpen {
+	if c.latestAuthorizedCloseAgreement.isEmpty() {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a payment before channel is opened")
 	}
 
@@ -162,18 +158,14 @@ var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 // on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	// If the channel is not open yet, error.
-	cs, err := c.State()
-	if err != nil {
-		return fmt.Errorf("getting channel state: %w", err)
-	}
-	if cs < StateOpen {
+	if c.latestAuthorizedCloseAgreement.isEmpty() {
 		return fmt.Errorf("cannot confirm a payment before channel is opened")
 	}
 
 	// If a coordinated close has been proposed by this channel already, error.
 	if !c.latestUnauthorizedCloseAgreement.isEmpty() && c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodTime == 0 &&
 		c.latestUnauthorizedCloseAgreement.Details.ObservationPeriodLedgerGap == 0 {
-		return fmt.Errorf("cannot confirm payment after proposing a coordinated close")
+		return fmt.Errorf("cannot propose payment after proposing a coordinated close")
 	}
 
 	// If a coordinated close has been accepted already, error.
