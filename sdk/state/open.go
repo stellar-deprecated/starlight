@@ -196,7 +196,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	if err != nil {
 		return OpenAgreement{}, fmt.Errorf("getting channel state: %w", err)
 	}
-	if cs >= StateOpen {
+	if cs != StateNone {
 		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel has already opened")
 	}
 
@@ -233,7 +233,7 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 	if err != nil {
 		return fmt.Errorf("getting channel state: %w", err)
 	}
-	if cs >= StateOpen {
+	if cs != StateNone {
 		return fmt.Errorf("cannot confirm a new open if channel is already opened")
 	}
 
