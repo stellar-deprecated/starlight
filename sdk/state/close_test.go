@@ -229,5 +229,4 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 
 	_, err = senderChannel.ConfirmClose(CloseAgreement{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
-
 }
