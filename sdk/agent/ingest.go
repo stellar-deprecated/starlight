@@ -34,6 +34,8 @@ func (a *Agent) ingest() error {
 	}
 	fmt.Fprintf(a.logWriter, "state before: %v\n", stateBefore)
 
+	defer a.snapshot()
+
 	err = a.channel.IngestTx(tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR)
 	if err != nil {
 		err = fmt.Errorf("ingesting tx (cursor=%s hash=%s): ingesting xdr: %w", tx.Cursor, txHash, err)
