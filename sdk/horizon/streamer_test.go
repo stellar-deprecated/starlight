@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestHorizonStreamer_StreamTx_longBlock(t *testing.T) {
+func TestStreamer_StreamTx_longBlock(t *testing.T) {
 	client := &horizonclient.MockClient{}
 	h := Streamer{HorizonClient: client}
 
@@ -70,7 +70,7 @@ func TestHorizonStreamer_StreamTx_longBlock(t *testing.T) {
 	assert.False(t, open, "txs channel not closed but should be after cancel called")
 }
 
-func TestHorizonStreamer_StreamTx_manyTxs(t *testing.T) {
+func TestStreamer_StreamTx_manyTxs(t *testing.T) {
 	client := &horizonclient.MockClient{}
 	h := Streamer{HorizonClient: client}
 
