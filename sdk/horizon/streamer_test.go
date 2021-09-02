@@ -152,6 +152,23 @@ func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 	}
 
 	accountB := keypair.MustRandom()
+
+	// Simulate an error occuring while streaming.
+	client.On(
+		"StreamTransactions",
+		mock.Anything,
+		horizonclient.TransactionRequest{},
+		mock.Anything,
+	).Return(errors.New("an error")).Run(func(args mock.Arguments) {
+		handler := args[2].(horizonclient.TransactionHandler)
+		handler(horizon.Transaction{
+			EnvelopeXdr:   "a-txxdr",
+			ResultXdr:     "a-resultxdr",
+			ResultMetaXdr: "a-resultmetaxdr",
+		})
+	}).Once()
+
+	// Simulator no error after retrying.
 	client.On(
 		"StreamTransactions",
 		mock.Anything,
@@ -160,20 +177,13 @@ func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 	).Return(nil).Run(func(args mock.Arguments) {
 		ctx := args[0].(context.Context)
 		handler := args[2].(horizonclient.TransactionHandler)
-		// Simulate an error occuring while streaming.
-		handler(horizon.Transaction{
-			EnvelopeXdr:   "a-txxdr",
-			ResultXdr:     "a-resultxdr",
-			ResultMetaXdr: "a-resultmetaxdr",
-		})
-		h.ErrorHandler(errors.New("an error"))
 		handler(horizon.Transaction{
 			EnvelopeXdr:   "b-txxdr",
 			ResultXdr:     "b-resultxdr",
 			ResultMetaXdr: "b-resultmetaxdr",
 		})
 		<-ctx.Done()
-	})
+	}).Once()
 
 	t.Log("Streaming...")
 	txsCh, cancel := h.StreamTx("", accountB.FromAddress())

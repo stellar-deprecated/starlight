@@ -60,8 +60,9 @@ func (h *Streamer) streamTx(cursor string, txs chan<- agent.StreamedTransaction,
 	}
 	for {
 		err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
+			cursor = tx.PagingToken()
 			streamedTx := agent.StreamedTransaction{
-				Cursor:         tx.PagingToken(),
+				Cursor:         cursor,
 				TransactionXDR: tx.EnvelopeXdr,
 				ResultXDR:      tx.ResultXdr,
 				ResultMetaXDR:  tx.ResultMetaXdr,
