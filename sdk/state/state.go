@@ -10,10 +10,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type Snapshoter interface {
-	Snapshot(s Snapshot) error
-}
-
 type Config struct {
 	NetworkPassphrase string
 	MaxOpenExpiry     time.Duration
