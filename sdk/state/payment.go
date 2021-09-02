@@ -23,20 +23,9 @@ type CloseAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
+	FinalPaymentAmount         int64
 	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
-
-	// TODO - right name?
-	FinalPaymentAmount int64
-}
-
-// TODO - change name, move
-func (c Channel) GetPaymentAmount(d CloseAgreementDetails) int64 {
-	// TODO - remove
-	fmt.Println("initial balance:", c.Balance())
-	fmt.Println("details balance: ", d.Balance)
-
-	return d.Balance - c.Balance()
 }
 
 func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {

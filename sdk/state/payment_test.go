@@ -1,7 +1,6 @@
 package state
 
 import (
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO - change name, move to bottom
 func TestChannel_ConfirmPayment_validateFinalPaymentAmount(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
@@ -120,14 +118,9 @@ func TestChannel_ConfirmPayment_validateFinalPaymentAmount(t *testing.T) {
 	_, err = initiatorChannel.ConfirmPayment(ca)
 	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
 
-	// TODO - remove
-	fmt.Printf("%+v\n", ca)
-	fmt.Printf("%+v\n", initiatorChannel.Balance())
-
 	ca.Details.Balance = -50
 	ca, err = initiatorChannel.ConfirmPayment(ca)
 	require.NoError(t, err)
-
 }
 
 func TestCloseAgreement_Equal(t *testing.T) {
@@ -607,6 +600,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
 		Balance:                    110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
+		FinalPaymentAmount:         10,
 		ProposingSigner:            remoteSigner.FromAddress(),
 		ConfirmingSigner:           localSigner.FromAddress(),
 		ObservationPeriodTime:      10,
@@ -706,6 +700,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
 		Balance:                    90, // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
+		FinalPaymentAmount:         -10,
 		ProposingSigner:            remoteSigner.FromAddress(),
 		ConfirmingSigner:           localSigner.FromAddress(),
 		ObservationPeriodTime:      10,
@@ -807,6 +802,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
 		Balance:                    -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
+		FinalPaymentAmount:         -50,
 		ProposingSigner:            remoteSigner.FromAddress(),
 		ConfirmingSigner:           localSigner.FromAddress(),
 		ObservationPeriodTime:      10,
@@ -919,6 +915,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	ca := CloseAgreementDetails{
 		IterationNumber:            2,
 		Balance:                    110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
+		FinalPaymentAmount:         50,
 		ProposingSigner:            remoteSigner.FromAddress(),
 		ConfirmingSigner:           localSigner.FromAddress(),
 		ObservationPeriodTime:      10,
