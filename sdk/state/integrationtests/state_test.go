@@ -1045,7 +1045,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Update balances known for each other.
+	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a transaction.
