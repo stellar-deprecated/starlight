@@ -147,7 +147,9 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
 	// Update balances known for each other.
+	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
@@ -413,7 +415,9 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	}
 
 	// Update balances known for each other.
+	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
@@ -628,7 +632,9 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	}
 
 	// Update balances known for each other.
+	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
@@ -843,7 +849,9 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	}
 
 	// Update balances known for each other.
+	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
@@ -1037,7 +1045,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Update balances known for each other.
+	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
+	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
 	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
 
 	// Perform a transaction.

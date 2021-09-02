@@ -16,8 +16,8 @@ type Config struct {
 
 	Initiator bool
 
-	LocalEscrowAccount  *EscrowAccount
-	RemoteEscrowAccount *EscrowAccount
+	LocalEscrowAccount  *keypair.FromAddress
+	RemoteEscrowAccount *keypair.FromAddress
 
 	LocalSigner  *keypair.Full
 	RemoteSigner *keypair.FromAddress
@@ -28,8 +28,8 @@ func NewChannel(c Config) *Channel {
 		networkPassphrase:   c.NetworkPassphrase,
 		maxOpenExpiry:       c.MaxOpenExpiry,
 		initiator:           c.Initiator,
-		localEscrowAccount:  c.LocalEscrowAccount,
-		remoteEscrowAccount: c.RemoteEscrowAccount,
+		localEscrowAccount:  &EscrowAccount{Address: c.LocalEscrowAccount},
+		remoteEscrowAccount: &EscrowAccount{Address: c.RemoteEscrowAccount},
 		localSigner:         c.LocalSigner,
 		remoteSigner:        c.RemoteSigner,
 	}

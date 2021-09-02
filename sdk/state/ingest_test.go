@@ -22,14 +22,8 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 	feeAccount := keypair.MustRandom()
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	responderEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
+	responderEscrowAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
@@ -111,14 +105,8 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	responderEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
+	responderEscrowAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
@@ -192,14 +180,8 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	responderEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
+	responderEscrowAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
@@ -253,14 +235,8 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	responderEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-	}
+	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
+	responderEscrowAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
@@ -332,23 +308,14 @@ func TestChannel_IngestTx_updateBalancesNative(t *testing.T) {
 	require.NoError(t, err)
 	responderEscrow, err := keypair.ParseAddress("GAWWANJAAOTAGEHCF7QD3Y5BAAIAWQ37323GKMI2ZKK34DJT2KX72MAF")
 	require.NoError(t, err)
-
-	initiatorEscrowAccount := &EscrowAccount{
-		Address:        initiatorEscrow.FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	responderEscrowAccount := &EscrowAccount{
-		Address:        responderEscrow.FromAddress(),
-		SequenceNumber: int64(202),
-	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
 		Initiator:           true,
 		LocalSigner:         initiatorSigner,
 		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
 	})
 	initiatorChannel.UpdateLocalEscrowAccountBalance(10_000_0000000)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(10_000_0000000)
@@ -412,22 +379,14 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	responderEscrow, err := keypair.ParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
 	require.NoError(t, err)
 
-	initiatorEscrowAccount := &EscrowAccount{
-		Address:        initiatorEscrow.FromAddress(),
-		SequenceNumber: int64(101),
-	}
-	responderEscrowAccount := &EscrowAccount{
-		Address:        responderEscrow.FromAddress(),
-		SequenceNumber: int64(202),
-	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
 		Initiator:           true,
 		LocalSigner:         initiatorSigner,
 		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
 	})
 	responderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -435,8 +394,8 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 		Initiator:           false,
 		LocalSigner:         responderSigner,
 		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
 	})
 
 	asset := Asset("TEST:GAOWNZMMFW25MWBAWKRYBMIEKY2KKEWKOINP2IDTRYOQ4DOEW26NV437")
@@ -524,21 +483,14 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 	responderEscrow, err := keypair.ParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
 	require.NoError(t, err)
 
-	initiatorEscrowAccount := &EscrowAccount{
-		Address: initiatorEscrow.FromAddress(),
-	}
-
-	responderEscrowAccount := &EscrowAccount{
-		Address: responderEscrow.FromAddress(),
-	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
 		Initiator:           true,
 		LocalSigner:         initiatorSigner,
 		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
 	})
 	responderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -546,8 +498,8 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 		Initiator:           false,
 		LocalSigner:         responderSigner,
 		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
 	})
 
 	// Before confirming an open, channel should not be open.
@@ -631,21 +583,14 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	responderEscrow, err := keypair.ParseAddress("GBEWOADTWFUS5EKEDB63X5KDWAKBJ32A5WDZKXENOCU3XQTM26GKBV2X")
 	require.NoError(t, err)
 
-	initiatorEscrowAccount := &EscrowAccount{
-		Address: initiatorEscrow.FromAddress(),
-	}
-
-	responderEscrowAccount := &EscrowAccount{
-		Address: responderEscrow.FromAddress(),
-	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
 		Initiator:           true,
 		LocalSigner:         initiatorSigner,
 		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
 	})
 	responderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -653,8 +598,8 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 		Initiator:           false,
 		LocalSigner:         responderSigner,
 		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
 	})
 
 	asset := Asset("ABDC:GBW5R35MPDT6JPFRQ3NEHQBMBLX7V6LAPAPPXL6FYQQKNVOCWGV7LKDQ")
@@ -778,21 +723,14 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 	responderEscrow, err := keypair.ParseAddress("GA63LTOE6CXAUGQTQW4332Z6UDBTAN7KTXSJKN4Y5KP4DBJFKEYOHWM7")
 	require.NoError(t, err)
 
-	initiatorEscrowAccount := &EscrowAccount{
-		Address: initiatorEscrow.FromAddress(),
-	}
-
-	responderEscrowAccount := &EscrowAccount{
-		Address: responderEscrow.FromAddress(),
-	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
 		Initiator:           true,
 		LocalSigner:         initiatorSigner,
 		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
 	})
 	responderChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -800,8 +738,8 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 		Initiator:           false,
 		LocalSigner:         responderSigner,
 		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
 	})
 	open, err := initiatorChannel.ProposeOpen(OpenParams{
 		ObservationPeriodTime:      1,
