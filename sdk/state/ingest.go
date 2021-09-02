@@ -273,9 +273,9 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 	}
 
 	// Validate the initiator escrow account sequence number is correct.
-	if int64(initiatorEscrowAccountEntry.SeqNum) != c.startingSequence {
+	if int64(initiatorEscrowAccountEntry.SeqNum) != formationTx.SequenceNumber() {
 		c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
-			int64(initiatorEscrowAccountEntry.SeqNum), c.startingSequence)
+			int64(initiatorEscrowAccountEntry.SeqNum), formationTx.SequenceNumber())
 		return nil
 	}
 

@@ -26,7 +26,7 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		ResponderSigner:            c.responderSigner(),
 		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
 		ResponderEscrow:            c.responderEscrowAccount().Address,
-		StartSequence:              c.startingSequence,
+		StartSequence:              oad.StartingSequence,
 		IterationNumber:            d.IterationNumber,
 		AmountToInitiator:          amountToInitiator(d.Balance),
 		AmountToResponder:          amountToResponder(d.Balance),
@@ -41,7 +41,7 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 	}
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
-		StartSequence:           c.startingSequence,
+		StartSequence:           oad.StartingSequence,
 		IterationNumber:         d.IterationNumber,
 		IterationNumberExecuted: 0,
 		ConfirmingSigner:        d.ConfirmingSigner,

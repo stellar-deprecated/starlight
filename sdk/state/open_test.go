@@ -378,12 +378,10 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
+		Address: keypair.MustRandom().FromAddress(),
 	}
 	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
+		Address: keypair.MustRandom().FromAddress(),
 	}
 
 	initiatorChannel := NewChannel(Config{
@@ -411,6 +409,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		ExpiresAt:                  time.Now().Add(5 * time.Second),
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
+		StartingSequence:           101,
 	})
 	require.NoError(t, err)
 	m, err = responderChannel.ConfirmOpen(m)
@@ -432,7 +431,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 			ResponderSigner: remoteSigner.Address(),
 			InitiatorEscrow: localEscrowAccount.Address.Address(),
 			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)

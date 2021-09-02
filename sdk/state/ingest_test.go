@@ -525,13 +525,11 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 	require.NoError(t, err)
 
 	initiatorEscrowAccount := &EscrowAccount{
-		Address:        initiatorEscrow.FromAddress(),
-		SequenceNumber: int64(28037546508288),
+		Address: initiatorEscrow.FromAddress(),
 	}
 
 	responderEscrowAccount := &EscrowAccount{
-		Address:        responderEscrow.FromAddress(),
-		SequenceNumber: int64(28054726377472),
+		Address: responderEscrow.FromAddress(),
 	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -560,6 +558,7 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           28037546508289,
 	})
 	require.NoError(t, err)
 	cs, err = initiatorChannel.State()
@@ -633,13 +632,11 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	require.NoError(t, err)
 
 	initiatorEscrowAccount := &EscrowAccount{
-		Address:        initiatorEscrow.FromAddress(),
-		SequenceNumber: int64(24936580120576),
+		Address: initiatorEscrow.FromAddress(),
 	}
 
 	responderEscrowAccount := &EscrowAccount{
-		Address:        responderEscrow.FromAddress(),
-		SequenceNumber: int64(24970939858944),
+		Address: responderEscrow.FromAddress(),
 	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -671,6 +668,7 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
 		Asset:                      asset,
+		StartingSequence:           24936580120577,
 	})
 	require.NoError(t, err)
 	cs, err = initiatorChannel.State()
@@ -781,13 +779,11 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 	require.NoError(t, err)
 
 	initiatorEscrowAccount := &EscrowAccount{
-		Address:        initiatorEscrow.FromAddress(),
-		SequenceNumber: int64(101),
+		Address: initiatorEscrow.FromAddress(),
 	}
 
 	responderEscrowAccount := &EscrowAccount{
-		Address:        responderEscrow.FromAddress(),
-		SequenceNumber: int64(202),
+		Address: responderEscrow.FromAddress(),
 	}
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -811,6 +807,7 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           102,
 	})
 	require.NoError(t, err)
 	open, err = responderChannel.ConfirmOpen(open)

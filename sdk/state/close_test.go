@@ -82,12 +82,10 @@ func TestChannel_ProposeClose(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
+		Address: keypair.MustRandom().FromAddress(),
 	}
 	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
+		Address: keypair.MustRandom().FromAddress(),
 	}
 
 	localChannel := NewChannel(Config{
@@ -115,6 +113,7 @@ func TestChannel_ProposeClose(t *testing.T) {
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			ExpiresAt:                  time.Now().Add(time.Hour),
+			StartingSequence:           101,
 		})
 		require.NoError(t, err)
 		open2, err := remoteChannel.ConfirmOpen(open1)
@@ -134,7 +133,7 @@ func TestChannel_ProposeClose(t *testing.T) {
 			ResponderSigner: remoteSigner.Address(),
 			InitiatorEscrow: localEscrowAccount.Address.Address(),
 			ResponderEscrow: remoteEscrowAccount.Address.Address(),
-			StartSequence:   localEscrowAccount.SequenceNumber + 1,
+			StartSequence:   101,
 			Asset:           txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
@@ -170,14 +169,12 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(101),
-		Balance:        int64(100),
+		Address: keypair.MustRandom().FromAddress(),
+		Balance: int64(100),
 	}
 	remoteEscrowAccount := &EscrowAccount{
-		Address:        keypair.MustRandom().FromAddress(),
-		SequenceNumber: int64(202),
-		Balance:        int64(100),
+		Address: keypair.MustRandom().FromAddress(),
+		Balance: int64(100),
 	}
 
 	senderChannel := NewChannel(Config{

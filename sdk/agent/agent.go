@@ -147,25 +147,15 @@ func (a *Agent) initChannel(initiator bool) error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already created")
 	}
-	escrowAccountSeqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.escrowAccountKey)
-	if err != nil {
-		return err
-	}
-	otherEscrowAccountSeqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.otherEscrowAccount)
-	if err != nil {
-		return err
-	}
 	a.channel = state.NewChannel(state.Config{
 		NetworkPassphrase: a.networkPassphrase,
 		MaxOpenExpiry:     a.maxOpenExpiry,
 		Initiator:         initiator,
 		LocalEscrowAccount: &state.EscrowAccount{
-			Address:        a.escrowAccountKey,
-			SequenceNumber: escrowAccountSeqNum,
+			Address: a.escrowAccountKey,
 		},
 		RemoteEscrowAccount: &state.EscrowAccount{
-			Address:        a.otherEscrowAccount,
-			SequenceNumber: otherEscrowAccountSeqNum,
+			Address: a.otherEscrowAccount,
 		},
 		LocalSigner:  a.escrowAccountSigner,
 		RemoteSigner: a.otherEscrowAccountSigner,
@@ -187,7 +177,11 @@ func (a *Agent) Open() error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
 	}
-	err := a.initChannel(true)
+	seqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.escrowAccountKey)
+	if err != nil {
+		return fmt.Errorf("getting sequence number of escrow account: %w", err)
+	}
+	err = a.initChannel(true)
 	if err != nil {
 		return fmt.Errorf("init channel: %w", err)
 	}
@@ -196,6 +190,7 @@ func (a *Agent) Open() error {
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
 		Asset:                      "native",
 		ExpiresAt:                  time.Now().Add(a.maxOpenExpiry),
+		StartingSequence:           seqNum + 1,
 	})
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)
