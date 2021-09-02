@@ -50,7 +50,7 @@ type Snapshot struct {
 	LatestUnauthorizedCloseAgreement CloseAgreement
 }
 
-func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
+func NewChannelWithSnapshot(c Config, s Snapshot) *Channel {
 	channel := NewChannel(c)
 
 	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
