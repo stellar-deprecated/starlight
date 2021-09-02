@@ -15,8 +15,6 @@ type Snapshoter interface {
 }
 
 type Snapshot struct {
-	Initiator bool
-
 	OpenAgreement            OpenAgreement
 	OpenExecutedAndValidated bool
 	OpenExecutedWithError    bool
@@ -52,7 +50,15 @@ func NewChannel(c Config) *Channel {
 }
 
 func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
-	return nil
+	channel := NewChannel(c)
+	channel.openAgreement = s.OpenAgreement
+	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
+	if s.OpenExecutedWithError {
+		channel.openExecutedWithError = fmt.Errorf("open executed with error")
+	}
+	channel.latestAuthorizedCloseAgreement = s.LatestAuthorizedCloseAgreement
+	channel.latestUnauthorizedCloseAgreement = s.LatestUnauthorizedCloseAgreement
+	return channel
 }
 
 type EscrowAccount struct {
@@ -82,8 +88,6 @@ type Channel struct {
 
 func (c *Channel) Snapshot() Snapshot {
 	return Snapshot{
-		Initiator: c.initiator,
-
 		OpenAgreement:            c.openAgreement,
 		OpenExecutedAndValidated: c.openExecutedAndValidated,
 		OpenExecutedWithError:    c.openExecutedWithError != nil,

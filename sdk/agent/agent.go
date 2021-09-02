@@ -104,8 +104,10 @@ type Snapshot struct {
 	OtherEscrowAccount       *keypair.FromAddress
 	OtherEscrowAccountSigner *keypair.FromAddress
 	StreamerCursor           string
-
-	StateSnapshot state.Snapshot
+	State                    *struct {
+		Initiator bool
+		Snapshot  state.Snapshot
+	}
 }
 
 // NewAgentWithSnapshot creates an agent using a previously generated snapshot
@@ -115,7 +117,9 @@ func NewAgentWithSnapshot(c Config, s Snapshot) *Agent {
 	agent.otherEscrowAccount = s.OtherEscrowAccount
 	agent.otherEscrowAccountSigner = s.OtherEscrowAccountSigner
 	agent.streamerCursor = s.StreamerCursor
-	agent.initChannel(s.StateSnapshot.Initiator, &s.StateSnapshot)
+	if s.State != nil {
+		agent.initChannel(s.State.Initiator, &s.State.Snapshot)
+	}
 	return agent
 }
 
