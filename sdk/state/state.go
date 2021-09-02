@@ -52,17 +52,21 @@ type Snapshot struct {
 
 func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel := NewChannel(c)
+
 	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
 	channel.localEscrowAccount.Balance = s.LocalEscrowAccountBalance
 	channel.remoteEscrowAccount.SequenceNumber = s.RemoteEscrowSequence
 	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
+
 	channel.openAgreement = s.OpenAgreement
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
 	if s.OpenExecutedWithError {
 		channel.openExecutedWithError = fmt.Errorf("open executed with error")
 	}
+
 	channel.latestAuthorizedCloseAgreement = s.LatestAuthorizedCloseAgreement
 	channel.latestUnauthorizedCloseAgreement = s.LatestUnauthorizedCloseAgreement
+
 	return channel
 }
 
