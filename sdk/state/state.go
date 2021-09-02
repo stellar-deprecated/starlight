@@ -14,15 +14,6 @@ type Snapshoter interface {
 	Snapshot(s Snapshot) error
 }
 
-type Snapshot struct {
-	OpenAgreement            OpenAgreement
-	OpenExecutedAndValidated bool
-	OpenExecutedWithError    bool
-
-	LatestAuthorizedCloseAgreement   CloseAgreement
-	LatestUnauthorizedCloseAgreement CloseAgreement
-}
-
 type Config struct {
 	NetworkPassphrase string
 	MaxOpenExpiry     time.Duration
@@ -49,8 +40,26 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
+type Snapshot struct {
+	LocalEscrowSequence        int64
+	LocalEscrowAccountBalance  int64
+	RemoteEscrowSequence       int64
+	RemoteEscrowAccountBalance int64
+
+	OpenAgreement            OpenAgreement
+	OpenExecutedAndValidated bool
+	OpenExecutedWithError    bool
+
+	LatestAuthorizedCloseAgreement   CloseAgreement
+	LatestUnauthorizedCloseAgreement CloseAgreement
+}
+
 func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel := NewChannel(c)
+	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
+	channel.localEscrowAccount.Balance = s.LocalEscrowAccountBalance
+	channel.remoteEscrowAccount.SequenceNumber = s.RemoteEscrowSequence
+	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
 	channel.openAgreement = s.OpenAgreement
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
 	if s.OpenExecutedWithError {
@@ -88,6 +97,11 @@ type Channel struct {
 
 func (c *Channel) Snapshot() Snapshot {
 	return Snapshot{
+		LocalEscrowSequence:        c.localEscrowAccount.SequenceNumber,
+		LocalEscrowAccountBalance:  c.localEscrowAccount.Balance,
+		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
+		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
+
 		OpenAgreement:            c.openAgreement,
 		OpenExecutedAndValidated: c.openExecutedAndValidated,
 		OpenExecutedWithError:    c.openExecutedWithError != nil,
