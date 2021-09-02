@@ -13,116 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestChannel_ConfirmPayment_validateFinalPaymentAmount(t *testing.T) {
-	localSigner := keypair.MustRandom()
-	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := keypair.MustRandom().FromAddress()
-	remoteEscrowAccount := keypair.MustRandom().FromAddress()
-
-	// Given a channel with observation periods set to 1.
-	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
-	})
-	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         remoteSigner,
-		RemoteSigner:        localSigner.FromAddress(),
-		LocalEscrowAccount:  remoteEscrowAccount,
-		RemoteEscrowAccount: localEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
-	})
-
-	// Put channel into the Open state.
-	{
-		m, err := initiatorChannel.ProposeOpen(OpenParams{
-			Asset:                      NativeAsset,
-			ExpiresAt:                  time.Now().Add(5 * time.Minute),
-			StartingSequence:           101,
-			ObservationPeriodTime:      10,
-			ObservationPeriodLedgerGap: 10,
-		})
-		require.NoError(t, err)
-		m, err = responderChannel.ConfirmOpen(m)
-		require.NoError(t, err)
-		_, err = initiatorChannel.ConfirmOpen(m)
-		require.NoError(t, err)
-
-		ftx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
-		ftxXDR, err := ftx.Base64()
-		require.NoError(t, err)
-
-		successResultXDR, err := txbuildtest.BuildResultXDR(true)
-		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
-			InitiatorSigner: localSigner.Address(),
-			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
-		})
-		require.NoError(t, err)
-
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
-
-		cs, err := initiatorChannel.State()
-		require.NoError(t, err)
-		assert.Equal(t, StateOpen, cs)
-
-		cs, err = responderChannel.State()
-		require.NoError(t, err)
-		assert.Equal(t, StateOpen, cs)
-	}
-	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(200)
-
-	responderChannel.UpdateLocalEscrowAccountBalance(200)
-	responderChannel.UpdateRemoteEscrowAccountBalance(200)
-
-	// Initiator proposes payment to Responder.
-	ca, err := initiatorChannel.ProposePayment(50)
-	require.NoError(t, err)
-	assert.Equal(t, int64(50), ca.Details.Balance)
-	assert.Equal(t, int64(50), ca.Details.FinalPaymentAmount)
-
-	// An incorrect FinalPaymentAmount should error.
-	ca.Details.FinalPaymentAmount = 49
-	_, err = responderChannel.ConfirmPayment(ca)
-	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
-
-	ca.Details.FinalPaymentAmount = 50
-	ca, err = responderChannel.ConfirmPayment(ca)
-	require.NoError(t, err)
-	ca, err = initiatorChannel.ConfirmPayment(ca)
-	require.NoError(t, err)
-
-	// Responder proposes payment to Initiator.
-	ca, err = responderChannel.ProposePayment(100)
-	require.NoError(t, err)
-	assert.Equal(t, int64(-50), ca.Details.Balance)
-	assert.Equal(t, int64(-100), ca.Details.FinalPaymentAmount)
-
-	// An incorrect Balance should error.
-	ca.Details.Balance = -49
-	_, err = initiatorChannel.ConfirmPayment(ca)
-	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
-
-	ca.Details.Balance = -50
-	ca, err = initiatorChannel.ConfirmPayment(ca)
-	require.NoError(t, err)
-}
-
 func TestCloseAgreement_Equal(t *testing.T) {
 	testCases := []struct {
 		ca1       CloseAgreement
@@ -1463,4 +1353,114 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 
 	// sender should still have the latestUnauthorizedCloseAgreement
 	require.Equal(t, senderChannel.latestUnauthorizedCloseAgreement, ucaOriginal)
+}
+
+func TestChannel_ConfirmPayment_validateFinalPaymentAmount(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
+	initiatorChannel.UpdateRemoteEscrowAccountBalance(200)
+
+	responderChannel.UpdateLocalEscrowAccountBalance(200)
+	responderChannel.UpdateRemoteEscrowAccountBalance(200)
+
+	// Initiator proposes payment to Responder.
+	ca, err := initiatorChannel.ProposePayment(50)
+	require.NoError(t, err)
+	assert.Equal(t, int64(50), ca.Details.Balance)
+	assert.Equal(t, int64(50), ca.Details.FinalPaymentAmount)
+
+	// An incorrect FinalPaymentAmount should error.
+	ca.Details.FinalPaymentAmount = 49
+	_, err = responderChannel.ConfirmPayment(ca)
+	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
+
+	ca.Details.FinalPaymentAmount = 50
+	ca, err = responderChannel.ConfirmPayment(ca)
+	require.NoError(t, err)
+	ca, err = initiatorChannel.ConfirmPayment(ca)
+	require.NoError(t, err)
+
+	// Responder proposes payment to Initiator.
+	ca, err = responderChannel.ProposePayment(100)
+	require.NoError(t, err)
+	assert.Equal(t, int64(-50), ca.Details.Balance)
+	assert.Equal(t, int64(-100), ca.Details.FinalPaymentAmount)
+
+	// An incorrect Balance should error.
+	ca.Details.Balance = -49
+	_, err = initiatorChannel.ConfirmPayment(ca)
+	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
+
+	ca.Details.Balance = -50
+	ca, err = initiatorChannel.ConfirmPayment(ca)
+	require.NoError(t, err)
 }
