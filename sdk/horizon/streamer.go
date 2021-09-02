@@ -12,6 +12,7 @@ import (
 
 type Streamer struct {
 	HorizonClient horizonclient.ClientInterface
+	ErrorHandler  func(error)
 }
 
 // StreamTx streams transactions that affect the given accounts, sending each
@@ -57,21 +58,25 @@ func (h *Streamer) streamTx(cursor string, txs chan<- agent.StreamedTransaction,
 	req := horizonclient.TransactionRequest{
 		Cursor: cursor,
 	}
-	err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
-		streamedTx := agent.StreamedTransaction{
-			Cursor:         tx.PagingToken(),
-			TransactionXDR: tx.EnvelopeXdr,
-			ResultXDR:      tx.ResultXdr,
-			ResultMetaXDR:  tx.ResultMetaXdr,
+	for {
+		err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
+			streamedTx := agent.StreamedTransaction{
+				Cursor:         tx.PagingToken(),
+				TransactionXDR: tx.EnvelopeXdr,
+				ResultXDR:      tx.ResultXdr,
+				ResultMetaXDR:  tx.ResultMetaXdr,
+			}
+			select {
+			case <-cancel:
+				ctxCancel()
+			case txs <- streamedTx:
+			}
+		})
+		if err == nil {
+			break
 		}
-		select {
-		case <-cancel:
-			ctxCancel()
-		case txs <- streamedTx:
+		if h.ErrorHandler != nil {
+			h.ErrorHandler(err)
 		}
-	})
-	if err != nil {
-		// TODO: Handle errors.
-		panic(err)
 	}
 }
