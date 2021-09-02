@@ -2,13 +2,15 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/agent"
+	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
@@ -35,6 +37,7 @@ func run() error {
 	horizonURL := "http://localhost:8000"
 	accountKeyStr := "G..."
 	signerKeyStr := "S..."
+	filename := ""
 
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -42,6 +45,7 @@ func run() error {
 	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
 	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
 	fs.StringVar(&signerKeyStr, "signer", signerKeyStr, "Account S signer")
+	fs.StringVar(&filename, "f", filename, "File to write and load channel state")
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return err
@@ -55,6 +59,25 @@ func run() error {
 	}
 	if signerKeyStr == "" || accountKeyStr == "S..." {
 		return fmt.Errorf("-signer required")
+	}
+
+	var file *File
+	if filename != "" {
+		fmt.Printf("loading file: %s\n", filename)
+		fileBytes, err := ioutil.ReadFile(filename)
+		if os.IsNotExist(err) {
+			fmt.Printf("file doesn't exist and will be created when saving state: %s\n", filename)
+		} else {
+			if err != nil {
+				return fmt.Errorf("reading file %s: %w", filename, err)
+			}
+			file = &File{}
+			err = json.Unmarshal(fileBytes, file)
+			if err != nil {
+				return fmt.Errorf("json decoding file %s: %w", filename, err)
+			}
+			fmt.Printf("loaded state from file: %s\n", filename)
+		}
 	}
 
 	accountKey, err := keypair.ParseAddress(accountKeyStr)
@@ -72,25 +95,27 @@ func run() error {
 		return err
 	}
 
-	account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
-	if horizonclient.IsNotFoundError(err) {
-		fmt.Fprintf(os.Stdout, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
-		err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
-		if err != nil {
-			return err
+	events := make(chan agentpkg.Event)
+	go func() {
+		for {
+			switch e := (<-events).(type) {
+			case agentpkg.ErrorEvent:
+				fmt.Fprintf(os.Stderr, "agent error: %v\n", e.Err)
+			case agentpkg.ConnectedEvent:
+				fmt.Fprintf(os.Stderr, "agent connected\n")
+			case agentpkg.OpenedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel opened\n")
+			case agentpkg.PaymentReceivedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
+			case agentpkg.PaymentSentEvent:
+				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
+			case agentpkg.ClosingEvent:
+				fmt.Fprintf(os.Stderr, "agent channel closing\n")
+			case agentpkg.ClosedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel closed\n")
+			}
 		}
-		account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
-	}
-	if err != nil {
-		return err
-	}
-	accountSeqNum, err := account.GetSequenceNumber()
-	if err != nil {
-		return err
-	}
-
-	escrowAccountKey := keypair.MustRandom()
-	fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
+	}()
 
 	horizon := &horizon.Horizon{
 		HorizonClient: horizonClient,
@@ -102,58 +127,99 @@ func run() error {
 		FeeAccount:        accountKey,
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
-	events := make(chan agent.Event)
-	go func() {
-		for {
-			switch e := (<-events).(type) {
-			case agent.ErrorEvent:
-				fmt.Fprintf(os.Stderr, "agent error: %v\n", e.Err)
-			case agent.ConnectedEvent:
-				fmt.Fprintf(os.Stderr, "agent connected\n")
-			case agent.OpenedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel opened\n")
-			case agent.PaymentReceivedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
-			case agent.PaymentSentEvent:
-				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%d", e.CloseAgreement.Details.IterationNumber, e.CloseAgreement.Details.Balance)
-			case agent.ClosingEvent:
-				fmt.Fprintf(os.Stderr, "agent channel closing\n")
-			case agent.ClosedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel closed\n")
+
+	var escrowAccountKey *keypair.FromAddress
+	var agent *agentpkg.Agent
+	if file == nil {
+		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
+		if horizonclient.IsNotFoundError(err) {
+			fmt.Fprintf(os.Stdout, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
+			err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
+			if err != nil {
+				return err
+			}
+			account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
+		}
+		if err != nil {
+			return err
+		}
+		accountSeqNum, err := account.GetSequenceNumber()
+		if err != nil {
+			return err
+		}
+
+		escrowAccountKeyFull := keypair.MustRandom()
+		escrowAccountKey = escrowAccountKeyFull.FromAddress()
+		fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
+
+		config := agentpkg.Config{
+			ObservationPeriodTime:      observationPeriodTime,
+			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+			MaxOpenExpiry:              maxOpenExpiry,
+			NetworkPassphrase:          networkDetails.NetworkPassphrase,
+			SequenceNumberCollector:    horizon,
+			BalanceCollector:           horizon,
+			Submitter:                  submitter,
+			Streamer:                   horizon,
+			EscrowAccountKey:           escrowAccountKey,
+			EscrowAccountSigner:        signerKey,
+			LogWriter:                  os.Stderr,
+			Events:                     events,
+		}
+		if filename != "" {
+			config.Snapshoter = JSONFileSnapshoter{
+				Filename:                   filename,
+				ObservationPeriodTime:      observationPeriodTime,
+				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
+				MaxOpenExpiry:              maxOpenExpiry,
+				EscrowAccountKey:           escrowAccountKey,
 			}
 		}
-	}()
-	agent := agent.NewAgent(agent.Config{
-		ObservationPeriodTime:      observationPeriodTime,
-		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
-		MaxOpenExpiry:              maxOpenExpiry,
-		NetworkPassphrase:          networkDetails.NetworkPassphrase,
-		SequenceNumberCollector:    horizon,
-		BalanceCollector:           horizon,
-		Submitter:                  submitter,
-		Streamer:                   horizon,
-		EscrowAccountKey:           escrowAccountKey.FromAddress(),
-		EscrowAccountSigner:        signerKey,
-		LogWriter:                  os.Stderr,
-		Events:                     events,
-	})
+		agent = agentpkg.NewAgent(config)
 
-	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
-		Creator:        accountKey.FromAddress(),
-		Escrow:         escrowAccountKey.FromAddress(),
-		SequenceNumber: accountSeqNum + 1,
-		Asset:          txnbuild.NativeAsset{},
-	})
-	if err != nil {
-		return fmt.Errorf("creating escrow account tx: %w", err)
-	}
-	tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, escrowAccountKey)
-	if err != nil {
-		return fmt.Errorf("signing tx to create escrow account: %w", err)
-	}
-	err = submitter.SubmitTx(tx)
-	if err != nil {
-		return fmt.Errorf("submitting tx to create escrow account: %w", err)
+		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
+			Creator:        accountKey.FromAddress(),
+			Escrow:         escrowAccountKey.FromAddress(),
+			SequenceNumber: accountSeqNum + 1,
+			Asset:          txnbuild.NativeAsset{},
+		})
+		if err != nil {
+			return fmt.Errorf("creating escrow account tx: %w", err)
+		}
+		tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, escrowAccountKeyFull)
+		if err != nil {
+			return fmt.Errorf("signing tx to create escrow account: %w", err)
+		}
+		err = submitter.SubmitTx(tx)
+		if err != nil {
+			return fmt.Errorf("submitting tx to create escrow account: %w", err)
+		}
+	} else {
+		escrowAccountKey = file.EscrowAccountKey
+		config := agentpkg.Config{
+			ObservationPeriodTime:      file.ObservationPeriodTime,
+			ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
+			MaxOpenExpiry:              file.MaxOpenExpiry,
+			NetworkPassphrase:          networkDetails.NetworkPassphrase,
+			SequenceNumberCollector:    horizon,
+			BalanceCollector:           horizon,
+			Submitter:                  submitter,
+			Streamer:                   horizon,
+			EscrowAccountKey:           escrowAccountKey,
+			EscrowAccountSigner:        signerKey,
+			LogWriter:                  os.Stderr,
+			Events:                     events,
+		}
+		if filename != "" {
+			config.Snapshoter = JSONFileSnapshoter{
+				Filename:                   filename,
+				ObservationPeriodTime:      file.ObservationPeriodTime,
+				ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
+				MaxOpenExpiry:              file.MaxOpenExpiry,
+				EscrowAccountKey:           escrowAccountKey,
+			}
+		}
+		agent = agentpkg.NewAgentWithSnapshot(config, file.Snapshot)
 	}
 
 	br := bufio.NewReader(os.Stdin)
