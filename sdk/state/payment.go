@@ -25,6 +25,18 @@ type CloseAgreementDetails struct {
 	Balance                    int64
 	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
+
+	// TODO - right name?
+	FinalPaymentAmount int64
+}
+
+// TODO - change name, move
+func (c Channel) GetPaymentAmount(d CloseAgreementDetails) int64 {
+	// TODO - remove
+	fmt.Println("initial balance:", c.Balance())
+	fmt.Println("details balance: ", d.Balance)
+
+	return d.Balance - c.Balance()
 }
 
 func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {
@@ -117,12 +129,12 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		return CloseAgreement{}, fmt.Errorf("cannot start a new payment while an unfinished one exists")
 	}
 
-	newBalance := int64(0)
-	if c.initiator {
-		newBalance = c.Balance() + amount
-	} else {
-		newBalance = c.Balance() - amount
+	finalPaymentAmount := amount
+	if !c.initiator {
+		finalPaymentAmount = amount * -1
 	}
+	newBalance := c.Balance() + finalPaymentAmount
+
 	if c.amountToRemote(newBalance) > c.localEscrowAccount.Balance {
 		return CloseAgreement{}, fmt.Errorf("amount over commits: %w", ErrUnderfunded)
 	}
@@ -132,6 +144,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
+		FinalPaymentAmount:         finalPaymentAmount,
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
@@ -187,6 +200,11 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	}
 	if !ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ConfirmingSigner.Equal(c.remoteSigner) {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
+	}
+
+	// If the close agreement payment amount is incorrect, error.
+	if ca.Details.Balance-c.Balance() != ca.Details.FinalPaymentAmount {
+		return fmt.Errorf("close agreement payment amount is incorrect")
 	}
 	return nil
 }
