@@ -117,11 +117,11 @@ func run() error {
 		}
 	}()
 
-	horizon := &horizon.Horizon{
-		HorizonClient: horizonClient,
-	}
+	streamer := &horizon.Streamer{HorizonClient: horizonClient}
+	balanceCollector := &horizon.BalanceCollector{HorizonClient: horizonClient}
+	sequenceNumberCollector := &horizon.SequenceNumberCollector{HorizonClient: horizonClient}
 	submitter := &submit.Submitter{
-		SubmitTxer:        horizon,
+		SubmitTxer:        &horizon.Submitter{HorizonClient: horizonClient},
 		NetworkPassphrase: networkDetails.NetworkPassphrase,
 		BaseFee:           txnbuild.MinBaseFee,
 		FeeAccount:        accountKey,
@@ -157,10 +157,10 @@ func run() error {
 			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 			MaxOpenExpiry:              maxOpenExpiry,
 			NetworkPassphrase:          networkDetails.NetworkPassphrase,
-			SequenceNumberCollector:    horizon,
-			BalanceCollector:           horizon,
+			SequenceNumberCollector:    sequenceNumberCollector,
+			BalanceCollector:           balanceCollector,
 			Submitter:                  submitter,
-			Streamer:                   horizon,
+			Streamer:                   streamer,
 			EscrowAccountKey:           escrowAccountKey,
 			EscrowAccountSigner:        signerKey,
 			LogWriter:                  os.Stderr,
@@ -201,10 +201,10 @@ func run() error {
 			ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
 			MaxOpenExpiry:              file.MaxOpenExpiry,
 			NetworkPassphrase:          networkDetails.NetworkPassphrase,
-			SequenceNumberCollector:    horizon,
-			BalanceCollector:           horizon,
+			SequenceNumberCollector:    sequenceNumberCollector,
+			BalanceCollector:           balanceCollector,
 			Submitter:                  submitter,
-			Streamer:                   horizon,
+			Streamer:                   streamer,
 			EscrowAccountKey:           escrowAccountKey,
 			EscrowAccountSigner:        signerKey,
 			LogWriter:                  os.Stderr,
