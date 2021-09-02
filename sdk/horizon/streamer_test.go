@@ -143,11 +143,11 @@ func TestStreamer_StreamTx_manyTxs(t *testing.T) {
 func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 	client := &horizonclient.MockClient{}
 
-	var lastErr error
+	errorsSeen := make(chan error, 1)
 	h := Streamer{
 		HorizonClient: client,
 		ErrorHandler: func(err error) {
-			lastErr = err
+			errorsSeen <- err
 		},
 	}
 
@@ -192,7 +192,7 @@ func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 	t.Log("Pulling some transactions from stream...")
 	txs := []agent.StreamedTransaction{}
 	txs = append(txs, <-txsCh)
-	assert.EqualError(t, lastErr, "an error")
+	assert.EqualError(t, <-errorsSeen, "an error")
 	txs = append(txs, <-txsCh)
 
 	// Check that the streamed transactions has transactions from A and B.
