@@ -29,7 +29,7 @@ func assertChannelSnapshotsAndRestores(t *testing.T, config Config, channel *Cha
 	require.Equal(t, channel, restoredChannel)
 }
 
-func TestNewChannelFromSnapshot(t *testing.T) {
+func TestNewChannelWithSnapshot(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := keypair.MustRandom().FromAddress()

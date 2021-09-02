@@ -57,7 +57,7 @@ func assertAgentSnapshotsAndRestores(t *testing.T, agent *Agent, config Config, 
 	assert.Equal(t, agent.streamerCursor, restoredAgent.streamerCursor)
 }
 
-func TestNewAgentFromSnapshot(t *testing.T) {
+func TestNewAgentWithSnapshot(t *testing.T) {
 	localEscrow := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
 	localSigner := keypair.MustParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
 	remoteEscrow := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")

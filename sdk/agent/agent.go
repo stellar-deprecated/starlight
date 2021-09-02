@@ -51,7 +51,7 @@ type StreamedTransaction struct {
 
 // Snapshoter is given a snapshot of the agent and its dependencies whenever its
 // meaningful state changes. Snapshots can be restore using
-// NewAgentFromSnapshot.
+// NewAgentWithSnapshot.
 type Snapshoter interface {
 	// TODO: Should Snapshot return an error?
 	Snapshot(a *Agent, s Snapshot)
@@ -102,7 +102,7 @@ func NewAgent(c Config) *Agent {
 
 // Snapshot is a snapshot of the agent and its dependencies excluding any fields
 // provided in the Config when instantiating an agent. A Snapshot can be
-// restored into an Agent using NewAgentFromSnapshot.
+// restored into an Agent using NewAgentWithSnapshot.
 type Snapshot struct {
 	OtherEscrowAccount       *keypair.FromAddress
 	OtherEscrowAccountSigner *keypair.FromAddress
