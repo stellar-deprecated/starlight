@@ -201,10 +201,7 @@ func (a *Agent) hello() error {
 	return nil
 }
 
-func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) error {
-	if a.channel != nil {
-		return fmt.Errorf("channel already created")
-	}
+func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) {
 	config := state.Config{
 		NetworkPassphrase:   a.networkPassphrase,
 		MaxOpenExpiry:       a.maxOpenExpiry,
@@ -221,7 +218,6 @@ func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) error {
 	}
 	a.streamerTransactions, a.streamerCancel = a.streamer.StreamTx(a.streamerCursor)
 	go a.ingestLoop()
-	return nil
 }
 
 // Open kicks off the open process which will continue after the function
@@ -244,10 +240,8 @@ func (a *Agent) Open() error {
 
 	defer a.snapshot()
 
-	err = a.initChannel(true, nil)
-	if err != nil {
-		return fmt.Errorf("init channel: %w", err)
-	}
+	a.initChannel(true, nil)
+
 	open, err := a.channel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      a.observationPeriodTime,
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
@@ -483,10 +477,11 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 
 	defer a.snapshot()
 
-	err := a.initChannel(false, nil)
-	if err != nil {
-		return fmt.Errorf("init channel: %w", err)
+	if a.channel != nil {
+		return fmt.Errorf("channel already exists")
 	}
+
+	a.initChannel(false, nil)
 
 	openIn := *m.OpenRequest
 	open, err := a.channel.ConfirmOpen(openIn)
