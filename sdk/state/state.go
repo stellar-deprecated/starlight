@@ -36,6 +36,47 @@ func NewChannel(c Config) *Channel {
 	return channel
 }
 
+// Snapshot is a snapshot of a Channel's internal state. If a Snapshot is
+// combined with a Channel's initialization config they can be used to create a
+// new Channel that has the same state.
+type Snapshot struct {
+	LocalEscrowSequence        int64
+	LocalEscrowAccountBalance  int64
+	RemoteEscrowSequence       int64
+	RemoteEscrowAccountBalance int64
+
+	OpenAgreement            OpenAgreement
+	OpenExecutedAndValidated bool
+	OpenExecutedWithError    bool
+
+	LatestAuthorizedCloseAgreement   CloseAgreement
+	LatestUnauthorizedCloseAgreement CloseAgreement
+}
+
+// NewChannelFromSnapshot creates the channel with the given config, and
+// restores the internal state of the channel using the snapshot. To restore the
+// channel to its identical state the same config should be provided that was in
+// use when the snapshot was created.
+func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
+	channel := NewChannel(c)
+
+	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
+	channel.localEscrowAccount.Balance = s.LocalEscrowAccountBalance
+	channel.remoteEscrowAccount.SequenceNumber = s.RemoteEscrowSequence
+	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
+
+	channel.openAgreement = s.OpenAgreement
+	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
+	if s.OpenExecutedWithError {
+		channel.openExecutedWithError = fmt.Errorf("open executed with error")
+	}
+
+	channel.latestAuthorizedCloseAgreement = s.LatestAuthorizedCloseAgreement
+	channel.latestUnauthorizedCloseAgreement = s.LatestUnauthorizedCloseAgreement
+
+	return channel
+}
+
 type EscrowAccount struct {
 	Address        *keypair.FromAddress
 	SequenceNumber int64
@@ -59,6 +100,25 @@ type Channel struct {
 
 	latestAuthorizedCloseAgreement   CloseAgreement
 	latestUnauthorizedCloseAgreement CloseAgreement
+}
+
+// Snapshot returns a snapshot of the channel's internal state that if combined
+// with it's initialization config can be used to create a new Channel that has
+// the same state.
+func (c *Channel) Snapshot() Snapshot {
+	return Snapshot{
+		LocalEscrowSequence:        c.localEscrowAccount.SequenceNumber,
+		LocalEscrowAccountBalance:  c.localEscrowAccount.Balance,
+		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
+		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
+
+		OpenAgreement:            c.openAgreement,
+		OpenExecutedAndValidated: c.openExecutedAndValidated,
+		OpenExecutedWithError:    c.openExecutedWithError != nil,
+
+		LatestAuthorizedCloseAgreement:   c.latestAuthorizedCloseAgreement,
+		LatestUnauthorizedCloseAgreement: c.latestUnauthorizedCloseAgreement,
+	}
 }
 
 type State int
