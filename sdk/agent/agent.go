@@ -49,6 +49,13 @@ type StreamedTransaction struct {
 	ResultMetaXDR  string
 }
 
+// Snapshotter is given a snapshot of the agent and its dependencies whenever
+// its meaningful state changes. Snapshots can be restore using
+// NewAgentFromSnapshot.
+type Snapshotter interface {
+	Snapshot(a *Agent, s Snapshot)
+}
+
 type Config struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -59,6 +66,7 @@ type Config struct {
 	BalanceCollector        BalanceCollector
 	Submitter               Submitter
 	Streamer                Streamer
+	Snapshotter             Snapshotter
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -79,6 +87,7 @@ func NewAgent(c Config) *Agent {
 		balanceCollector:        c.BalanceCollector,
 		submitter:               c.Submitter,
 		streamer:                c.Streamer,
+		snapshotter:             c.Snapshotter,
 
 		escrowAccountKey:    c.EscrowAccountKey,
 		escrowAccountSigner: c.EscrowAccountSigner,
@@ -86,6 +95,34 @@ func NewAgent(c Config) *Agent {
 		logWriter: c.LogWriter,
 
 		events: c.Events,
+	}
+	return agent
+}
+
+// Snapshot is a snapshot of the agent and its dependencies excluding any fields
+// provided in the Config when instantiating an agent. A Snapshot can be
+// restored into an Agent using NewAgentWithSnapshot.
+type Snapshot struct {
+	OtherEscrowAccount       *keypair.FromAddress
+	OtherEscrowAccountSigner *keypair.FromAddress
+	StreamerCursor           string
+	State                    *struct {
+		Initiator bool
+		Snapshot  state.Snapshot
+	}
+}
+
+// NewAgentFromSnapshot creates an agent using a previously generated snapshot
+// so that the new agent has the same state as the previous agent. To restore
+// the channel to its identical state the same config should be provided that
+// was in use when the snapshot was created.
+func NewAgentFromSnapshot(c Config, s Snapshot) *Agent {
+	agent := NewAgent(c)
+	agent.otherEscrowAccount = s.OtherEscrowAccount
+	agent.otherEscrowAccountSigner = s.OtherEscrowAccountSigner
+	agent.streamerCursor = s.StreamerCursor
+	if s.State != nil {
+		agent.initChannel(s.State.Initiator, &s.State.Snapshot)
 	}
 	return agent
 }
@@ -101,6 +138,7 @@ type Agent struct {
 	balanceCollector        BalanceCollector
 	submitter               Submitter
 	streamer                Streamer
+	snapshotter             Snapshotter
 
 	escrowAccountKey    *keypair.FromAddress
 	escrowAccountSigner *keypair.Full
@@ -124,6 +162,27 @@ type Agent struct {
 	streamerCancel           func()
 }
 
+func (a *Agent) snapshot() {
+	if a.snapshotter == nil {
+		return
+	}
+	snapshot := Snapshot{
+		OtherEscrowAccount:       a.otherEscrowAccount,
+		OtherEscrowAccountSigner: a.otherEscrowAccountSigner,
+		StreamerCursor:           a.streamerCursor,
+	}
+	if a.channel != nil {
+		snapshot.State = &struct {
+			Initiator bool
+			Snapshot  state.Snapshot
+		}{
+			Initiator: a.channel.IsInitiator(),
+			Snapshot:  a.channel.Snapshot(),
+		}
+	}
+	a.snapshotter.Snapshot(a, snapshot)
+}
+
 // hello sends a hello message to the remote participant over the connection.
 func (a *Agent) hello() error {
 	a.mu.Lock()
@@ -143,11 +202,8 @@ func (a *Agent) hello() error {
 	return nil
 }
 
-func (a *Agent) initChannel(initiator bool) error {
-	if a.channel != nil {
-		return fmt.Errorf("channel already created")
-	}
-	a.channel = state.NewChannel(state.Config{
+func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) {
+	config := state.Config{
 		NetworkPassphrase:   a.networkPassphrase,
 		MaxOpenExpiry:       a.maxOpenExpiry,
 		Initiator:           initiator,
@@ -155,10 +211,14 @@ func (a *Agent) initChannel(initiator bool) error {
 		RemoteEscrowAccount: a.otherEscrowAccount,
 		LocalSigner:         a.escrowAccountSigner,
 		RemoteSigner:        a.otherEscrowAccountSigner,
-	})
+	}
+	if snapshot == nil {
+		a.channel = state.NewChannel(config)
+	} else {
+		a.channel = state.NewChannelFromSnapshot(config, *snapshot)
+	}
 	a.streamerTransactions, a.streamerCancel = a.streamer.StreamTx(a.streamerCursor)
 	go a.ingestLoop()
-	return nil
 }
 
 // Open kicks off the open process which will continue after the function
@@ -173,14 +233,16 @@ func (a *Agent) Open() error {
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
 	}
+
 	seqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.escrowAccountKey)
 	if err != nil {
 		return fmt.Errorf("getting sequence number of escrow account: %w", err)
 	}
-	err = a.initChannel(true)
-	if err != nil {
-		return fmt.Errorf("init channel: %w", err)
-	}
+
+	defer a.snapshot()
+
+	a.initChannel(true, nil)
+
 	open, err := a.channel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      a.observationPeriodTime,
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
@@ -199,6 +261,7 @@ func (a *Agent) Open() error {
 	if err != nil {
 		return fmt.Errorf("sending open: %w", err)
 	}
+
 	return nil
 }
 
@@ -221,6 +284,9 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if err != nil {
 		return fmt.Errorf("parsing amount %s: %w", paymentAmount, err)
 	}
+
+	defer a.snapshot()
+
 	ca, err := a.channel.ProposePayment(amountValue)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
@@ -243,6 +309,7 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if err != nil {
 		return fmt.Errorf("sending payment: %w", err)
 	}
+
 	return nil
 }
 
@@ -277,6 +344,8 @@ func (a *Agent) DeclareClose() error {
 	if err != nil {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
+
+	defer a.snapshot()
 
 	// Attempt revising the close agreement to close early.
 	fmt.Fprintln(a.logWriter, "proposing a revised close for immediate submission")
@@ -386,6 +455,8 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("extra hello received when channel already setup")
 	}
 
+	defer a.snapshot()
+
 	h := m.Hello
 
 	a.otherEscrowAccount = &h.EscrowAccount
@@ -405,10 +476,13 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	err := a.initChannel(false)
-	if err != nil {
-		return fmt.Errorf("init channel: %w", err)
+	defer a.snapshot()
+
+	if a.channel != nil {
+		return fmt.Errorf("channel already exists")
 	}
+
+	a.initChannel(false, nil)
 
 	openIn := *m.OpenRequest
 	open, err := a.channel.ConfirmOpen(openIn)
@@ -434,6 +508,8 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
+	defer a.snapshot()
+
 	openIn := *m.OpenResponse
 	_, err := a.channel.ConfirmOpen(openIn)
 	if err != nil {
@@ -458,6 +534,8 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
+
+	defer a.snapshot()
 
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
@@ -493,6 +571,8 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
+	defer a.snapshot()
+
 	paymentIn := *m.PaymentResponse
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if err != nil {
@@ -512,6 +592,8 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
+
+	defer a.snapshot()
 
 	// Agree to the close and send it back to requesting participant.
 	closeIn := *m.CloseRequest
@@ -553,6 +635,8 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
+
+	defer a.snapshot()
 
 	// Store updated agreement from other participant.
 	closeIn := *m.CloseResponse

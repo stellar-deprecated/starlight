@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"testing"
@@ -39,6 +40,46 @@ func (f streamerFunc) StreamTx(cursor string, accounts ...*keypair.FromAddress) 
 	return f(cursor, accounts...)
 }
 
+type snapshotterFunc func(a *Agent, s Snapshot)
+
+func (f snapshotterFunc) Snapshot(a *Agent, s Snapshot) {
+	f(a, s)
+}
+
+func assertAgentSnapshotsAndRestores(t *testing.T, agent *Agent, config Config, snapshot Snapshot) {
+	t.Helper()
+
+	snapshotJSON, err := json.Marshal(snapshot)
+	require.NoError(t, err)
+	restoredSnapshot := Snapshot{}
+	err = json.Unmarshal(snapshotJSON, &restoredSnapshot)
+	require.NoError(t, err)
+
+	// Override the streamer so that multiple agents aren't competing to read
+	// from the same ingestion streamer.
+	config.Streamer = streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		// Create a closed channel since we won't be doing any ingestion with this agent.
+		txs := make(chan StreamedTransaction)
+		close(txs)
+		return txs, func() {}
+	})
+
+	restoredAgent := NewAgentFromSnapshot(config, snapshot)
+
+	// Check that fields that store state in the agent are the same after
+	// restoring.
+	assert.Equal(t, agent.observationPeriodTime, restoredAgent.observationPeriodTime)
+	assert.Equal(t, agent.observationPeriodLedgerGap, restoredAgent.observationPeriodLedgerGap)
+	assert.Equal(t, agent.maxOpenExpiry, restoredAgent.maxOpenExpiry)
+	assert.Equal(t, agent.networkPassphrase, restoredAgent.networkPassphrase)
+	assert.Equal(t, agent.escrowAccountKey, restoredAgent.escrowAccountKey)
+	assert.Equal(t, agent.escrowAccountSigner, restoredAgent.escrowAccountSigner)
+	assert.Equal(t, agent.otherEscrowAccount, restoredAgent.otherEscrowAccount)
+	assert.Equal(t, agent.otherEscrowAccountSigner, restoredAgent.otherEscrowAccountSigner)
+	assert.Equal(t, agent.channel, restoredAgent.channel)
+	assert.Equal(t, agent.streamerCursor, restoredAgent.streamerCursor)
+}
+
 func TestAgent_openPaymentClose(t *testing.T) {
 	localEscrow := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
 	localSigner := keypair.MustParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
@@ -52,12 +93,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}{}
 	localVars.transactionsStream = make(chan StreamedTransaction)
 	localEvents := make(chan Event, 1)
-	localAgent := &Agent{
-		observationPeriodTime:      20 * time.Second,
-		observationPeriodLedgerGap: 1,
-		maxOpenExpiry:              5 * time.Minute,
-		networkPassphrase:          network.TestNetworkPassphrase,
-		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+	localConfig := Config{
+		ObservationPeriodTime:      20 * time.Second,
+		ObservationPeriodLedgerGap: 1,
+		MaxOpenExpiry:              5 * time.Minute,
+		NetworkPassphrase:          network.TestNetworkPassphrase,
+		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
 			if accountID.Equal(localEscrow) {
 				return 28037546508288, nil
 			}
@@ -66,21 +107,25 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			}
 			return 0, fmt.Errorf("unknown escrow account")
 		}),
-		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
 		}),
-		submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			localVars.submittedTx = tx
 			return nil
 		}),
-		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
-		escrowAccountKey:    localEscrow.FromAddress(),
-		escrowAccountSigner: localSigner,
-		logWriter:           io.Discard,
-		events:              localEvents,
+		EscrowAccountKey:    localEscrow.FromAddress(),
+		EscrowAccountSigner: localSigner,
+		LogWriter:           io.Discard,
+		Events:              localEvents,
 	}
+	localConfig.Snapshotter = snapshotterFunc(func(a *Agent, s Snapshot) {
+		assertAgentSnapshotsAndRestores(t, a, localConfig, s)
+	})
+	localAgent := NewAgent(localConfig)
 
 	// Setup the remote agent.
 	remoteVars := struct {
@@ -89,12 +134,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}{}
 	remoteVars.transactionsStream = make(chan StreamedTransaction)
 	remoteEvents := make(chan Event, 1)
-	remoteAgent := &Agent{
-		observationPeriodTime:      20 * time.Second,
-		observationPeriodLedgerGap: 1,
-		maxOpenExpiry:              5 * time.Minute,
-		networkPassphrase:          network.TestNetworkPassphrase,
-		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
+	remoteConfig := Config{
+		ObservationPeriodTime:      20 * time.Second,
+		ObservationPeriodLedgerGap: 1,
+		MaxOpenExpiry:              5 * time.Minute,
+		NetworkPassphrase:          network.TestNetworkPassphrase,
+		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
 			if accountID.Equal(localEscrow) {
 				return 28037546508288, nil
 			}
@@ -103,21 +148,25 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			}
 			return 0, fmt.Errorf("unknown escrow account")
 		}),
-		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
 		}),
-		submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
+		Submitter: submitterFunc(func(tx *txnbuild.Transaction) error {
 			remoteVars.submittedTx = tx
 			return nil
 		}),
-		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
+		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
-		escrowAccountKey:    remoteEscrow.FromAddress(),
-		escrowAccountSigner: remoteSigner,
-		logWriter:           io.Discard,
-		events:              remoteEvents,
+		EscrowAccountKey:    remoteEscrow.FromAddress(),
+		EscrowAccountSigner: remoteSigner,
+		LogWriter:           io.Discard,
+		Events:              remoteEvents,
 	}
+	remoteConfig.Snapshotter = snapshotterFunc(func(a *Agent, s Snapshot) {
+		assertAgentSnapshotsAndRestores(t, a, remoteConfig, s)
+	})
+	remoteAgent := NewAgent(remoteConfig)
 
 	// Connect the two agents.
 	type ReadWriter struct {
