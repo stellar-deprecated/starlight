@@ -24,7 +24,7 @@ func assertChannelSnapshotsAndRestores(t *testing.T, config Config, channel *Cha
 	err = json.Unmarshal(snapshotJSON, &restoredSnapshot)
 	require.NoError(t, err)
 
-	restoredChannel := NewChannelWithSnapshot(config, snapshot)
+	restoredChannel := NewChannelFromSnapshot(config, snapshot)
 
 	require.Equal(t, channel, restoredChannel)
 }
