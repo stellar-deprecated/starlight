@@ -23,7 +23,7 @@ type CloseAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
-	FinalPaymentAmount         int64
+	PaymentAmount              int64
 	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
 }
@@ -118,11 +118,12 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		return CloseAgreement{}, fmt.Errorf("cannot start a new payment while an unfinished one exists")
 	}
 
-	finalPaymentAmount := amount
-	if !c.initiator {
-		finalPaymentAmount = amount * -1
+	newBalance := int64(0)
+	if c.initiator {
+		newBalance = c.Balance() + amount
+	} else {
+		newBalance = c.Balance() - amount
 	}
-	newBalance := c.Balance() + finalPaymentAmount
 
 	if c.amountToRemote(newBalance) > c.localEscrowAccount.Balance {
 		return CloseAgreement{}, fmt.Errorf("amount over commits: %w", ErrUnderfunded)
@@ -133,7 +134,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
-		FinalPaymentAmount:         finalPaymentAmount,
+		PaymentAmount:              amount,
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
@@ -192,9 +193,13 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	}
 
 	// If the close agreement payment amount is incorrect, error.
-	if ca.Details.Balance-c.Balance() != ca.Details.FinalPaymentAmount {
-		return fmt.Errorf("close agreement payment amount is unexpected: current balance: %d proposed balance: %d payment amount: %d",
-			c.Balance(), ca.Details.Balance, ca.Details.FinalPaymentAmount)
+	pa := ca.Details.PaymentAmount
+	if ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && c.initiator {
+		pa = ca.Details.PaymentAmount * -1
+	}
+	if ca.Details.Balance-c.Balance() != pa {
+		return fmt.Errorf("close agreement payment amount is unexpected: current balance: %d proposed balance: %d payment amount: %d initiator proposed: %t",
+			c.Balance(), ca.Details.Balance, ca.Details.PaymentAmount, ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && c.initiator)
 	}
 	return nil
 }
