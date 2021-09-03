@@ -117,7 +117,12 @@ func run() error {
 		}
 	}()
 
-	streamer := &horizon.Streamer{HorizonClient: horizonClient}
+	streamer := &horizon.Streamer{
+		HorizonClient: horizonClient,
+		ErrorHandler: func(err error) {
+			fmt.Fprintf(os.Stderr, "horizon streamer error: %v\n", err)
+		},
+	}
 	balanceCollector := &horizon.BalanceCollector{HorizonClient: horizonClient}
 	sequenceNumberCollector := &horizon.SequenceNumberCollector{HorizonClient: horizonClient}
 	submitter := &submit.Submitter{
