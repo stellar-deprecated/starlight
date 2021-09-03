@@ -205,19 +205,17 @@ func run() error {
 			BalanceCollector:           balanceCollector,
 			Submitter:                  submitter,
 			Streamer:                   streamer,
-			EscrowAccountKey:           escrowAccountKey,
-			EscrowAccountSigner:        signerKey,
-			LogWriter:                  os.Stderr,
-			Events:                     events,
-		}
-		if filename != "" {
-			config.Snapshotter = JSONFileSnapshotter{
+			Snapshotter: JSONFileSnapshotter{
 				Filename:                   filename,
 				ObservationPeriodTime:      file.ObservationPeriodTime,
 				ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
 				MaxOpenExpiry:              file.MaxOpenExpiry,
 				EscrowAccountKey:           escrowAccountKey,
-			}
+			},
+			EscrowAccountKey:    escrowAccountKey,
+			EscrowAccountSigner: signerKey,
+			LogWriter:           os.Stderr,
+			Events:              events,
 		}
 		agent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
 	}
