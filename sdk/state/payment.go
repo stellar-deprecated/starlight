@@ -197,19 +197,15 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 
 	// If the close agreement payment amount is incorrect, error.
 	pa := ca.Details.PaymentAmount
-	if !c.initiatorProposedPayment(ca) {
+	proposerIsResponder := ca.Details.ProposingSigner.Equal(c.responderSigner())
+	if proposerIsResponder {
 		pa = ca.Details.PaymentAmount * -1
 	}
 	if c.Balance()+pa != ca.Details.Balance {
 		return fmt.Errorf("close agreement payment amount is unexpected: current balance: %d proposed balance: %d payment amount: %d initiator proposed: %t",
-			c.Balance(), ca.Details.Balance, ca.Details.PaymentAmount, c.initiatorProposedPayment(ca))
+			c.Balance(), ca.Details.Balance, ca.Details.PaymentAmount, !proposerIsResponder)
 	}
 	return nil
-}
-
-func (c *Channel) initiatorProposedPayment(ca CloseAgreement) bool {
-	return ca.Details.ProposingSigner.Equal(c.localSigner.FromAddress()) && c.initiator ||
-		ca.Details.ProposingSigner.Equal(c.remoteSigner.FromAddress()) && !c.initiator
 }
 
 // ConfirmPayment confirms an agreement. The destination of a payment calls this
