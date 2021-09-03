@@ -40,9 +40,9 @@ func (f streamerFunc) StreamTx(cursor string, accounts ...*keypair.FromAddress) 
 	return f(cursor, accounts...)
 }
 
-type snapshoterFunc func(a *Agent, s Snapshot)
+type snapshotterFunc func(a *Agent, s Snapshot)
 
-func (f snapshoterFunc) Snapshot(a *Agent, s Snapshot) {
+func (f snapshotterFunc) Snapshot(a *Agent, s Snapshot) {
 	f(a, s)
 }
 
@@ -64,7 +64,7 @@ func assertAgentSnapshotsAndRestores(t *testing.T, agent *Agent, config Config, 
 		return txs, func() {}
 	})
 
-	restoredAgent := NewAgentWithSnapshot(config, snapshot)
+	restoredAgent := NewAgentFromSnapshot(config, snapshot)
 
 	// Check that fields that store state in the agent are the same after
 	// restoring.
@@ -122,7 +122,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		LogWriter:           io.Discard,
 		Events:              localEvents,
 	}
-	localConfig.Snapshoter = snapshoterFunc(func(a *Agent, s Snapshot) {
+	localConfig.Snapshotter = snapshotterFunc(func(a *Agent, s Snapshot) {
 		assertAgentSnapshotsAndRestores(t, a, localConfig, s)
 	})
 	localAgent := NewAgent(localConfig)
@@ -163,7 +163,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		LogWriter:           io.Discard,
 		Events:              remoteEvents,
 	}
-	remoteConfig.Snapshoter = snapshoterFunc(func(a *Agent, s Snapshot) {
+	remoteConfig.Snapshotter = snapshotterFunc(func(a *Agent, s Snapshot) {
 		assertAgentSnapshotsAndRestores(t, a, remoteConfig, s)
 	})
 	remoteAgent := NewAgent(remoteConfig)
