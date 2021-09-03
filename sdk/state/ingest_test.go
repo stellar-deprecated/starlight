@@ -304,10 +304,8 @@ func TestChannel_IngestTx_updateBalancesNative(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
-	initiatorEscrow, err := keypair.ParseAddress("GDU5LGMB7QQPP5NABMPCI7JINHSEBJ576W7O5EFCTXUUZX63OJUFRNDI")
-	require.NoError(t, err)
-	responderEscrow, err := keypair.ParseAddress("GAWWANJAAOTAGEHCF7QD3Y5BAAIAWQ37323GKMI2ZKK34DJT2KX72MAF")
-	require.NoError(t, err)
+	initiatorEscrow := keypair.MustParseAddress("GDU5LGMB7QQPP5NABMPCI7JINHSEBJ576W7O5EFCTXUUZX63OJUFRNDI")
+	responderEscrow := keypair.MustParseAddress("GAWWANJAAOTAGEHCF7QD3Y5BAAIAWQ37323GKMI2ZKK34DJT2KX72MAF")
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		MaxOpenExpiry:       time.Hour,
@@ -322,7 +320,7 @@ func TestChannel_IngestTx_updateBalancesNative(t *testing.T) {
 
 	// Deposit, payment of 20 xlm to initiator escrow.
 	paymentResultMeta := "AAAAAgAAAAIAAAADABAqFAAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAXHr20ywANrPwAAAAGAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABAqFAAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAXHr20ywANrPwAAAAHAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAECn+AAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdIdugAABAp/gAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECoUAAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdUYqoAABAp/gAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECoUAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABcevbTLAA2s/AAAAAcAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECoUAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABcS0fLLAA2s/AAAAAcAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
-	err = initiatorChannel.ingestTxMetaToUpdateBalances(paymentResultMeta)
+	err := initiatorChannel.ingestTxMetaToUpdateBalances(paymentResultMeta)
 	require.NoError(t, err)
 	assert.Equal(t, int64(10_020_0000000), initiatorChannel.localEscrowAccount.Balance)
 	assert.Equal(t, int64(10_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
@@ -374,10 +372,8 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
-	initiatorEscrow, err := keypair.ParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
-	require.NoError(t, err)
-	responderEscrow, err := keypair.ParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
-	require.NoError(t, err)
+	initiatorEscrow := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	responderEscrow := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -473,15 +469,11 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 }
 
 func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
-	initiatorSigner, err := keypair.ParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
-	require.NoError(t, err)
-	responderSigner, err := keypair.ParseFull("SBM7D2IIDSRX5Y3VMTMTXXPB6AIB4WYGZBC2M64U742BNOK32X6SW4NF")
-	require.NoError(t, err)
+	initiatorSigner := keypair.MustParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
+	responderSigner := keypair.MustParseFull("SBM7D2IIDSRX5Y3VMTMTXXPB6AIB4WYGZBC2M64U742BNOK32X6SW4NF")
 
-	initiatorEscrow, err := keypair.ParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
-	require.NoError(t, err)
-	responderEscrow, err := keypair.ParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
-	require.NoError(t, err)
+	initiatorEscrow := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
+	responderEscrow := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -573,15 +565,11 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 }
 
 func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
-	initiatorSigner, err := keypair.ParseFull("SBQEQ2SJLI4DKK7T7DYNGAVHDIC2FJSMD2D4HZQTH67Y4YJ2HCIW23E2")
-	require.NoError(t, err)
-	responderSigner, err := keypair.ParseFull("SD3VHLBEPXOW74B2VLMRSNERLL4HMULIYNLCVLBSYS3ZIFJE5T5VIOBO")
-	require.NoError(t, err)
+	initiatorSigner := keypair.MustParseFull("SBQEQ2SJLI4DKK7T7DYNGAVHDIC2FJSMD2D4HZQTH67Y4YJ2HCIW23E2")
+	responderSigner := keypair.MustParseFull("SD3VHLBEPXOW74B2VLMRSNERLL4HMULIYNLCVLBSYS3ZIFJE5T5VIOBO")
 
-	initiatorEscrow, err := keypair.ParseAddress("GDF7GNJLI6H5ENPPVHRNQF3LN6AT2N2UTXVX57INKELND3DIMROCYXCC")
-	require.NoError(t, err)
-	responderEscrow, err := keypair.ParseAddress("GBEWOADTWFUS5EKEDB63X5KDWAKBJ32A5WDZKXENOCU3XQTM26GKBV2X")
-	require.NoError(t, err)
+	initiatorEscrow := keypair.MustParseAddress("GDF7GNJLI6H5ENPPVHRNQF3LN6AT2N2UTXVX57INKELND3DIMROCYXCC")
+	responderEscrow := keypair.MustParseAddress("GBEWOADTWFUS5EKEDB63X5KDWAKBJ32A5WDZKXENOCU3XQTM26GKBV2X")
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
@@ -713,15 +701,11 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 }
 
 func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *testing.T) {
-	initiatorSigner, err := keypair.ParseFull("SAWFAB3JBDIB3WUW4GDWZJFDH4LYK646PFU2TUTQ2QPIJ7UDPFDALDLJ")
-	require.NoError(t, err)
-	responderSigner, err := keypair.ParseFull("SDM45WXZOOXEOG23LVWDHBUYTSLZ27YKIN5N3C6QBD3TIIWWQHFFH7FI")
-	require.NoError(t, err)
+	initiatorSigner := keypair.MustParseFull("SAWFAB3JBDIB3WUW4GDWZJFDH4LYK646PFU2TUTQ2QPIJ7UDPFDALDLJ")
+	responderSigner := keypair.MustParseFull("SDM45WXZOOXEOG23LVWDHBUYTSLZ27YKIN5N3C6QBD3TIIWWQHFFH7FI")
 
-	initiatorEscrow, err := keypair.ParseAddress("GC264CPQA3WZ64USLDCHXG4AFUYGMQXUIW7UY5WYM2QA2WFPS6FARAD4")
-	require.NoError(t, err)
-	responderEscrow, err := keypair.ParseAddress("GA63LTOE6CXAUGQTQW4332Z6UDBTAN7KTXSJKN4Y5KP4DBJFKEYOHWM7")
-	require.NoError(t, err)
+	initiatorEscrow := keypair.MustParseAddress("GC264CPQA3WZ64USLDCHXG4AFUYGMQXUIW7UY5WYM2QA2WFPS6FARAD4")
+	responderEscrow := keypair.MustParseAddress("GA63LTOE6CXAUGQTQW4332Z6UDBTAN7KTXSJKN4Y5KP4DBJFKEYOHWM7")
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
