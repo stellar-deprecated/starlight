@@ -50,7 +50,11 @@ type Snapshot struct {
 	LatestUnauthorizedCloseAgreement CloseAgreement
 }
 
-func NewChannelWithSnapshot(c Config, s Snapshot) *Channel {
+// NewChannelFromSnapshot creates the channel with the given config, and
+// restores the internal state of the channel using the snapshot. To restore the
+// channel to its identical state the same config should be provided that was in
+// use when the snapshot was created.
+func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel := NewChannel(c)
 
 	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence

@@ -24,7 +24,7 @@ func assertChannelSnapshotsAndRestores(t *testing.T, config Config, channel *Cha
 	err = json.Unmarshal(snapshotJSON, &restoredSnapshot)
 	require.NoError(t, err)
 
-	restoredChannel := NewChannelWithSnapshot(config, snapshot)
+	restoredChannel := NewChannelFromSnapshot(config, snapshot)
 
 	require.Equal(t, channel, restoredChannel)
 }
@@ -245,4 +245,8 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateClosed, cs)
 	}
+
+	// Check snapshot rehydrates the channel identically when payment confirmed.
+	assertChannelSnapshotsAndRestores(t, localConfig, localChannel)
+	assertChannelSnapshotsAndRestores(t, remoteConfig, remoteChannel)
 }

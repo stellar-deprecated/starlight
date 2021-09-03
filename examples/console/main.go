@@ -167,7 +167,7 @@ func run() error {
 			Events:                     events,
 		}
 		if filename != "" {
-			config.Snapshoter = JSONFileSnapshoter{
+			config.Snapshotter = JSONFileSnapshotter{
 				Filename:                   filename,
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -211,7 +211,7 @@ func run() error {
 			Events:                     events,
 		}
 		if filename != "" {
-			config.Snapshoter = JSONFileSnapshoter{
+			config.Snapshotter = JSONFileSnapshotter{
 				Filename:                   filename,
 				ObservationPeriodTime:      file.ObservationPeriodTime,
 				ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
@@ -219,7 +219,7 @@ func run() error {
 				EscrowAccountKey:           escrowAccountKey,
 			}
 		}
-		agent = agentpkg.NewAgentWithSnapshot(config, file.Snapshot)
+		agent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
 	}
 
 	br := bufio.NewReader(os.Stdin)
