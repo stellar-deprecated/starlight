@@ -23,6 +23,7 @@ type CloseAgreementDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
+	PaymentAmount              int64
 	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
 }
@@ -123,6 +124,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	} else {
 		newBalance = c.Balance() - amount
 	}
+
 	if c.amountToRemote(newBalance) > c.localEscrowAccount.Balance {
 		return CloseAgreement{}, fmt.Errorf("amount over commits: %w", ErrUnderfunded)
 	}
@@ -132,6 +134,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
+		PaymentAmount:              amount,
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
@@ -187,6 +190,20 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	}
 	if !ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ConfirmingSigner.Equal(c.remoteSigner) {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
+	}
+	if !ca.Details.ProposingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ProposingSigner.Equal(c.remoteSigner) {
+		return fmt.Errorf("close agreement proposer does not match a local or remote signer, got: %s", ca.Details.ProposingSigner.Address())
+	}
+
+	// If the close agreement payment amount is incorrect, error.
+	pa := ca.Details.PaymentAmount
+	proposerIsResponder := ca.Details.ProposingSigner.Equal(c.responderSigner())
+	if proposerIsResponder {
+		pa = ca.Details.PaymentAmount * -1
+	}
+	if c.Balance()+pa != ca.Details.Balance {
+		return fmt.Errorf("close agreement payment amount is unexpected: current balance: %d proposed balance: %d payment amount: %d initiator proposed: %t",
+			c.Balance(), ca.Details.Balance, ca.Details.PaymentAmount, !proposerIsResponder)
 	}
 	return nil
 }
