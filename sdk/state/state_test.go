@@ -245,4 +245,8 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateClosed, cs)
 	}
+
+	// Check snapshot rehydrates the channel identically when payment confirmed.
+	assertChannelSnapshotsAndRestores(t, localConfig, localChannel)
+	assertChannelSnapshotsAndRestores(t, remoteConfig, remoteChannel)
 }
