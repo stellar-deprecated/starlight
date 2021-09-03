@@ -192,7 +192,7 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
 	if !ca.Details.ProposingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ProposingSigner.Equal(c.remoteSigner) {
-		return fmt.Errorf("close agreement proposer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
+		return fmt.Errorf("close agreement proposer does not match a local or remote signer, got: %s", ca.Details.ProposingSigner.Address())
 	}
 
 	// If the close agreement payment amount is incorrect, error.
