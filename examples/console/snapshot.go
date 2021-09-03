@@ -17,8 +17,8 @@ type File struct {
 	Snapshot                   agentpkg.Snapshot
 }
 
-type JSONFileSnapshoter struct {
-	Filename                   string
+type JSONFileSnapshotter struct {
+	Filename string
 
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -26,7 +26,7 @@ type JSONFileSnapshoter struct {
 	EscrowAccountKey           *keypair.FromAddress
 }
 
-func (j JSONFileSnapshoter) Snapshot(a *agentpkg.Agent, s agentpkg.Snapshot) {
+func (j JSONFileSnapshotter) Snapshot(a *agentpkg.Agent, s agentpkg.Snapshot) {
 	f := File{
 		ObservationPeriodTime:      j.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: j.ObservationPeriodLedgerGap,

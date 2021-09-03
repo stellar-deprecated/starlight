@@ -49,11 +49,10 @@ type StreamedTransaction struct {
 	ResultMetaXDR  string
 }
 
-// Snapshoter is given a snapshot of the agent and its dependencies whenever its
-// meaningful state changes. Snapshots can be restore using
-// NewAgentWithSnapshot.
-type Snapshoter interface {
-	// TODO: Should Snapshot return an error?
+// Snapshotter is given a snapshot of the agent and its dependencies whenever
+// its meaningful state changes. Snapshots can be restore using
+// NewAgentFromSnapshot.
+type Snapshotter interface {
 	Snapshot(a *Agent, s Snapshot)
 }
 
@@ -67,7 +66,7 @@ type Config struct {
 	BalanceCollector        BalanceCollector
 	Submitter               Submitter
 	Streamer                Streamer
-	Snapshoter              Snapshoter
+	Snapshotter             Snapshotter
 
 	EscrowAccountKey    *keypair.FromAddress
 	EscrowAccountSigner *keypair.Full
@@ -88,7 +87,7 @@ func NewAgent(c Config) *Agent {
 		balanceCollector:        c.BalanceCollector,
 		submitter:               c.Submitter,
 		streamer:                c.Streamer,
-		snapshoter:              c.Snapshoter,
+		snapshotter:             c.Snapshotter,
 
 		escrowAccountKey:    c.EscrowAccountKey,
 		escrowAccountSigner: c.EscrowAccountSigner,
@@ -113,9 +112,11 @@ type Snapshot struct {
 	}
 }
 
-// NewAgentWithSnapshot creates an agent using a previously generated snapshot
-// so that the new agent has the same state as the previous agent.
-func NewAgentWithSnapshot(c Config, s Snapshot) *Agent {
+// NewAgentFromSnapshot creates an agent using a previously generated snapshot
+// so that the new agent has the same state as the previous agent. To restore
+// the channel to its identical state the same config should be provided that
+// was in use when the snapshot was created.
+func NewAgentFromSnapshot(c Config, s Snapshot) *Agent {
 	agent := NewAgent(c)
 	agent.otherEscrowAccount = s.OtherEscrowAccount
 	agent.otherEscrowAccountSigner = s.OtherEscrowAccountSigner
@@ -137,7 +138,7 @@ type Agent struct {
 	balanceCollector        BalanceCollector
 	submitter               Submitter
 	streamer                Streamer
-	snapshoter              Snapshoter
+	snapshotter             Snapshotter
 
 	escrowAccountKey    *keypair.FromAddress
 	escrowAccountSigner *keypair.Full
@@ -162,7 +163,7 @@ type Agent struct {
 }
 
 func (a *Agent) snapshot() {
-	if a.snapshoter == nil {
+	if a.snapshotter == nil {
 		return
 	}
 	snapshot := Snapshot{
@@ -179,7 +180,7 @@ func (a *Agent) snapshot() {
 			Snapshot:  a.channel.Snapshot(),
 		}
 	}
-	a.snapshoter.Snapshot(a, snapshot)
+	a.snapshotter.Snapshot(a, snapshot)
 }
 
 // hello sends a hello message to the remote participant over the connection.
@@ -214,7 +215,7 @@ func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) {
 	if snapshot == nil {
 		a.channel = state.NewChannel(config)
 	} else {
-		a.channel = state.NewChannelWithSnapshot(config, *snapshot)
+		a.channel = state.NewChannelFromSnapshot(config, *snapshot)
 	}
 	a.streamerTransactions, a.streamerCancel = a.streamer.StreamTx(a.streamerCursor)
 	go a.ingestLoop()
