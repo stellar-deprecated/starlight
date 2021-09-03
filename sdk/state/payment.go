@@ -193,7 +193,8 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 
 	// If the close agreement payment amount is incorrect, error.
 	if ca.Details.Balance-c.Balance() != ca.Details.FinalPaymentAmount {
-		return fmt.Errorf("close agreement payment amount is unexpected: current balance: %d proposed balance: %d payment amount: %d")
+		return fmt.Errorf("close agreement payment amount is unexpected: current balance: %d proposed balance: %d payment amount: %d",
+			c.Balance(), ca.Details.Balance, ca.Details.FinalPaymentAmount)
 	}
 	return nil
 }

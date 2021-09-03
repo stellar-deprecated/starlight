@@ -1441,7 +1441,8 @@ func TestChannel_ConfirmPayment_validateFinalPaymentAmount(t *testing.T) {
 	// An incorrect FinalPaymentAmount should error.
 	ca.Details.FinalPaymentAmount = 49
 	_, err = responderChannel.ConfirmPayment(ca)
-	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
+	require.EqualError(t, err, "validating payment: close agreement payment amount is unexpected: "+
+		"current balance: 0 proposed balance: 50 payment amount: 49")
 
 	ca.Details.FinalPaymentAmount = 50
 	ca, err = responderChannel.ConfirmPayment(ca)
@@ -1458,7 +1459,8 @@ func TestChannel_ConfirmPayment_validateFinalPaymentAmount(t *testing.T) {
 	// An incorrect Balance should error.
 	ca.Details.Balance = -49
 	_, err = initiatorChannel.ConfirmPayment(ca)
-	require.EqualError(t, err, "validating payment: close agreement payment amount is incorrect")
+	require.EqualError(t, err, "validating payment: close agreement payment amount is unexpected: "+
+		"current balance: 50 proposed balance: -49 payment amount: -100")
 
 	ca.Details.Balance = -50
 	ca, err = initiatorChannel.ConfirmPayment(ca)
