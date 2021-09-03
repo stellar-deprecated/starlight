@@ -191,6 +191,9 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 	if !ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ConfirmingSigner.Equal(c.remoteSigner) {
 		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
 	}
+	if !ca.Details.ProposingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ProposingSigner.Equal(c.remoteSigner) {
+		return fmt.Errorf("close agreement proposer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
+	}
 
 	// If the close agreement payment amount is incorrect, error.
 	pa := ca.Details.PaymentAmount
@@ -205,8 +208,8 @@ func (c *Channel) validatePayment(ca CloseAgreement) (err error) {
 }
 
 func (c *Channel) initiatorProposedPayment(ca CloseAgreement) bool {
-	return ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !c.initiator ||
-		ca.Details.ConfirmingSigner.Equal(c.remoteSigner.FromAddress()) && c.initiator
+	return ca.Details.ProposingSigner.Equal(c.localSigner.FromAddress()) && c.initiator ||
+		ca.Details.ProposingSigner.Equal(c.remoteSigner.FromAddress()) && !c.initiator
 }
 
 // ConfirmPayment confirms an agreement. The destination of a payment calls this

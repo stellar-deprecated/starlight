@@ -1442,7 +1442,7 @@ func TestChannel_ConfirmPayment_validatePaymentAmount(t *testing.T) {
 	ca.Details.PaymentAmount = 49
 	_, err = responderChannel.ConfirmPayment(ca)
 	require.EqualError(t, err, "validating payment: close agreement payment amount is unexpected: "+
-		"current balance: 0 proposed balance: 50 payment amount: 49 initiator proposed: false")
+		"current balance: 0 proposed balance: 50 payment amount: 49 initiator proposed: true")
 
 	ca.Details.PaymentAmount = 50
 	ca, err = responderChannel.ConfirmPayment(ca)
@@ -1460,7 +1460,7 @@ func TestChannel_ConfirmPayment_validatePaymentAmount(t *testing.T) {
 	ca.Details.Balance = -49
 	_, err = initiatorChannel.ConfirmPayment(ca)
 	require.EqualError(t, err, "validating payment: close agreement payment amount is unexpected: "+
-		"current balance: 50 proposed balance: -49 payment amount: 100 initiator proposed: true")
+		"current balance: 50 proposed balance: -49 payment amount: 100 initiator proposed: false")
 
 	ca.Details.Balance = -50
 	ca, err = initiatorChannel.ConfirmPayment(ca)
