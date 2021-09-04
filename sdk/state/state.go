@@ -273,10 +273,18 @@ func amountToResponder(balance int64) int64 {
 	return 0
 }
 
-func signTx(tx *txnbuild.Transaction, networkPassphrase string, kp *keypair.Full) (xdr.Signature, error) {
+func hashTx(tx *txnbuild.Transaction, networkPassphrase string) ([32]byte, error) {
 	h, err := network.HashTransactionInEnvelope(tx.ToXDR(), networkPassphrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash transaction: %w", err)
+		return [32]byte{}, fmt.Errorf("hashing transaction: %w", err)
+	}
+	return h, nil
+}
+
+func signTx(tx *txnbuild.Transaction, networkPassphrase string, kp *keypair.Full) (xdr.Signature, error) {
+	h, err := hashTx(tx, networkPassphrase)
+	if err != nil {
+		return nil, fmt.Errorf("hashing transaction for signing: %w", err)
 	}
 	sig, err := kp.Sign(h[:])
 	if err != nil {
