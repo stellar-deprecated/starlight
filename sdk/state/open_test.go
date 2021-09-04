@@ -307,7 +307,10 @@ func TestChannel_OpenTx(t *testing.T) {
 			Formation:   xdr.Signature{5},
 		},
 	}
-	declTxHash, _, closeTxHash, _, formationTxHash, _, err := channel.openTxs(channel.openAgreement.Details)
+	txs, err := channel.openTxs(channel.openAgreement.Details)
+	declTxHash := txs.DeclarationHash
+	closeTxHash := txs.CloseHash
+	formationTxHash := txs.FormationHash
 	require.NoError(t, err)
 	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
 		Declaration: declTxHash,

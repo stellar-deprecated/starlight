@@ -81,7 +81,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 		return nil
 	}
 
-	declTxHash, _, closeTxHash, _, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	txs, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
 	}
@@ -93,21 +93,21 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 	if err != nil {
 		return fmt.Errorf("hashing tx: %w", err)
 	}
-	if txHash != declTxHash {
+	if txHash != txs.DeclarationHash {
 		return nil
 	}
 
 	// Look for the signatures on the tx that are required to fully authorize
 	// the unauthorized close agreement, then confirm the close agreement.
 	for _, sig := range tx.Signatures() {
-		err = c.remoteSigner.Verify(declTxHash[:], sig.Signature)
+		err = c.remoteSigner.Verify(txs.DeclarationHash[:], sig.Signature)
 		if err == nil {
 			ca.ConfirmerSignatures.Declaration = sig.Signature
 			break
 		}
 	}
 	for _, sig := range tx.Signatures() {
-		err = c.remoteSigner.Verify(closeTxHash[:], sig.Signature)
+		err = c.remoteSigner.Verify(txs.CloseHash[:], sig.Signature)
 		if err == nil {
 			ca.ConfirmerSignatures.Close = sig.Signature
 			break

@@ -53,7 +53,9 @@ func TestChannel_CloseTx(t *testing.T) {
 			Close:       xdr.Signature{3},
 		},
 	}
-	declTxHash, _, closeTxHash, _, err := channel.closeTxs(channel.openAgreement.Details, channel.latestAuthorizedCloseAgreement.Details)
+	txs, err := channel.closeTxs(channel.openAgreement.Details, channel.latestAuthorizedCloseAgreement.Details)
+	declTxHash := txs.DeclarationHash
+	closeTxHash := txs.CloseHash
 	require.NoError(t, err)
 	channel.latestAuthorizedCloseAgreement.TransactionHashes = CloseAgreementTransactionHashes{
 		Declaration: declTxHash,
