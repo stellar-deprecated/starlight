@@ -404,11 +404,11 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfUnexpectedTransaction
 	// Proposer rejects if unexpected declaration tx hash.
 	ca2Modified := ca
 	ca2Modified.TransactionHashes.Declaration = TransactionHash{}
-	_, err = receiverChannel.ConfirmClose(ca2Modified)
+	_, err = senderChannel.ConfirmClose(ca2Modified)
 	require.EqualError(t, err, "unexpected declaration tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+ca2.TransactionHashes.Declaration.String())
 	ca2Modified = ca
 	ca2Modified.TransactionHashes.Close = TransactionHash{}
-	_, err = receiverChannel.ConfirmClose(ca2Modified)
+	_, err = senderChannel.ConfirmClose(ca2Modified)
 	require.EqualError(t, err, "unexpected close tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+ca2.TransactionHashes.Close.String())
 
 	// Proposer accepts correct agreement.
