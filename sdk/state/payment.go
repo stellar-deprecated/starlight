@@ -299,7 +299,7 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
 	c.latestAuthorizedCloseAgreement = ca
-	c.latestUnauthorizedCloseAgreementTransactions = txs
+	c.latestAuthorizedCloseAgreementTransactions = txs
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
 	c.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{}
 
