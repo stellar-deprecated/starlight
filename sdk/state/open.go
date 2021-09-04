@@ -123,7 +123,7 @@ type OpenParams struct {
 	StartingSequence           int64
 }
 
-func (c *Channel) openTxs(d OpenAgreementDetails) (declHash TransactionHash, decl *txnbuild.Transaction, closeHash TransactionHash, close *txnbuild.Transaction, formationHash [32]byte, formation *txnbuild.Transaction, err error) {
+func (c *Channel) openTxs(d OpenAgreementDetails) (declHash TransactionHash, decl *txnbuild.Transaction, closeHash TransactionHash, close *txnbuild.Transaction, formationHash TransactionHash, formation *txnbuild.Transaction, err error) {
 	cad := CloseAgreementDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
@@ -168,9 +168,21 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (declHash TransactionHash, dec
 // be used prior to prepare an open agreement with the other participant.
 func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 	oa := c.openAgreement
-	declTxHash, _, closeTxHash, _, _, formationTx, err := c.openTxs(oa.Details)
+	declTxHash, _, closeTxHash, _, formationTxHash, formationTx, err := c.openTxs(oa.Details)
 	if err != nil {
 		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
+	}
+
+	// Check that the transactions built match the transaction hashes in the
+	// open agreement.
+	if oa.TransactionHashes.Declaration != declTxHash {
+		return nil, fmt.Errorf("rebuilt declaration tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Declaration, declTxHash)
+	}
+	if oa.TransactionHashes.Close != closeTxHash {
+		return nil, fmt.Errorf("rebuilt close tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Close, closeTxHash)
+	}
+	if oa.TransactionHashes.Formation != formationTxHash {
+		return nil, fmt.Errorf("rebuilt formation tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Formation, formationTxHash)
 	}
 
 	// Add the formation signatures to the formation tx.
@@ -264,13 +276,13 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	// Check that the transactions built match the transaction hashes in the
 	// open agreement.
 	if m.TransactionHashes.Declaration != txDeclHash {
-		// TODO
+		return OpenAgreement{}, fmt.Errorf("unexpected declaration tx hash: %v expected: %v", m.TransactionHashes.Declaration, txDeclHash)
 	}
 	if m.TransactionHashes.Close != txCloseHash {
-		// TODO
+		return OpenAgreement{}, fmt.Errorf("unexpected close tx hash: %v expected: %v", m.TransactionHashes.Close, txCloseHash)
 	}
 	if m.TransactionHashes.Formation != formationHash {
-		// TODO
+		return OpenAgreement{}, fmt.Errorf("unexpected formation tx hash: %v expected: %v", m.TransactionHashes.Formation, formationHash)
 	}
 
 	// If remote has not signed the txs, error as is invalid.

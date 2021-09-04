@@ -307,20 +307,50 @@ func TestChannel_OpenTx(t *testing.T) {
 			Formation:   xdr.Signature{5},
 		},
 	}
+	declTxHash, _, closeTxHash, _, formationTxHash, _, err := channel.openTxs(channel.openAgreement.Details)
+	require.NoError(t, err)
+	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
+		Declaration: declTxHash,
+		Close:       closeTxHash,
+		Formation:   formationTxHash,
+	}
 
-	declTxHash, _, closeTxHash, _, _, _, err := channel.openTxs(channel.openAgreement.Details)
-	require.NoError(t, err)
-	formationTx, err := channel.OpenTx()
-	require.NoError(t, err)
 	// TODO: Compare the non-signature parts of formationTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to
 	// txnbuild.
+
+	// Check signatures are populated.
+	formationTx, err := channel.OpenTx()
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []xdr.DecoratedSignature{
 		{Hint: localSigner.Hint(), Signature: []byte{2}},
 		{Hint: remoteSigner.Hint(), Signature: []byte{5}},
 		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), declTxHash[:]),
 		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
 	}, formationTx.Signatures())
+
+	// Check if transaction hashes calculate as different that it errors.
+	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
+		Declaration: TransactionHash{},
+		Close:       closeTxHash,
+		Formation:   formationTxHash,
+	}
+	_, err = channel.OpenTx()
+	require.EqualError(t, err, "rebuilt declaration tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+declTxHash.String())
+	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
+		Declaration: declTxHash,
+		Close:       TransactionHash{},
+		Formation:   formationTxHash,
+	}
+	_, err = channel.OpenTx()
+	require.EqualError(t, err, "rebuilt close tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+closeTxHash.String())
+	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
+		Declaration: declTxHash,
+		Close:       closeTxHash,
+		Formation:   TransactionHash{},
+	}
+	_, err = channel.OpenTx()
+	require.EqualError(t, err, "rebuilt formation tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+formationTxHash.String())
 }
 
 func TestChannel_OpenAgreementIsFull(t *testing.T) {
