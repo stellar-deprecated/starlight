@@ -53,14 +53,20 @@ func TestChannel_CloseTx(t *testing.T) {
 			Close:       xdr.Signature{3},
 		},
 	}
+	declTxHash, _, closeTxHash, _, err := channel.closeTxs(channel.openAgreement.Details, channel.latestAuthorizedCloseAgreement.Details)
+	require.NoError(t, err)
+	channel.latestAuthorizedCloseAgreement.TransactionHashes = CloseAgreementTransactionHashes{
+		Declaration: declTxHash,
+		Close:       closeTxHash,
+	}
 
-	declTx, closeTx, err := channel.CloseTxs()
-	require.NoError(t, err)
-	closeTxHash, err := closeTx.Hash(channel.networkPassphrase)
-	require.NoError(t, err)
 	// TODO: Compare the non-signature parts of the txs with the result of
 	// channel.closeTxs() when there is an practical way of doing that added to
 	// txnbuild.
+
+	// Check signatures are populated.
+	declTx, closeTx, err := channel.CloseTxs()
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []xdr.DecoratedSignature{
 		{Hint: localSigner.Hint(), Signature: []byte{0}},
 		{Hint: remoteSigner.Hint(), Signature: []byte{2}},
@@ -70,6 +76,20 @@ func TestChannel_CloseTx(t *testing.T) {
 		{Hint: localSigner.Hint(), Signature: []byte{1}},
 		{Hint: remoteSigner.Hint(), Signature: []byte{3}},
 	}, closeTx.Signatures())
+
+	// Check if transaction hashes calculate as different that it errors.
+	channel.latestAuthorizedCloseAgreement.TransactionHashes = CloseAgreementTransactionHashes{
+		Declaration: TransactionHash{},
+		Close:       closeTxHash,
+	}
+	_, _, err = channel.CloseTxs()
+	require.EqualError(t, err, "rebuilt declaration tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+declTxHash.String())
+	channel.latestAuthorizedCloseAgreement.TransactionHashes = CloseAgreementTransactionHashes{
+		Declaration: declTxHash,
+		Close:       TransactionHash{},
+	}
+	_, _, err = channel.CloseTxs()
+	require.EqualError(t, err, "rebuilt close tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+closeTxHash.String())
 }
 
 func TestChannel_ProposeClose(t *testing.T) {

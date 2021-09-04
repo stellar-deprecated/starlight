@@ -70,10 +70,10 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 	// Check that the transactions built match the transaction hashes in the
 	// close agreement.
 	if ca.TransactionHashes.Declaration != declTxHash {
-		// TODO
+		return nil, nil, fmt.Errorf("rebuilt declaration tx has unexpected hash: %v expected: %v", ca.TransactionHashes.Declaration, declTxHash)
 	}
 	if ca.TransactionHashes.Close != closeTxHash {
-		// TODO
+		return nil, nil, fmt.Errorf("rebuilt close tx has unexpected hash: %v expected: %v", ca.TransactionHashes.Close, closeTxHash)
 	}
 
 	// Add the declaration signatures to the declaration tx.

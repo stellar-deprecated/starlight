@@ -312,6 +312,10 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			ProposingSigner:            m.Details.ProposingSigner,
 			ConfirmingSigner:           m.Details.ConfirmingSigner,
 		},
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: m.TransactionHashes.Declaration,
+			Close:       m.TransactionHashes.Close,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: m.ProposerSignatures.Declaration,
 			Close:       m.ProposerSignatures.Close,
@@ -323,6 +327,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	}
 	c.openAgreement = OpenAgreement{
 		Details:             m.Details,
+		TransactionHashes:   m.TransactionHashes,
 		ProposerSignatures:  m.ProposerSignatures,
 		ConfirmerSignatures: m.ConfirmerSignatures,
 	}
