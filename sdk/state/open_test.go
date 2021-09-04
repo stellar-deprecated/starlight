@@ -308,13 +308,9 @@ func TestChannel_OpenTx(t *testing.T) {
 		},
 	}
 
-	declTx, closeTx, _, err := channel.openTxs(channel.openAgreement.Details)
+	declTxHash, _, closeTxHash, _, _, _, err := channel.openTxs(channel.openAgreement.Details)
 	require.NoError(t, err)
 	formationTx, err := channel.OpenTx()
-	require.NoError(t, err)
-	declTxHash, err := declTx.Hash(channel.networkPassphrase)
-	require.NoError(t, err)
-	closeTxHash, err := closeTx.Hash(channel.networkPassphrase)
 	require.NoError(t, err)
 	// TODO: Compare the non-signature parts of formationTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to

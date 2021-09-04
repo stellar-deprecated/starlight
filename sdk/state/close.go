@@ -18,7 +18,7 @@ import (
 // 6. If A or B declines or is not responsive at any step, A or B may submit the
 //    original close tx after the observation period.
 
-func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txDecl *txnbuild.Transaction, txClose *txnbuild.Transaction, err error) {
+func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txDeclHash [32]byte, txDecl *txnbuild.Transaction, txCloseHash [32]byte, txClose *txnbuild.Transaction, err error) {
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
@@ -33,11 +33,11 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		Asset:                      oad.Asset.Asset(),
 	})
 	if err != nil {
-		return nil, nil, err
+		return [32]byte{}, nil, [32]byte{}, nil, err
 	}
-	txCloseHash, err := txClose.Hash(c.networkPassphrase)
+	txCloseHash, err = txClose.Hash(c.networkPassphrase)
 	if err != nil {
-		return nil, nil, err
+		return [32]byte{}, nil, [32]byte{}, nil, err
 	}
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -48,9 +48,13 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		CloseTxHash:             txCloseHash,
 	})
 	if err != nil {
-		return nil, nil, err
+		return [32]byte{}, nil, [32]byte{}, nil, err
 	}
-	return txDecl, txClose, nil
+	txDeclHash, err = txDecl.Hash(c.networkPassphrase)
+	if err != nil {
+		return [32]byte{}, nil, [32]byte{}, nil, err
+	}
+	return txDeclHash, txDecl, txCloseHash, txClose, nil
 }
 
 // CloseTxs builds the declaration and close transactions used for closing the
@@ -58,9 +62,18 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 // ready to submit.
 func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
 	ca := c.latestAuthorizedCloseAgreement
-	declTx, closeTx, err = c.closeTxs(c.openAgreement.Details, ca.Details)
+	declTxHash, declTx, closeTxHash, closeTx, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
+	}
+
+	// Check that the transactions built match the transaction hashes in the
+	// close agreement.
+	if ca.TransactionHashes.Declaration != declTxHash {
+		// TODO
+	}
+	if ca.TransactionHashes.Close != closeTxHash {
+		// TODO
 	}
 
 	// Add the declaration signatures to the declaration tx.
@@ -69,10 +82,6 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 
 	// Add the close signature provided by the confirming signer that is
 	// required to be an extra signer on the declaration tx to the formation tx.
-	closeTxHash, err := closeTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return nil, nil, fmt.Errorf("hashing close tx for including payload sig in declaration tx: %w", err)
-	}
 	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(ca.ConfirmerSignatures.Close, ca.Details.ConfirmingSigner.Hint(), closeTxHash[:]))
 
 	// Add the close signatures to the close tx.
@@ -103,7 +112,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	d.ProposingSigner = c.localSigner.FromAddress()
 	d.ConfirmingSigner = c.remoteSigner
 
-	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
+	txDeclHash, txDecl, txCloseHash, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making declaration and close transactions: %w", err)
 	}
@@ -114,7 +123,11 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:            d,
+		Details: d,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: sigs,
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
@@ -153,9 +166,18 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 		return CloseAgreement{}, fmt.Errorf("validating close agreement: %w", err)
 	}
 
-	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	txDeclHash, txDecl, txCloseHash, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
+	}
+
+	// Check that the transactions built match the transaction hashes in the
+	// close agreement.
+	if ca.TransactionHashes.Declaration != txDeclHash {
+		// TODO
+	}
+	if ca.TransactionHashes.Close != txCloseHash {
+		// TODO
 	}
 
 	// If remote has not signed the txs, error as is invalid.

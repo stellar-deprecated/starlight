@@ -81,7 +81,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 		return nil
 	}
 
-	declTx, closeTx, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	declTxHash, _, closeTxHash, _, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
 	}
@@ -89,21 +89,12 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 	// Compare the hash of the tx with the hash of the declaration tx from the
 	// latest unauthorized close agreement. If they match, then the tx is the
 	// declaration tx.
-	declTxHash, err := declTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return fmt.Errorf("hashing latest unauthorized declaration tx: %w", err)
-	}
 	txHash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("hashing tx: %w", err)
 	}
 	if txHash != declTxHash {
 		return nil
-	}
-
-	closeTxHash, err := closeTx.Hash(c.networkPassphrase)
-	if err != nil {
-		return fmt.Errorf("hashing latest unauthorized close tx: %w", err)
 	}
 
 	// Look for the signatures on the tx that are required to fully authorize

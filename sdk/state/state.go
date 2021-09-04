@@ -146,7 +146,7 @@ func (c *Channel) State() (State, error) {
 	}
 
 	// Get the sequence numbers for the latest close agreement transactions.
-	declTxAuthorized, closeTxAuthorized, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
+	_, declTxAuthorized, _, closeTxAuthorized, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
 	if err != nil {
 		return -1, fmt.Errorf("building declaration and close txs for latest authorized close agreement: %w", err)
 	}

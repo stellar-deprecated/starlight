@@ -63,10 +63,18 @@ func (s CloseAgreementSignatures) Verify(decl, close *txnbuild.Transaction, netw
 	return nil
 }
 
+// CloseAgreementTransactionHashes contain all the transaction hashes for the
+// transactions that make up the close agreement.
+type CloseAgreementTransactionHashes struct {
+	Close       TransactionHash
+	Declaration TransactionHash
+}
+
 // CloseAgreement contains everything a participant needs to execute the close
 // agreement on the Stellar network.
 type CloseAgreement struct {
 	Details             CloseAgreementDetails
+	TransactionHashes   CloseAgreementTransactionHashes
 	ProposerSignatures  CloseAgreementSignatures
 	ConfirmerSignatures CloseAgreementSignatures
 }
@@ -138,7 +146,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
 	}
-	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, d)
+	txDeclHash, txDecl, txCloseHash, txClose, err := c.closeTxs(c.openAgreement.Details, d)
 	if err != nil {
 		return CloseAgreement{}, err
 	}
@@ -148,7 +156,11 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:            d,
+		Details: d,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: sigs,
 	}
 	return c.latestUnauthorizedCloseAgreement, nil
@@ -218,9 +230,18 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	}
 
 	// create payment transactions
-	txDecl, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	txDeclHash, txDecl, txCloseHash, txClose, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return CloseAgreement{}, err
+	}
+
+	// Check that the transactions built match the transaction hashes in the
+	// close agreement.
+	if ca.TransactionHashes.Declaration != txDeclHash {
+		// TODO
+	}
+	if ca.TransactionHashes.Close != txCloseHash {
+		// TODO
 	}
 
 	// If remote has not signed the txs, error as is invalid.
