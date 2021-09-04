@@ -138,6 +138,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 		TransactionHashes:  txs.Hashes(),
 		ProposerSignatures: sigs,
 	}
+	c.latestUnauthorizedCloseAgreementTransactions = txs
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
@@ -218,6 +219,8 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 
 	// The new close agreement is valid and authorized, store and promote it.
 	c.latestAuthorizedCloseAgreement = ca
+	c.latestAuthorizedCloseAgreementTransactions = txs
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+	c.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{}
 	return c.latestAuthorizedCloseAgreement, nil
 }

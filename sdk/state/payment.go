@@ -176,6 +176,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		TransactionHashes:  txs.Hashes(),
 		ProposerSignatures: sigs,
 	}
+	c.latestUnauthorizedCloseAgreementTransactions = txs
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
@@ -298,7 +299,9 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
 	c.latestAuthorizedCloseAgreement = ca
+	c.latestUnauthorizedCloseAgreementTransactions = txs
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+	c.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{}
 
 	return c.latestAuthorizedCloseAgreement, nil
 }
