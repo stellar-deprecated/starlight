@@ -57,8 +57,8 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 	txs = CloseAgreementTransactions{
 		DeclarationHash: txDeclHash,
 		Declaration:     txDecl,
-		CloseHash:       txDeclHash,
-		Close:           txDecl,
+		CloseHash:       txCloseHash,
+		Close:           txClose,
 	}
 	return txs, nil
 }

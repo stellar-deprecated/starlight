@@ -212,6 +212,8 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 		return nil, fmt.Errorf("rebuilt formation tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Formation, txs.FormationHash)
 	}
 
+	formationTx = txs.Formation
+
 	// Add the formation signatures to the formation tx.
 	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.ProposerSignatures.Formation, oa.Details.ProposingSigner.Hint()))
 	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.ConfirmerSignatures.Formation, oa.Details.ConfirmingSigner.Hint()))
@@ -367,5 +369,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 		ProposerSignatures:  m.ProposerSignatures,
 		ConfirmerSignatures: m.ConfirmerSignatures,
 	}
+	c.openAgreementTransactions = txs
 	return c.openAgreement, nil
 }
