@@ -123,7 +123,7 @@ type OpenParams struct {
 	StartingSequence           int64
 }
 
-func (c *Channel) openTxs(d OpenAgreementDetails) (declHash [32]byte, decl *txnbuild.Transaction, closeHash [32]byte, close *txnbuild.Transaction, formationHash [32]byte, formation *txnbuild.Transaction, err error) {
+func (c *Channel) openTxs(d OpenAgreementDetails) (declHash TransactionHash, decl *txnbuild.Transaction, closeHash TransactionHash, close *txnbuild.Transaction, formationHash [32]byte, formation *txnbuild.Transaction, err error) {
 	cad := CloseAgreementDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
@@ -152,6 +152,7 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (declHash [32]byte, decl *txnb
 	})
 	if err != nil {
 		err = fmt.Errorf("building formation tx for open: %w", err)
+		return
 	}
 	formationHash, err = formation.Hash(c.networkPassphrase)
 	if err != nil {

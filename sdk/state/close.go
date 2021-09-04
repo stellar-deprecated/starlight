@@ -18,7 +18,7 @@ import (
 // 6. If A or B declines or is not responsive at any step, A or B may submit the
 //    original close tx after the observation period.
 
-func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txDeclHash [32]byte, txDecl *txnbuild.Transaction, txCloseHash [32]byte, txClose *txnbuild.Transaction, err error) {
+func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txDeclHash TransactionHash, txDecl *txnbuild.Transaction, txCloseHash TransactionHash, txClose *txnbuild.Transaction, err error) {
 	txClose, err = txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
@@ -33,11 +33,11 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		Asset:                      oad.Asset.Asset(),
 	})
 	if err != nil {
-		return [32]byte{}, nil, [32]byte{}, nil, err
+		return TransactionHash{}, nil, TransactionHash{}, nil, err
 	}
 	txCloseHash, err = txClose.Hash(c.networkPassphrase)
 	if err != nil {
-		return [32]byte{}, nil, [32]byte{}, nil, err
+		return TransactionHash{}, nil, TransactionHash{}, nil, err
 	}
 	txDecl, err = txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -48,11 +48,11 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		CloseTxHash:             txCloseHash,
 	})
 	if err != nil {
-		return [32]byte{}, nil, [32]byte{}, nil, err
+		return TransactionHash{}, nil, TransactionHash{}, nil, err
 	}
 	txDeclHash, err = txDecl.Hash(c.networkPassphrase)
 	if err != nil {
-		return [32]byte{}, nil, [32]byte{}, nil, err
+		return TransactionHash{}, nil, TransactionHash{}, nil, err
 	}
 	return txDeclHash, txDecl, txCloseHash, txClose, nil
 }

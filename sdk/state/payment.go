@@ -238,10 +238,10 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// Check that the transactions built match the transaction hashes in the
 	// close agreement.
 	if ca.TransactionHashes.Declaration != txDeclHash {
-		// TODO
+		return CloseAgreement{}, fmt.Errorf("unexpected declaration tx hash: %v expected: %v", ca.TransactionHashes.Declaration, txDeclHash)
 	}
 	if ca.TransactionHashes.Close != txCloseHash {
-		// TODO
+		return CloseAgreement{}, fmt.Errorf("unexpected close tx hash: %v expected: %v", ca.TransactionHashes.Close, txCloseHash)
 	}
 
 	// If remote has not signed the txs, error as is invalid.

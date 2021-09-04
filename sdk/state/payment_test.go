@@ -281,7 +281,7 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 			},
 		}
 
-		_, txDecl, _, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseAgreementDetails{
+		txDeclHash, txDecl, txCloseHash, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
@@ -300,6 +300,10 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 				ObservationPeriodLedgerGap: 1,
 				ProposingSigner:            remoteSigner.FromAddress(),
 				ConfirmingSigner:           localSigner.FromAddress(),
+			},
+			TransactionHashes: CloseAgreementTransactionHashes{
+				Declaration: txDeclHash,
+				Close:       txCloseHash,
 			},
 			ProposerSignatures: CloseAgreementSignatures{
 				Declaration: txDecl.Signatures()[0].Signature,
@@ -385,7 +389,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	// A close agreement from the remote participant should be rejected if the
 	// observation period doesn't match the channels observation period.
 	{
-		_, txDecl, _, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseAgreementDetails{
+		txDeclHash, txDecl, txCloseHash, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseAgreementDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
@@ -401,6 +405,10 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 				IterationNumber:            1,
 				ObservationPeriodTime:      0,
 				ObservationPeriodLedgerGap: 0,
+			},
+			TransactionHashes: CloseAgreementTransactionHashes{
+				Declaration: txDeclHash,
+				Close:       txCloseHash,
 			},
 			ProposerSignatures: CloseAgreementSignatures{
 				Declaration: txDecl.Signatures()[0].Signature,
@@ -496,7 +504,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
 	}
-	_, txDecl, _, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, ca)
+	txDeclHash, txDecl, txCloseHash, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -504,6 +512,10 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -597,7 +609,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		ObservationPeriodLedgerGap: 10,
 	}
 
-	_, txDecl, _, txClose, err := responderChannel.closeTxs(responderChannel.openAgreement.Details, ca)
+	txDeclHash, txDecl, txCloseHash, txClose, err := responderChannel.closeTxs(responderChannel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -605,6 +617,10 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -698,7 +714,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
 	}
-	_, txDecl, _, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, ca)
+	txDeclHash, txDecl, txCloseHash, txClose, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -706,6 +722,10 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -718,6 +738,10 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -811,7 +835,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
 	}
-	_, txDecl, _, txClose, err := responderChannel.closeTxs(responderChannel.openAgreement.Details, ca)
+	txDeclHash, txDecl, txCloseHash, txClose, err := responderChannel.closeTxs(responderChannel.openAgreement.Details, ca)
 	require.NoError(t, err)
 	txDecl, err = txDecl.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
@@ -819,6 +843,10 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -831,6 +859,10 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	responderChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
+		TransactionHashes: CloseAgreementTransactionHashes{
+			Declaration: txDeclHash,
+			Close:       txCloseHash,
+		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -1103,12 +1135,25 @@ func TestLastConfirmedPayment(t *testing.T) {
 			ObservationPeriodTime:      10,
 			ObservationPeriodLedgerGap: 10,
 		},
+		TransactionHashes:   ca.TransactionHashes,
 		ProposerSignatures:  ca.ProposerSignatures,
 		ConfirmerSignatures: ca.ConfirmerSignatures,
 	}
 	_, err = sendingChannel.ConfirmPayment(caDifferent)
 	require.EqualError(t, err, "validating payment: close agreement does not match the close agreement already in progress")
 	assert.Equal(t, ca, sendingChannel.latestUnauthorizedCloseAgreement)
+
+	// Confirming a close agreement with details but different tx hashes should error
+	declTxHash, _, closeTxHash, _, err := sendingChannel.closeTxs(sendingChannel.openAgreement.Details, ca.Details)
+	require.NoError(t, err)
+	caDifferent = ca
+	caDifferent.TransactionHashes.Declaration = TransactionHash{}
+	_, err = sendingChannel.ConfirmPayment(caDifferent)
+	require.EqualError(t, err, "unexpected declaration tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+declTxHash.String())
+	caDifferent = ca
+	caDifferent.TransactionHashes.Close = TransactionHash{}
+	_, err = sendingChannel.ConfirmPayment(caDifferent)
+	require.EqualError(t, err, "unexpected close tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+closeTxHash.String())
 
 	// Confirming a payment with same sequence number and same amount should pass
 	caFinal, err := sendingChannel.ConfirmPayment(caResponse)
