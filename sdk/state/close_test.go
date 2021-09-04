@@ -175,6 +175,86 @@ func TestChannel_ProposeClose(t *testing.T) {
 	assert.Equal(t, localSigner.FromAddress(), closeByRemote.Details.ConfirmingSigner)
 }
 
+func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	senderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
+
+	// Open channel.
+	{
+		m, err := senderChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Second),
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+			StartingSequence:           101,
+		})
+		require.NoError(t, err)
+		m, err = receiverChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+		_, err = senderChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+
+		ftx, err := senderChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = senderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := senderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = receiverChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+
+	// Coordinated close.
+	ca, err := senderChannel.ProposeClose()
+	require.NoError(t, err)
+	ca2, err := receiverChannel.ConfirmClose(ca)
+	require.NoError(t, err)
+	_, err = senderChannel.ConfirmClose(ca2)
+	require.NoError(t, err)
+}
+
 func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
@@ -230,4 +310,108 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 
 	_, err = senderChannel.ConfirmClose(CloseAgreement{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
+}
+
+func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfUnexpectedTransactionHashes(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	senderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
+	receiverChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		MaxOpenExpiry:       10 * time.Second,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+	})
+
+	// Open channel.
+	{
+		m, err := senderChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Second),
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+			StartingSequence:           101,
+		})
+		require.NoError(t, err)
+		m, err = receiverChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+		_, err = senderChannel.ConfirmOpen(m)
+		require.NoError(t, err)
+
+		ftx, err := senderChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = senderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := senderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = receiverChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+
+	// Coordinated close.
+	ca, err := senderChannel.ProposeClose()
+	require.NoError(t, err)
+
+	// Confirmer rejects if unexpected declaration tx hash.
+	caModified := ca
+	caModified.TransactionHashes.Declaration = TransactionHash{}
+	_, err = receiverChannel.ConfirmClose(caModified)
+	require.EqualError(t, err, "unexpected declaration tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+ca.TransactionHashes.Declaration.String())
+	caModified = ca
+	caModified.TransactionHashes.Close = TransactionHash{}
+	_, err = receiverChannel.ConfirmClose(caModified)
+	require.EqualError(t, err, "unexpected close tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+ca.TransactionHashes.Close.String())
+
+	// Confirmer accepts correct agreement.
+	ca2, err := receiverChannel.ConfirmClose(ca)
+	require.NoError(t, err)
+
+	// Proposer rejects if unexpected declaration tx hash.
+	ca2Modified := ca
+	ca2Modified.TransactionHashes.Declaration = TransactionHash{}
+	_, err = receiverChannel.ConfirmClose(ca2Modified)
+	require.EqualError(t, err, "unexpected declaration tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+ca2.TransactionHashes.Declaration.String())
+	ca2Modified = ca
+	ca2Modified.TransactionHashes.Close = TransactionHash{}
+	_, err = receiverChannel.ConfirmClose(ca2Modified)
+	require.EqualError(t, err, "unexpected close tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+ca2.TransactionHashes.Close.String())
+
+	// Proposer accepts correct agreement.
+	_, err = senderChannel.ConfirmClose(ca2)
+	require.NoError(t, err)
 }
