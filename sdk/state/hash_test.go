@@ -1,7 +1,6 @@
 package state
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
