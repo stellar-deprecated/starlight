@@ -78,7 +78,7 @@ func TestChannel_CloseTx(t *testing.T) {
 	}, closeTx.Signatures())
 
 	// Check stored txs are used by replacing the stored tx with an identifiable
-	// tx and checking that's what is used.
+	// tx and checking that's what is used for the authorized closing transactions.
 	imposterTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
@@ -94,6 +94,25 @@ func TestChannel_CloseTx(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(123456789), declTx.SequenceNumber())
 	assert.Equal(t, int64(123456789), closeTx.SequenceNumber())
+
+	// Check stored txs are used by replacing the stored tx with an identifiable
+	// tx and checking that's what is used when building the same tx as the
+	// latest unauthorized tx.
+	imposterTx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 987654321},
+		BaseFee:       txnbuild.MinBaseFee,
+		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
+	})
+	require.NoError(t, err)
+	channel.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{
+		Declaration: imposterTx,
+		Close:       imposterTx,
+	}
+	txs, err = channel.closeTxs(oa.Details, channel.latestUnauthorizedCloseAgreement.Details)
+	require.NoError(t, err)
+	assert.Equal(t, int64(987654321), txs.Declaration.SequenceNumber())
+	assert.Equal(t, int64(987654321), txs.Close.SequenceNumber())
 }
 
 func TestChannel_ProposeClose(t *testing.T) {
