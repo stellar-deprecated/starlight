@@ -76,6 +76,24 @@ func TestChannel_CloseTx(t *testing.T) {
 		{Hint: localSigner.Hint(), Signature: []byte{1}},
 		{Hint: remoteSigner.Hint(), Signature: []byte{3}},
 	}, closeTx.Signatures())
+
+	// Check stored txs are used by replacing the stored tx with an identifiable
+	// tx and checking that's what is used.
+	imposterTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 123456789},
+		BaseFee:       txnbuild.MinBaseFee,
+		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
+	})
+	require.NoError(t, err)
+	channel.latestAuthorizedCloseAgreementTransactions = CloseAgreementTransactions{
+		Declaration: imposterTx,
+		Close:       imposterTx,
+	}
+	declTx, closeTx, err = channel.CloseTxs()
+	require.NoError(t, err)
+	assert.Equal(t, int64(123456789), declTx.SequenceNumber())
+	assert.Equal(t, int64(123456789), closeTx.SequenceNumber())
 }
 
 func TestChannel_ProposeClose(t *testing.T) {

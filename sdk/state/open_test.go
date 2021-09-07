@@ -327,6 +327,22 @@ func TestChannel_OpenTx(t *testing.T) {
 		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), declTxHash[:]),
 		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
 	}, formationTx.Signatures())
+
+	// Check stored txs are used by replacing the stored tx with an identifiable
+	// tx and checking that's what is used.
+	imposterTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 123456789},
+		BaseFee:       txnbuild.MinBaseFee,
+		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
+	})
+	require.NoError(t, err)
+	channel.openAgreementTransactions = OpenAgreementTransactions{
+		Formation: imposterTx,
+	}
+	formationTx, err = channel.OpenTx()
+	require.NoError(t, err)
+	assert.Equal(t, int64(123456789), formationTx.SequenceNumber())
 }
 
 func TestChannel_OpenAgreementIsFull(t *testing.T) {
