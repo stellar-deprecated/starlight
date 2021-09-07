@@ -58,17 +58,17 @@ func TestHash_UnmarshalText(t *testing.T) {
 	s = "01234567890123456789012345678901012345678901234567890123456789000"
 	h = TransactionHash{}
 	err = h.UnmarshalText([]byte(s))
-	require.ErrorIs(t, err, hex.ErrLength)
+	assert.EqualError(t, err, "unmarshaling transaction hash: input decoded length 31 expected length 32")
 
 	// Invalid: too short by one character / half a byte.
 	s = "012345678901234567890123456789010123456789012345678901234567890"
 	h = TransactionHash{}
 	err = h.UnmarshalText([]byte(s))
-	require.ErrorIs(t, err, hex.ErrLength)
+	assert.EqualError(t, err, "unmarshaling transaction hash: input decoded length 31 expected length 32")
 
 	// Invalid: too short by two characters / a byte.
 	s = "01234567890123456789012345678901012345678901234567890123456789"
 	h = TransactionHash{}
 	err = h.UnmarshalText([]byte(s))
-	require.ErrorIs(t, err, hex.ErrLength)
+	assert.EqualError(t, err, "unmarshaling transaction hash: input decoded length 31 expected length 32")
 }
