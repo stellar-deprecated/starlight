@@ -73,14 +73,6 @@ func (s OpenAgreementSignatures) Verify(txs OpenAgreementTransactions, networkPa
 	return nil
 }
 
-// OpenAgreementTransactionHashes contain all the transaction hashes for the
-// transactions that make up the open agreement.
-type OpenAgreementTransactionHashes struct {
-	Close       TransactionHash
-	Declaration TransactionHash
-	Formation   TransactionHash
-}
-
 // OpenAgreementTransactions contain all the transaction hashes and
 // transactions for the transactions that make up the open agreement.
 type OpenAgreementTransactions struct {
@@ -92,17 +84,8 @@ type OpenAgreementTransactions struct {
 	Formation       *txnbuild.Transaction
 }
 
-func (t OpenAgreementTransactions) Hashes() OpenAgreementTransactionHashes {
-	return OpenAgreementTransactionHashes{
-		Close:       t.CloseHash,
-		Declaration: t.DeclarationHash,
-		Formation:   t.FormationHash,
-	}
-}
-
 type OpenAgreement struct {
 	Details             OpenAgreementDetails
-	TransactionHashes   OpenAgreementTransactionHashes
 	ProposerSignatures  OpenAgreementSignatures
 	ConfirmerSignatures OpenAgreementSignatures
 }
@@ -200,18 +183,6 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
 	}
 
-	// Check that the transactions built match the transaction hashes in the
-	// open agreement.
-	if oa.TransactionHashes.Declaration != txs.DeclarationHash {
-		return nil, fmt.Errorf("rebuilt declaration tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Declaration, txs.DeclarationHash)
-	}
-	if oa.TransactionHashes.Close != txs.CloseHash {
-		return nil, fmt.Errorf("rebuilt close tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Close, txs.CloseHash)
-	}
-	if oa.TransactionHashes.Formation != txs.FormationHash {
-		return nil, fmt.Errorf("rebuilt formation tx has unexpected hash: %v expected: %v", oa.TransactionHashes.Formation, txs.FormationHash)
-	}
-
 	formationTx = txs.Formation
 
 	// Add the formation signatures to the formation tx.
@@ -257,7 +228,6 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	}
 	open := OpenAgreement{
 		Details:            d,
-		TransactionHashes:  txs.Hashes(),
 		ProposerSignatures: sigs,
 	}
 	c.openAgreement = open
@@ -299,18 +269,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 		return OpenAgreement{}, err
 	}
 
-	// Check that the transactions built match the transaction hashes in the
-	// open agreement.
-	if m.TransactionHashes.Declaration != txs.DeclarationHash {
-		return OpenAgreement{}, fmt.Errorf("unexpected declaration tx hash: %v expected: %v", m.TransactionHashes.Declaration, txs.DeclarationHash)
-	}
-	if m.TransactionHashes.Close != txs.CloseHash {
-		return OpenAgreement{}, fmt.Errorf("unexpected close tx hash: %v expected: %v", m.TransactionHashes.Close, txs.CloseHash)
-	}
-	if m.TransactionHashes.Formation != txs.FormationHash {
-		return OpenAgreement{}, fmt.Errorf("unexpected formation tx hash: %v expected: %v", m.TransactionHashes.Formation, txs.FormationHash)
-	}
-
 	// If remote has not signed the txs, error as is invalid.
 	remoteSigs := m.SignaturesFor(c.remoteSigner)
 	if remoteSigs == nil {
@@ -350,10 +308,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			ProposingSigner:            m.Details.ProposingSigner,
 			ConfirmingSigner:           m.Details.ConfirmingSigner,
 		},
-		TransactionHashes: CloseAgreementTransactionHashes{
-			Declaration: m.TransactionHashes.Declaration,
-			Close:       m.TransactionHashes.Close,
-		},
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: m.ProposerSignatures.Declaration,
 			Close:       m.ProposerSignatures.Close,
@@ -363,9 +317,14 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			Close:       m.ConfirmerSignatures.Close,
 		},
 	}
+	c.latestAuthorizedCloseAgreementTransactions = CloseAgreementTransactions{
+		DeclarationHash: txs.DeclarationHash,
+		Declaration:     txs.Declaration,
+		CloseHash:       txs.CloseHash,
+		Close:           txs.Close,
+	}
 	c.openAgreement = OpenAgreement{
 		Details:             m.Details,
-		TransactionHashes:   m.TransactionHashes,
 		ProposerSignatures:  m.ProposerSignatures,
 		ConfirmerSignatures: m.ConfirmerSignatures,
 	}

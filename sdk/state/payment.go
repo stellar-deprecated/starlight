@@ -63,13 +63,6 @@ func (s CloseAgreementSignatures) Verify(txs CloseAgreementTransactions, network
 	return nil
 }
 
-// CloseAgreementTransactionHashes contain all the transaction hashes for the
-// transactions that make up the close agreement.
-type CloseAgreementTransactionHashes struct {
-	Close       TransactionHash
-	Declaration TransactionHash
-}
-
 // CloseAgreementTransactions contain all the transaction hashes and
 // transactions for the transactions that make up the close agreement.
 type CloseAgreementTransactions struct {
@@ -79,18 +72,10 @@ type CloseAgreementTransactions struct {
 	Declaration     *txnbuild.Transaction
 }
 
-func (t CloseAgreementTransactions) Hashes() CloseAgreementTransactionHashes {
-	return CloseAgreementTransactionHashes{
-		Close:       t.CloseHash,
-		Declaration: t.DeclarationHash,
-	}
-}
-
 // CloseAgreement contains everything a participant needs to execute the close
 // agreement on the Stellar network.
 type CloseAgreement struct {
 	Details             CloseAgreementDetails
-	TransactionHashes   CloseAgreementTransactionHashes
 	ProposerSignatures  CloseAgreementSignatures
 	ConfirmerSignatures CloseAgreementSignatures
 }
@@ -173,7 +158,6 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
 		Details:            d,
-		TransactionHashes:  txs.Hashes(),
 		ProposerSignatures: sigs,
 	}
 	c.latestUnauthorizedCloseAgreementTransactions = txs
@@ -247,15 +231,6 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	txs, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return CloseAgreement{}, err
-	}
-
-	// Check that the transactions built match the transaction hashes in the
-	// close agreement.
-	if ca.TransactionHashes.Declaration != txs.DeclarationHash {
-		return CloseAgreement{}, fmt.Errorf("unexpected declaration tx hash: %v expected: %v", ca.TransactionHashes.Declaration, txs.DeclarationHash)
-	}
-	if ca.TransactionHashes.Close != txs.CloseHash {
-		return CloseAgreement{}, fmt.Errorf("unexpected close tx hash: %v expected: %v", ca.TransactionHashes.Close, txs.CloseHash)
 	}
 
 	// If remote has not signed the txs, error as is invalid.

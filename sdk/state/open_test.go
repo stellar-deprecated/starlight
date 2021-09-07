@@ -310,13 +310,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	txs, err := channel.openTxs(channel.openAgreement.Details)
 	declTxHash := txs.DeclarationHash
 	closeTxHash := txs.CloseHash
-	formationTxHash := txs.FormationHash
 	require.NoError(t, err)
-	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
-		Declaration: declTxHash,
-		Close:       closeTxHash,
-		Formation:   formationTxHash,
-	}
 
 	// TODO: Compare the non-signature parts of formationTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to
@@ -331,29 +325,6 @@ func TestChannel_OpenTx(t *testing.T) {
 		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), declTxHash[:]),
 		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
 	}, formationTx.Signatures())
-
-	// Check if transaction hashes calculate as different that it errors.
-	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
-		Declaration: TransactionHash{},
-		Close:       closeTxHash,
-		Formation:   formationTxHash,
-	}
-	_, err = channel.OpenTx()
-	require.EqualError(t, err, "rebuilt declaration tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+declTxHash.String())
-	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
-		Declaration: declTxHash,
-		Close:       TransactionHash{},
-		Formation:   formationTxHash,
-	}
-	_, err = channel.OpenTx()
-	require.EqualError(t, err, "rebuilt close tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+closeTxHash.String())
-	channel.openAgreement.TransactionHashes = OpenAgreementTransactionHashes{
-		Declaration: declTxHash,
-		Close:       closeTxHash,
-		Formation:   TransactionHash{},
-	}
-	_, err = channel.OpenTx()
-	require.EqualError(t, err, "rebuilt formation tx has unexpected hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+formationTxHash.String())
 }
 
 func TestChannel_OpenAgreementIsFull(t *testing.T) {
@@ -468,73 +439,5 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		Asset:     NativeAsset,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
-	require.NoError(t, err)
-}
-
-func TestChannel_ProposeAndConfirmOpen_rejectIfUnexpectedTransactionHashes(t *testing.T) {
-	localSigner := keypair.MustRandom()
-	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := keypair.MustRandom().FromAddress()
-	remoteEscrowAccount := keypair.MustRandom().FromAddress()
-
-	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
-	})
-	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         remoteSigner,
-		RemoteSigner:        localSigner.FromAddress(),
-		LocalEscrowAccount:  remoteEscrowAccount,
-		RemoteEscrowAccount: localEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
-	})
-
-	// Open channel.
-	oa, err := initiatorChannel.ProposeOpen(OpenParams{
-		Asset:                      NativeAsset,
-		ExpiresAt:                  time.Now().Add(5 * time.Second),
-		ObservationPeriodTime:      10,
-		ObservationPeriodLedgerGap: 10,
-		StartingSequence:           101,
-	})
-	require.NoError(t, err)
-
-	// Confirmer rejects if unexpected declaration tx hash.
-	oaModified := oa
-	oaModified.TransactionHashes.Declaration = TransactionHash{}
-	_, err = responderChannel.ConfirmOpen(oaModified)
-	require.EqualError(t, err, "unexpected declaration tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+oa.TransactionHashes.Declaration.String())
-	oaModified = oa
-	oaModified.TransactionHashes.Close = TransactionHash{}
-	_, err = responderChannel.ConfirmOpen(oaModified)
-	require.EqualError(t, err, "unexpected close tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+oa.TransactionHashes.Close.String())
-
-	// Confirmer accepts correct agreement.
-	oa2, err := responderChannel.ConfirmOpen(oa)
-	require.NoError(t, err)
-
-	// Proposer rejects if unexpected declaration tx hash.
-	oa2Modified := oa
-	oa2Modified.TransactionHashes.Declaration = TransactionHash{}
-	_, err = initiatorChannel.ConfirmOpen(oa2Modified)
-	require.EqualError(t, err, "unexpected declaration tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+oa2.TransactionHashes.Declaration.String())
-	oa2Modified = oa
-	oa2Modified.TransactionHashes.Close = TransactionHash{}
-	_, err = initiatorChannel.ConfirmOpen(oa2Modified)
-	require.EqualError(t, err, "unexpected close tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+oa2.TransactionHashes.Close.String())
-	oa2Modified = oa
-	oa2Modified.TransactionHashes.Formation = TransactionHash{}
-	_, err = initiatorChannel.ConfirmOpen(oa2Modified)
-	require.EqualError(t, err, "unexpected formation tx hash: 0000000000000000000000000000000000000000000000000000000000000000 expected: "+oa2.TransactionHashes.Formation.String())
-
-	// Proposer accepts correct agreement.
-	_, err = initiatorChannel.ConfirmOpen(oa2)
 	require.NoError(t, err)
 }

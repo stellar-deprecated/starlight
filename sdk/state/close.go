@@ -73,15 +73,6 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
 	}
 
-	// Check that the transactions built match the transaction hashes in the
-	// close agreement.
-	if ca.TransactionHashes.Declaration != txs.DeclarationHash {
-		return nil, nil, fmt.Errorf("rebuilt declaration tx has unexpected hash: %v expected: %v", ca.TransactionHashes.Declaration, txs.DeclarationHash)
-	}
-	if ca.TransactionHashes.Close != txs.CloseHash {
-		return nil, nil, fmt.Errorf("rebuilt close tx has unexpected hash: %v expected: %v", ca.TransactionHashes.Close, txs.CloseHash)
-	}
-
 	// TODO: This has to be a copy, otherwise when adding signatures we're
 	// modifying the tx stored in the close agreement.
 	declTx = txs.Declaration
@@ -135,7 +126,6 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
 		Details:            d,
-		TransactionHashes:  txs.Hashes(),
 		ProposerSignatures: sigs,
 	}
 	c.latestUnauthorizedCloseAgreementTransactions = txs
@@ -178,15 +168,6 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 	txs, err := c.closeTxs(c.openAgreement.Details, ca.Details)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
-	}
-
-	// Check that the transactions built match the transaction hashes in the
-	// close agreement.
-	if ca.TransactionHashes.Declaration != txs.DeclarationHash {
-		return CloseAgreement{}, fmt.Errorf("unexpected declaration tx hash: %v expected: %v", ca.TransactionHashes.Declaration, txs.DeclarationHash)
-	}
-	if ca.TransactionHashes.Close != txs.CloseHash {
-		return CloseAgreement{}, fmt.Errorf("unexpected close tx hash: %v expected: %v", ca.TransactionHashes.Close, txs.CloseHash)
 	}
 
 	// If remote has not signed the txs, error as is invalid.
