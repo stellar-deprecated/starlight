@@ -126,6 +126,9 @@ type OpenParams struct {
 }
 
 func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenAgreementTransactions, err error) {
+	if c.openAgreement.Details.Equal(d) {
+		return c.openAgreementTransactions, nil
+	}
 	cad := CloseAgreementDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,

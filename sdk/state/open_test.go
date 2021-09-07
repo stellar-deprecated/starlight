@@ -287,7 +287,7 @@ func TestChannel_OpenTx(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-	channel.openAgreement = OpenAgreement{
+	oa := OpenAgreement{
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
@@ -307,10 +307,12 @@ func TestChannel_OpenTx(t *testing.T) {
 			Formation:   xdr.Signature{5},
 		},
 	}
-	txs, err := channel.openTxs(channel.openAgreement.Details)
+	txs, err := channel.openTxs(oa.Details)
+	require.NoError(t, err)
+	channel.openAgreement = oa
+	channel.openAgreementTransactions = txs
 	declTxHash := txs.DeclarationHash
 	closeTxHash := txs.CloseHash
-	require.NoError(t, err)
 
 	// TODO: Compare the non-signature parts of formationTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to

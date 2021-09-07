@@ -19,6 +19,14 @@ import (
 //    original close tx after the observation period.
 
 func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txs CloseAgreementTransactions, err error) {
+	if c.openAgreement.Details.Equal(oad) {
+		if c.latestAuthorizedCloseAgreement.Details.Equal(d) {
+			return c.latestAuthorizedCloseAgreementTransactions, nil
+		}
+		if c.latestUnauthorizedCloseAgreement.Details.Equal(d) {
+			return c.latestUnauthorizedCloseAgreementTransactions, nil
+		}
+	}
 	txClose, err := txbuild.Close(txbuild.CloseParams{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,

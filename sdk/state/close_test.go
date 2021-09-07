@@ -27,7 +27,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-	channel.openAgreement = OpenAgreement{
+	oa := OpenAgreement{
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
@@ -35,7 +35,7 @@ func TestChannel_CloseTx(t *testing.T) {
 			ExpiresAt:                  time.Now(),
 		},
 	}
-	channel.latestAuthorizedCloseAgreement = CloseAgreement{
+	ca := CloseAgreement{
 		Details: CloseAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 2,
@@ -53,9 +53,12 @@ func TestChannel_CloseTx(t *testing.T) {
 			Close:       xdr.Signature{3},
 		},
 	}
-	txs, err := channel.closeTxs(channel.openAgreement.Details, channel.latestAuthorizedCloseAgreement.Details)
-	closeTxHash := txs.CloseHash
+	txs, err := channel.closeTxs(oa.Details, ca.Details)
 	require.NoError(t, err)
+	channel.openAgreement = oa
+	channel.latestAuthorizedCloseAgreement = ca
+	channel.latestAuthorizedCloseAgreementTransactions = txs
+	closeTxHash := txs.CloseHash
 
 	// TODO: Compare the non-signature parts of the txs with the result of
 	// channel.closeTxs() when there is an practical way of doing that added to
