@@ -509,7 +509,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
-		Details:           ca,
+		Details: ca,
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -612,7 +612,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
-		Details:           ca,
+		Details: ca,
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -715,7 +715,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
-		Details:           ca,
+		Details: ca,
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -727,7 +727,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	// The same close payment should pass if the balance has been updated.
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
-		Details:           ca,
+		Details: ca,
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -830,7 +830,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
-		Details:           ca,
+		Details: ca,
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
@@ -842,7 +842,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	// The same close payment should pass if the balance has been updated.
 	responderChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
-		Details:           ca,
+		Details: ca,
 		ProposerSignatures: CloseAgreementSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
