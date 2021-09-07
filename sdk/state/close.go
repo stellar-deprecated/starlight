@@ -73,8 +73,6 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
 	}
 
-	// TODO: This has to be a copy, otherwise when adding signatures we're
-	// modifying the tx stored in the close agreement.
 	declTx = txs.Declaration
 	closeTx = txs.Close
 
