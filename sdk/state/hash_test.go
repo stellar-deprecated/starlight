@@ -53,21 +53,27 @@ func TestHash_UnmarshalText(t *testing.T) {
 	wantH = TransactionHash{0x01, 0x23, 0x45, 0x67, 0x89, 0x01, 0x23, 0x45, 0x67, 0x89, 0x01, 0x23, 0x45, 0x67, 0x89, 0x01, 0x01, 0x23, 0x45, 0x67, 0x89, 0x01, 0x23, 0x45, 0x67, 0x89, 0x01, 0x23, 0x45, 0x67, 0x89, 0x01}
 	assert.Equal(t, wantH, h)
 
-	// Invalid: too long.
+	// Invalid: too long by one character / a nibble.
 	s = "01234567890123456789012345678901012345678901234567890123456789000"
 	h = TransactionHash{}
 	err = h.UnmarshalText([]byte(s))
-	assert.EqualError(t, err, "unmarshaling transaction hash: input decoded length 31 expected length 32")
+	assert.EqualError(t, err, "unmarshaling transaction hash: input length 65 expected 64")
 
-	// Invalid: too short by one character / half a byte.
+	// Invalid: too long by two characters / a byte.
+	s = "012345678901234567890123456789010123456789012345678901234567890000"
+	h = TransactionHash{}
+	err = h.UnmarshalText([]byte(s))
+	assert.EqualError(t, err, "unmarshaling transaction hash: input length 66 expected 64")
+
+	// Invalid: too short by one character / a nibble.
 	s = "012345678901234567890123456789010123456789012345678901234567890"
 	h = TransactionHash{}
 	err = h.UnmarshalText([]byte(s))
-	assert.EqualError(t, err, "unmarshaling transaction hash: input decoded length 31 expected length 32")
+	assert.EqualError(t, err, "unmarshaling transaction hash: input length 63 expected 64")
 
 	// Invalid: too short by two characters / a byte.
 	s = "01234567890123456789012345678901012345678901234567890123456789"
 	h = TransactionHash{}
 	err = h.UnmarshalText([]byte(s))
-	assert.EqualError(t, err, "unmarshaling transaction hash: input decoded length 31 expected length 32")
+	assert.EqualError(t, err, "unmarshaling transaction hash: input length 62 expected 64")
 }

@@ -21,16 +21,15 @@ func (h TransactionHash) MarshalText() ([]byte, error) {
 }
 
 func (h *TransactionHash) UnmarshalText(text []byte) error {
-	textDecodedLen := hex.DecodedLen(len(text))
-	if textDecodedLen != len(h) {
-		return fmt.Errorf("unmarshaling transaction hash: input decoded length %d expected length %d", textDecodedLen, len(h))
+	if len(text) != len(h)*2 {
+		return fmt.Errorf("unmarshaling transaction hash: input length %d expected %d", len(text), len(h)*2)
 	}
 	n, err := hex.Decode(h[:], text)
 	if err != nil {
 		return fmt.Errorf("unmarshaling transaction hash: %w", err)
 	}
 	if n != len(h) {
-		return fmt.Errorf("unmarshaling transaction hash: decoded length %d expected length %d", n, len(h))
+		return fmt.Errorf("unmarshaling transaction hash: decoded length %d expected %d", n, len(h))
 	}
 	return nil
 }
