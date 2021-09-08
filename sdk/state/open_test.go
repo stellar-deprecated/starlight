@@ -330,7 +330,7 @@ func TestChannel_OpenTx(t *testing.T) {
 
 	// Check stored txs are used by replacing the stored tx with an identifiable
 	// tx and checking that's what is used.
-	imposterTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
@@ -338,7 +338,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	})
 	require.NoError(t, err)
 	channel.openAgreementTransactions = OpenAgreementTransactions{
-		Formation: imposterTx,
+		Formation: testTx,
 	}
 	formationTx, err = channel.OpenTx()
 	require.NoError(t, err)

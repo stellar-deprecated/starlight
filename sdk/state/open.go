@@ -73,8 +73,8 @@ func (s OpenAgreementSignatures) Verify(txs OpenAgreementTransactions, networkPa
 	return nil
 }
 
-// OpenAgreementTransactions contain all the transaction hashes and
-// transactions for the transactions that make up the open agreement.
+// OpenAgreementTransactions contain all the transaction hashes and transactions
+// that make up the open agreement.
 type OpenAgreementTransactions struct {
 	CloseHash       TransactionHash
 	Close           *txnbuild.Transaction
@@ -125,6 +125,12 @@ type OpenParams struct {
 	StartingSequence           int64
 }
 
+// openTxs builds the transactions that embody the open agreement that can be
+// submitted to open the channel with the state defined in the
+// OpenAgreementDetails, and includes the first close agreement transactions. If
+// the channel has previous build the open transactions then it will return
+// those previously built transactions, otherwise the transactions will be built
+// from scratch.
 func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenAgreementTransactions, err error) {
 	if c.openAgreement.Details.Equal(d) {
 		return c.openAgreementTransactions, nil

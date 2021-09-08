@@ -8,16 +8,12 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// The steps for a channel close are as follows:
-// 1. A submits latest declaration tx
-// 2. A calls ProposeClose to propose an immediate close by resigning the
-//    current close tx
-// 3. B calls ConfirmClose to sign and store result
-// 4. A calls ConfirmClose to store result
-// 5. A or B submit the new close tx
-// 6. If A or B declines or is not responsive at any step, A or B may submit the
-//    original close tx after the observation period.
-
+// closeTxs builds the transactions that can be submitted to close the channel
+// with the state defined in the CloseAgreementDetails, and that was opened with
+// the given OpenAgreementDetails. If the channel has previous build these close
+// transactions and still has them stored internally then it will return those
+// previously built transactions, otherwise the transactions will be built from
+// scratch.
 func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txs CloseAgreementTransactions, err error) {
 	if c.openAgreement.Details.Equal(oad) {
 		if c.latestAuthorizedCloseAgreement.Details.Equal(d) {

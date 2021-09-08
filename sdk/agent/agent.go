@@ -359,7 +359,7 @@ func (a *Agent) DeclareClose() error {
 		CloseRequest: &ca,
 	})
 	if err != nil {
-		return fmt.Errorf("error: sending the close proposal: %w\n", err)
+		return fmt.Errorf("error: sending the close proposal: %w", err)
 	}
 
 	return nil
@@ -397,12 +397,15 @@ func (a *Agent) receive() error {
 	send := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	m := msg.Message{}
 	err := recv.Decode(&m)
+	if err == io.EOF {
+		return err
+	}
 	if err != nil {
-		return fmt.Errorf("reading and decoding: %v\n", err)
+		return fmt.Errorf("reading and decoding: %v", err)
 	}
 	err = a.handle(m, send)
 	if err != nil {
-		return fmt.Errorf("handling message: %v\n", err)
+		return fmt.Errorf("handling message: %v", err)
 	}
 	return nil
 }
@@ -410,6 +413,10 @@ func (a *Agent) receive() error {
 func (a *Agent) receiveLoop() {
 	for {
 		err := a.receive()
+		if err == io.EOF {
+			fmt.Fprintln(a.logWriter, "error receiving: EOF, stopping receiving")
+			break
+		}
 		if err != nil {
 			fmt.Fprintf(a.logWriter, "error receiving: %v\n", err)
 		}
@@ -451,13 +458,16 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if a.channel != nil {
-		return fmt.Errorf("extra hello received when channel already setup")
-	}
-
 	defer a.snapshot()
 
 	h := m.Hello
+
+	if a.otherEscrowAccount != nil && !a.otherEscrowAccount.Equal(&h.EscrowAccount) {
+		return fmt.Errorf("hello received with unexpected escrow account: %s expected: %s", h.EscrowAccount.Address(), a.otherEscrowAccount.Address())
+	}
+	if a.otherEscrowAccountSigner != nil && !a.otherEscrowAccountSigner.Equal(&h.Signer) {
+		return fmt.Errorf("hello received with unexpected signer: %s expected: %s", h.Signer.Address(), a.otherEscrowAccountSigner.Address())
+	}
 
 	a.otherEscrowAccount = &h.EscrowAccount
 	a.otherEscrowAccountSigner = &h.Signer

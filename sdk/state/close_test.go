@@ -79,7 +79,7 @@ func TestChannel_CloseTx(t *testing.T) {
 
 	// Check stored txs are used by replacing the stored tx with an identifiable
 	// tx and checking that's what is used for the authorized closing transactions.
-	imposterTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
@@ -87,8 +87,8 @@ func TestChannel_CloseTx(t *testing.T) {
 	})
 	require.NoError(t, err)
 	channel.latestAuthorizedCloseAgreementTransactions = CloseAgreementTransactions{
-		Declaration: imposterTx,
-		Close:       imposterTx,
+		Declaration: testTx,
+		Close:       testTx,
 	}
 	declTx, closeTx, err = channel.CloseTxs()
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestChannel_CloseTx(t *testing.T) {
 	// Check stored txs are used by replacing the stored tx with an identifiable
 	// tx and checking that's what is used when building the same tx as the
 	// latest unauthorized tx.
-	imposterTx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+	testTx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 987654321},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
@@ -106,8 +106,8 @@ func TestChannel_CloseTx(t *testing.T) {
 	})
 	require.NoError(t, err)
 	channel.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{
-		Declaration: imposterTx,
-		Close:       imposterTx,
+		Declaration: testTx,
+		Close:       testTx,
 	}
 	txs, err = channel.closeTxs(oa.Details, channel.latestUnauthorizedCloseAgreement.Details)
 	require.NoError(t, err)
