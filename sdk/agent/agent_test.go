@@ -201,6 +201,52 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, remoteEvent, ConnectedEvent{})
 	}
+
+	// Extra hellos are allowed and have no consequence.
+	err = localAgent.hello()
+	require.NoError(t, err)
+	err = remoteAgent.receive()
+	require.NoError(t, err)
+
+	// Expect connected event.
+	{
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		assert.Equal(t, remoteEvent, ConnectedEvent{})
+	}
+
+	// Extra hellos with wrong data raise an error.
+	incorrectEscrow := keypair.MustRandom().FromAddress()
+	localAgent.escrowAccountKey = incorrectEscrow
+	err = localAgent.hello()
+	require.NoError(t, err)
+	err = remoteAgent.receive()
+	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected escrow account: "+incorrectEscrow.Address()+" expected: "+localEscrow.Address())
+	localAgent.escrowAccountKey = localEscrow
+
+	// Expect error event.
+	{
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		assert.IsType(t, ErrorEvent{}, remoteEvent)
+	}
+
+	// Extra hellos with wrong data raise an error.
+	incorrectSigner := keypair.MustRandom()
+	localAgent.escrowAccountSigner = incorrectSigner
+	err = localAgent.hello()
+	require.NoError(t, err)
+	err = remoteAgent.receive()
+	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected signer: "+incorrectSigner.Address()+" expected: "+localSigner.Address())
+	localAgent.escrowAccountSigner = localSigner
+
+	// Expect error event.
+	{
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		assert.IsType(t, ErrorEvent{}, remoteEvent)
+	}
+
 	// Open the channel.
 	err = localAgent.Open()
 	require.NoError(t, err)
