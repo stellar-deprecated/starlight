@@ -45,12 +45,15 @@ type Snapshot struct {
 	RemoteEscrowSequence       int64
 	RemoteEscrowAccountBalance int64
 
-	OpenAgreement            OpenAgreement
-	OpenExecutedAndValidated bool
-	OpenExecutedWithError    bool
+	OpenAgreement             OpenAgreement
+	OpenAgreementTransactions OpenAgreementTransactions
+	OpenExecutedAndValidated  bool
+	OpenExecutedWithError     bool
 
-	LatestAuthorizedCloseAgreement   CloseAgreement
-	LatestUnauthorizedCloseAgreement CloseAgreement
+	LatestAuthorizedCloseAgreement               CloseAgreement
+	LatestAuthorizedCloseAgreementTransactions   CloseAgreementTransactions
+	LatestUnauthorizedCloseAgreement             CloseAgreement
+	LatestUnauthorizedCloseAgreementTransactions CloseAgreementTransactions
 }
 
 // NewChannelFromSnapshot creates the channel with the given config, and
@@ -66,13 +69,16 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
 
 	channel.openAgreement = s.OpenAgreement
+	channel.openAgreementTransactions = s.OpenAgreementTransactions
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
 	if s.OpenExecutedWithError {
 		channel.openExecutedWithError = fmt.Errorf("open executed with error")
 	}
 
 	channel.latestAuthorizedCloseAgreement = s.LatestAuthorizedCloseAgreement
+	channel.latestAuthorizedCloseAgreementTransactions = s.LatestAuthorizedCloseAgreementTransactions
 	channel.latestUnauthorizedCloseAgreement = s.LatestUnauthorizedCloseAgreement
+	channel.latestUnauthorizedCloseAgreementTransactions = s.LatestUnauthorizedCloseAgreementTransactions
 
 	return channel
 }
@@ -94,12 +100,15 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	openAgreement            OpenAgreement
-	openExecutedAndValidated bool
-	openExecutedWithError    error
+	openAgreement             OpenAgreement
+	openAgreementTransactions OpenAgreementTransactions
+	openExecutedAndValidated  bool
+	openExecutedWithError     error
 
-	latestAuthorizedCloseAgreement   CloseAgreement
-	latestUnauthorizedCloseAgreement CloseAgreement
+	latestAuthorizedCloseAgreement               CloseAgreement
+	latestAuthorizedCloseAgreementTransactions   CloseAgreementTransactions
+	latestUnauthorizedCloseAgreement             CloseAgreement
+	latestUnauthorizedCloseAgreementTransactions CloseAgreementTransactions
 }
 
 // Snapshot returns a snapshot of the channel's internal state that if combined
@@ -112,12 +121,15 @@ func (c *Channel) Snapshot() Snapshot {
 		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
 		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
 
-		OpenAgreement:            c.openAgreement,
-		OpenExecutedAndValidated: c.openExecutedAndValidated,
-		OpenExecutedWithError:    c.openExecutedWithError != nil,
+		OpenAgreement:             c.openAgreement,
+		OpenAgreementTransactions: c.openAgreementTransactions,
+		OpenExecutedAndValidated:  c.openExecutedAndValidated,
+		OpenExecutedWithError:     c.openExecutedWithError != nil,
 
-		LatestAuthorizedCloseAgreement:   c.latestAuthorizedCloseAgreement,
-		LatestUnauthorizedCloseAgreement: c.latestUnauthorizedCloseAgreement,
+		LatestAuthorizedCloseAgreement:               c.latestAuthorizedCloseAgreement,
+		LatestAuthorizedCloseAgreementTransactions:   c.latestAuthorizedCloseAgreementTransactions,
+		LatestUnauthorizedCloseAgreement:             c.latestUnauthorizedCloseAgreement,
+		LatestUnauthorizedCloseAgreementTransactions: c.latestUnauthorizedCloseAgreementTransactions,
 	}
 }
 
@@ -146,12 +158,12 @@ func (c *Channel) State() (State, error) {
 	}
 
 	// Get the sequence numbers for the latest close agreement transactions.
-	declTxAuthorized, closeTxAuthorized, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
+	txs, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
 	if err != nil {
 		return -1, fmt.Errorf("building declaration and close txs for latest authorized close agreement: %w", err)
 	}
-	latestDeclSequence := declTxAuthorized.SequenceNumber()
-	latestCloseSequence := closeTxAuthorized.SequenceNumber()
+	latestDeclSequence := txs.Declaration.SequenceNumber()
+	latestCloseSequence := txs.Close.SequenceNumber()
 
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
 

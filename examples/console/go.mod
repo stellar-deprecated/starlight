@@ -2,7 +2,7 @@ module github.com/stellar/experimental-paymentment-channels/examples/console
 
 go 1.17
 
-replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210726181753-355bd5b08b05
+replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210907190404-83c9e51240c5
 
 replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
 

@@ -287,7 +287,7 @@ func TestChannel_OpenTx(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-	channel.openAgreement = OpenAgreement{
+	oa := OpenAgreement{
 		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
@@ -307,24 +307,42 @@ func TestChannel_OpenTx(t *testing.T) {
 			Formation:   xdr.Signature{5},
 		},
 	}
+	txs, err := channel.openTxs(oa.Details)
+	require.NoError(t, err)
+	channel.openAgreement = oa
+	channel.openAgreementTransactions = txs
+	declTxHash := txs.DeclarationHash
+	closeTxHash := txs.CloseHash
 
-	declTx, closeTx, _, err := channel.openTxs(channel.openAgreement.Details)
-	require.NoError(t, err)
-	formationTx, err := channel.OpenTx()
-	require.NoError(t, err)
-	declTxHash, err := declTx.Hash(channel.networkPassphrase)
-	require.NoError(t, err)
-	closeTxHash, err := closeTx.Hash(channel.networkPassphrase)
-	require.NoError(t, err)
 	// TODO: Compare the non-signature parts of formationTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to
 	// txnbuild.
+
+	// Check signatures are populated.
+	formationTx, err := channel.OpenTx()
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []xdr.DecoratedSignature{
 		{Hint: localSigner.Hint(), Signature: []byte{2}},
 		{Hint: remoteSigner.Hint(), Signature: []byte{5}},
 		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), declTxHash[:]),
 		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
 	}, formationTx.Signatures())
+
+	// Check stored txs are used by replacing the stored tx with an identifiable
+	// tx and checking that's what is used.
+	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localEscrowAccount.Address(), Sequence: 123456789},
+		BaseFee:       txnbuild.MinBaseFee,
+		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
+	})
+	require.NoError(t, err)
+	channel.openAgreementTransactions = OpenAgreementTransactions{
+		Formation: testTx,
+	}
+	formationTx, err = channel.OpenTx()
+	require.NoError(t, err)
+	assert.Equal(t, int64(123456789), formationTx.SequenceNumber())
 }
 
 func TestChannel_OpenAgreementIsFull(t *testing.T) {
