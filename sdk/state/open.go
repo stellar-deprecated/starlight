@@ -73,8 +73,8 @@ func (s OpenAgreementSignatures) Verify(txs OpenAgreementTransactions, networkPa
 	return nil
 }
 
-// OpenAgreementTransactions contain all the transaction hashes and
-// transactions for the transactions that make up the open agreement.
+// OpenAgreementTransactions contain all the transaction hashes and transactions
+// that make up the open agreement.
 type OpenAgreementTransactions struct {
 	CloseHash       TransactionHash
 	Close           *txnbuild.Transaction
