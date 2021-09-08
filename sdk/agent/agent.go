@@ -397,6 +397,9 @@ func (a *Agent) receive() error {
 	send := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	m := msg.Message{}
 	err := recv.Decode(&m)
+	if err == io.EOF {
+		return err
+	}
 	if err != nil {
 		return fmt.Errorf("reading and decoding: %v", err)
 	}
@@ -410,6 +413,10 @@ func (a *Agent) receive() error {
 func (a *Agent) receiveLoop() {
 	for {
 		err := a.receive()
+		if err == io.EOF {
+			fmt.Fprintln(a.logWriter, "error receiving: EOF, stopping receiving")
+			break
+		}
 		if err != nil {
 			fmt.Fprintf(a.logWriter, "error receiving: %v\n", err)
 		}
