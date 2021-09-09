@@ -509,9 +509,6 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 		require.NoError(t, err)
 		_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-
-		initiatorChannel.UpdateLocalEscrowAccountBalance(1_000_0000000)
-		initiatorChannel.UpdateRemoteEscrowAccountBalance(1_000_0000000)
 	}
 
 	validResultXDR, err := txbuildtest.BuildResultXDR(true)
@@ -523,18 +520,25 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 	require.NoError(t, err)
 
 	type TestCase struct {
-		trustLineBalance xdr.Int64
-		selling          xdr.Int64
-		wantBalance      int64
+		escrowAccount     *keypair.FromAddress
+		trustLineBalance  xdr.Int64
+		selling           xdr.Int64
+		wantBalanceLocal  int64
+		wantBalanceRemote int64
 	}
 
 	testCases := []TestCase{
-		{200, 200, 0},
-		{1000, 100, 900},
-		{1000, 0, 1000},
+		{initiatorEscrow, 200, 200, 0, 0},
+		{initiatorEscrow, 1000, 100, 900, 0},
+		{initiatorEscrow, 1000, 0, 1000, 0},
+		{responderEscrow, 200, 200, 0, 0},
+		{responderEscrow, 1000, 100, 0, 900},
+		{responderEscrow, 1000, 0, 0, 1000},
 	}
 
 	for _, tc := range testCases {
+		initiatorChannel.UpdateLocalEscrowAccountBalance(0)
+		initiatorChannel.UpdateRemoteEscrowAccountBalance(0)
 		tle, err := xdr.NewTrustLineEntryExt(1, xdr.TrustLineEntryV1{
 			Liabilities: xdr.Liabilities{
 				Buying:  100,
@@ -547,7 +551,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(initiatorEscrow.Address()),
+					AccountId: xdr.MustAddress(tc.escrowAccount.Address()),
 					Asset:     xdr.MustNewCreditAsset(asset.Code(), asset.Issuer()),
 					Balance:   tc.trustLineBalance,
 					Ext:       tle,
@@ -557,7 +561,8 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 		require.NoError(t, err)
 		err = initiatorChannel.IngestTx(placeholderXDR, validResultXDR, paymentResultMeta)
 		require.NoError(t, err)
-		assert.Equal(t, tc.wantBalance, initiatorChannel.localEscrowAccount.Balance)
+		assert.Equal(t, tc.wantBalanceLocal, initiatorChannel.localEscrowAccount.Balance)
+		assert.Equal(t, tc.wantBalanceRemote, initiatorChannel.remoteEscrowAccount.Balance)
 	}
 }
 
