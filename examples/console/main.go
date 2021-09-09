@@ -275,6 +275,7 @@ func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient h
 		fmt.Fprintf(os.Stdout, "pay <amount> - pay amount of asset to peer\n")
 		fmt.Fprintf(os.Stdout, "declareclose - declare to close the channel\n")
 		fmt.Fprintf(os.Stdout, "close - close the channel\n")
+		fmt.Fprintf(os.Stdout, "listagreements - list agreements/payments\n")
 		fmt.Fprintf(os.Stdout, "declarecloseidx - declare to close the channel with a specific previous declaration tx\n")
 		fmt.Fprintf(os.Stdout, "closeidx - close the channel with a specific previous close tx\n")
 		fmt.Fprintf(os.Stdout, "exit - exit the application\n")
