@@ -27,7 +27,7 @@ func (e OpenedEvent) event() {}
 // PaymentReceivedEvent occurs when a payment is received and the balance it
 // agrees to would be the resulting disbursements from the channel if closed.
 type PaymentReceivedEvent struct {
-	CloseAgreement state.CloseEnvelope
+	CloseAgreement state.CloseAgreement
 }
 
 func (e PaymentReceivedEvent) event() {}
@@ -36,7 +36,7 @@ func (e PaymentReceivedEvent) event() {}
 // confirmed it such that the balance the agreement agrees to would be the
 // resulting disbursements from the channel if closed.
 type PaymentSentEvent struct {
-	CloseAgreement state.CloseEnvelope
+	CloseAgreement state.CloseAgreement
 }
 
 func (e PaymentSentEvent) event() {}

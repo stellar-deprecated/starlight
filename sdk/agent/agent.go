@@ -565,7 +565,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope})
 	if a.events != nil {
-		a.events <- PaymentReceivedEvent{CloseAgreement: payment.Envelope}
+		a.events <- PaymentReceivedEvent{CloseAgreement: payment}
 	}
 	if err != nil {
 		return fmt.Errorf("encoding payment to send back: %w", err)
@@ -590,7 +590,7 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 	}
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
 	if a.events != nil {
-		a.events <- PaymentSentEvent{CloseAgreement: payment.Envelope}
+		a.events <- PaymentSentEvent{CloseAgreement: payment}
 	}
 	return nil
 }
