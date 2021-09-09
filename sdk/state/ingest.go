@@ -55,6 +55,11 @@ func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Tr
 		return
 	}
 
+	// If the transaction is from an earlier sequence number, return.
+	if tx.SourceAccount().Sequence < c.initiatorEscrowAccount().SequenceNumber {
+		return
+	}
+
 	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
 }
 
