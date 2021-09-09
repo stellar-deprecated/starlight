@@ -108,9 +108,9 @@ func run() error {
 			case agentpkg.OpenedEvent:
 				fmt.Fprintf(os.Stderr, "agent channel opened\n")
 			case agentpkg.PaymentReceivedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%s\n", e.CloseAgreement.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Details.Balance))
+				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
 			case agentpkg.PaymentSentEvent:
-				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Details.Balance))
+				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "agent channel closing\n")
 			case agentpkg.ClosedEvent:
