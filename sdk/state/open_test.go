@@ -310,7 +310,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	txs, err := channel.openTxs(oa.Details)
 	require.NoError(t, err)
 	channel.openAgreement = oa
-	channel.openAgreementTransactions = txs
+	channel.openTransactions = txs
 	declTxHash := txs.DeclarationHash
 	closeTxHash := txs.CloseHash
 
@@ -337,7 +337,7 @@ func TestChannel_OpenTx(t *testing.T) {
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
-	channel.openAgreementTransactions = OpenTransactions{
+	channel.openTransactions = OpenTransactions{
 		Formation: testTx,
 	}
 	formationTx, err = channel.OpenTx()

@@ -69,7 +69,7 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
 
 	channel.openAgreement = s.OpenAgreement
-	channel.openAgreementTransactions = s.OpenAgreementTransactions
+	channel.openTransactions = s.OpenAgreementTransactions
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
 	if s.OpenExecutedWithError {
 		channel.openExecutedWithError = fmt.Errorf("open executed with error")
@@ -100,10 +100,10 @@ type Channel struct {
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
 
-	openAgreement             OpenAgreement
-	openAgreementTransactions OpenTransactions
-	openExecutedAndValidated  bool
-	openExecutedWithError     error
+	openAgreement            OpenAgreement
+	openTransactions         OpenTransactions
+	openExecutedAndValidated bool
+	openExecutedWithError    error
 
 	latestAuthorizedCloseAgreement      CloseAgreement
 	latestAuthorizedCloseTransactions   CloseTransactions
@@ -122,7 +122,7 @@ func (c *Channel) Snapshot() Snapshot {
 		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
 
 		OpenAgreement:             c.openAgreement,
-		OpenAgreementTransactions: c.openAgreementTransactions,
+		OpenAgreementTransactions: c.openTransactions,
 		OpenExecutedAndValidated:  c.openExecutedAndValidated,
 		OpenExecutedWithError:     c.openExecutedWithError != nil,
 

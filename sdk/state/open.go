@@ -133,7 +133,7 @@ type OpenParams struct {
 // from scratch.
 func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, err error) {
 	if c.openAgreement.Details.Equal(d) {
-		return c.openAgreementTransactions, nil
+		return c.openTransactions, nil
 	}
 	cad := CloseDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
@@ -240,7 +240,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 		ProposerSignatures: sigs,
 	}
 	c.openAgreement = open
-	c.openAgreementTransactions = txs
+	c.openTransactions = txs
 	return open, nil
 }
 
@@ -337,6 +337,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 		ProposerSignatures:  m.ProposerSignatures,
 		ConfirmerSignatures: m.ConfirmerSignatures,
 	}
-	c.openAgreementTransactions = txs
+	c.openTransactions = txs
 	return c.openAgreement, nil
 }
