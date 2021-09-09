@@ -24,7 +24,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		{OpenAgreement{}, OpenAgreement{}, true},
 		{
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -33,7 +33,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 				},
 			},
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -45,7 +45,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -58,7 +58,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -70,7 +70,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 				},
 			},
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -85,7 +85,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -101,7 +101,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -113,7 +113,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 				},
 			},
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -128,7 +128,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -140,7 +140,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 				},
 			},
 			OpenAgreement{
-				Details: OpenDetails{
+				Details: OpenAgreementDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -218,14 +218,14 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	channel.openAgreement = OpenAgreement{
-		Details: OpenDetails{
+		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
 		},
 	}
 
-	oa := OpenDetails{
+	oa := OpenAgreementDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      NativeAsset,
@@ -264,7 +264,7 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
-	_, err := channel.ConfirmOpen(OpenAgreement{Details: OpenDetails{
+	_, err := channel.ConfirmOpen(OpenAgreement{Details: OpenAgreementDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      NativeAsset,
@@ -288,7 +288,7 @@ func TestChannel_OpenTx(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	oa := OpenAgreement{
-		Details: OpenDetails{
+		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,

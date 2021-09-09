@@ -14,7 +14,7 @@ import (
 // transactions and still has them stored internally then it will return those
 // previously built transactions, otherwise the transactions will be built from
 // scratch.
-func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactions, err error) {
+func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txs CloseTransactions, err error) {
 	if c.openAgreement.Details.Equal(oad) {
 		if c.latestAuthorizedCloseAgreement.Details.Equal(d) {
 			return c.latestAuthorizedCloseTransactions, nil

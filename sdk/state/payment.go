@@ -17,8 +17,8 @@ import (
 // 3. Sender calls ConfirmPayment
 // 4. Receiver calls ConfirmPayment
 
-// CloseDetails contains the details that the participants agree on.
-type CloseDetails struct {
+// CloseAgreementDetails contains the details that the participants agree on.
+type CloseAgreementDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
@@ -28,9 +28,9 @@ type CloseDetails struct {
 	ConfirmingSigner           *keypair.FromAddress
 }
 
-func (d CloseDetails) Equal(d2 CloseDetails) bool {
+func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
-	type CAD CloseDetails
+	type CAD CloseAgreementDetails
 	return cmp.Equal(CAD(d), CAD(d2))
 }
 
@@ -75,7 +75,7 @@ type CloseTransactions struct {
 // CloseAgreement contains everything a participant needs to execute the close
 // agreement on the Stellar network.
 type CloseAgreement struct {
-	Details             CloseDetails
+	Details             CloseAgreementDetails
 	ProposerSignatures  CloseSignatures
 	ConfirmerSignatures CloseSignatures
 }
@@ -138,7 +138,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		return CloseAgreement{}, fmt.Errorf("amount over commits: %w", ErrUnderfunded)
 	}
 
-	d := CloseDetails{
+	d := CloseAgreementDetails{
 		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Details.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),

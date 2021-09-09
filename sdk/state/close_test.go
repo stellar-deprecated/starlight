@@ -28,7 +28,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	oa := OpenAgreement{
-		Details: OpenDetails{
+		Details: OpenAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
@@ -36,7 +36,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		},
 	}
 	ca := CloseAgreement{
-		Details: CloseDetails{
+		Details: CloseAgreementDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 2,
 			IterationNumber:            3,

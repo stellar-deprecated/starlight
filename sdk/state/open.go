@@ -11,7 +11,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type OpenDetails struct {
+type OpenAgreementDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
@@ -21,7 +21,7 @@ type OpenDetails struct {
 	ConfirmingSigner           *keypair.FromAddress
 }
 
-func (d OpenDetails) Equal(d2 OpenDetails) bool {
+func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
@@ -85,7 +85,7 @@ type OpenTransactions struct {
 }
 
 type OpenAgreement struct {
-	Details             OpenDetails
+	Details             OpenAgreementDetails
 	ProposerSignatures  OpenSignatures
 	ConfirmerSignatures OpenSignatures
 }
@@ -131,11 +131,11 @@ type OpenParams struct {
 // the channel has previous build the open transactions then it will return
 // those previously built transactions, otherwise the transactions will be built
 // from scratch.
-func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, err error) {
+func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenTransactions, err error) {
 	if c.openAgreement.Details.Equal(d) {
 		return c.openTransactions, nil
 	}
-	cad := CloseDetails{
+	cad := CloseAgreementDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		IterationNumber:            1,
@@ -217,7 +217,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
 	}
 
-	d := OpenDetails{
+	d := OpenAgreementDetails{
 		ObservationPeriodTime:      p.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
 		Asset:                      p.Asset,
@@ -309,7 +309,7 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	// All signatures are present that would be required to submit all
 	// transactions in the open.
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseDetails{
+		Details: CloseAgreementDetails{
 			IterationNumber:            1,
 			Balance:                    0,
 			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
