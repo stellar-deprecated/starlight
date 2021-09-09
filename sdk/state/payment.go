@@ -108,20 +108,14 @@ type CloseAgreement struct {
 }
 
 // SignedTransactions adds signatures from the CloseAgreement's Envelope to its
-// Transactions. The envelope must have all proposer and confirmer signatures
-// and the agreement must have all transactions. Calling this function without
-// these things will panic.
+// Transactions.
 func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 	declTx := ca.Transactions.Declaration
 	closeTx := ca.Transactions.Close
 
 	// Add the signatures that are from the proposer.
-	if ca.Envelope.ProposerSignatures.Declaration != nil {
-		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Declaration, ca.Envelope.Details.ProposingSigner.Hint()))
-	}
-	if ca.Envelope.ProposerSignatures.Close != nil {
-		closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Close, ca.Envelope.Details.ProposingSigner.Hint()))
-	}
+	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Declaration, ca.Envelope.Details.ProposingSigner.Hint()))
+	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Close, ca.Envelope.Details.ProposingSigner.Hint()))
 
 	// Add signatures that are from the confirmer.
 	if ca.Envelope.ConfirmerSignatures.Declaration != nil {
