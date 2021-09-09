@@ -48,9 +48,9 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(time.Minute),
 	})
 	require.NoError(t, err)
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
@@ -68,7 +68,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 	// initiator even though it is authorized in responder.
 	close, err := initiatorChannel.ProposePayment(8)
 	require.NoError(t, err)
-	_, err = responderChannel.ConfirmPayment(close)
+	_, err = responderChannel.ConfirmPayment(close.Envelope)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), initiatorChannel.Balance())
 	assert.Equal(t, int64(8), responderChannel.Balance())
@@ -131,9 +131,9 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(time.Minute),
 	})
 	require.NoError(t, err)
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
@@ -151,7 +151,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// initiator even though it is authorized in responder.
 	close, err := initiatorChannel.ProposePayment(8)
 	require.NoError(t, err)
-	_, err = responderChannel.ConfirmPayment(close)
+	_, err = responderChannel.ConfirmPayment(close.Envelope)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), initiatorChannel.Balance())
 	assert.Equal(t, int64(8), responderChannel.Balance())
@@ -206,9 +206,9 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(time.Minute),
 	})
 	require.NoError(t, err)
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 
 	// Mock initiatorChannel ingested formation tx successfully.
@@ -261,9 +261,9 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(time.Minute),
 	})
 	require.NoError(t, err)
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
@@ -285,9 +285,9 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// New payment.
 	close, err := initiatorChannel.ProposePayment(8)
 	require.NoError(t, err)
-	close, err = responderChannel.ConfirmPayment(close)
+	close, err = responderChannel.ConfirmPayment(close.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmPayment(close)
+	_, err = initiatorChannel.ConfirmPayment(close.Envelope)
 	require.NoError(t, err)
 
 	// Pretend that responder broadcasts the old declTx, and
@@ -403,9 +403,9 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(time.Minute),
 	})
 	require.NoError(t, err)
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 
 	initiatorChannel.UpdateLocalEscrowAccountBalance(1_000_0000000)
@@ -509,9 +509,9 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, StateNone, cs)
 
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 
 	formationTx, err := responderChannel.OpenTx()
@@ -609,9 +609,9 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	assert.Equal(t, StateNone, cs)
 
 	// Open steps.
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 
 	formationTx, err := responderChannel.OpenTx()
@@ -732,9 +732,9 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 		StartingSequence:           102,
 	})
 	require.NoError(t, err)
-	open, err = responderChannel.ConfirmOpen(open)
+	open, err = responderChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	_, err = initiatorChannel.ConfirmOpen(open)
+	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 
 	formationTx, err := responderChannel.OpenTx()

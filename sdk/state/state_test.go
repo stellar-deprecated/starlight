@@ -69,9 +69,9 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 			StartingSequence:           101,
 		})
 		require.NoError(t, err)
-		open2, err := remoteChannel.ConfirmOpen(open1)
+		open2, err := remoteChannel.ConfirmOpen(open1.Envelope)
 		require.NoError(t, err)
-		_, err = localChannel.ConfirmOpen(open2)
+		_, err = localChannel.ConfirmOpen(open2.Envelope)
 		require.NoError(t, err)
 	}
 
@@ -136,9 +136,9 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 	assertChannelSnapshotsAndRestores(t, remoteConfig, remoteChannel)
 
 	// Confirm the payment.
-	ca, err = remoteChannel.ConfirmPayment(ca)
+	ca, err = remoteChannel.ConfirmPayment(ca.Envelope)
 	require.NoError(t, err)
-	_, err = localChannel.ConfirmPayment(ca)
+	_, err = localChannel.ConfirmPayment(ca.Envelope)
 	require.NoError(t, err)
 
 	// Check snapshot rehydrates the channel identically when payment confirmed.
@@ -210,9 +210,9 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 	assertChannelSnapshotsAndRestores(t, remoteConfig, remoteChannel)
 
 	// Confirm the close.
-	ca, err = remoteChannel.ConfirmClose(ca)
+	ca, err = remoteChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
-	_, err = localChannel.ConfirmClose(ca)
+	_, err = localChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
 	// Check snapshot rehydrates the channel identically when payment confirmed.
