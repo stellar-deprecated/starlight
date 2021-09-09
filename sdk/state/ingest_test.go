@@ -466,6 +466,99 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localEscrowAccount.Balance)
 	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+
+}
+
+func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) {
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+
+	initiatorEscrow := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	responderEscrow := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
+	})
+
+	asset := Asset("TEST:GAOWNZMMFW25MWBAWKRYBMIEKY2KKEWKOINP2IDTRYOQ4DOEW26NV437")
+
+	{
+		open, err := initiatorChannel.ProposeOpen(OpenParams{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+			Asset:                      asset,
+			ExpiresAt:                  time.Now().Add(time.Minute),
+		})
+		require.NoError(t, err)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(open.Envelope)
+		require.NoError(t, err)
+
+		initiatorChannel.UpdateLocalEscrowAccountBalance(1_000_0000000)
+		initiatorChannel.UpdateRemoteEscrowAccountBalance(1_000_0000000)
+	}
+
+	validResultXDR, err := txbuildtest.BuildResultXDR(true)
+	require.NoError(t, err)
+
+	placeholderTx, _, err := initiatorChannel.CloseTxs()
+	require.NoError(t, err)
+	placeholderXDR, err := placeholderTx.Base64()
+	require.NoError(t, err)
+
+	type TestCase struct {
+		trustLineBalance xdr.Int64
+		selling          xdr.Int64
+		wantBalance      int64
+	}
+
+	testCases := []TestCase{
+		{200, 200, 0},
+		{1000, 100, 900},
+		{1000, 0, 1000},
+	}
+
+	for _, tc := range testCases {
+		tle, err := xdr.NewTrustLineEntryExt(1, xdr.TrustLineEntryV1{
+			Liabilities: xdr.Liabilities{
+				Buying:  100,
+				Selling: tc.selling,
+			},
+		})
+		require.NoError(t, err)
+
+		paymentResultMeta, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{
+			{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.TrustLineEntry{
+					AccountId: xdr.MustAddress(initiatorEscrow.Address()),
+					Asset:     xdr.MustNewCreditAsset(asset.Code(), asset.Issuer()),
+					Balance:   tc.trustLineBalance,
+					Ext:       tle,
+				},
+			},
+		})
+		require.NoError(t, err)
+		err = initiatorChannel.IngestTx(placeholderXDR, validResultXDR, paymentResultMeta)
+		require.NoError(t, err)
+		assert.Equal(t, tc.wantBalance, initiatorChannel.localEscrowAccount.Balance)
+	}
 }
 
 func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {

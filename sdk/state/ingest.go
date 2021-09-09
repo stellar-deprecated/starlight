@@ -162,7 +162,8 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 					continue
 				}
 				ledgerEntryAddress = tl.AccountId.Address()
-				ledgerEntryBalance = int64(tl.Balance)
+				liabilities := tl.Liabilities()
+				ledgerEntryBalance = int64(tl.Balance - liabilities.Selling)
 			}
 
 			switch ledgerEntryAddress {
