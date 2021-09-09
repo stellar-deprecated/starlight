@@ -59,7 +59,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -70,7 +70,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -84,7 +84,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -99,7 +99,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -110,7 +110,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -125,7 +125,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -137,7 +137,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -152,7 +152,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -164,7 +164,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GDJ5SXSKKFXINP7TN4J4T4JAXL4VZL7UMIAGZWQTYSKHSNHLSPVOAXRY"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -179,7 +179,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -191,7 +191,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 					Balance:                    100,
 					ConfirmingSigner:           nil,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -303,7 +303,7 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 				ProposingSigner:            remoteSigner.FromAddress(),
 				ConfirmingSigner:           localSigner.FromAddress(),
 			},
-			ProposerSignatures: CloseAgreementSignatures{
+			ProposerSignatures: CloseSignatures{
 				Declaration: txDecl.Signatures()[0].Signature,
 				Close:       txClose.Signatures()[0].Signature,
 			},
@@ -406,7 +406,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 				ObservationPeriodTime:      0,
 				ObservationPeriodLedgerGap: 0,
 			},
-			ProposerSignatures: CloseAgreementSignatures{
+			ProposerSignatures: CloseSignatures{
 				Declaration: txDecl.Signatures()[0].Signature,
 				Close:       txClose.Signatures()[0].Signature,
 			},
@@ -510,7 +510,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -613,7 +613,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -716,7 +716,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -728,7 +728,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -831,7 +831,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -843,7 +843,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	responderChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},

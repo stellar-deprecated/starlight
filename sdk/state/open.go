@@ -31,33 +31,33 @@ func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
 		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
 }
 
-type OpenAgreementSignatures struct {
+type OpenSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
 	Formation   xdr.Signature
 }
 
-func (oas OpenAgreementSignatures) isFull() bool {
+func (oas OpenSignatures) isFull() bool {
 	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
 }
 
-func signOpenAgreementTxs(txs OpenAgreementTransactions, networkPassphrase string, signer *keypair.Full) (s OpenAgreementSignatures, err error) {
+func signOpenAgreementTxs(txs OpenTransactions, networkPassphrase string, signer *keypair.Full) (s OpenSignatures, err error) {
 	s.Declaration, err = signTx(txs.Declaration, networkPassphrase, signer)
 	if err != nil {
-		return OpenAgreementSignatures{}, fmt.Errorf("signing declaration: %w", err)
+		return OpenSignatures{}, fmt.Errorf("signing declaration: %w", err)
 	}
 	s.Close, err = signTx(txs.Close, networkPassphrase, signer)
 	if err != nil {
-		return OpenAgreementSignatures{}, fmt.Errorf("signing close: %w", err)
+		return OpenSignatures{}, fmt.Errorf("signing close: %w", err)
 	}
 	s.Formation, err = signTx(txs.Formation, networkPassphrase, signer)
 	if err != nil {
-		return OpenAgreementSignatures{}, fmt.Errorf("signing formation: %w", err)
+		return OpenSignatures{}, fmt.Errorf("signing formation: %w", err)
 	}
 	return s, nil
 }
 
-func (s OpenAgreementSignatures) Verify(txs OpenAgreementTransactions, networkPassphrase string, signer *keypair.FromAddress) error {
+func (s OpenSignatures) Verify(txs OpenTransactions, networkPassphrase string, signer *keypair.FromAddress) error {
 	err := verifySigned(txs.Declaration, networkPassphrase, signer, s.Declaration)
 	if err != nil {
 		return fmt.Errorf("verifying declaration signed: %w", err)
@@ -73,9 +73,9 @@ func (s OpenAgreementSignatures) Verify(txs OpenAgreementTransactions, networkPa
 	return nil
 }
 
-// OpenAgreementTransactions contain all the transaction hashes and transactions
+// OpenTransactions contain all the transaction hashes and transactions
 // that make up the open agreement.
-type OpenAgreementTransactions struct {
+type OpenTransactions struct {
 	CloseHash       TransactionHash
 	Close           *txnbuild.Transaction
 	DeclarationHash TransactionHash
@@ -86,8 +86,8 @@ type OpenAgreementTransactions struct {
 
 type OpenAgreement struct {
 	Details             OpenAgreementDetails
-	ProposerSignatures  OpenAgreementSignatures
-	ConfirmerSignatures OpenAgreementSignatures
+	ProposerSignatures  OpenSignatures
+	ConfirmerSignatures OpenSignatures
 }
 
 func (oa OpenAgreement) isEmpty() bool {
@@ -106,7 +106,7 @@ func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
 	return cmp.Equal(OA(oa), OA(oa2))
 }
 
-func (oa OpenAgreement) SignaturesFor(signer *keypair.FromAddress) *OpenAgreementSignatures {
+func (oa OpenAgreement) SignaturesFor(signer *keypair.FromAddress) *OpenSignatures {
 	if oa.Details.ProposingSigner.Equal(signer) {
 		return &oa.ProposerSignatures
 	}
@@ -131,9 +131,9 @@ type OpenParams struct {
 // the channel has previous build the open transactions then it will return
 // those previously built transactions, otherwise the transactions will be built
 // from scratch.
-func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenAgreementTransactions, err error) {
+func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenTransactions, err error) {
 	if c.openAgreement.Details.Equal(d) {
-		return c.openAgreementTransactions, nil
+		return c.openTransactions, nil
 	}
 	cad := CloseAgreementDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
@@ -171,7 +171,7 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenAgreementTransactions
 		return
 	}
 
-	txs = OpenAgreementTransactions{
+	txs = OpenTransactions{
 		DeclarationHash: closeTxs.DeclarationHash,
 		Declaration:     closeTxs.Declaration,
 		CloseHash:       closeTxs.CloseHash,
@@ -240,7 +240,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 		ProposerSignatures: sigs,
 	}
 	c.openAgreement = open
-	c.openAgreementTransactions = txs
+	c.openTransactions = txs
 	return open, nil
 }
 
@@ -317,16 +317,16 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 			ProposingSigner:            m.Details.ProposingSigner,
 			ConfirmingSigner:           m.Details.ConfirmingSigner,
 		},
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: m.ProposerSignatures.Declaration,
 			Close:       m.ProposerSignatures.Close,
 		},
-		ConfirmerSignatures: CloseAgreementSignatures{
+		ConfirmerSignatures: CloseSignatures{
 			Declaration: m.ConfirmerSignatures.Declaration,
 			Close:       m.ConfirmerSignatures.Close,
 		},
 	}
-	c.latestAuthorizedCloseAgreementTransactions = CloseAgreementTransactions{
+	c.latestAuthorizedCloseTransactions = CloseTransactions{
 		DeclarationHash: txs.DeclarationHash,
 		Declaration:     txs.Declaration,
 		CloseHash:       txs.CloseHash,
@@ -337,6 +337,6 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 		ProposerSignatures:  m.ProposerSignatures,
 		ConfirmerSignatures: m.ConfirmerSignatures,
 	}
-	c.openAgreementTransactions = txs
+	c.openTransactions = txs
 	return c.openAgreement, nil
 }

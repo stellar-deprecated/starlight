@@ -44,11 +44,11 @@ func TestChannel_CloseTx(t *testing.T) {
 			ProposingSigner:            localSigner.FromAddress(),
 			ConfirmingSigner:           remoteSigner.FromAddress(),
 		},
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: xdr.Signature{0},
 			Close:       xdr.Signature{1},
 		},
-		ConfirmerSignatures: CloseAgreementSignatures{
+		ConfirmerSignatures: CloseSignatures{
 			Declaration: xdr.Signature{2},
 			Close:       xdr.Signature{3},
 		},
@@ -57,7 +57,7 @@ func TestChannel_CloseTx(t *testing.T) {
 	require.NoError(t, err)
 	channel.openAgreement = oa
 	channel.latestAuthorizedCloseAgreement = ca
-	channel.latestAuthorizedCloseAgreementTransactions = txs
+	channel.latestAuthorizedCloseTransactions = txs
 	closeTxHash := txs.CloseHash
 
 	// TODO: Compare the non-signature parts of the txs with the result of
@@ -86,7 +86,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
-	channel.latestAuthorizedCloseAgreementTransactions = CloseAgreementTransactions{
+	channel.latestAuthorizedCloseTransactions = CloseTransactions{
 		Declaration: testTx,
 		Close:       testTx,
 	}
@@ -105,7 +105,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
-	channel.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{
+	channel.latestUnauthorizedCloseTransactions = CloseTransactions{
 		Declaration: testTx,
 		Close:       testTx,
 	}

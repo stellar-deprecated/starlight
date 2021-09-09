@@ -34,24 +34,24 @@ func (d CloseAgreementDetails) Equal(d2 CloseAgreementDetails) bool {
 	return cmp.Equal(CAD(d), CAD(d2))
 }
 
-type CloseAgreementSignatures struct {
+type CloseSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
 }
 
-func signCloseAgreementTxs(txs CloseAgreementTransactions, networkPassphrase string, signer *keypair.Full) (s CloseAgreementSignatures, err error) {
+func signCloseAgreementTxs(txs CloseTransactions, networkPassphrase string, signer *keypair.Full) (s CloseSignatures, err error) {
 	s.Declaration, err = signTx(txs.Declaration, networkPassphrase, signer)
 	if err != nil {
-		return CloseAgreementSignatures{}, fmt.Errorf("signing declaration: %w", err)
+		return CloseSignatures{}, fmt.Errorf("signing declaration: %w", err)
 	}
 	s.Close, err = signTx(txs.Close, networkPassphrase, signer)
 	if err != nil {
-		return CloseAgreementSignatures{}, fmt.Errorf("signing close: %w", err)
+		return CloseSignatures{}, fmt.Errorf("signing close: %w", err)
 	}
 	return s, nil
 }
 
-func (s CloseAgreementSignatures) Verify(txs CloseAgreementTransactions, networkPassphrase string, signer *keypair.FromAddress) error {
+func (s CloseSignatures) Verify(txs CloseTransactions, networkPassphrase string, signer *keypair.FromAddress) error {
 	err := verifySigned(txs.Declaration, networkPassphrase, signer, s.Declaration)
 	if err != nil {
 		return fmt.Errorf("verifying declaration signed: %w", err)
@@ -63,9 +63,9 @@ func (s CloseAgreementSignatures) Verify(txs CloseAgreementTransactions, network
 	return nil
 }
 
-// CloseAgreementTransactions contain all the transaction hashes and
+// CloseTransactions contain all the transaction hashes and
 // transactions for the transactions that make up the close agreement.
-type CloseAgreementTransactions struct {
+type CloseTransactions struct {
 	CloseHash       TransactionHash
 	Close           *txnbuild.Transaction
 	DeclarationHash TransactionHash
@@ -76,8 +76,8 @@ type CloseAgreementTransactions struct {
 // agreement on the Stellar network.
 type CloseAgreement struct {
 	Details             CloseAgreementDetails
-	ProposerSignatures  CloseAgreementSignatures
-	ConfirmerSignatures CloseAgreementSignatures
+	ProposerSignatures  CloseSignatures
+	ConfirmerSignatures CloseSignatures
 }
 
 func (ca CloseAgreement) isEmpty() bool {
@@ -90,7 +90,7 @@ func (ca CloseAgreement) Equal(ca2 CloseAgreement) bool {
 	return cmp.Equal(CA(ca), CA(ca2))
 }
 
-func (ca CloseAgreement) SignaturesFor(signer *keypair.FromAddress) *CloseAgreementSignatures {
+func (ca CloseAgreement) SignaturesFor(signer *keypair.FromAddress) *CloseSignatures {
 	if ca.Details.ProposingSigner.Equal(signer) {
 		return &ca.ProposerSignatures
 	}
@@ -160,7 +160,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		Details:            d,
 		ProposerSignatures: sigs,
 	}
-	c.latestUnauthorizedCloseAgreementTransactions = txs
+	c.latestUnauthorizedCloseTransactions = txs
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
@@ -274,9 +274,9 @@ func (c *Channel) ConfirmPayment(ca CloseAgreement) (closeAgreement CloseAgreeme
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
 	c.latestAuthorizedCloseAgreement = ca
-	c.latestAuthorizedCloseAgreementTransactions = txs
+	c.latestAuthorizedCloseTransactions = txs
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
-	c.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{}
+	c.latestUnauthorizedCloseTransactions = CloseTransactions{}
 
 	return c.latestAuthorizedCloseAgreement, nil
 }
