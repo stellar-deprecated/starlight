@@ -80,6 +80,15 @@ type OpenTransactions struct {
 	Formation     *txnbuild.Transaction
 }
 
+func (ot OpenTransactions) CloseTransactions() CloseTransactions {
+	return CloseTransactions{
+		DeclarationHash: ot.DeclarationHash,
+		Declaration:     ot.Declaration,
+		CloseHash:       ot.CloseHash,
+		Close:           ot.Close,
+	}
+}
+
 type OpenEnvelope struct {
 	Details             OpenDetails
 	ProposerSignatures  OpenSignatures
@@ -167,6 +176,13 @@ func (oa OpenAgreement) SignedTransactions() OpenTransactions {
 	return OpenTransactions{
 		FormationHash: oa.Transactions.FormationHash,
 		Formation:     formationTx,
+	}
+}
+
+func (oa OpenAgreement) CloseAgreement() CloseAgreement {
+	return CloseAgreement{
+		Envelope:     oa.Envelope.CloseEnvelope(),
+		Transactions: oa.Transactions.CloseTransactions(),
 	}
 }
 
