@@ -291,10 +291,31 @@ func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient h
 		return agent.DeclareClose()
 	case "close":
 		return agent.Close()
+	case "listagreements":
+		for i, a := range closeAgreements {
+			var sender string
+			if signer.FromAddress().Equal(a.Envelope.Details.ProposingSigner) {
+				sender = "me"
+			} else {
+				sender = "them"
+			}
+			var receiver string
+			if signer.FromAddress().Equal(a.Envelope.Details.ConfirmingSigner) {
+				receiver = "me"
+			} else {
+				receiver = "them"
+			}
+			balance := a.Envelope.Details.Balance
+			fmt.Fprintf(os.Stdout, "%d: amount=%s %s=>%s balance=%d\n", i, amount.StringFromInt64(a.Envelope.Details.PaymentAmount), sender, receiver, amount.StringFromInt64(balance))
+		}
+		return nil
 	case "declarecloseidx":
 		idx, err := strconv.Atoi(params[1])
 		if err != nil {
 			return err
+		}
+		if idx >= len(closeAgreements) {
+			return fmt.Errorf("invalid index, got %d must be between %d and %d", idx, 0, len(closeAgreements)-1)
 		}
 		tx := closeAgreements[idx].SignedTransactions().Declaration
 		err = submitter.SubmitTx(tx)
