@@ -113,23 +113,23 @@ func (oa OpenEnvelope) SignaturesFor(signer *keypair.FromAddress) *OpenSignature
 }
 
 // CloseEnvelope gets the equivalent CloseEnvelope for this OpenEnvelope.
-func (oa OpenEnvelope) CloseEnvelope() CloseEnvelope {
+func (oe OpenEnvelope) CloseEnvelope() CloseEnvelope {
 	return CloseEnvelope{
 		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    0,
-			ObservationPeriodTime:      oa.Details.ObservationPeriodTime,
-			ObservationPeriodLedgerGap: oa.Details.ObservationPeriodLedgerGap,
-			ProposingSigner:            oa.Details.ProposingSigner,
-			ConfirmingSigner:           oa.Details.ConfirmingSigner,
+			ObservationPeriodTime:      oe.Details.ObservationPeriodTime,
+			ObservationPeriodLedgerGap: oe.Details.ObservationPeriodLedgerGap,
+			ProposingSigner:            oe.Details.ProposingSigner,
+			ConfirmingSigner:           oe.Details.ConfirmingSigner,
 		},
 		ProposerSignatures: CloseSignatures{
-			Declaration: oa.ProposerSignatures.Declaration,
-			Close:       oa.ProposerSignatures.Close,
+			Declaration: oe.ProposerSignatures.Declaration,
+			Close:       oe.ProposerSignatures.Close,
 		},
 		ConfirmerSignatures: CloseSignatures{
-			Declaration: oa.ConfirmerSignatures.Declaration,
-			Close:       oa.ConfirmerSignatures.Close,
+			Declaration: oe.ConfirmerSignatures.Declaration,
+			Close:       oe.ConfirmerSignatures.Close,
 		},
 	}
 }
