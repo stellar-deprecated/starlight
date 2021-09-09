@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
+	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/amount"
@@ -33,6 +35,8 @@ func main() {
 		fmt.Fprintln(os.Stdout, "error:", err)
 	}
 }
+
+var closeAgreements = []state.CloseAgreement{}
 
 func run() error {
 	showHelp := false
@@ -109,8 +113,10 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "agent channel opened\n")
 			case agentpkg.PaymentReceivedEvent:
 				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
+				closeAgreements = append(closeAgreements, e.CloseAgreement)
 			case agentpkg.PaymentSentEvent:
 				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
+				closeAgreements = append(closeAgreements, e.CloseAgreement)
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "agent channel closing\n")
 			case agentpkg.ClosedEvent:
@@ -239,7 +245,7 @@ func run() error {
 		if len(params) == 0 {
 			continue
 		}
-		err = prompt(agent, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
+		err = prompt(agent, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
 		if errors.Is(err, errExit) {
 			break
 		}
@@ -254,7 +260,7 @@ func run() error {
 
 var errExit = errors.New("exit")
 
-func prompt(agent *agentpkg.Agent, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
+func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -269,6 +275,9 @@ func prompt(agent *agentpkg.Agent, horizonClient horizonclient.ClientInterface, 
 		fmt.Fprintf(os.Stdout, "pay <amount> - pay amount of asset to peer\n")
 		fmt.Fprintf(os.Stdout, "declareclose - declare to close the channel\n")
 		fmt.Fprintf(os.Stdout, "close - close the channel\n")
+		fmt.Fprintf(os.Stdout, "listagreements - list agreements/payments\n")
+		fmt.Fprintf(os.Stdout, "declarecloseidx - declare to close the channel with a specific previous declaration tx\n")
+		fmt.Fprintf(os.Stdout, "closeidx - close the channel with a specific previous close tx\n")
 		fmt.Fprintf(os.Stdout, "exit - exit the application\n")
 		return nil
 	case "listen":
@@ -283,6 +292,50 @@ func prompt(agent *agentpkg.Agent, horizonClient horizonclient.ClientInterface, 
 		return agent.DeclareClose()
 	case "close":
 		return agent.Close()
+	case "listagreements":
+		for i, a := range closeAgreements {
+			var sender string
+			if signer.FromAddress().Equal(a.Envelope.Details.ProposingSigner) {
+				sender = "me"
+			} else {
+				sender = "them"
+			}
+			var receiver string
+			if signer.FromAddress().Equal(a.Envelope.Details.ConfirmingSigner) {
+				receiver = "me"
+			} else {
+				receiver = "them"
+			}
+			payment := amount.StringFromInt64(a.Envelope.Details.PaymentAmount)
+			balance := amount.StringFromInt64(a.Envelope.Details.Balance)
+			fmt.Fprintf(os.Stdout, "%d: amount=%s %s=>%s balance=%s\n", i, payment, sender, receiver, balance)
+		}
+		return nil
+	case "declarecloseidx":
+		idx, err := strconv.Atoi(params[1])
+		if err != nil {
+			return err
+		}
+		if idx >= len(closeAgreements) {
+			return fmt.Errorf("invalid index, got %d must be between %d and %d", idx, 0, len(closeAgreements)-1)
+		}
+		tx := closeAgreements[idx].SignedTransactions().Declaration
+		err = submitter.SubmitTx(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	case "closeidx":
+		idx, err := strconv.Atoi(params[1])
+		if err != nil {
+			return err
+		}
+		tx := closeAgreements[idx].SignedTransactions().Close
+		err = submitter.SubmitTx(tx)
+		if err != nil {
+			return err
+		}
+		return nil
 	case "deposit":
 		depositAmountStr := params[1]
 		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
