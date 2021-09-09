@@ -1119,9 +1119,21 @@ func TestLastConfirmedPayment(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, ca, sendingChannel.latestUnauthorizedCloseAgreement)
 
+	signedTxs := ca.SignedTransactions()
+	assert.Equal(t, ca.Transactions.DeclarationHash, signedTxs.DeclarationHash)
+	assert.Equal(t, ca.Transactions.CloseHash, signedTxs.CloseHash)
+	assert.Len(t, signedTxs.Declaration.Signatures(), 1)
+	assert.Len(t, signedTxs.Close.Signatures(), 1)
+
 	caResponse, err := receiverChannel.ConfirmPayment(ca.Envelope)
 	require.NoError(t, err)
 	assert.Equal(t, caResponse, receiverChannel.latestAuthorizedCloseAgreement)
+
+	signedTxs = caResponse.SignedTransactions()
+	assert.Equal(t, caResponse.Transactions.DeclarationHash, signedTxs.DeclarationHash)
+	assert.Equal(t, caResponse.Transactions.CloseHash, signedTxs.CloseHash)
+	assert.Len(t, signedTxs.Declaration.Signatures(), 3)
+	assert.Len(t, signedTxs.Close.Signatures(), 2)
 
 	// Confirming a close agreement with same sequence number but different Amount should error
 	caDifferent := CloseEnvelope{
