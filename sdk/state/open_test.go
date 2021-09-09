@@ -24,7 +24,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		{OpenAgreement{}, OpenAgreement{}, true},
 		{
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -33,7 +33,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 				},
 			},
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -45,7 +45,7 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
@@ -58,26 +58,26 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -85,14 +85,14 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -101,26 +101,26 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -128,26 +128,26 @@ func TestOpenAgreement_Equal(t *testing.T) {
 		},
 		{
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           kp,
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			OpenAgreement{
-				Details: OpenAgreementDetails{
+				Details: OpenDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					Asset:                      "native",
 					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
 					ConfirmingSigner:           keypair.MustRandom().FromAddress(),
 				},
-				ProposerSignatures: OpenAgreementSignatures{
+				ProposerSignatures: OpenSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -218,14 +218,14 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	channel.openAgreement = OpenAgreement{
-		Details: OpenAgreementDetails{
+		Details: OpenDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
 		},
 	}
 
-	oa := OpenAgreementDetails{
+	oa := OpenDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      NativeAsset,
@@ -264,7 +264,7 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 
-	_, err := channel.ConfirmOpen(OpenAgreement{Details: OpenAgreementDetails{
+	_, err := channel.ConfirmOpen(OpenAgreement{Details: OpenDetails{
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      NativeAsset,
@@ -288,7 +288,7 @@ func TestChannel_OpenTx(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	oa := OpenAgreement{
-		Details: OpenAgreementDetails{
+		Details: OpenDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
@@ -296,12 +296,12 @@ func TestChannel_OpenTx(t *testing.T) {
 			ProposingSigner:            localSigner.FromAddress(),
 			ConfirmingSigner:           remoteSigner.FromAddress(),
 		},
-		ProposerSignatures: OpenAgreementSignatures{
+		ProposerSignatures: OpenSignatures{
 			Declaration: xdr.Signature{0},
 			Close:       xdr.Signature{1},
 			Formation:   xdr.Signature{2},
 		},
-		ConfirmerSignatures: OpenAgreementSignatures{
+		ConfirmerSignatures: OpenSignatures{
 			Declaration: xdr.Signature{3},
 			Close:       xdr.Signature{4},
 			Formation:   xdr.Signature{5},
@@ -337,7 +337,7 @@ func TestChannel_OpenTx(t *testing.T) {
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
-	channel.openAgreementTransactions = OpenAgreementTransactions{
+	channel.openAgreementTransactions = OpenTransactions{
 		Formation: testTx,
 	}
 	formationTx, err = channel.OpenTx()
@@ -350,7 +350,7 @@ func TestChannel_OpenAgreementIsFull(t *testing.T) {
 	assert.False(t, oa.isFull())
 
 	oa = OpenAgreement{
-		ProposerSignatures: OpenAgreementSignatures{
+		ProposerSignatures: OpenSignatures{
 			Close:       xdr.Signature{1},
 			Declaration: xdr.Signature{1},
 			Formation:   xdr.Signature{1},
@@ -358,7 +358,7 @@ func TestChannel_OpenAgreementIsFull(t *testing.T) {
 	}
 	assert.False(t, oa.isFull())
 
-	oa.ConfirmerSignatures = OpenAgreementSignatures{
+	oa.ConfirmerSignatures = OpenSignatures{
 		Close:       xdr.Signature{1},
 		Declaration: xdr.Signature{1},
 	}
@@ -452,7 +452,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")
 
 	// A channel without a full open agreement should be able to propose an open
-	initiatorChannel.openAgreement.ConfirmerSignatures = OpenAgreementSignatures{}
+	initiatorChannel.openAgreement.ConfirmerSignatures = OpenSignatures{}
 	_, err = initiatorChannel.ProposeOpen(OpenParams{
 		Asset:     NativeAsset,
 		ExpiresAt: time.Now().Add(5 * time.Minute),

@@ -14,13 +14,13 @@ import (
 // transactions and still has them stored internally then it will return those
 // previously built transactions, otherwise the transactions will be built from
 // scratch.
-func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txs CloseAgreementTransactions, err error) {
+func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactions, err error) {
 	if c.openAgreement.Details.Equal(oad) {
 		if c.latestAuthorizedCloseAgreement.Details.Equal(d) {
-			return c.latestAuthorizedCloseAgreementTransactions, nil
+			return c.latestAuthorizedCloseTransactions, nil
 		}
 		if c.latestUnauthorizedCloseAgreement.Details.Equal(d) {
-			return c.latestUnauthorizedCloseAgreementTransactions, nil
+			return c.latestUnauthorizedCloseTransactions, nil
 		}
 	}
 	txClose, err := txbuild.Close(txbuild.CloseParams{
@@ -37,11 +37,11 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		Asset:                      oad.Asset.Asset(),
 	})
 	if err != nil {
-		return CloseAgreementTransactions{}, err
+		return CloseTransactions{}, err
 	}
 	txCloseHash, err := txClose.Hash(c.networkPassphrase)
 	if err != nil {
-		return CloseAgreementTransactions{}, err
+		return CloseTransactions{}, err
 	}
 	txDecl, err := txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
@@ -52,13 +52,13 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 		CloseTxHash:             txCloseHash,
 	})
 	if err != nil {
-		return CloseAgreementTransactions{}, err
+		return CloseTransactions{}, err
 	}
 	txDeclHash, err := txDecl.Hash(c.networkPassphrase)
 	if err != nil {
-		return CloseAgreementTransactions{}, err
+		return CloseTransactions{}, err
 	}
-	txs = CloseAgreementTransactions{
+	txs = CloseTransactions{
 		DeclarationHash: txDeclHash,
 		Declaration:     txDecl,
 		CloseHash:       txCloseHash,
@@ -130,7 +130,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 		Details:            d,
 		ProposerSignatures: sigs,
 	}
-	c.latestUnauthorizedCloseAgreementTransactions = txs
+	c.latestUnauthorizedCloseTransactions = txs
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
@@ -202,8 +202,8 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 
 	// The new close agreement is valid and authorized, store and promote it.
 	c.latestAuthorizedCloseAgreement = ca
-	c.latestAuthorizedCloseAgreementTransactions = txs
+	c.latestAuthorizedCloseTransactions = txs
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
-	c.latestUnauthorizedCloseAgreementTransactions = CloseAgreementTransactions{}
+	c.latestUnauthorizedCloseTransactions = CloseTransactions{}
 	return c.latestAuthorizedCloseAgreement, nil
 }

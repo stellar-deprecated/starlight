@@ -22,7 +22,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		{CloseAgreement{}, CloseAgreement{}, true},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
@@ -30,7 +30,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 				},
 			},
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
@@ -41,7 +41,7 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
@@ -53,24 +53,24 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -78,13 +78,13 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -93,24 +93,24 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -118,26 +118,26 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -145,26 +145,26 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GDJ5SXSKKFXINP7TN4J4T4JAXL4VZL7UMIAGZWQTYSKHSNHLSPVOAXRY"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -172,26 +172,26 @@ func TestCloseAgreement_Equal(t *testing.T) {
 		},
 		{
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
 			CloseAgreement{
-				Details: CloseAgreementDetails{
+				Details: CloseDetails{
 					ObservationPeriodTime:      time.Minute,
 					ObservationPeriodLedgerGap: 2,
 					IterationNumber:            3,
 					Balance:                    100,
 					ConfirmingSigner:           nil,
 				},
-				ProposerSignatures: CloseAgreementSignatures{
+				ProposerSignatures: CloseSignatures{
 					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 				},
 			},
@@ -274,14 +274,14 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 	// observation period matches the channels observation period.
 	{
 		initiatorChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-			Details: CloseAgreementDetails{
+			Details: CloseDetails{
 				ObservationPeriodTime:      1,
 				ObservationPeriodLedgerGap: 1,
 				ConfirmingSigner:           localSigner.FromAddress(),
 			},
 		}
 
-		txs, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseAgreementDetails{
+		txs, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
@@ -296,14 +296,14 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 		require.NoError(t, err)
 		_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
-			Details: CloseAgreementDetails{
+			Details: CloseDetails{
 				IterationNumber:            1,
 				ObservationPeriodTime:      1,
 				ObservationPeriodLedgerGap: 1,
 				ProposingSigner:            remoteSigner.FromAddress(),
 				ConfirmingSigner:           localSigner.FromAddress(),
 			},
-			ProposerSignatures: CloseAgreementSignatures{
+			ProposerSignatures: CloseSignatures{
 				Declaration: txDecl.Signatures()[0].Signature,
 				Close:       txClose.Signatures()[0].Signature,
 			},
@@ -377,7 +377,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	}
 
 	initiatorChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			ConfirmingSigner:           localSigner.FromAddress(),
@@ -387,7 +387,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 	// A close agreement from the remote participant should be rejected if the
 	// observation period doesn't match the channels observation period.
 	{
-		txs, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseAgreementDetails{
+		txs, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Details, CloseDetails{
 			IterationNumber:            1,
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
@@ -401,12 +401,12 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		txClose, err = txClose.Sign(network.TestNetworkPassphrase, remoteSigner)
 		require.NoError(t, err)
 		_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
-			Details: CloseAgreementDetails{
+			Details: CloseDetails{
 				IterationNumber:            1,
 				ObservationPeriodTime:      0,
 				ObservationPeriodLedgerGap: 0,
 			},
-			ProposerSignatures: CloseAgreementSignatures{
+			ProposerSignatures: CloseSignatures{
 				Declaration: txDecl.Signatures()[0].Signature,
 				Close:       txClose.Signatures()[0].Signature,
 			},
@@ -482,7 +482,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
 	initiatorChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    100, // Local (initiator) owes remote (responder) 100.
 			ObservationPeriodTime:      10,
@@ -491,7 +491,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		},
 	}
 
-	ca := CloseAgreementDetails{
+	ca := CloseDetails{
 		IterationNumber:            2,
 		Balance:                    110, // Local (initiator) owes remote (responder) 110, payment of 10 from ❌ local to remote.
 		PaymentAmount:              -10, // Not possible to have a negative payment amount, but hardcode to test this validation.
@@ -510,7 +510,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -585,7 +585,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
 	responderChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    100, // Remote (initiator) owes local (responder) 100.
 			ObservationPeriodTime:      10,
@@ -593,7 +593,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 			ConfirmingSigner:           localSigner.FromAddress(),
 		},
 	}
-	ca := CloseAgreementDetails{
+	ca := CloseDetails{
 		IterationNumber:            2,
 		Balance:                    90,  // Remote (initiator) owes local (responder) 90, payment of 10 from ❌ local to remote.
 		PaymentAmount:              -10, // Not possible to have a negative payment amount, but hardcode to test this validation.
@@ -613,7 +613,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -688,7 +688,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
 	initiatorChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    -60, // Remote (responder) owes local (initiator) 60.
 			ObservationPeriodTime:      10,
@@ -697,7 +697,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		},
 	}
 
-	ca := CloseAgreementDetails{
+	ca := CloseDetails{
 		IterationNumber:            2,
 		Balance:                    -110, // Remote (responder) owes local (initiator) 110, which responder ❌ cannot pay.
 		PaymentAmount:              50,
@@ -716,7 +716,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -728,7 +728,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 	initiatorChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = initiatorChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -803,7 +803,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
 	responderChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    60, // Remote (initiator) owes local (responder) 60.
 			ObservationPeriodTime:      10,
@@ -812,7 +812,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		},
 	}
 
-	ca := CloseAgreementDetails{
+	ca := CloseDetails{
 		IterationNumber:            2,
 		Balance:                    110, // Remote (initiator) owes local (responder) 110, which initiator ❌ cannot pay.
 		PaymentAmount:              50,
@@ -831,7 +831,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	require.NoError(t, err)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -843,7 +843,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 	responderChannel.UpdateRemoteEscrowAccountBalance(200)
 	_, err = responderChannel.ConfirmPayment(CloseAgreement{
 		Details: ca,
-		ProposerSignatures: CloseAgreementSignatures{
+		ProposerSignatures: CloseSignatures{
 			Declaration: txDecl.Signatures()[0].Signature,
 			Close:       txClose.Signatures()[0].Signature,
 		},
@@ -918,7 +918,7 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
 	initiatorChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    60, // Local (initiator) owes remote (responder) 60.
 			ObservationPeriodTime:      10,
@@ -1004,7 +1004,7 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 	// A close agreement from the remote participant should be rejected if the
 	// payment changes the balance in the favor of the remote.
 	responderChannel.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            1,
 			Balance:                    -60, // Local (responder) owes remote (initiator) 60.
 			ObservationPeriodTime:      10,
@@ -1109,7 +1109,7 @@ func TestLastConfirmedPayment(t *testing.T) {
 
 	// Confirming a close agreement with same sequence number but different Amount should error
 	caDifferent := CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			IterationNumber:            2,
 			Balance:                    400,
 			ObservationPeriodTime:      10,
@@ -1228,7 +1228,7 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 
 	// After proposing a coordinated close, confirming a payment should error.
 	p := CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			ObservationPeriodTime:      10,
 			ObservationPeriodLedgerGap: 10,
 			IterationNumber:            1,
@@ -1254,7 +1254,7 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 
 	// After a confirmed coordinated close, confirming a payment should error.
 	p = CloseAgreement{
-		Details: CloseAgreementDetails{
+		Details: CloseDetails{
 			ObservationPeriodTime:      0,
 			ObservationPeriodLedgerGap: 0,
 			IterationNumber:            2,

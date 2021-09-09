@@ -46,14 +46,14 @@ type Snapshot struct {
 	RemoteEscrowAccountBalance int64
 
 	OpenAgreement             OpenAgreement
-	OpenAgreementTransactions OpenAgreementTransactions
+	OpenAgreementTransactions OpenTransactions
 	OpenExecutedAndValidated  bool
 	OpenExecutedWithError     bool
 
-	LatestAuthorizedCloseAgreement               CloseAgreement
-	LatestAuthorizedCloseAgreementTransactions   CloseAgreementTransactions
-	LatestUnauthorizedCloseAgreement             CloseAgreement
-	LatestUnauthorizedCloseAgreementTransactions CloseAgreementTransactions
+	LatestAuthorizedCloseAgreement      CloseAgreement
+	LatestAuthorizedCloseTransactions   CloseTransactions
+	LatestUnauthorizedCloseAgreement    CloseAgreement
+	LatestUnauthorizedCloseTransactions CloseTransactions
 }
 
 // NewChannelFromSnapshot creates the channel with the given config, and
@@ -76,9 +76,9 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	}
 
 	channel.latestAuthorizedCloseAgreement = s.LatestAuthorizedCloseAgreement
-	channel.latestAuthorizedCloseAgreementTransactions = s.LatestAuthorizedCloseAgreementTransactions
+	channel.latestAuthorizedCloseTransactions = s.LatestAuthorizedCloseTransactions
 	channel.latestUnauthorizedCloseAgreement = s.LatestUnauthorizedCloseAgreement
-	channel.latestUnauthorizedCloseAgreementTransactions = s.LatestUnauthorizedCloseAgreementTransactions
+	channel.latestUnauthorizedCloseTransactions = s.LatestUnauthorizedCloseTransactions
 
 	return channel
 }
@@ -101,14 +101,14 @@ type Channel struct {
 	remoteSigner *keypair.FromAddress
 
 	openAgreement             OpenAgreement
-	openAgreementTransactions OpenAgreementTransactions
+	openAgreementTransactions OpenTransactions
 	openExecutedAndValidated  bool
 	openExecutedWithError     error
 
-	latestAuthorizedCloseAgreement               CloseAgreement
-	latestAuthorizedCloseAgreementTransactions   CloseAgreementTransactions
-	latestUnauthorizedCloseAgreement             CloseAgreement
-	latestUnauthorizedCloseAgreementTransactions CloseAgreementTransactions
+	latestAuthorizedCloseAgreement      CloseAgreement
+	latestAuthorizedCloseTransactions   CloseTransactions
+	latestUnauthorizedCloseAgreement    CloseAgreement
+	latestUnauthorizedCloseTransactions CloseTransactions
 }
 
 // Snapshot returns a snapshot of the channel's internal state that if combined
@@ -126,10 +126,10 @@ func (c *Channel) Snapshot() Snapshot {
 		OpenExecutedAndValidated:  c.openExecutedAndValidated,
 		OpenExecutedWithError:     c.openExecutedWithError != nil,
 
-		LatestAuthorizedCloseAgreement:               c.latestAuthorizedCloseAgreement,
-		LatestAuthorizedCloseAgreementTransactions:   c.latestAuthorizedCloseAgreementTransactions,
-		LatestUnauthorizedCloseAgreement:             c.latestUnauthorizedCloseAgreement,
-		LatestUnauthorizedCloseAgreementTransactions: c.latestUnauthorizedCloseAgreementTransactions,
+		LatestAuthorizedCloseAgreement:      c.latestAuthorizedCloseAgreement,
+		LatestAuthorizedCloseTransactions:   c.latestAuthorizedCloseTransactions,
+		LatestUnauthorizedCloseAgreement:    c.latestUnauthorizedCloseAgreement,
+		LatestUnauthorizedCloseTransactions: c.latestUnauthorizedCloseTransactions,
 	}
 }
 
