@@ -45,12 +45,12 @@ type Snapshot struct {
 	RemoteEscrowSequence       int64
 	RemoteEscrowAccountBalance int64
 
-	OpenAgreement             OpenAgreement
-	OpenExecutedAndValidated  bool
-	OpenExecutedWithError     bool
+	OpenAgreement            OpenAgreement
+	OpenExecutedAndValidated bool
+	OpenExecutedWithError    bool
 
-	LatestAuthorizedCloseAgreement      CloseAgreement
-	LatestUnauthorizedCloseAgreement    CloseAgreement
+	LatestAuthorizedCloseAgreement   CloseAgreement
+	LatestUnauthorizedCloseAgreement CloseAgreement
 }
 
 // NewChannelFromSnapshot creates the channel with the given config, and
@@ -98,8 +98,8 @@ type Channel struct {
 	openExecutedAndValidated bool
 	openExecutedWithError    error
 
-	latestAuthorizedCloseAgreement      CloseAgreement
-	latestUnauthorizedCloseAgreement    CloseAgreement
+	latestAuthorizedCloseAgreement   CloseAgreement
+	latestUnauthorizedCloseAgreement CloseAgreement
 }
 
 // Snapshot returns a snapshot of the channel's internal state that if combined
@@ -112,12 +112,12 @@ func (c *Channel) Snapshot() Snapshot {
 		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
 		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
 
-		OpenAgreement:             c.openAgreement,
-		OpenExecutedAndValidated:  c.openExecutedAndValidated,
-		OpenExecutedWithError:     c.openExecutedWithError != nil,
+		OpenAgreement:            c.openAgreement,
+		OpenExecutedAndValidated: c.openExecutedAndValidated,
+		OpenExecutedWithError:    c.openExecutedWithError != nil,
 
-		LatestAuthorizedCloseAgreement:      c.latestAuthorizedCloseAgreement,
-		LatestUnauthorizedCloseAgreement:    c.latestUnauthorizedCloseAgreement,
+		LatestAuthorizedCloseAgreement:   c.latestAuthorizedCloseAgreement,
+		LatestUnauthorizedCloseAgreement: c.latestUnauthorizedCloseAgreement,
 	}
 }
 

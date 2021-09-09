@@ -1019,15 +1019,15 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 	// payment changes the balance in the favor of the remote.
 	responderChannel.latestAuthorizedCloseAgreement = CloseAgreement{
 		Envelope: CloseEnvelope{
-		Details: CloseDetails{
-			IterationNumber:            1,
-			Balance:                    -60, // Local (responder) owes remote (initiator) 60.
-			ObservationPeriodTime:      10,
-			ObservationPeriodLedgerGap: 10,
-			ConfirmingSigner:           localSigner.FromAddress(),
+			Details: CloseDetails{
+				IterationNumber:            1,
+				Balance:                    -60, // Local (responder) owes remote (initiator) 60.
+				ObservationPeriodTime:      10,
+				ObservationPeriodLedgerGap: 10,
+				ConfirmingSigner:           localSigner.FromAddress(),
+			},
 		},
-	},
-}
+	}
 
 	_, err := responderChannel.ProposePayment(110)
 	assert.EqualError(t, err, "amount over commits: account is underfunded to make payment")

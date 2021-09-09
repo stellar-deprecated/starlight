@@ -204,7 +204,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 
 	// The new close agreement is valid and authorized, store and promote it.
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		Envelope: ce,
+		Envelope:     ce,
 		Transactions: txs,
 	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
