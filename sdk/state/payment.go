@@ -107,6 +107,36 @@ type CloseAgreement struct {
 	Transactions CloseTransactions
 }
 
+// SignedTransactions adds signatures from the CloseAgreement's Envelope to its
+// Transactions.
+func (ca CloseAgreement) SignedTransactions() CloseTransactions {
+	declTx := ca.Transactions.Declaration
+	closeTx := ca.Transactions.Close
+
+	// Add the signatures that are from the proposer.
+	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Declaration, ca.Envelope.Details.ProposingSigner.Hint()))
+	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Close, ca.Envelope.Details.ProposingSigner.Hint()))
+
+	// Add signatures that are from the confirmer.
+	if ca.Envelope.ConfirmerSignatures.Declaration != nil {
+		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Declaration, ca.Envelope.Details.ConfirmingSigner.Hint()))
+	}
+	if ca.Envelope.ConfirmerSignatures.Close != nil {
+		closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Close, ca.Envelope.Details.ConfirmingSigner.Hint()))
+
+		// Add the close signature provided by the confirming signer that is
+		// required to be an extra signer on the declaration tx to the formation tx.
+		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(ca.Envelope.ConfirmerSignatures.Close, ca.Envelope.Details.ConfirmingSigner.Hint(), ca.Transactions.CloseHash[:]))
+	}
+
+	return CloseTransactions{
+		DeclarationHash: ca.Transactions.DeclarationHash,
+		Declaration:     declTx,
+		CloseHash:       ca.Transactions.CloseHash,
+		Close:           closeTx,
+	}
+}
+
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	if amount <= 0 {
 		return CloseAgreement{}, fmt.Errorf("payment amount must be greater than 0")
