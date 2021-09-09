@@ -466,7 +466,6 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localEscrowAccount.Balance)
 	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
-
 }
 
 func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) {
