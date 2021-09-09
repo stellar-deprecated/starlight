@@ -5,7 +5,6 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 // closeTxs builds the transactions that can be submitted to close the channel
@@ -71,28 +70,9 @@ func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactio
 // channel using the latest close agreement. The transactions are signed and
 // ready to submit.
 func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
-	cae := c.latestAuthorizedCloseAgreement.Envelope
-	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, cae.Details)
-	if err != nil {
-		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
-	}
-
-	declTx = txs.Declaration
-	closeTx = txs.Close
-
-	// Add the declaration signatures to the declaration tx.
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ProposerSignatures.Declaration, cae.Details.ProposingSigner.Hint()))
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ConfirmerSignatures.Declaration, cae.Details.ConfirmingSigner.Hint()))
-
-	// Add the close signature provided by the confirming signer that is
-	// required to be an extra signer on the declaration tx to the formation tx.
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(cae.ConfirmerSignatures.Close, cae.Details.ConfirmingSigner.Hint(), txs.CloseHash[:]))
-
-	// Add the close signatures to the close tx.
-	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ProposerSignatures.Close, cae.Details.ProposingSigner.Hint()))
-	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ConfirmerSignatures.Close, cae.Details.ConfirmingSigner.Hint()))
-
-	return
+	cae := c.latestAuthorizedCloseAgreement
+	txs := cae.SignedTransactions()
+	return txs.Declaration, txs.Close, nil
 }
 
 // ProposeClose proposes that the latest authorized close agreement be submitted
