@@ -256,7 +256,7 @@ func (a *Agent) Open() error {
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:        msg.TypeOpenRequest,
-		OpenRequest: &open,
+		OpenRequest: &open.Envelope,
 	})
 	if err != nil {
 		return fmt.Errorf("sending open: %w", err)
@@ -304,7 +304,7 @@ func (a *Agent) Payment(paymentAmount string) error {
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:           msg.TypePaymentRequest,
-		PaymentRequest: &ca,
+		PaymentRequest: &ca.Envelope,
 	})
 	if err != nil {
 		return fmt.Errorf("sending payment: %w", err)
@@ -356,7 +356,7 @@ func (a *Agent) DeclareClose() error {
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:         msg.TypeCloseRequest,
-		CloseRequest: &ca,
+		CloseRequest: &ca.Envelope,
 	})
 	if err != nil {
 		return fmt.Errorf("error: sending the close proposal: %w", err)
@@ -502,7 +502,7 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.logWriter, "open authorized\n")
 	err = send.Encode(msg.Message{
 		Type:         msg.TypeOpenResponse,
-		OpenResponse: &open,
+		OpenResponse: &open.Envelope,
 	})
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
@@ -563,7 +563,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
-	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment})
+	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope})
 	if a.events != nil {
 		a.events <- PaymentReceivedEvent{CloseAgreement: payment}
 	}
@@ -613,7 +613,7 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 	}
 	err = send.Encode(msg.Message{
 		Type:          msg.TypeCloseResponse,
-		CloseResponse: &close,
+		CloseResponse: &close.Envelope,
 	})
 	if err != nil {
 		return fmt.Errorf("encoding close to send back: %v\n", err)

@@ -27,16 +27,16 @@ func TestChannel_CloseTx(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-	oa := OpenAgreement{
-		Details: OpenAgreementDetails{
+	oe := OpenEnvelope{
+		Details: OpenDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
 			ExpiresAt:                  time.Now(),
 		},
 	}
-	ca := CloseAgreement{
-		Details: CloseAgreementDetails{
+	ce := CloseEnvelope{
+		Details: CloseDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 2,
 			IterationNumber:            3,
@@ -53,11 +53,10 @@ func TestChannel_CloseTx(t *testing.T) {
 			Close:       xdr.Signature{3},
 		},
 	}
-	txs, err := channel.closeTxs(oa.Details, ca.Details)
+	txs, err := channel.closeTxs(oe.Details, ce.Details)
 	require.NoError(t, err)
-	channel.openAgreement = oa
-	channel.latestAuthorizedCloseAgreement = ca
-	channel.latestAuthorizedCloseTransactions = txs
+	channel.openAgreement = OpenAgreement{Envelope: oe}
+	channel.latestAuthorizedCloseAgreement = CloseAgreement{Envelope: ce, Transactions: txs}
 	closeTxHash := txs.CloseHash
 
 	// TODO: Compare the non-signature parts of the txs with the result of
@@ -86,7 +85,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
-	channel.latestAuthorizedCloseTransactions = CloseTransactions{
+	channel.latestAuthorizedCloseAgreement.Transactions = CloseTransactions{
 		Declaration: testTx,
 		Close:       testTx,
 	}
@@ -105,11 +104,11 @@ func TestChannel_CloseTx(t *testing.T) {
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
-	channel.latestUnauthorizedCloseTransactions = CloseTransactions{
+	channel.latestUnauthorizedCloseAgreement.Transactions = CloseTransactions{
 		Declaration: testTx,
 		Close:       testTx,
 	}
-	txs, err = channel.closeTxs(oa.Details, channel.latestUnauthorizedCloseAgreement.Details)
+	txs, err = channel.closeTxs(oe.Details, channel.latestUnauthorizedCloseAgreement.Envelope.Details)
 	require.NoError(t, err)
 	assert.Equal(t, int64(987654321), txs.Declaration.SequenceNumber())
 	assert.Equal(t, int64(987654321), txs.Close.SequenceNumber())
@@ -149,9 +148,9 @@ func TestChannel_ProposeClose(t *testing.T) {
 			StartingSequence:           101,
 		})
 		require.NoError(t, err)
-		open2, err := remoteChannel.ConfirmOpen(open1)
+		open2, err := remoteChannel.ConfirmOpen(open1.Envelope)
 		require.NoError(t, err)
-		_, err = localChannel.ConfirmOpen(open2)
+		_, err = localChannel.ConfirmOpen(open2.Envelope)
 		require.NoError(t, err)
 
 		ftx, err := localChannel.OpenTx()
@@ -188,14 +187,14 @@ func TestChannel_ProposeClose(t *testing.T) {
 	// If the local proposes a close, the agreement will have them as the proposer.
 	closeByLocal, err := localChannel.ProposeClose()
 	require.NoError(t, err)
-	assert.Equal(t, localSigner.FromAddress(), closeByLocal.Details.ProposingSigner)
-	assert.Equal(t, remoteSigner.FromAddress(), closeByLocal.Details.ConfirmingSigner)
+	assert.Equal(t, localSigner.FromAddress(), closeByLocal.Envelope.Details.ProposingSigner)
+	assert.Equal(t, remoteSigner.FromAddress(), closeByLocal.Envelope.Details.ConfirmingSigner)
 
 	// If the remote proposes a close, the agreement will have them as the proposer.
 	closeByRemote, err := remoteChannel.ProposeClose()
 	require.NoError(t, err)
-	assert.Equal(t, remoteSigner.FromAddress(), closeByRemote.Details.ProposingSigner)
-	assert.Equal(t, localSigner.FromAddress(), closeByRemote.Details.ConfirmingSigner)
+	assert.Equal(t, remoteSigner.FromAddress(), closeByRemote.Envelope.Details.ProposingSigner)
+	assert.Equal(t, localSigner.FromAddress(), closeByRemote.Envelope.Details.ConfirmingSigner)
 }
 
 func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
@@ -233,9 +232,9 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 			StartingSequence:           101,
 		})
 		require.NoError(t, err)
-		m, err = receiverChannel.ConfirmOpen(m)
+		m, err = receiverChannel.ConfirmOpen(m.Envelope)
 		require.NoError(t, err)
-		_, err = senderChannel.ConfirmOpen(m)
+		_, err = senderChannel.ConfirmOpen(m.Envelope)
 		require.NoError(t, err)
 
 		ftx, err := senderChannel.OpenTx()
@@ -272,9 +271,9 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 	// Coordinated close.
 	ca, err := senderChannel.ProposeClose()
 	require.NoError(t, err)
-	ca2, err := receiverChannel.ConfirmClose(ca)
+	ca2, err := receiverChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
-	_, err = senderChannel.ConfirmClose(ca2)
+	_, err = senderChannel.ConfirmClose(ca2.Envelope)
 	require.NoError(t, err)
 }
 
@@ -308,7 +307,7 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
 
 	// Before open, confirming a coordinated close should error.
-	_, err = senderChannel.ConfirmClose(CloseAgreement{})
+	_, err = senderChannel.ConfirmClose(CloseEnvelope{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
 
 	// Open channel.
@@ -320,17 +319,17 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 			ObservationPeriodLedgerGap: 10,
 		})
 		require.NoError(t, err)
-		m, err = receiverChannel.ConfirmOpen(m)
+		m, err = receiverChannel.ConfirmOpen(m.Envelope)
 		require.NoError(t, err)
-		_, err = senderChannel.ConfirmOpen(m)
+		_, err = senderChannel.ConfirmOpen(m.Envelope)
 		require.NoError(t, err)
 	}
 
 	// Before an open is executed and validated, proposing and confirming a payment should error.
-	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.isEmpty())
+	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.Envelope.isEmpty())
 	_, err = senderChannel.ProposeClose()
 	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
 
-	_, err = senderChannel.ConfirmClose(CloseAgreement{})
+	_, err = senderChannel.ConfirmClose(CloseEnvelope{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
 }

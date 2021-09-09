@@ -73,15 +73,15 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 		return nil
 	}
 
-	ca := c.latestUnauthorizedCloseAgreement
+	ce := c.latestUnauthorizedCloseAgreement.Envelope
 
 	// If there is no unauthorized close agreement, then there's no need to try
 	// and update it.
-	if ca.isEmpty() {
+	if ce.isEmpty() {
 		return nil
 	}
 
-	txs, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, ce.Details)
 	if err != nil {
 		return fmt.Errorf("building txs for latest unauthorized close agreement: %w", err)
 	}
@@ -102,18 +102,18 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 	for _, sig := range tx.Signatures() {
 		err = c.remoteSigner.Verify(txs.DeclarationHash[:], sig.Signature)
 		if err == nil {
-			ca.ConfirmerSignatures.Declaration = sig.Signature
+			ce.ConfirmerSignatures.Declaration = sig.Signature
 			break
 		}
 	}
 	for _, sig := range tx.Signatures() {
 		err = c.remoteSigner.Verify(txs.CloseHash[:], sig.Signature)
 		if err == nil {
-			ca.ConfirmerSignatures.Close = sig.Signature
+			ce.ConfirmerSignatures.Close = sig.Signature
 			break
 		}
 	}
-	_, err = c.ConfirmPayment(ca)
+	_, err = c.ConfirmPayment(ce)
 	if err != nil {
 		return fmt.Errorf("confirming the last unauthorized close: %w", err)
 	}
@@ -132,7 +132,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 		return fmt.Errorf("parsing the result meta xdr: %w", err)
 	}
 
-	channelAsset := c.openAgreement.Details.Asset
+	channelAsset := c.openAgreement.Envelope.Details.Asset
 
 	// Find ledger changes for the escrow accounts' balances,
 	// if any, and then update.
@@ -239,7 +239,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 
 			switch updated.Data.Type {
 			case xdr.LedgerEntryTypeTrustline:
-				if updated.Data.TrustLine.Asset.StringCanonical() != c.openAgreement.Details.Asset.StringCanonical() {
+				if updated.Data.TrustLine.Asset.StringCanonical() != c.openAgreement.Envelope.Details.Asset.StringCanonical() {
 					continue
 				}
 				if updated.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
@@ -305,12 +305,12 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 	}
 
 	// Validate the required trustlines are correct for a non-native channel.
-	if !c.openAgreement.Details.Asset.IsNative() {
+	if !c.openAgreement.Envelope.Details.Asset.IsNative() {
 		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
 		for _, te := range trustlineEntries {
 			// Validate trustline exists.
 			if te == nil {
-				c.openExecutedWithError = fmt.Errorf("trustline not found for asset %v", c.openAgreement.Details.Asset)
+				c.openExecutedWithError = fmt.Errorf("trustline not found for asset %v", c.openAgreement.Envelope.Details.Asset)
 				return nil
 			}
 

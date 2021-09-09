@@ -14,13 +14,13 @@ import (
 // transactions and still has them stored internally then it will return those
 // previously built transactions, otherwise the transactions will be built from
 // scratch.
-func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (txs CloseTransactions, err error) {
-	if c.openAgreement.Details.Equal(oad) {
-		if c.latestAuthorizedCloseAgreement.Details.Equal(d) {
-			return c.latestAuthorizedCloseTransactions, nil
+func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactions, err error) {
+	if c.openAgreement.Envelope.Details.Equal(oad) {
+		if c.latestAuthorizedCloseAgreement.Envelope.Details.Equal(d) {
+			return c.latestAuthorizedCloseAgreement.Transactions, nil
 		}
-		if c.latestUnauthorizedCloseAgreement.Details.Equal(d) {
-			return c.latestUnauthorizedCloseTransactions, nil
+		if c.latestUnauthorizedCloseAgreement.Envelope.Details.Equal(d) {
+			return c.latestUnauthorizedCloseAgreement.Transactions, nil
 		}
 	}
 	txClose, err := txbuild.Close(txbuild.CloseParams{
@@ -71,8 +71,8 @@ func (c *Channel) closeTxs(oad OpenAgreementDetails, d CloseAgreementDetails) (t
 // channel using the latest close agreement. The transactions are signed and
 // ready to submit.
 func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Transaction, err error) {
-	ca := c.latestAuthorizedCloseAgreement
-	txs, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	cae := c.latestAuthorizedCloseAgreement.Envelope
+	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, cae.Details)
 	if err != nil {
 		return nil, nil, fmt.Errorf("building declaration and close txs for latest close agreement: %w", err)
 	}
@@ -81,16 +81,16 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 	closeTx = txs.Close
 
 	// Add the declaration signatures to the declaration tx.
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.ProposerSignatures.Declaration, ca.Details.ProposingSigner.Hint()))
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.ConfirmerSignatures.Declaration, ca.Details.ConfirmingSigner.Hint()))
+	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ProposerSignatures.Declaration, cae.Details.ProposingSigner.Hint()))
+	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ConfirmerSignatures.Declaration, cae.Details.ConfirmingSigner.Hint()))
 
 	// Add the close signature provided by the confirming signer that is
 	// required to be an extra signer on the declaration tx to the formation tx.
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(ca.ConfirmerSignatures.Close, ca.Details.ConfirmingSigner.Hint(), txs.CloseHash[:]))
+	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(cae.ConfirmerSignatures.Close, cae.Details.ConfirmingSigner.Hint(), txs.CloseHash[:]))
 
 	// Add the close signatures to the close tx.
-	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.ProposerSignatures.Close, ca.Details.ProposingSigner.Hint()))
-	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.ConfirmerSignatures.Close, ca.Details.ConfirmingSigner.Hint()))
+	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ProposerSignatures.Close, cae.Details.ProposingSigner.Hint()))
+	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(cae.ConfirmerSignatures.Close, cae.Details.ConfirmingSigner.Hint()))
 
 	return
 }
@@ -101,22 +101,22 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 // than the original observation time.
 func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	// If an unfinished unauthorized agreement exists, error.
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
 		return CloseAgreement{}, fmt.Errorf("cannot propose coordinated close while an unfinished payment exists")
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a coordinated close before channel is opened")
 	}
 
-	d := c.latestAuthorizedCloseAgreement.Details
+	d := c.latestAuthorizedCloseAgreement.Envelope.Details
 	d.ObservationPeriodTime = 0
 	d.ObservationPeriodLedgerGap = 0
 	d.ProposingSigner = c.localSigner.FromAddress()
 	d.ConfirmingSigner = c.remoteSigner
 
-	txs, err := c.closeTxs(c.openAgreement.Details, d)
+	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, d)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making declaration and close transactions: %w", err)
 	}
@@ -127,22 +127,24 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 	// Store the close agreement while participants iterate on signatures.
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{
-		Details:            d,
-		ProposerSignatures: sigs,
+		Envelope: CloseEnvelope{
+			Details:            d,
+			ProposerSignatures: sigs,
+		},
+		Transactions: txs,
 	}
-	c.latestUnauthorizedCloseTransactions = txs
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
-func (c *Channel) validateClose(ca CloseAgreement) error {
+func (c *Channel) validateClose(ca CloseEnvelope) error {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
 		return fmt.Errorf("cannot confirm a coordinated close before channel is opened")
 	}
-	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Details.IterationNumber {
+	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber {
 		return fmt.Errorf("close agreement iteration number does not match saved latest authorized close agreement")
 	}
-	if ca.Details.Balance != c.latestAuthorizedCloseAgreement.Details.Balance {
+	if ca.Details.Balance != c.latestAuthorizedCloseAgreement.Envelope.Details.Balance {
 		return fmt.Errorf("close agreement balance does not match saved latest authorized close agreement")
 	}
 	if ca.Details.ObservationPeriodTime != 0 {
@@ -161,19 +163,19 @@ func (c *Channel) validateClose(ca CloseAgreement) error {
 // observation period. The agreement will always be accepted if it is identical
 // to the latest authorized close agreement, and it is signed by the participant
 // proposing the close.
-func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement, err error) {
-	err = c.validateClose(ca)
+func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement, err error) {
+	err = c.validateClose(ce)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("validating close agreement: %w", err)
 	}
 
-	txs, err := c.closeTxs(c.openAgreement.Details, ca.Details)
+	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, ce.Details)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
 
 	// If remote has not signed the txs, error as is invalid.
-	remoteSigs := ca.SignaturesFor(c.remoteSigner)
+	remoteSigs := ce.SignaturesFor(c.remoteSigner)
 	if remoteSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
 	}
@@ -183,7 +185,7 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
-	localSigs := ca.SignaturesFor(c.localSigner.FromAddress())
+	localSigs := ce.SignaturesFor(c.localSigner.FromAddress())
 	if localSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
@@ -191,19 +193,20 @@ func (c *Channel) ConfirmClose(ca CloseAgreement) (closeAgreement CloseAgreement
 	if err != nil {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
-		if !ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
+		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
 			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
 		}
-		ca.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.networkPassphrase, c.localSigner)
+		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.networkPassphrase, c.localSigner)
 		if err != nil {
 			return CloseAgreement{}, fmt.Errorf("local signing: %w", err)
 		}
 	}
 
 	// The new close agreement is valid and authorized, store and promote it.
-	c.latestAuthorizedCloseAgreement = ca
-	c.latestAuthorizedCloseTransactions = txs
+	c.latestAuthorizedCloseAgreement = CloseAgreement{
+		Envelope:     ce,
+		Transactions: txs,
+	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
-	c.latestUnauthorizedCloseTransactions = CloseTransactions{}
 	return c.latestAuthorizedCloseAgreement, nil
 }

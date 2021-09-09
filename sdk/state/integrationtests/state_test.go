@@ -63,30 +63,30 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		StartingSequence:           s,
 	})
 	require.NoError(t, err)
-	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-	assert.NotEmpty(t, open.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.ProposerSignatures.Formation)
-	assert.Empty(t, open.ConfirmerSignatures)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 	{
 		// R signs, R is done
-		open, err = responderChannel.ConfirmOpen(open)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 
 		// I receives the signatures, I is done
-		open, err = initiatorChannel.ConfirmOpen(open)
+		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -190,11 +190,11 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
-		payment, err = receivingChannel.ConfirmPayment(payment)
+		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 
 		// Sender: stores receiver's signatures
-		_, err = sendingChannel.ConfirmPayment(payment)
+		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 
 		// Record the close tx's at this point in time.
@@ -339,30 +339,30 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		StartingSequence:           s,
 	})
 	require.NoError(t, err)
-	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-	assert.NotEmpty(t, open.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.ProposerSignatures.Formation)
-	assert.Empty(t, open.ConfirmerSignatures)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 	{
 		// R signs, R is done
-		open, err = responderChannel.ConfirmOpen(open)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 
 		// I stores the signatures, I is done.
-		open, err = initiatorChannel.ConfirmOpen(open)
+		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -457,11 +457,11 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		require.NoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
-		payment, err = receivingChannel.ConfirmPayment(payment)
+		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 
 		// Sender: stores the receivers signatures
-		_, err = sendingChannel.ConfirmPayment(payment)
+		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 	}
 
@@ -486,10 +486,10 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, err = responderChannel.ConfirmClose(ca)
+	ca, err = responderChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
-	_, err = initiatorChannel.ConfirmClose(ca)
+	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
@@ -555,31 +555,31 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-	assert.NotEmpty(t, open.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.ProposerSignatures.Formation)
-	assert.Empty(t, open.ConfirmerSignatures)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 
 	{
 		// R signs txClose and txDecl
-		open, err = responderChannel.ConfirmOpen(open)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 
 		// I receives the signatures, I is done
-		open, err = initiatorChannel.ConfirmOpen(open)
+		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -674,11 +674,11 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		require.NoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
-		payment, err = receivingChannel.ConfirmPayment(payment)
+		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 
 		// Sender: stores the signatures from receiver
-		_, err = sendingChannel.ConfirmPayment(payment)
+		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 	}
 
@@ -689,10 +689,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, err = responderChannel.ConfirmClose(ca)
+	ca, err = responderChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
-	_, err = initiatorChannel.ConfirmClose(ca)
+	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
 	t.Log("Initiator submitting latest declaration transaction")
@@ -773,30 +773,30 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	})
 
 	require.NoError(t, err)
-	assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-	assert.NotEmpty(t, open.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.ProposerSignatures.Formation)
-	assert.Empty(t, open.ConfirmerSignatures)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 	{
 		// R signs
-		open, err = responderChannel.ConfirmOpen(open)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 
 		// I receives the signatures, I is done
-		open, err = initiatorChannel.ConfirmOpen(open)
+		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		assert.NotEmpty(t, open.ProposerSignatures.Declaration)
-		assert.NotEmpty(t, open.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.ProposerSignatures.Formation)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Declaration)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
 	}
 
 	{
@@ -891,11 +891,11 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		require.NoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
-		payment, err = receivingChannel.ConfirmPayment(payment)
+		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 
 		// Sender: stores signatures from receiver
-		_, err = sendingChannel.ConfirmPayment(payment)
+		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 	}
 
@@ -906,10 +906,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)
 
-	ca, err = responderChannel.ConfirmClose(ca)
+	ca, err = responderChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
-	_, err = initiatorChannel.ConfirmClose(ca)
+	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
 	require.NoError(t, err)
 
 	t.Log("Responder submitting latest declaration transaction")
@@ -993,9 +993,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			StartingSequence:           s,
 		})
 		require.NoError(t, err)
-		open, err = responderChannel.ConfirmOpen(open)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
-		_, err = initiatorChannel.ConfirmOpen(open)
+		_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
 		tx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
@@ -1054,9 +1054,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	{
 		payment, err := initiatorChannel.ProposePayment(8)
 		require.NoError(t, err)
-		payment, err = responderChannel.ConfirmPayment(payment)
+		payment, err = responderChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
-		_, err = initiatorChannel.ConfirmPayment(payment)
+		_, err = initiatorChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 	}
 
@@ -1064,7 +1064,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	{
 		payment, err := initiatorChannel.ProposePayment(2)
 		require.NoError(t, err)
-		_, err = responderChannel.ConfirmPayment(payment)
+		_, err = responderChannel.ConfirmPayment(payment.Envelope)
 		require.NoError(t, err)
 		// Pretend the responder doesn't pass back their response to the
 		// initiator. The initiator never sees their signatures, so the

@@ -296,14 +296,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		require.True(t, ok)
 		localPaymentEvent, ok := localEvent.(PaymentSentEvent)
 		require.True(t, ok)
-		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(50_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
+		assert.Equal(t, int64(2), localPaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), localPaymentEvent.CloseAgreement.Envelope.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
 		remotePaymentEvent, ok := remoteEvent.(PaymentReceivedEvent)
 		require.True(t, ok)
-		assert.Equal(t, int64(2), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(50_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
+		assert.Equal(t, int64(2), remotePaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(50_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
 	}
 
 	// Make another payment.
@@ -320,14 +320,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		require.True(t, ok)
 		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
 		require.True(t, ok)
-		assert.Equal(t, int64(3), localPaymentEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(30_0000000), localPaymentEvent.CloseAgreement.Details.Balance)
+		assert.Equal(t, int64(3), localPaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), localPaymentEvent.CloseAgreement.Envelope.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
 		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
 		require.True(t, ok)
-		assert.Equal(t, int64(3), remotePaymentEvent.CloseAgreement.Details.IterationNumber)
-		assert.Equal(t, int64(30_0000000), remotePaymentEvent.CloseAgreement.Details.Balance)
+		assert.Equal(t, int64(3), remotePaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(30_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
 	}
 
 	// Expect no txs to have been submitted for payments.

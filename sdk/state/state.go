@@ -45,15 +45,12 @@ type Snapshot struct {
 	RemoteEscrowSequence       int64
 	RemoteEscrowAccountBalance int64
 
-	OpenAgreement             OpenAgreement
-	OpenAgreementTransactions OpenTransactions
-	OpenExecutedAndValidated  bool
-	OpenExecutedWithError     bool
+	OpenAgreement            OpenAgreement
+	OpenExecutedAndValidated bool
+	OpenExecutedWithError    bool
 
-	LatestAuthorizedCloseAgreement      CloseAgreement
-	LatestAuthorizedCloseTransactions   CloseTransactions
-	LatestUnauthorizedCloseAgreement    CloseAgreement
-	LatestUnauthorizedCloseTransactions CloseTransactions
+	LatestAuthorizedCloseAgreement   CloseAgreement
+	LatestUnauthorizedCloseAgreement CloseAgreement
 }
 
 // NewChannelFromSnapshot creates the channel with the given config, and
@@ -69,16 +66,13 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
 
 	channel.openAgreement = s.OpenAgreement
-	channel.openTransactions = s.OpenAgreementTransactions
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
 	if s.OpenExecutedWithError {
 		channel.openExecutedWithError = fmt.Errorf("open executed with error")
 	}
 
 	channel.latestAuthorizedCloseAgreement = s.LatestAuthorizedCloseAgreement
-	channel.latestAuthorizedCloseTransactions = s.LatestAuthorizedCloseTransactions
 	channel.latestUnauthorizedCloseAgreement = s.LatestUnauthorizedCloseAgreement
-	channel.latestUnauthorizedCloseTransactions = s.LatestUnauthorizedCloseTransactions
 
 	return channel
 }
@@ -101,14 +95,11 @@ type Channel struct {
 	remoteSigner *keypair.FromAddress
 
 	openAgreement            OpenAgreement
-	openTransactions         OpenTransactions
 	openExecutedAndValidated bool
 	openExecutedWithError    error
 
-	latestAuthorizedCloseAgreement      CloseAgreement
-	latestAuthorizedCloseTransactions   CloseTransactions
-	latestUnauthorizedCloseAgreement    CloseAgreement
-	latestUnauthorizedCloseTransactions CloseTransactions
+	latestAuthorizedCloseAgreement   CloseAgreement
+	latestUnauthorizedCloseAgreement CloseAgreement
 }
 
 // Snapshot returns a snapshot of the channel's internal state that if combined
@@ -121,15 +112,12 @@ func (c *Channel) Snapshot() Snapshot {
 		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
 		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
 
-		OpenAgreement:             c.openAgreement,
-		OpenAgreementTransactions: c.openTransactions,
-		OpenExecutedAndValidated:  c.openExecutedAndValidated,
-		OpenExecutedWithError:     c.openExecutedWithError != nil,
+		OpenAgreement:            c.openAgreement,
+		OpenExecutedAndValidated: c.openExecutedAndValidated,
+		OpenExecutedWithError:    c.openExecutedWithError != nil,
 
-		LatestAuthorizedCloseAgreement:      c.latestAuthorizedCloseAgreement,
-		LatestAuthorizedCloseTransactions:   c.latestAuthorizedCloseTransactions,
-		LatestUnauthorizedCloseAgreement:    c.latestUnauthorizedCloseAgreement,
-		LatestUnauthorizedCloseTransactions: c.latestUnauthorizedCloseTransactions,
+		LatestAuthorizedCloseAgreement:   c.latestAuthorizedCloseAgreement,
+		LatestUnauthorizedCloseAgreement: c.latestUnauthorizedCloseAgreement,
 	}
 }
 
@@ -158,7 +146,7 @@ func (c *Channel) State() (State, error) {
 	}
 
 	// Get the sequence numbers for the latest close agreement transactions.
-	txs, err := c.closeTxs(c.openAgreement.Details, c.latestAuthorizedCloseAgreement.Details)
+	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, c.latestAuthorizedCloseAgreement.Envelope.Details)
 	if err != nil {
 		return -1, fmt.Errorf("building declaration and close txs for latest authorized close agreement: %w", err)
 	}
@@ -167,7 +155,7 @@ func (c *Channel) State() (State, error) {
 
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
 
-	if initiatorEscrowSeqNum == c.openAgreement.Details.StartingSequence {
+	if initiatorEscrowSeqNum == c.openAgreement.Envelope.Details.StartingSequence {
 		return StateOpen, nil
 	} else if initiatorEscrowSeqNum < latestDeclSequence {
 		return StateClosingWithOutdatedState, nil
@@ -189,24 +177,24 @@ func (c *Channel) IsInitiator() bool {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	if !c.latestUnauthorizedCloseAgreement.isEmpty() {
-		return c.latestUnauthorizedCloseAgreement.Details.IterationNumber
+	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
+		return c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber
 	}
-	return c.latestAuthorizedCloseAgreement.Details.IterationNumber + 1
+	return c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber + 1
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() int64 {
-	return c.latestAuthorizedCloseAgreement.Details.Balance
+	return c.latestAuthorizedCloseAgreement.Envelope.Details.Balance
 }
 
-func (c *Channel) OpenAgreement() OpenAgreement {
-	return c.openAgreement
+func (c *Channel) OpenAgreement() OpenEnvelope {
+	return c.openAgreement.Envelope
 }
 
-func (c *Channel) LatestCloseAgreement() CloseAgreement {
-	return c.latestAuthorizedCloseAgreement
+func (c *Channel) LatestCloseAgreement() CloseEnvelope {
+	return c.latestAuthorizedCloseAgreement.Envelope
 }
 
 func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {

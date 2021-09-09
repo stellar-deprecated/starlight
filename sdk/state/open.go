@@ -11,7 +11,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type OpenAgreementDetails struct {
+type OpenDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	Asset                      Asset
@@ -21,7 +21,7 @@ type OpenAgreementDetails struct {
 	ConfirmingSigner           *keypair.FromAddress
 }
 
-func (d OpenAgreementDetails) Equal(d2 OpenAgreementDetails) bool {
+func (d OpenDetails) Equal(d2 OpenDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.Asset == d2.Asset &&
@@ -84,29 +84,29 @@ type OpenTransactions struct {
 	Formation       *txnbuild.Transaction
 }
 
-type OpenAgreement struct {
-	Details             OpenAgreementDetails
+type OpenEnvelope struct {
+	Details             OpenDetails
 	ProposerSignatures  OpenSignatures
 	ConfirmerSignatures OpenSignatures
 }
 
-func (oa OpenAgreement) isEmpty() bool {
-	return oa.Equal(OpenAgreement{})
+func (oa OpenEnvelope) isEmpty() bool {
+	return oa.Equal(OpenEnvelope{})
 }
 
 // isFull checks if the open agreement has the max amount of signatures,
 // indicating it is fully signed by all parties.
-func (oa OpenAgreement) isFull() bool {
+func (oa OpenEnvelope) isFull() bool {
 	return oa.ProposerSignatures.isFull() && oa.ConfirmerSignatures.isFull()
 }
 
-func (oa OpenAgreement) Equal(oa2 OpenAgreement) bool {
+func (oa OpenEnvelope) Equal(oa2 OpenEnvelope) bool {
 	// TODO: Replace cmp.Equal with a hand written equals.
-	type OA OpenAgreement
+	type OA OpenEnvelope
 	return cmp.Equal(OA(oa), OA(oa2))
 }
 
-func (oa OpenAgreement) SignaturesFor(signer *keypair.FromAddress) *OpenSignatures {
+func (oa OpenEnvelope) SignaturesFor(signer *keypair.FromAddress) *OpenSignatures {
 	if oa.Details.ProposingSigner.Equal(signer) {
 		return &oa.ProposerSignatures
 	}
@@ -114,6 +114,13 @@ func (oa OpenAgreement) SignaturesFor(signer *keypair.FromAddress) *OpenSignatur
 		return &oa.ConfirmerSignatures
 	}
 	return nil
+}
+
+// OpenAgreement contains all the information known for an agreement proposed or
+// confirmed by the channel.
+type OpenAgreement struct {
+	Envelope     OpenEnvelope
+	Transactions OpenTransactions
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
@@ -131,11 +138,11 @@ type OpenParams struct {
 // the channel has previous build the open transactions then it will return
 // those previously built transactions, otherwise the transactions will be built
 // from scratch.
-func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenTransactions, err error) {
-	if c.openAgreement.Details.Equal(d) {
-		return c.openTransactions, nil
+func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, err error) {
+	if c.openAgreement.Envelope.Details.Equal(d) {
+		return c.openAgreement.Transactions, nil
 	}
-	cad := CloseAgreementDetails{
+	cad := CloseDetails{
 		ObservationPeriodTime:      d.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		IterationNumber:            1,
@@ -186,8 +193,8 @@ func (c *Channel) openTxs(d OpenAgreementDetails) (txs OpenTransactions, err err
 // transaction is signed and ready to submit. ProposeOpen and ConfirmOpen must
 // be used prior to prepare an open agreement with the other participant.
 func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
-	oa := c.openAgreement
-	txs, err := c.openTxs(oa.Details)
+	oae := c.openAgreement.Envelope
+	txs, err := c.openTxs(oae.Details)
 	if err != nil {
 		return nil, fmt.Errorf("building txs for for open agreement: %w", err)
 	}
@@ -195,16 +202,16 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 	formationTx = txs.Formation
 
 	// Add the formation signatures to the formation tx.
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.ProposerSignatures.Formation, oa.Details.ProposingSigner.Hint()))
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.ConfirmerSignatures.Formation, oa.Details.ConfirmingSigner.Hint()))
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oae.ProposerSignatures.Formation, oae.Details.ProposingSigner.Hint()))
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oae.ConfirmerSignatures.Formation, oae.Details.ConfirmingSigner.Hint()))
 
 	// Add the declaration signature provided by the confirming signer that is
 	// required to be an extra signer on the formation tx to the formation tx.
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.ConfirmerSignatures.Declaration, oa.Details.ConfirmingSigner.Hint(), txs.DeclarationHash[:]))
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oae.ConfirmerSignatures.Declaration, oae.Details.ConfirmingSigner.Hint(), txs.DeclarationHash[:]))
 
 	// Add the close signature provided by the confirming signer that is
 	// required to be an extra signer on the formation tx to the formation tx.
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.ConfirmerSignatures.Close, oa.Details.ConfirmingSigner.Hint(), txs.CloseHash[:]))
+	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oae.ConfirmerSignatures.Close, oae.Details.ConfirmingSigner.Hint(), txs.CloseHash[:]))
 
 	return
 }
@@ -213,11 +220,11 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	// if the channel is already open, error.
-	if c.openAgreement.isFull() {
+	if c.openAgreement.Envelope.isFull() {
 		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
 	}
 
-	d := OpenAgreementDetails{
+	d := OpenDetails{
 		ObservationPeriodTime:      p.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: p.ObservationPeriodLedgerGap,
 		Asset:                      p.Asset,
@@ -236,22 +243,24 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 		return OpenAgreement{}, fmt.Errorf("signing open agreement with local: %w", err)
 	}
 	open := OpenAgreement{
-		Details:            d,
-		ProposerSignatures: sigs,
+		Envelope: OpenEnvelope{
+			Details:            d,
+			ProposerSignatures: sigs,
+		},
+		Transactions: txs,
 	}
 	c.openAgreement = open
-	c.openTransactions = txs
 	return open, nil
 }
 
-func (c *Channel) validateOpen(m OpenAgreement) error {
+func (c *Channel) validateOpen(m OpenEnvelope) error {
 	// if the channel is already open, error.
-	if c.openAgreement.isFull() {
+	if c.openAgreement.Envelope.isFull() {
 		return fmt.Errorf("cannot confirm a new open if channel is already opened")
 	}
 
 	// If the open agreement details don't match the open agreement in progress, error.
-	if !c.openAgreement.isEmpty() && !m.Details.Equal(c.openAgreement.Details) {
+	if !c.openAgreement.Envelope.isEmpty() && !m.Details.Equal(c.openAgreement.Envelope.Details) {
 		return fmt.Errorf("input open agreement details do not match the saved open agreement details")
 	}
 
@@ -267,7 +276,7 @@ func (c *Channel) validateOpen(m OpenAgreement) error {
 // agreement. The responder to the open process calls this once to sign and
 // store the agreement. The initiator of the open process calls this once with a
 // copy of the agreement signed by the destination to store the destination's signatures.
-func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
+func (c *Channel) ConfirmOpen(m OpenEnvelope) (open OpenAgreement, err error) {
 	err = c.validateOpen(m)
 	if err != nil {
 		return OpenAgreement{}, fmt.Errorf("validating open agreement: %w", err)
@@ -309,34 +318,38 @@ func (c *Channel) ConfirmOpen(m OpenAgreement) (open OpenAgreement, err error) {
 	// All signatures are present that would be required to submit all
 	// transactions in the open.
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		Details: CloseAgreementDetails{
-			IterationNumber:            1,
-			Balance:                    0,
-			ObservationPeriodTime:      m.Details.ObservationPeriodTime,
-			ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
-			ProposingSigner:            m.Details.ProposingSigner,
-			ConfirmingSigner:           m.Details.ConfirmingSigner,
+		Envelope: CloseEnvelope{
+			Details: CloseDetails{
+				IterationNumber:            1,
+				Balance:                    0,
+				ObservationPeriodTime:      m.Details.ObservationPeriodTime,
+				ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
+				ProposingSigner:            m.Details.ProposingSigner,
+				ConfirmingSigner:           m.Details.ConfirmingSigner,
+			},
+			ProposerSignatures: CloseSignatures{
+				Declaration: m.ProposerSignatures.Declaration,
+				Close:       m.ProposerSignatures.Close,
+			},
+			ConfirmerSignatures: CloseSignatures{
+				Declaration: m.ConfirmerSignatures.Declaration,
+				Close:       m.ConfirmerSignatures.Close,
+			},
 		},
-		ProposerSignatures: CloseSignatures{
-			Declaration: m.ProposerSignatures.Declaration,
-			Close:       m.ProposerSignatures.Close,
+		Transactions: CloseTransactions{
+			DeclarationHash: txs.DeclarationHash,
+			Declaration:     txs.Declaration,
+			CloseHash:       txs.CloseHash,
+			Close:           txs.Close,
 		},
-		ConfirmerSignatures: CloseSignatures{
-			Declaration: m.ConfirmerSignatures.Declaration,
-			Close:       m.ConfirmerSignatures.Close,
-		},
-	}
-	c.latestAuthorizedCloseTransactions = CloseTransactions{
-		DeclarationHash: txs.DeclarationHash,
-		Declaration:     txs.Declaration,
-		CloseHash:       txs.CloseHash,
-		Close:           txs.Close,
 	}
 	c.openAgreement = OpenAgreement{
-		Details:             m.Details,
-		ProposerSignatures:  m.ProposerSignatures,
-		ConfirmerSignatures: m.ConfirmerSignatures,
+		Envelope: OpenEnvelope{
+			Details:             m.Details,
+			ProposerSignatures:  m.ProposerSignatures,
+			ConfirmerSignatures: m.ConfirmerSignatures,
+		},
+		Transactions: txs,
 	}
-	c.openTransactions = txs
 	return c.openAgreement, nil
 }
