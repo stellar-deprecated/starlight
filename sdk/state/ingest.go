@@ -152,7 +152,8 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 					continue
 				}
 				ledgerEntryAddress = account.AccountId.Address()
-				ledgerEntryBalance = int64(account.Balance)
+				liabilities := account.Liabilities()
+				ledgerEntryBalance = int64(account.Balance - liabilities.Buying)
 			} else {
 				tl, ok := updated.Data.GetTrustLine()
 				if !ok {

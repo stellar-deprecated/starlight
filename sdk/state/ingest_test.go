@@ -468,6 +468,99 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
 }
 
+func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+
+	initiatorEscrow := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	responderEscrow := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		MaxOpenExpiry:       time.Hour,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
+	})
+
+	{
+		open, err := initiatorChannel.ProposeOpen(OpenParams{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+			ExpiresAt:                  time.Now().Add(time.Minute),
+		})
+		require.NoError(t, err)
+		open, err = responderChannel.ConfirmOpen(open.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(open.Envelope)
+		require.NoError(t, err)
+	}
+
+	validResultXDR, err := txbuildtest.BuildResultXDR(true)
+	require.NoError(t, err)
+
+	placeholderTx, _, err := initiatorChannel.CloseTxs()
+	require.NoError(t, err)
+	placeholderXDR, err := placeholderTx.Base64()
+	require.NoError(t, err)
+
+	type TestCase struct {
+		escrowAccount     *keypair.FromAddress
+		balance           xdr.Int64
+		buying            xdr.Int64
+		wantBalanceLocal  int64
+		wantBalanceRemote int64
+	}
+
+	testCases := []TestCase{
+		{initiatorEscrow, 200, 200, 0, 0},
+		{initiatorEscrow, 1000, 100, 900, 0},
+		{initiatorEscrow, 1000, 0, 1000, 0},
+		{responderEscrow, 200, 200, 0, 0},
+		{responderEscrow, 1000, 100, 0, 900},
+		{responderEscrow, 1000, 0, 0, 1000},
+	}
+
+	for _, tc := range testCases {
+		initiatorChannel.UpdateLocalEscrowAccountBalance(0)
+		initiatorChannel.UpdateRemoteEscrowAccountBalance(0)
+		ale, err := xdr.NewAccountEntryExt(1, xdr.AccountEntryExtensionV1{
+			Liabilities: xdr.Liabilities{
+				Buying:  tc.buying,
+				Selling: 100,
+			},
+		})
+		require.NoError(t, err)
+
+		paymentResultMeta, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{
+			{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress(tc.escrowAccount.Address()),
+					Balance:   tc.balance,
+					Ext:       ale,
+				},
+			},
+		})
+		require.NoError(t, err)
+		err = initiatorChannel.IngestTx(placeholderXDR, validResultXDR, paymentResultMeta)
+		require.NoError(t, err)
+		assert.Equal(t, tc.wantBalanceLocal, initiatorChannel.localEscrowAccount.Balance)
+		assert.Equal(t, tc.wantBalanceRemote, initiatorChannel.remoteEscrowAccount.Balance)
+	}
+}
+
 func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
