@@ -144,7 +144,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 			}
 
 			var ledgerEntryAddress string
-			var ledgerEntryBalance int64
+			var ledgerEntryAvailableBalance int64
 
 			if channelAsset.IsNative() {
 				account, ok := updated.Data.GetAccount()
@@ -152,7 +152,8 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 					continue
 				}
 				ledgerEntryAddress = account.AccountId.Address()
-				ledgerEntryBalance = int64(account.Balance)
+				liabilities := account.Liabilities()
+				ledgerEntryAvailableBalance = int64(account.Balance - liabilities.Buying)
 			} else {
 				tl, ok := updated.Data.GetTrustLine()
 				if !ok {
@@ -162,14 +163,15 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 					continue
 				}
 				ledgerEntryAddress = tl.AccountId.Address()
-				ledgerEntryBalance = int64(tl.Balance)
+				liabilities := tl.Liabilities()
+				ledgerEntryAvailableBalance = int64(tl.Balance - liabilities.Selling)
 			}
 
 			switch ledgerEntryAddress {
 			case c.localEscrowAccount.Address.Address():
-				c.UpdateLocalEscrowAccountBalance(ledgerEntryBalance)
+				c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
 			case c.remoteEscrowAccount.Address.Address():
-				c.UpdateRemoteEscrowAccountBalance(ledgerEntryBalance)
+				c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
 			}
 		}
 	}
