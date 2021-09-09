@@ -305,8 +305,9 @@ func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient h
 			} else {
 				receiver = "them"
 			}
-			balance := a.Envelope.Details.Balance
-			fmt.Fprintf(os.Stdout, "%d: amount=%s %s=>%s balance=%d\n", i, amount.StringFromInt64(a.Envelope.Details.PaymentAmount), sender, receiver, amount.StringFromInt64(balance))
+			payment := amount.StringFromInt64(a.Envelope.Details.PaymentAmount)
+			balance := amount.StringFromInt64(a.Envelope.Details.Balance)
+			fmt.Fprintf(os.Stdout, "%d: amount=%s %s=>%s balance=%s\n", i, payment, sender, receiver, balance)
 		}
 		return nil
 	case "declarecloseidx":
