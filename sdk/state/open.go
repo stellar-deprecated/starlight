@@ -84,6 +84,15 @@ type OpenTransactions struct {
 	Formation       *txnbuild.Transaction
 }
 
+func (ot OpenTransactions) CloseTransactions() CloseTransactions {
+	return CloseTransactions{
+		DeclarationHash: ot.DeclarationHash,
+		Declaration:     ot.Declaration,
+		CloseHash:       ot.CloseHash,
+		Close:           ot.Close,
+	}
+}
+
 type OpenEnvelope struct {
 	Details             OpenDetails
 	ProposerSignatures  OpenSignatures
@@ -116,11 +125,40 @@ func (oa OpenEnvelope) SignaturesFor(signer *keypair.FromAddress) *OpenSignature
 	return nil
 }
 
+// CloseEnvelope gets the equivalent CloseEnvelope for this OpenEnvelope.
+func (oe OpenEnvelope) CloseEnvelope() CloseEnvelope {
+	return CloseEnvelope{
+		Details: CloseDetails{
+			IterationNumber:            1,
+			Balance:                    0,
+			ObservationPeriodTime:      oe.Details.ObservationPeriodTime,
+			ObservationPeriodLedgerGap: oe.Details.ObservationPeriodLedgerGap,
+			ProposingSigner:            oe.Details.ProposingSigner,
+			ConfirmingSigner:           oe.Details.ConfirmingSigner,
+		},
+		ProposerSignatures: CloseSignatures{
+			Declaration: oe.ProposerSignatures.Declaration,
+			Close:       oe.ProposerSignatures.Close,
+		},
+		ConfirmerSignatures: CloseSignatures{
+			Declaration: oe.ConfirmerSignatures.Declaration,
+			Close:       oe.ConfirmerSignatures.Close,
+		},
+	}
+}
+
 // OpenAgreement contains all the information known for an agreement proposed or
 // confirmed by the channel.
 type OpenAgreement struct {
 	Envelope     OpenEnvelope
 	Transactions OpenTransactions
+}
+
+func (oa OpenAgreement) CloseAgreement() CloseAgreement {
+	return CloseAgreement{
+		Envelope:     oa.Envelope.CloseEnvelope(),
+		Transactions: oa.Transactions.CloseTransactions(),
+	}
 }
 
 // OpenParams are the parameters selected by the participant proposing an open channel.
@@ -317,39 +355,10 @@ func (c *Channel) ConfirmOpen(m OpenEnvelope) (open OpenAgreement, err error) {
 
 	// All signatures are present that would be required to submit all
 	// transactions in the open.
-	c.latestAuthorizedCloseAgreement = CloseAgreement{
-		Envelope: CloseEnvelope{
-			Details: CloseDetails{
-				IterationNumber:            1,
-				Balance:                    0,
-				ObservationPeriodTime:      m.Details.ObservationPeriodTime,
-				ObservationPeriodLedgerGap: m.Details.ObservationPeriodLedgerGap,
-				ProposingSigner:            m.Details.ProposingSigner,
-				ConfirmingSigner:           m.Details.ConfirmingSigner,
-			},
-			ProposerSignatures: CloseSignatures{
-				Declaration: m.ProposerSignatures.Declaration,
-				Close:       m.ProposerSignatures.Close,
-			},
-			ConfirmerSignatures: CloseSignatures{
-				Declaration: m.ConfirmerSignatures.Declaration,
-				Close:       m.ConfirmerSignatures.Close,
-			},
-		},
-		Transactions: CloseTransactions{
-			DeclarationHash: txs.DeclarationHash,
-			Declaration:     txs.Declaration,
-			CloseHash:       txs.CloseHash,
-			Close:           txs.Close,
-		},
-	}
 	c.openAgreement = OpenAgreement{
-		Envelope: OpenEnvelope{
-			Details:             m.Details,
-			ProposerSignatures:  m.ProposerSignatures,
-			ConfirmerSignatures: m.ConfirmerSignatures,
-		},
+		Envelope:     m,
 		Transactions: txs,
 	}
+	c.latestAuthorizedCloseAgreement = c.openAgreement.CloseAgreement()
 	return c.openAgreement, nil
 }
