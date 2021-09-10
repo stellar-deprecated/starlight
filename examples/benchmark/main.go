@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
@@ -33,6 +34,7 @@ func run() error {
 	horizonURL := "http://localhost:8000"
 	listenAddr := ""
 	connectAddr := ""
+	cpuProfileFile := ""
 
 	fs := flag.NewFlagSet("benchmark", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -40,6 +42,8 @@ func run() error {
 	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
 	fs.StringVar(&listenAddr, "listen", listenAddr, "Address to listen on in listen mode")
 	fs.StringVar(&connectAddr, "connect", connectAddr, "Address to connect to in connect mode")
+	fs.StringVar(&cpuProfileFile, "cpuprofile", cpuProfileFile, "Write cpu profile to `file`")
+
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return err
@@ -51,6 +55,19 @@ func run() error {
 	if listenAddr == "" && connectAddr == "" {
 		fs.Usage()
 		return nil
+	}
+
+	if cpuProfileFile != "" {
+		f, err := os.Create(cpuProfileFile)
+		if err != nil {
+			return fmt.Errorf("error creating cpu profile file: %w", err)
+		}
+		defer f.Close()
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			return fmt.Errorf("error starting cpu profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	accountKey := keypair.MustRandom()
@@ -88,6 +105,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	// Wait for state of escrow accounts to be ingested by Horizon.
+	time.Sleep(2 * time.Second)
 
 	events := make(chan agentpkg.Event)
 	config := agentpkg.Config{
@@ -138,7 +158,7 @@ func run() error {
 			case agentpkg.PaymentReceivedEvent:
 				paymentsReceived++
 			case agentpkg.PaymentSentEvent:
-				if paymentsSent < 1_000 {
+				if paymentsSent < 10_000 {
 					_ = agent.Payment("1")
 					paymentsSent++
 				} else {
