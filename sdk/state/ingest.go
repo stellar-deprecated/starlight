@@ -32,10 +32,10 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 	}
 
 	err = c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
+	if errors.Is(err, errOldSeqNum) {
+		return nil
+	}
 	if err != nil {
-		if errors.Is(err, errOldSeqNum) {
-			return nil
-		}
 		return err
 	}
 
