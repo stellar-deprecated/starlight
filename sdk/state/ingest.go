@@ -31,13 +31,7 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 		return fmt.Errorf("transaction unrecognized")
 	}
 
-	err = c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
-	if errors.Is(err, errOldSeqNum) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
+	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
 
 	err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
 	if err != nil {
@@ -57,20 +51,20 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 	return nil
 }
 
-func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Transaction) error {
+func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Transaction) {
 	// If the transaction's source account is not the initiator's escrow
 	// account, return.
 	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
-		return nil
+		return
 	}
 
 	// If the transaction is from an earlier sequence number, return.
 	if tx.SourceAccount().Sequence < c.initiatorEscrowAccount().SequenceNumber {
-		return errOldSeqNum
+		return
 	}
 
 	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
-	return nil
+	return
 }
 
 // ingestTxToUpdateUnauthorizedCloseAgreement uses the signatures in the transaction to
