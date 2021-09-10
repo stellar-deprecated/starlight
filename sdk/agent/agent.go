@@ -392,7 +392,9 @@ func (a *Agent) Close() error {
 	return nil
 }
 
-func (a *Agent) receive(recv *msg.Decoder, send *msg.Encoder) error {
+func (a *Agent) receive() error {
+	recv := msg.NewDecoder(io.TeeReader(a.conn, a.logWriter))
+	send := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	m := msg.Message{}
 	err := recv.Decode(&m)
 	if err == io.EOF {
@@ -409,10 +411,8 @@ func (a *Agent) receive(recv *msg.Decoder, send *msg.Encoder) error {
 }
 
 func (a *Agent) receiveLoop() {
-	recv := msg.NewDecoder(io.TeeReader(a.conn, a.logWriter))
-	send := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	for {
-		err := a.receive(recv, send)
+		err := a.receive()
 		if err == io.EOF {
 			fmt.Fprintln(a.logWriter, "error receiving: EOF, stopping receiving")
 			break
@@ -563,7 +563,6 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
-	return nil
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope})
 	if a.events != nil {
 		a.events <- PaymentReceivedEvent{CloseAgreement: payment}
@@ -575,7 +574,6 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 }
 
 func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
-	return nil
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
