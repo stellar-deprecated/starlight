@@ -11,8 +11,19 @@ import (
 // unsuccessful on the network. The function updates the internal state of the
 // channel if the transaction relates to the channel.
 func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
-	// TODO: Use the transaction result to affect on success/failure.
+	// If channel has not been opened or has been closed, return.
+	if c.OpenAgreement().isEmpty() {
+		return fmt.Errorf("channel has not been opened")
+	}
+	cs, err := c.State()
+	if err != nil {
+		return fmt.Errorf("getting channel state: %w", err)
+	}
+	if cs == StateClosed {
+		return fmt.Errorf("channel has been closed")
+	}
 
+	// Get transaction object from the transaction XDR.
 	gtx, err := txnbuild.TransactionFromXDR(txXDR)
 	if err != nil {
 		return fmt.Errorf("parsing transaction xdr")
@@ -28,6 +39,7 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 		return fmt.Errorf("transaction unrecognized")
 	}
 
+	// Ingest the transaction and update channel state if valid.
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
 
 	err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
