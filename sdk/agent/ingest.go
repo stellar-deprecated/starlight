@@ -36,7 +36,7 @@ func (a *Agent) ingest() error {
 
 	defer a.snapshot()
 
-	err = a.channel.IngestTx(tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR)
+	err = a.channel.IngestTx(tx.TransactionOrderID, tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR)
 	if err != nil {
 		err = fmt.Errorf("ingesting tx (cursor=%s hash=%s): ingesting xdr: %w", tx.Cursor, txHash, err)
 		a.events <- ErrorEvent{Err: err}

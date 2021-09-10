@@ -98,9 +98,9 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = localChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = localChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = remoteChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = remoteChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := localChannel.State()
@@ -191,9 +191,9 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = localChannel.IngestTx(dtxXDR, successResultXDR, resultMetaXDR)
+		err = localChannel.IngestTx(1, dtxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = remoteChannel.IngestTx(dtxXDR, successResultXDR, resultMetaXDR)
+		err = remoteChannel.IngestTx(1, dtxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := localChannel.State()
@@ -232,9 +232,9 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{})
 		require.NoError(t, err)
 
-		err = localChannel.IngestTx(ctxXDR, successResultXDR, resultMetaXDR)
+		err = localChannel.IngestTx(1, ctxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = remoteChannel.IngestTx(ctxXDR, successResultXDR, resultMetaXDR)
+		err = remoteChannel.IngestTx(1, ctxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := localChannel.State()

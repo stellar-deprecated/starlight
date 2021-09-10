@@ -262,7 +262,7 @@ func TestChannel_ConfirmPayment_acceptsSameObservationPeriod(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -370,7 +370,7 @@ func TestChannel_ConfirmPayment_rejectsDifferentObservationPeriod(t *testing.T) 
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -475,7 +475,7 @@ func TestChannel_ConfirmPayment_localWhoIsInitiatorRejectsPaymentToRemoteWhoIsRe
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -580,7 +580,7 @@ func TestChannel_ConfirmPayment_localWhoIsResponderRejectsPaymentToRemoteWhoIsIn
 		})
 		require.NoError(t, err)
 
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := responderChannel.State()
@@ -685,7 +685,7 @@ func TestChannel_ConfirmPayment_initiatorRejectsPaymentThatIsUnderfunded(t *test
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -802,7 +802,7 @@ func TestChannel_ConfirmPayment_responderRejectsPaymentThatIsUnderfunded(t *test
 		})
 		require.NoError(t, err)
 
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := responderChannel.State()
@@ -919,7 +919,7 @@ func TestChannel_ConfirmPayment_initiatorCannotProposePaymentThatIsUnderfunded(t
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -1007,7 +1007,7 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 		})
 		require.NoError(t, err)
 
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := responderChannel.State()
@@ -1095,9 +1095,9 @@ func TestLastConfirmedPayment(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = sendingChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = sendingChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = receiverChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := sendingChannel.State()
@@ -1232,9 +1232,9 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = senderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = senderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = receiverChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := senderChannel.State()
@@ -1355,9 +1355,9 @@ func TestChannel_enforceOnlyOneCloseAgreementAllowed(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = senderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = senderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = receiverChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := senderChannel.State()
@@ -1453,9 +1453,9 @@ func TestChannel_ConfirmPayment_validatePaymentAmount(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()

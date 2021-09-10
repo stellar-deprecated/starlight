@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"strconv"
 	"sync"
 
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
@@ -60,12 +61,21 @@ func (h *Streamer) streamTx(cursor string, txs chan<- agent.StreamedTransaction,
 			Cursor: cursor,
 		}
 		err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
+			txOrderedID, err := strconv.ParseInt(tx.PagingToken(), 10, 64)
+			if err != nil {
+				ctxCancel()
+				if h.ErrorHandler != nil {
+					h.ErrorHandler(err)
+				}
+				return
+			}
 			cursor = tx.PagingToken()
 			streamedTx := agent.StreamedTransaction{
-				Cursor:         cursor,
-				TransactionXDR: tx.EnvelopeXdr,
-				ResultXDR:      tx.ResultXdr,
-				ResultMetaXDR:  tx.ResultMetaXdr,
+				Cursor:             cursor,
+				TransactionOrderID: txOrderedID,
+				TransactionXDR:     tx.EnvelopeXdr,
+				ResultXDR:          tx.ResultXdr,
+				ResultMetaXDR:      tx.ResultMetaXdr,
 			}
 			select {
 			case <-cancel:

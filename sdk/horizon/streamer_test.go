@@ -27,6 +27,7 @@ func TestStreamer_StreamTx_longBlock(t *testing.T) {
 		ctx := args[0].(context.Context)
 		handler := args[2].(horizonclient.TransactionHandler)
 		handler(horizon.Transaction{
+			PT:            "1",
 			EnvelopeXdr:   "a-txxdr",
 			ResultXdr:     "a-resultxdr",
 			ResultMetaXdr: "a-resultmetaxdr",
@@ -48,9 +49,11 @@ func TestStreamer_StreamTx_longBlock(t *testing.T) {
 		t,
 		[]agent.StreamedTransaction{
 			{
-				TransactionXDR: "a-txxdr",
-				ResultXDR:      "a-resultxdr",
-				ResultMetaXDR:  "a-resultmetaxdr",
+				Cursor:             "1",
+				TransactionOrderID: 1,
+				TransactionXDR:     "a-txxdr",
+				ResultXDR:          "a-resultxdr",
+				ResultMetaXDR:      "a-resultmetaxdr",
 			},
 		},
 		txs,
@@ -91,6 +94,7 @@ func TestStreamer_StreamTx_manyTxs(t *testing.T) {
 				return
 			default:
 				handler(horizon.Transaction{
+					PT:            "1",
 					EnvelopeXdr:   "b-txxdr",
 					ResultXdr:     "b-resultxdr",
 					ResultMetaXdr: "b-resultmetaxdr",
@@ -112,14 +116,18 @@ func TestStreamer_StreamTx_manyTxs(t *testing.T) {
 		t,
 		[]agent.StreamedTransaction{
 			{
-				TransactionXDR: "b-txxdr",
-				ResultXDR:      "b-resultxdr",
-				ResultMetaXDR:  "b-resultmetaxdr",
+				Cursor:             "1",
+				TransactionOrderID: 1,
+				TransactionXDR:     "b-txxdr",
+				ResultXDR:          "b-resultxdr",
+				ResultMetaXDR:      "b-resultmetaxdr",
 			},
 			{
-				TransactionXDR: "b-txxdr",
-				ResultXDR:      "b-resultxdr",
-				ResultMetaXDR:  "b-resultmetaxdr",
+				Cursor:             "1",
+				TransactionOrderID: 1,
+				TransactionXDR:     "b-txxdr",
+				ResultXDR:          "b-resultxdr",
+				ResultMetaXDR:      "b-resultmetaxdr",
 			},
 		},
 		txs,
@@ -162,7 +170,7 @@ func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 	).Return(errors.New("an error")).Run(func(args mock.Arguments) {
 		handler := args[2].(horizonclient.TransactionHandler)
 		handler(horizon.Transaction{
-			PT:            "a",
+			PT:            "1",
 			EnvelopeXdr:   "a-txxdr",
 			ResultXdr:     "a-resultxdr",
 			ResultMetaXdr: "a-resultmetaxdr",
@@ -173,13 +181,13 @@ func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 	client.On(
 		"StreamTransactions",
 		mock.Anything,
-		horizonclient.TransactionRequest{Cursor: "a"},
+		horizonclient.TransactionRequest{Cursor: "1"},
 		mock.Anything,
 	).Return(nil).Run(func(args mock.Arguments) {
 		ctx := args[0].(context.Context)
 		handler := args[2].(horizonclient.TransactionHandler)
 		handler(horizon.Transaction{
-			PT:            "b",
+			PT:            "2",
 			EnvelopeXdr:   "b-txxdr",
 			ResultXdr:     "b-resultxdr",
 			ResultMetaXdr: "b-resultmetaxdr",
@@ -202,16 +210,18 @@ func TestHorizonStreamer_StreamTx_error(t *testing.T) {
 		t,
 		[]agent.StreamedTransaction{
 			{
-				Cursor:         "a",
-				TransactionXDR: "a-txxdr",
-				ResultXDR:      "a-resultxdr",
-				ResultMetaXDR:  "a-resultmetaxdr",
+				Cursor:             "1",
+				TransactionOrderID: 1,
+				TransactionXDR:     "a-txxdr",
+				ResultXDR:          "a-resultxdr",
+				ResultMetaXDR:      "a-resultmetaxdr",
 			},
 			{
-				Cursor:         "b",
-				TransactionXDR: "b-txxdr",
-				ResultXDR:      "b-resultxdr",
-				ResultMetaXDR:  "b-resultmetaxdr",
+				Cursor:             "2",
+				TransactionOrderID: 2,
+				TransactionXDR:     "b-txxdr",
+				ResultXDR:          "b-resultxdr",
+				ResultMetaXDR:      "b-resultmetaxdr",
 			},
 		},
 		txs,

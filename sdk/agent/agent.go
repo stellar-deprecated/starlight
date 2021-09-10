@@ -43,7 +43,13 @@ type Streamer interface {
 // StreamedTransaction is a transaction that has been seen by the
 // Streamer.
 type StreamedTransaction struct {
-	Cursor         string
+	// Cursor is a cursor that can be used to resume streaming.
+	Cursor string
+
+	// TransactionOrderID is an identifier that orders transactions in the order
+	// they were executed on the Stellar network.
+	TransactionOrderID int64
+
 	TransactionXDR string
 	ResultXDR      string
 	ResultMetaXDR  string
