@@ -1033,35 +1033,48 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
+	responderChannel.UpdateRemoteEscrowAccountBalance(100)
 
-	declTx, closeTx, err := responderChannel.CloseTxs()
+	oldDeclTx, _, err := responderChannel.CloseTxs()
+	require.NoError(t, err)
+	oldDeclTxXDR, err := oldDeclTx.Base64()
 	require.NoError(t, err)
 
+	// New payment.
+	{
+		close, err := initiatorChannel.ProposePayment(8)
+		require.NoError(t, err)
+		close, err = responderChannel.ConfirmPayment(close.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmPayment(close.Envelope)
+		require.NoError(t, err)
+	}
+
+	declTx, _, err := responderChannel.CloseTxs()
+	require.NoError(t, err)
 	declTxXDR, err := declTx.Base64()
-	require.NoError(t, err)
-
-	closeTxXDR, err := closeTx.Base64()
 	require.NoError(t, err)
 
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	validResultXDR, err := txbuildtest.BuildResultXDR(true)
 	require.NoError(t, err)
 
-	// Ingest the close Tx first to go into StateClosed.
-	err = initiatorChannel.IngestTx(closeTxXDR, validResultXDR, placeholderXDR)
+	// Ingest latest declTx to go into StateClosing.
+	err = initiatorChannel.IngestTx(declTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
-	assert.Equal(t, StateClosed, cs)
-	assert.Equal(t, int64(104), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, StateClosing, cs)
+	assert.Equal(t, int64(105), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
 
-	// Ingesting a transaction with a previous seqNum should not move state backwards.
-	err = initiatorChannel.IngestTx(declTxXDR, validResultXDR, placeholderXDR)
+	// Ingesting an old transaction with a previous seqNum should not move state backwards.
+	err = initiatorChannel.IngestTx(oldDeclTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
-	assert.Equal(t, StateClosed, cs)
-	assert.Equal(t, int64(104), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, StateClosing, cs)
+	assert.Equal(t, int64(105), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
 
 	// Imposter formation tx can not be ingested and move state back.
 	formationTx, err := initiatorChannel.OpenTx()
@@ -1078,5 +1091,99 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
-	assert.Equal(t, StateClosed, cs)
+	assert.Equal(t, StateClosing, cs)
+}
+
+func TestChannel_IngestTx_OpenClose(t *testing.T) {
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+	initiatorEscrow := keypair.MustRandom().FromAddress()
+	responderEscrow := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Before channel is open IngestTx should error.
+	err := initiatorChannel.IngestTx("", "", "")
+	require.EqualError(t, err, "channel has not been opened")
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiatorSigner.Address(),
+			ResponderSigner: responderSigner.Address(),
+			InitiatorEscrow: initiatorEscrow.Address(),
+			ResponderEscrow: responderEscrow.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+
+	// Put channel into the Closed state.
+	{
+		_, closeTx, err := initiatorChannel.CloseTxs()
+		require.NoError(t, err)
+
+		closeTxXDR, err := closeTx.Base64()
+		require.NoError(t, err)
+
+		placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
+		validResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(closeTxXDR, validResultXDR, placeholderXDR)
+		require.NoError(t, err)
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateClosed, cs)
+	}
+
+	// After channel is closed IngestTx should error.
+	err = initiatorChannel.IngestTx("", "", "")
+	require.EqualError(t, err, "channel has been closed")
 }

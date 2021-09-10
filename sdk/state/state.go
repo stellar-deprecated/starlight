@@ -127,8 +127,8 @@ const (
 	StateError State = iota - 1
 	StateNone
 	StateOpen
-	StateClosing
 	StateClosingWithOutdatedState
+	StateClosing
 	StateClosed
 )
 
