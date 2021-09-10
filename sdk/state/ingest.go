@@ -1,14 +1,11 @@
 package state
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
-
-var errOldSeqNum = errors.New("old sequence number")
 
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
@@ -64,7 +61,6 @@ func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Tr
 	}
 
 	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
-	return
 }
 
 // ingestTxToUpdateUnauthorizedCloseAgreement uses the signatures in the transaction to
