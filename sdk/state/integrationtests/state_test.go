@@ -1073,8 +1073,8 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		// owing as 10. The initiator has a last authorized agreement with total
 		// balance owing as 8, and an unauthorized agreement with total balance
 		// as 10.
-		assert.Equal(t, initiatorChannel.LatestCloseAgreement().Details.Balance, int64(8))
-		assert.Equal(t, responderChannel.LatestCloseAgreement().Details.Balance, int64(10))
+		assert.Equal(t, initiatorChannel.LatestCloseAgreement().Envelope.Details.Balance, int64(8))
+		assert.Equal(t, responderChannel.LatestCloseAgreement().Envelope.Details.Balance, int64(10))
 	}
 
 	// Responder starts but doesn't finish closing the channel.
@@ -1155,7 +1155,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		err = initiatorChannel.IngestTx(broadcastedTxXDR, validResultXDR, placeholderXDR)
 		require.NoError(t, err)
 
-		t.Log("Initiator found signature:", base64.StdEncoding.EncodeToString(initiatorChannel.LatestCloseAgreement().ConfirmerSignatures.Close))
+		t.Log("Initiator found signature:", base64.StdEncoding.EncodeToString(initiatorChannel.LatestCloseAgreement().Envelope.ConfirmerSignatures.Close))
 
 		t.Log("Initiator waits the observation period...")
 		time.Sleep(observationPeriodTime)
