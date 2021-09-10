@@ -1033,35 +1033,48 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
+	responderChannel.UpdateRemoteEscrowAccountBalance(100)
 
-	declTx, closeTx, err := responderChannel.CloseTxs()
+	oldDeclTx, _, err := responderChannel.CloseTxs()
+	require.NoError(t, err)
+	oldDeclTxXDR, err := oldDeclTx.Base64()
 	require.NoError(t, err)
 
+	// New payment.
+	{
+		close, err := initiatorChannel.ProposePayment(8)
+		require.NoError(t, err)
+		close, err = responderChannel.ConfirmPayment(close.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmPayment(close.Envelope)
+		require.NoError(t, err)
+	}
+
+	declTx, _, err := responderChannel.CloseTxs()
+	require.NoError(t, err)
 	declTxXDR, err := declTx.Base64()
-	require.NoError(t, err)
-
-	closeTxXDR, err := closeTx.Base64()
 	require.NoError(t, err)
 
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	validResultXDR, err := txbuildtest.BuildResultXDR(true)
 	require.NoError(t, err)
 
-	// Ingest the close Tx first to go into StateClosed.
-	err = initiatorChannel.IngestTx(closeTxXDR, validResultXDR, placeholderXDR)
+	// Ingest latest declTx to go into StateClosing.
+	err = initiatorChannel.IngestTx(declTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
-	assert.Equal(t, StateClosed, cs)
-	assert.Equal(t, int64(104), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, StateClosing, cs)
+	assert.Equal(t, int64(105), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
 
-	// Ingesting a transaction with a previous seqNum should not move state backwards.
-	err = initiatorChannel.IngestTx(declTxXDR, validResultXDR, placeholderXDR)
+	// Ingesting an old transaction with a previous seqNum should not move state backwards.
+	err = initiatorChannel.IngestTx(oldDeclTxXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
-	assert.Equal(t, StateClosed, cs)
-	assert.Equal(t, int64(104), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, StateClosing, cs)
+	assert.Equal(t, int64(105), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
 
 	// Imposter formation tx can not be ingested and move state back.
 	formationTx, err := initiatorChannel.OpenTx()
@@ -1078,7 +1091,7 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
-	assert.Equal(t, StateClosed, cs)
+	assert.Equal(t, StateClosing, cs)
 }
 
 func TestChannel_IngestTx_OpenClose(t *testing.T) {
