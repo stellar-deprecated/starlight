@@ -109,7 +109,7 @@ func run() error {
 	// Wait for state of escrow accounts to be ingested by Horizon.
 	time.Sleep(2 * time.Second)
 
-	events := make(chan agentpkg.Event)
+	events := make(chan agentpkg.Event, 100000)
 	config := agentpkg.Config{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -125,12 +125,11 @@ func run() error {
 		Events:                     events,
 	}
 	agent := agentpkg.NewAgent(config)
+	ready := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		paymentsSent := 0
 		paymentsReceived := 0
-		var timeStart time.Time
 		for {
 			switch e := (<-events).(type) {
 			case agentpkg.ErrorEvent:
@@ -151,26 +150,11 @@ func run() error {
 							<-tick
 						}
 					}
-					timeStart = time.Now()
-					_ = agent.Payment("1")
-					paymentsSent++
+					close(ready)
 				}
 			case agentpkg.PaymentReceivedEvent:
 				paymentsReceived++
 			case agentpkg.PaymentSentEvent:
-				if paymentsSent < 10_000 {
-					_ = agent.Payment("1")
-					paymentsSent++
-				} else {
-					timeSpent := time.Since(timeStart)
-					fmt.Fprintf(os.Stderr, "time spent: %v\n", timeSpent)
-					fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
-					fmt.Fprintf(os.Stderr, "tps: %.3f\n", float64(paymentsSent)/timeSpent.Seconds())
-					err := agent.DeclareClose()
-					if err != nil {
-						panic(err)
-					}
-				}
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "closing\n")
 				fmt.Fprintf(os.Stderr, "payments received: %d\n", paymentsReceived)
@@ -193,6 +177,20 @@ func run() error {
 		err = agent.ConnectTCP(connectAddr)
 		if err != nil {
 			return err
+		}
+		<-ready
+		timeStart := time.Now()
+		paymentsSent := 10_000
+		for i := 0; i < paymentsSent; i++ {
+			_ = agent.Payment("1")
+		}
+		timeSpent := time.Since(timeStart)
+		fmt.Fprintf(os.Stderr, "time spent: %v\n", timeSpent)
+		fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
+		fmt.Fprintf(os.Stderr, "tps: %.3f\n", float64(paymentsSent)/timeSpent.Seconds())
+		err := agent.DeclareClose()
+		if err != nil {
+			panic(err)
 		}
 	}
 

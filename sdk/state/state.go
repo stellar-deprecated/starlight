@@ -177,16 +177,21 @@ func (c *Channel) IsInitiator() bool {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
-		return c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber
+	i := c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber + 1
+	j := c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber + 1
+	if i > j {
+		return i
 	}
-	return c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber + 1
+	return j
 }
 
 // Balance returns the amount owing from the initiator to the responder, if positive, or
 // the amount owing from the responder to the initiator, if negative.
 func (c *Channel) Balance() int64 {
-	return c.latestAuthorizedCloseAgreement.Envelope.Details.Balance
+	if c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber > c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber {
+		return c.latestAuthorizedCloseAgreement.Envelope.Details.Balance
+	}
+	return c.latestUnauthorizedCloseAgreement.Envelope.Details.Balance
 }
 
 func (c *Channel) OpenAgreement() OpenEnvelope {
