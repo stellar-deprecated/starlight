@@ -12,7 +12,7 @@ import (
 // channel if the transaction relates to the channel.
 func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 	// If channel has not been opened or has been closed, return.
-	if c.OpenAgreement().isEmpty() {
+	if c.OpenAgreement().Envelope.isEmpty() {
 		return fmt.Errorf("channel has not been opened")
 	}
 	cs, err := c.State()

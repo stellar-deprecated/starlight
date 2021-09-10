@@ -189,12 +189,12 @@ func (c *Channel) Balance() int64 {
 	return c.latestAuthorizedCloseAgreement.Envelope.Details.Balance
 }
 
-func (c *Channel) OpenAgreement() OpenEnvelope {
-	return c.openAgreement.Envelope
+func (c *Channel) OpenAgreement() OpenAgreement {
+	return c.openAgreement
 }
 
-func (c *Channel) LatestCloseAgreement() CloseEnvelope {
-	return c.latestAuthorizedCloseAgreement.Envelope
+func (c *Channel) LatestCloseAgreement() CloseAgreement {
+	return c.latestAuthorizedCloseAgreement
 }
 
 func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
