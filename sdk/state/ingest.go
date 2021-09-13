@@ -11,7 +11,7 @@ import (
 // unsuccessful on the network. The function updates the internal state of the
 // channel if the transaction relates to one of the channel's escrow accounts.
 //
-// The txOrderedID is an identifier that orders transactions as they were
+// The txOrderID is an identifier that orders transactions as they were
 // executed on the Stellar network.
 //
 // The function may be called with transactions for each escrow account out of
@@ -23,7 +23,7 @@ import (
 //
 // The function maybe called with duplicate transactions and duplicates will not
 // change the state of the channel.
-func (c *Channel) IngestTx(txOrderedID int64, txXDR, resultXDR, resultMetaXDR string) error {
+func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR string) error {
 	// If channel has not been opened or has been closed, return.
 	if c.OpenAgreement().Envelope.isEmpty() {
 		return fmt.Errorf("channel has not been opened")
@@ -60,7 +60,7 @@ func (c *Channel) IngestTx(txOrderedID int64, txXDR, resultXDR, resultMetaXDR st
 		return err
 	}
 
-	err = c.ingestTxMetaToUpdateBalances(txOrderedID, resultMetaXDR)
+	err = c.ingestTxMetaToUpdateBalances(txOrderID, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 // ingestTxMetaToUpdateBalances uses the transaction result meta data
 // from a transaction response to update local and remote escrow account
 // balances.
-func (c *Channel) ingestTxMetaToUpdateBalances(txOrderedID int64, resultMetaXDR string) error {
+func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR string) error {
 	// If not a valid resultMetaXDR string, return.
 	var txMeta xdr.TransactionMeta
 	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
@@ -199,14 +199,14 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderedID int64, resultMetaXDR 
 
 			switch ledgerEntryAddress {
 			case c.localEscrowAccount.Address.Address():
-				if txOrderedID > c.localEscrowAccount.LastSeenTransactionOrderedID {
+				if txOrderID > c.localEscrowAccount.LastSeenTransactionOrderID {
 					c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
-					c.localEscrowAccount.LastSeenTransactionOrderedID = txOrderedID
+					c.localEscrowAccount.LastSeenTransactionOrderID = txOrderID
 				}
 			case c.remoteEscrowAccount.Address.Address():
-				if txOrderedID > c.remoteEscrowAccount.LastSeenTransactionOrderedID {
+				if txOrderID > c.remoteEscrowAccount.LastSeenTransactionOrderID {
 					c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
-					c.remoteEscrowAccount.LastSeenTransactionOrderedID = txOrderedID
+					c.remoteEscrowAccount.LastSeenTransactionOrderID = txOrderID
 				}
 			}
 		}
