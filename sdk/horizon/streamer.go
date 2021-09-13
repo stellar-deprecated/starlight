@@ -61,7 +61,8 @@ func (h *Streamer) streamTx(cursor string, txs chan<- agent.StreamedTransaction,
 			Cursor: cursor,
 		}
 		err := h.HorizonClient.StreamTransactions(ctx, req, func(tx horizon.Transaction) {
-			txOrderedID, err := strconv.ParseInt(tx.PagingToken(), 10, 64)
+			pagingToken := tx.PagingToken()
+			txOrderedID, err := strconv.ParseInt(pagingToken, 10, 64)
 			if err != nil {
 				ctxCancel()
 				if h.ErrorHandler != nil {
@@ -69,7 +70,7 @@ func (h *Streamer) streamTx(cursor string, txs chan<- agent.StreamedTransaction,
 				}
 				return
 			}
-			cursor = tx.PagingToken()
+			cursor = pagingToken
 			streamedTx := agent.StreamedTransaction{
 				Cursor:             cursor,
 				TransactionOrderID: txOrderedID,
