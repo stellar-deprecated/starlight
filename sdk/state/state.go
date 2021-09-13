@@ -135,6 +135,7 @@ const (
 	StateNone
 	StateOpen
 	StateClosingWithOutdatedState
+	StateClosedWithOutdatedState
 	StateClosing
 	StateClosed
 )
@@ -161,11 +162,14 @@ func (c *Channel) State() (State, error) {
 	latestCloseSequence := txs.Close.SequenceNumber()
 
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
+	s := c.openAgreement.Envelope.Details.StartingSequence
 
-	if initiatorEscrowSeqNum == c.openAgreement.Envelope.Details.StartingSequence {
+	if initiatorEscrowSeqNum == s {
 		return StateOpen, nil
-	} else if initiatorEscrowSeqNum < latestDeclSequence {
+	} else if initiatorEscrowSeqNum < latestDeclSequence && initiatorEscrowSeqNum%2 == s%2 {
 		return StateClosingWithOutdatedState, nil
+	} else if initiatorEscrowSeqNum < latestDeclSequence && initiatorEscrowSeqNum%2 != s%2 {
+		return StateClosedWithOutdatedState, nil
 	} else if initiatorEscrowSeqNum == latestDeclSequence {
 		return StateClosing, nil
 	} else if initiatorEscrowSeqNum >= latestCloseSequence {

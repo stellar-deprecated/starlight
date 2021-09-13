@@ -1322,3 +1322,110 @@ func TestChannel_IngestTx_OpenClose(t *testing.T) {
 	err = initiatorChannel.IngestTx(4, "", "", "")
 	require.EqualError(t, err, "channel has been closed")
 }
+
+func TestChannel_IngestTx_ingestOldTransactions(t *testing.T) {
+	initiatorSigner := keypair.MustRandom()
+	responderSigner := keypair.MustRandom()
+	initiatorEscrow := keypair.MustRandom().FromAddress()
+	responderEscrow := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         initiatorSigner,
+		RemoteSigner:        responderSigner.FromAddress(),
+		LocalEscrowAccount:  initiatorEscrow,
+		RemoteEscrowAccount: responderEscrow,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         responderSigner,
+		RemoteSigner:        initiatorSigner.FromAddress(),
+		LocalEscrowAccount:  responderEscrow,
+		RemoteEscrowAccount: initiatorEscrow,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: initiatorSigner.Address(),
+			ResponderSigner: responderSigner.Address(),
+			InitiatorEscrow: initiatorEscrow.Address(),
+			ResponderEscrow: responderEscrow.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(2, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(2, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
+	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+
+	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
+	validResultXDR, err := txbuildtest.BuildResultXDR(true)
+
+	oldDeclTx, oldCloseTx, err := responderChannel.CloseTxs()
+	require.NoError(t, err)
+	oldDeclXDR, err := oldDeclTx.Base64()
+	require.NoError(t, err)
+	oldCloseXDR, err := oldCloseTx.Base64()
+	require.NoError(t, err)
+
+	// New payment.
+	{
+		close, err := initiatorChannel.ProposePayment(8)
+		require.NoError(t, err)
+		close, err = responderChannel.ConfirmPayment(close.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmPayment(close.Envelope)
+		require.NoError(t, err)
+	}
+
+	// Close channel with old transactions.
+	{
+		err = initiatorChannel.IngestTx(1, oldDeclXDR, validResultXDR, placeholderXDR)
+		require.NoError(t, err)
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateClosingWithOutdatedState, cs)
+
+		err = initiatorChannel.IngestTx(1, oldCloseXDR, validResultXDR, placeholderXDR)
+		require.NoError(t, err)
+		cs, err = initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateClosedWithOutdatedState, cs)
+	}
+
+	// Once closed with old closeTx, ingesting new transactions should error.
+	err = initiatorChannel.IngestTx(1, oldCloseXDR, validResultXDR, placeholderXDR)
+	require.EqualError(t, err, "channel has been closed")
+}
