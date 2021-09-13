@@ -427,9 +427,9 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()

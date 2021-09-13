@@ -129,9 +129,9 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -400,9 +400,9 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -617,9 +617,9 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -834,9 +834,9 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -1030,9 +1030,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()
@@ -1152,7 +1152,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 		broadcastedTxXDR, err := broadcastedTx.Base64()
 		require.NoError(t, err)
-		err = initiatorChannel.IngestTx(broadcastedTxXDR, validResultXDR, placeholderXDR)
+		err = initiatorChannel.IngestTx(2, broadcastedTxXDR, validResultXDR, placeholderXDR)
 		require.NoError(t, err)
 
 		t.Log("Initiator found signature:", base64.StdEncoding.EncodeToString(initiatorChannel.LatestCloseAgreement().Envelope.ConfirmerSignatures.Close))

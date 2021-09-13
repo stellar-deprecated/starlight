@@ -40,10 +40,12 @@ func NewChannel(c Config) *Channel {
 // combined with a Channel's initialization config they can be used to create a
 // new Channel that has the same state.
 type Snapshot struct {
-	LocalEscrowSequence        int64
-	LocalEscrowAccountBalance  int64
-	RemoteEscrowSequence       int64
-	RemoteEscrowAccountBalance int64
+	LocalEscrowSequence                           int64
+	LocalEscrowAccountBalance                     int64
+	LocalEscrowAccountLastSeenTransactionOrderID  int64
+	RemoteEscrowSequence                          int64
+	RemoteEscrowAccountBalance                    int64
+	RemoteEscrowAccountLastSeenTransactionOrderID int64
 
 	OpenAgreement            OpenAgreement
 	OpenExecutedAndValidated bool
@@ -62,8 +64,10 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 
 	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
 	channel.localEscrowAccount.Balance = s.LocalEscrowAccountBalance
+	channel.localEscrowAccount.LastSeenTransactionOrderID = s.LocalEscrowAccountLastSeenTransactionOrderID
 	channel.remoteEscrowAccount.SequenceNumber = s.RemoteEscrowSequence
 	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
+	channel.remoteEscrowAccount.LastSeenTransactionOrderID = s.RemoteEscrowAccountLastSeenTransactionOrderID
 
 	channel.openAgreement = s.OpenAgreement
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
@@ -78,9 +82,10 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 }
 
 type EscrowAccount struct {
-	Address        *keypair.FromAddress
-	SequenceNumber int64
-	Balance        int64
+	Address                    *keypair.FromAddress
+	SequenceNumber             int64
+	Balance                    int64
+	LastSeenTransactionOrderID int64
 }
 
 type Channel struct {
@@ -107,10 +112,12 @@ type Channel struct {
 // the same state.
 func (c *Channel) Snapshot() Snapshot {
 	return Snapshot{
-		LocalEscrowSequence:        c.localEscrowAccount.SequenceNumber,
-		LocalEscrowAccountBalance:  c.localEscrowAccount.Balance,
-		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
-		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
+		LocalEscrowSequence:                           c.localEscrowAccount.SequenceNumber,
+		LocalEscrowAccountBalance:                     c.localEscrowAccount.Balance,
+		LocalEscrowAccountLastSeenTransactionOrderID:  c.localEscrowAccount.LastSeenTransactionOrderID,
+		RemoteEscrowSequence:                          c.remoteEscrowAccount.SequenceNumber,
+		RemoteEscrowAccountBalance:                    c.remoteEscrowAccount.Balance,
+		RemoteEscrowAccountLastSeenTransactionOrderID: c.remoteEscrowAccount.LastSeenTransactionOrderID,
 
 		OpenAgreement:            c.openAgreement,
 		OpenExecutedAndValidated: c.openExecutedAndValidated,

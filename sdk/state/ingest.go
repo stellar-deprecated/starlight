@@ -9,8 +9,21 @@ import (
 
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
-// channel if the transaction relates to the channel.
-func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
+// channel if the transaction relates to one of the channel's escrow accounts.
+//
+// The txOrderID is an identifier that orders transactions as they were
+// executed on the Stellar network.
+//
+// The function may be called with transactions for each escrow account out of
+// order. For example, transactions for the initiator escrow account can be
+// processed in order, and transactions for the responder escrow account can be
+// processed in order, but relative to each other they may be out of order. If
+// transactions for a single account are processed out of order some state
+// transition may be skipped.
+//
+// The function maybe called with duplicate transactions and duplicates will not
+// change the state of the channel.
+func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR string) error {
 	// If channel has not been opened or has been closed, return.
 	if c.OpenAgreement().Envelope.isEmpty() {
 		return fmt.Errorf("channel has not been opened")
@@ -47,7 +60,7 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 		return err
 	}
 
-	err = c.ingestTxMetaToUpdateBalances(resultMetaXDR)
+	err = c.ingestTxMetaToUpdateBalances(txOrderID, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -141,7 +154,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 // ingestTxMetaToUpdateBalances uses the transaction result meta data
 // from a transaction response to update local and remote escrow account
 // balances.
-func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
+func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR string) error {
 	// If not a valid resultMetaXDR string, return.
 	var txMeta xdr.TransactionMeta
 	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
@@ -186,9 +199,15 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 
 			switch ledgerEntryAddress {
 			case c.localEscrowAccount.Address.Address():
-				c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
+				if txOrderID > c.localEscrowAccount.LastSeenTransactionOrderID {
+					c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
+					c.localEscrowAccount.LastSeenTransactionOrderID = txOrderID
+				}
 			case c.remoteEscrowAccount.Address.Address():
-				c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
+				if txOrderID > c.remoteEscrowAccount.LastSeenTransactionOrderID {
+					c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
+					c.remoteEscrowAccount.LastSeenTransactionOrderID = txOrderID
+				}
 			}
 		}
 	}

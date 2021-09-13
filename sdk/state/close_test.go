@@ -170,9 +170,9 @@ func TestChannel_ProposeClose(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = localChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = localChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = remoteChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = remoteChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := localChannel.State()
@@ -254,9 +254,9 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = senderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = senderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = receiverChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = receiverChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := senderChannel.State()
