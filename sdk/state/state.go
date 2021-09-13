@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
@@ -166,9 +167,11 @@ func (c *Channel) State() (State, error) {
 
 	if initiatorEscrowSeqNum == s {
 		return StateOpen, nil
-	} else if initiatorEscrowSeqNum < latestDeclSequence && initiatorEscrowSeqNum%2 == s%2 {
+	} else if initiatorEscrowSeqNum < latestDeclSequence &&
+		txbuild.SequenceNumberToTransactionType(s, initiatorEscrowSeqNum) == txbuild.TransactionTypeDeclaration {
 		return StateClosingWithOutdatedState, nil
-	} else if initiatorEscrowSeqNum < latestDeclSequence && initiatorEscrowSeqNum%2 != s%2 {
+	} else if initiatorEscrowSeqNum < latestDeclSequence &&
+		txbuild.SequenceNumberToTransactionType(s, initiatorEscrowSeqNum) == txbuild.TransactionTypeClose {
 		return StateClosedWithOutdatedState, nil
 	} else if initiatorEscrowSeqNum == latestDeclSequence {
 		return StateClosing, nil
