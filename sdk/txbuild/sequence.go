@@ -9,7 +9,6 @@ func startSequenceOfIteration(startSequence int64, iterationNumber int64) int64 
 type TransactionType string
 
 const (
-	TransactionTypeNone        TransactionType = "none"
 	TransactionTypeFormation   TransactionType = "formation"
 	TransactionTypeDeclaration TransactionType = "declaration"
 	TransactionTypeClose       TransactionType = "close"
@@ -19,7 +18,7 @@ func SequenceNumberToTransactionType(startingSeqNum, seqNum int64) TransactionTy
 	if startingSeqNum == seqNum {
 		return TransactionTypeFormation
 	} else if startingSeqNum+1 == seqNum {
-		return TransactionTypeNone
+		panic("invalid sequence number")
 	} else if startingSeqNum%m == seqNum%m {
 		return TransactionTypeDeclaration
 	}
