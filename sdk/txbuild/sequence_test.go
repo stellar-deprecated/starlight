@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_sequence(t *testing.T) {
+func TestSequenceNumberToTransactionType(t *testing.T) {
 	assert.Equal(t, TransactionTypeFormation, SequenceNumberToTransactionType(100, 100))
 	assert.Equal(t, TransactionTypeFormation, SequenceNumberToTransactionType(101, 101))
 
