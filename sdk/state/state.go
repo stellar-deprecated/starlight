@@ -6,8 +6,6 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 type Config struct {
@@ -284,16 +282,4 @@ func amountToResponder(balance int64) int64 {
 		return balance
 	}
 	return 0
-}
-
-func verifySigned(tx *txnbuild.Transaction, networkPassphrase string, signer keypair.KP, sig xdr.Signature) error {
-	hash, err := tx.Hash(networkPassphrase)
-	if err != nil {
-		return err
-	}
-	err = signer.Verify(hash[:], []byte(sig))
-	if err != nil {
-		return err
-	}
-	return nil
 }
