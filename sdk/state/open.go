@@ -41,32 +41,32 @@ func (oas OpenSignatures) isFull() bool {
 	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
 }
 
-func signOpenAgreementTxs(txs OpenTransactions, closeTxs CloseTransactions, networkPassphrase string, signer *keypair.Full) (s OpenSignatures, err error) {
-	s.Declaration, err = signTx(closeTxs.Declaration, networkPassphrase, signer)
+func signOpenAgreementTxs(txs OpenTransactions, closeTxs CloseTransactions, signer *keypair.Full) (s OpenSignatures, err error) {
+	s.Declaration, err = signer.Sign(closeTxs.DeclarationHash[:])
 	if err != nil {
 		return OpenSignatures{}, fmt.Errorf("signing declaration: %w", err)
 	}
-	s.Close, err = signTx(closeTxs.Close, networkPassphrase, signer)
+	s.Close, err = signer.Sign(closeTxs.CloseHash[:])
 	if err != nil {
 		return OpenSignatures{}, fmt.Errorf("signing close: %w", err)
 	}
-	s.Formation, err = signTx(txs.Formation, networkPassphrase, signer)
+	s.Formation, err = signer.Sign(txs.FormationHash[:])
 	if err != nil {
 		return OpenSignatures{}, fmt.Errorf("signing formation: %w", err)
 	}
 	return s, nil
 }
 
-func (s OpenSignatures) Verify(txs OpenTransactions, closeTxs CloseTransactions, networkPassphrase string, signer *keypair.FromAddress) error {
-	err := verifySigned(closeTxs.Declaration, networkPassphrase, signer, s.Declaration)
+func (s OpenSignatures) Verify(txs OpenTransactions, closeTxs CloseTransactions, signer *keypair.FromAddress) error {
+	err := signer.Verify(closeTxs.DeclarationHash[:], s.Declaration)
 	if err != nil {
 		return fmt.Errorf("verifying declaration signed: %w", err)
 	}
-	err = verifySigned(closeTxs.Close, networkPassphrase, signer, s.Close)
+	err = signer.Verify(closeTxs.CloseHash[:], s.Close)
 	if err != nil {
 		return fmt.Errorf("verifying close signed: %w", err)
 	}
-	err = verifySigned(txs.Formation, networkPassphrase, signer, s.Formation)
+	err = signer.Verify(txs.FormationHash[:], s.Formation)
 	if err != nil {
 		return fmt.Errorf("verifying formation signed: %w", err)
 	}
@@ -263,7 +263,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	if err != nil {
 		return OpenAgreement{}, err
 	}
-	sigs, err := signOpenAgreementTxs(txs, closeTxs, c.networkPassphrase, c.localSigner)
+	sigs, err := signOpenAgreementTxs(txs, closeTxs, c.localSigner)
 	if err != nil {
 		return OpenAgreement{}, fmt.Errorf("signing open agreement with local: %w", err)
 	}
@@ -318,7 +318,7 @@ func (c *Channel) ConfirmOpen(m OpenEnvelope) (open OpenAgreement, err error) {
 	if remoteSigs == nil {
 		return OpenAgreement{}, fmt.Errorf("remote is not a signer")
 	}
-	err = remoteSigs.Verify(txs, closeTxs, c.networkPassphrase, c.remoteSigner)
+	err = remoteSigs.Verify(txs, closeTxs, c.remoteSigner)
 	if err != nil {
 		return OpenAgreement{}, fmt.Errorf("not signed by remote: %w", err)
 	}
@@ -328,14 +328,14 @@ func (c *Channel) ConfirmOpen(m OpenEnvelope) (open OpenAgreement, err error) {
 	if localSigs == nil {
 		return OpenAgreement{}, fmt.Errorf("remote is not a signer")
 	}
-	err = localSigs.Verify(txs, closeTxs, c.networkPassphrase, c.localSigner.FromAddress())
+	err = localSigs.Verify(txs, closeTxs, c.localSigner.FromAddress())
 	if err != nil {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !m.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
 			return OpenAgreement{}, fmt.Errorf("not signed by local: %w", err)
 		}
-		m.ConfirmerSignatures, err = signOpenAgreementTxs(txs, closeTxs, c.networkPassphrase, c.localSigner)
+		m.ConfirmerSignatures, err = signOpenAgreementTxs(txs, closeTxs, c.localSigner)
 		if err != nil {
 			return OpenAgreement{}, fmt.Errorf("local signing: %w", err)
 		}
