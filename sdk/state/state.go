@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/network"
-	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 type Config struct {
@@ -40,10 +38,12 @@ func NewChannel(c Config) *Channel {
 // combined with a Channel's initialization config they can be used to create a
 // new Channel that has the same state.
 type Snapshot struct {
-	LocalEscrowSequence        int64
-	LocalEscrowAccountBalance  int64
-	RemoteEscrowSequence       int64
-	RemoteEscrowAccountBalance int64
+	LocalEscrowSequence                           int64
+	LocalEscrowAccountBalance                     int64
+	LocalEscrowAccountLastSeenTransactionOrderID  int64
+	RemoteEscrowSequence                          int64
+	RemoteEscrowAccountBalance                    int64
+	RemoteEscrowAccountLastSeenTransactionOrderID int64
 
 	OpenAgreement            OpenAgreement
 	OpenExecutedAndValidated bool
@@ -62,8 +62,10 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 
 	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
 	channel.localEscrowAccount.Balance = s.LocalEscrowAccountBalance
+	channel.localEscrowAccount.LastSeenTransactionOrderID = s.LocalEscrowAccountLastSeenTransactionOrderID
 	channel.remoteEscrowAccount.SequenceNumber = s.RemoteEscrowSequence
 	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
+	channel.remoteEscrowAccount.LastSeenTransactionOrderID = s.RemoteEscrowAccountLastSeenTransactionOrderID
 
 	channel.openAgreement = s.OpenAgreement
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
@@ -78,9 +80,10 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 }
 
 type EscrowAccount struct {
-	Address        *keypair.FromAddress
-	SequenceNumber int64
-	Balance        int64
+	Address                    *keypair.FromAddress
+	SequenceNumber             int64
+	Balance                    int64
+	LastSeenTransactionOrderID int64
 }
 
 type Channel struct {
@@ -107,10 +110,12 @@ type Channel struct {
 // the same state.
 func (c *Channel) Snapshot() Snapshot {
 	return Snapshot{
-		LocalEscrowSequence:        c.localEscrowAccount.SequenceNumber,
-		LocalEscrowAccountBalance:  c.localEscrowAccount.Balance,
-		RemoteEscrowSequence:       c.remoteEscrowAccount.SequenceNumber,
-		RemoteEscrowAccountBalance: c.remoteEscrowAccount.Balance,
+		LocalEscrowSequence:                           c.localEscrowAccount.SequenceNumber,
+		LocalEscrowAccountBalance:                     c.localEscrowAccount.Balance,
+		LocalEscrowAccountLastSeenTransactionOrderID:  c.localEscrowAccount.LastSeenTransactionOrderID,
+		RemoteEscrowSequence:                          c.remoteEscrowAccount.SequenceNumber,
+		RemoteEscrowAccountBalance:                    c.remoteEscrowAccount.Balance,
+		RemoteEscrowAccountLastSeenTransactionOrderID: c.remoteEscrowAccount.LastSeenTransactionOrderID,
 
 		OpenAgreement:            c.openAgreement,
 		OpenExecutedAndValidated: c.openExecutedAndValidated,
@@ -127,8 +132,9 @@ const (
 	StateError State = iota - 1
 	StateNone
 	StateOpen
-	StateClosing
 	StateClosingWithOutdatedState
+	StateClosedWithOutdatedState
+	StateClosing
 	StateClosed
 )
 
@@ -154,11 +160,16 @@ func (c *Channel) State() (State, error) {
 	latestCloseSequence := txs.Close.SequenceNumber()
 
 	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
+	s := c.openAgreement.Envelope.Details.StartingSequence
 
-	if initiatorEscrowSeqNum == c.openAgreement.Envelope.Details.StartingSequence {
+	if initiatorEscrowSeqNum == s {
 		return StateOpen, nil
-	} else if initiatorEscrowSeqNum < latestDeclSequence {
+	} else if initiatorEscrowSeqNum < latestDeclSequence &&
+		txbuild.SequenceNumberToTransactionType(s, initiatorEscrowSeqNum) == txbuild.TransactionTypeDeclaration {
 		return StateClosingWithOutdatedState, nil
+	} else if initiatorEscrowSeqNum < latestDeclSequence &&
+		txbuild.SequenceNumberToTransactionType(s, initiatorEscrowSeqNum) == txbuild.TransactionTypeClose {
+		return StateClosedWithOutdatedState, nil
 	} else if initiatorEscrowSeqNum == latestDeclSequence {
 		return StateClosing, nil
 	} else if initiatorEscrowSeqNum >= latestCloseSequence {
@@ -189,12 +200,12 @@ func (c *Channel) Balance() int64 {
 	return c.latestAuthorizedCloseAgreement.Envelope.Details.Balance
 }
 
-func (c *Channel) OpenAgreement() OpenEnvelope {
-	return c.openAgreement.Envelope
+func (c *Channel) OpenAgreement() OpenAgreement {
+	return c.openAgreement
 }
 
-func (c *Channel) LatestCloseAgreement() CloseEnvelope {
-	return c.latestAuthorizedCloseAgreement.Envelope
+func (c *Channel) LatestCloseAgreement() CloseAgreement {
+	return c.latestAuthorizedCloseAgreement
 }
 
 func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
@@ -271,28 +282,4 @@ func amountToResponder(balance int64) int64 {
 		return balance
 	}
 	return 0
-}
-
-func signTx(tx *txnbuild.Transaction, networkPassphrase string, kp *keypair.Full) (xdr.Signature, error) {
-	h, err := network.HashTransactionInEnvelope(tx.ToXDR(), networkPassphrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash transaction: %w", err)
-	}
-	sig, err := kp.Sign(h[:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction hash: %w", err)
-	}
-	return xdr.Signature(sig), nil
-}
-
-func verifySigned(tx *txnbuild.Transaction, networkPassphrase string, signer keypair.KP, sig xdr.Signature) error {
-	hash, err := tx.Hash(networkPassphrase)
-	if err != nil {
-		return err
-	}
-	err = signer.Verify(hash[:], []byte(sig))
-	if err != nil {
-		return err
-	}
-	return nil
 }

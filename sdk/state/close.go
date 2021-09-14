@@ -100,7 +100,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("making declaration and close transactions: %w", err)
 	}
-	sigs, err := signCloseAgreementTxs(txs, c.networkPassphrase, c.localSigner)
+	sigs, err := signCloseAgreementTxs(txs, c.localSigner)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("signing open agreement with local: %w", err)
 	}
@@ -159,7 +159,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	if remoteSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
 	}
-	err = remoteSigs.Verify(txs, c.networkPassphrase, c.remoteSigner)
+	err = remoteSigs.Verify(txs, c.remoteSigner)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("not signed by remote: %w", err)
 	}
@@ -169,14 +169,14 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	if localSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
-	err = localSigs.Verify(txs, c.networkPassphrase, c.localSigner.FromAddress())
+	err = localSigs.Verify(txs, c.localSigner.FromAddress())
 	if err != nil {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
 			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
 		}
-		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.networkPassphrase, c.localSigner)
+		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)
 		if err != nil {
 			return CloseAgreement{}, fmt.Errorf("local signing: %w", err)
 		}

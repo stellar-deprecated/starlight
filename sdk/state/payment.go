@@ -1,10 +1,10 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -29,9 +29,13 @@ type CloseDetails struct {
 }
 
 func (d CloseDetails) Equal(d2 CloseDetails) bool {
-	// TODO: Replace cmp.Equal with a hand written equals.
-	type CAD CloseDetails
-	return cmp.Equal(CAD(d), CAD(d2))
+	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
+		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
+		d.IterationNumber == d2.IterationNumber &&
+		d.Balance == d2.Balance &&
+		d.PaymentAmount == d2.PaymentAmount &&
+		d.ProposingSigner.Equal(d2.ProposingSigner) &&
+		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
 }
 
 type CloseSignatures struct {
@@ -39,24 +43,29 @@ type CloseSignatures struct {
 	Declaration xdr.Signature
 }
 
-func signCloseAgreementTxs(txs CloseTransactions, networkPassphrase string, signer *keypair.Full) (s CloseSignatures, err error) {
-	s.Declaration, err = signTx(txs.Declaration, networkPassphrase, signer)
+func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
+	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
+		bytes.Equal(cas.Close, cas2.Close)
+}
+
+func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s CloseSignatures, err error) {
+	s.Declaration, err = signer.Sign(txs.DeclarationHash[:])
 	if err != nil {
 		return CloseSignatures{}, fmt.Errorf("signing declaration: %w", err)
 	}
-	s.Close, err = signTx(txs.Close, networkPassphrase, signer)
+	s.Close, err = signer.Sign(txs.CloseHash[:])
 	if err != nil {
 		return CloseSignatures{}, fmt.Errorf("signing close: %w", err)
 	}
 	return s, nil
 }
 
-func (s CloseSignatures) Verify(txs CloseTransactions, networkPassphrase string, signer *keypair.FromAddress) error {
-	err := verifySigned(txs.Declaration, networkPassphrase, signer, s.Declaration)
+func (s CloseSignatures) Verify(txs CloseTransactions, signer *keypair.FromAddress) error {
+	err := signer.Verify(txs.DeclarationHash[:], []byte(s.Declaration))
 	if err != nil {
 		return fmt.Errorf("verifying declaration signed: %w", err)
 	}
-	err = verifySigned(txs.Close, networkPassphrase, signer, s.Close)
+	err = signer.Verify(txs.CloseHash[:], []byte(s.Close))
 	if err != nil {
 		return fmt.Errorf("verifying close signed: %w", err)
 	}
@@ -85,9 +94,9 @@ func (ca CloseEnvelope) isEmpty() bool {
 }
 
 func (ca CloseEnvelope) Equal(ca2 CloseEnvelope) bool {
-	// TODO: Replace cmp.Equal with a hand written equals.
-	type CA CloseEnvelope
-	return cmp.Equal(CA(ca), CA(ca2))
+	return ca.Details.Equal(ca2.Details) &&
+		ca.ProposerSignatures.Equal(ca2.ProposerSignatures) &&
+		ca.ConfirmerSignatures.Equal(ca2.ConfirmerSignatures)
 }
 
 func (ca CloseEnvelope) SignaturesFor(signer *keypair.FromAddress) *CloseSignatures {
@@ -188,7 +197,7 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	if err != nil {
 		return CloseAgreement{}, err
 	}
-	sigs, err := signCloseAgreementTxs(txs, c.networkPassphrase, c.localSigner)
+	sigs, err := signCloseAgreementTxs(txs, c.localSigner)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("signing open agreement with local: %w", err)
 	}
@@ -277,7 +286,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 	if remoteSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
 	}
-	err = remoteSigs.Verify(txs, c.networkPassphrase, c.remoteSigner)
+	err = remoteSigs.Verify(txs, c.remoteSigner)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("not signed by remote: %w", err)
 	}
@@ -287,7 +296,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 	if localSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
-	err = localSigs.Verify(txs, c.networkPassphrase, c.localSigner.FromAddress())
+	err = localSigs.Verify(txs, c.localSigner.FromAddress())
 	if err != nil {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
@@ -304,7 +313,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 		if c.amountToLocal(ce.Details.Balance) > c.remoteEscrowAccount.Balance {
 			return CloseAgreement{}, fmt.Errorf("close agreement over commits: %w", ErrUnderfunded)
 		}
-		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.networkPassphrase, c.localSigner)
+		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)
 		if err != nil {
 			return CloseAgreement{}, fmt.Errorf("local signing: %w", err)
 		}

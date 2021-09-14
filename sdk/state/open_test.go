@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	fuzz "github.com/google/gofuzz"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -14,150 +15,97 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAgreement_Equal(t *testing.T) {
-	kp := keypair.MustRandom().FromAddress()
-	testCases := []struct {
-		oa1       OpenEnvelope
-		oa2       OpenEnvelope
-		wantEqual bool
-	}{
-		{OpenEnvelope{}, OpenEnvelope{}, true},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-			},
-			true,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-			},
-			OpenEnvelope{},
-			false,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			true,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{},
-			false,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           keypair.MustRandom().FromAddress(),
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-	}
-	for i, tc := range testCases {
+func TestOpenDetails_Equal(t *testing.T) {
+	assert.True(t, OpenDetails{}.Equal(OpenDetails{}))
+
+	// The same value should be equal.
+	ft := time.Now().UnixNano()
+	od1 := OpenDetails{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od1)
+	t.Log("od1:", od1)
+	od2 := OpenDetails{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od2)
+	t.Log("od2:", od2)
+	assert.True(t, od1.Equal(od2))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			equal := tc.oa1.Equal(tc.oa2)
-			assert.Equal(t, tc.wantEqual, equal)
+			f := fuzz.New()
+			a := OpenSignatures{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := OpenSignatures{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
+
+func TestOpenSignatures_Equal(t *testing.T) {
+	assert.True(t, OpenSignatures{}.Equal(OpenSignatures{}))
+
+	// The same value should be equal. It is common for OpenSignatures to be
+	// defined in whole or not at all, so we test that use case.
+	ft := time.Now().UnixNano()
+	os1 := OpenSignatures{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&os1)
+	t.Log("os1:", os1)
+	os2 := OpenSignatures{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&os2)
+	t.Log("os2:", os2)
+	assert.True(t, os1.Equal(os2))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := OpenSignatures{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := OpenSignatures{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
+
+func TestOpenEnvelope_Equal(t *testing.T) {
+	assert.True(t, OpenEnvelope{}.Equal(OpenEnvelope{}))
+
+	// The same value should be equal. It's common for OpenEnvelopes to start
+	// with details then have signatures added, so we check that pattern of
+	// incrementally adding fields.
+	f := fuzz.New().NilChance(0)
+	od := OpenDetails{}
+	f.Fuzz(&od)
+	t.Log("od:", od)
+	ps := OpenSignatures{}
+	f.Fuzz(&ps)
+	t.Log("ps:", ps)
+	cs := OpenSignatures{}
+	f.Fuzz(&cs)
+	t.Log("cs:", cs)
+	assert.True(t, OpenEnvelope{Details: od}.Equal(OpenEnvelope{Details: od}))
+	assert.True(t, OpenEnvelope{Details: od, ProposerSignatures: ps}.Equal(OpenEnvelope{Details: od, ProposerSignatures: ps}))
+	assert.True(t, OpenEnvelope{Details: od, ProposerSignatures: ps, ConfirmerSignatures: cs}.Equal(OpenEnvelope{Details: od, ProposerSignatures: ps, ConfirmerSignatures: cs}))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := OpenEnvelope{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := OpenEnvelope{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
 		})
 	}
 }
@@ -427,9 +375,9 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		})
 		require.NoError(t, err)
 
-		err = initiatorChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
-		err = responderChannel.IngestTx(ftxXDR, successResultXDR, resultMetaXDR)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 
 		cs, err := initiatorChannel.State()

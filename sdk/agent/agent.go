@@ -43,7 +43,13 @@ type Streamer interface {
 // StreamedTransaction is a transaction that has been seen by the
 // Streamer.
 type StreamedTransaction struct {
-	Cursor         string
+	// Cursor is a cursor that can be used to resume streaming.
+	Cursor string
+
+	// TransactionOrderID is an identifier that orders transactions in the order
+	// they were executed on the Stellar network.
+	TransactionOrderID int64
+
 	TransactionXDR string
 	ResultXDR      string
 	ResultMetaXDR  string
@@ -291,7 +297,7 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
 		var balance int64
-		balance, err = a.balanceCollector.GetBalance(a.channel.LocalEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
+		balance, err = a.balanceCollector.GetBalance(a.channel.LocalEscrowAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
 		if err != nil {
 			return err
 		}
@@ -552,7 +558,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "remote is underfunded for this payment based on cached account balances, checking their escrow account...\n")
 		var balance int64
-		balance, err = a.balanceCollector.GetBalance(a.channel.RemoteEscrowAccount().Address, a.channel.OpenAgreement().Details.Asset)
+		balance, err = a.balanceCollector.GetBalance(a.channel.RemoteEscrowAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
 		if err != nil {
 			return err
 		}

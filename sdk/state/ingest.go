@@ -9,10 +9,34 @@ import (
 
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
-// channel if the transaction relates to the channel.
-func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
-	// TODO: Use the transaction result to affect on success/failure.
+// channel if the transaction relates to one of the channel's escrow accounts.
+//
+// The txOrderID is an identifier that orders transactions as they were
+// executed on the Stellar network.
+//
+// The function may be called with transactions for each escrow account out of
+// order. For example, transactions for the initiator escrow account can be
+// processed in order, and transactions for the responder escrow account can be
+// processed in order, but relative to each other they may be out of order. If
+// transactions for a single account are processed out of order some state
+// transition may be skipped.
+//
+// The function maybe called with duplicate transactions and duplicates will not
+// change the state of the channel.
+func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR string) error {
+	// If channel has not been opened or has been closed, return.
+	if c.OpenAgreement().Envelope.isEmpty() {
+		return fmt.Errorf("channel has not been opened")
+	}
+	cs, err := c.State()
+	if err != nil {
+		return fmt.Errorf("getting channel state: %w", err)
+	}
+	if cs == StateClosed || cs == StateClosedWithOutdatedState {
+		return fmt.Errorf("channel has been closed")
+	}
 
+	// Get transaction object from the transaction XDR.
 	gtx, err := txnbuild.TransactionFromXDR(txXDR)
 	if err != nil {
 		return fmt.Errorf("parsing transaction xdr")
@@ -28,6 +52,7 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 		return fmt.Errorf("transaction unrecognized")
 	}
 
+	// Ingest the transaction and update channel state if valid.
 	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
 
 	err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
@@ -35,7 +60,7 @@ func (c *Channel) IngestTx(txXDR, resultXDR, resultMetaXDR string) error {
 		return err
 	}
 
-	err = c.ingestTxMetaToUpdateBalances(resultMetaXDR)
+	err = c.ingestTxMetaToUpdateBalances(txOrderID, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -52,6 +77,11 @@ func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Tr
 	// If the transaction's source account is not the initiator's escrow
 	// account, return.
 	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+		return
+	}
+
+	// If the transaction is from an earlier sequence number, return.
+	if tx.SourceAccount().Sequence <= c.initiatorEscrowAccount().SequenceNumber {
 		return
 	}
 
@@ -124,7 +154,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 // ingestTxMetaToUpdateBalances uses the transaction result meta data
 // from a transaction response to update local and remote escrow account
 // balances.
-func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
+func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR string) error {
 	// If not a valid resultMetaXDR string, return.
 	var txMeta xdr.TransactionMeta
 	err := xdr.SafeUnmarshalBase64(resultMetaXDR, &txMeta)
@@ -169,9 +199,15 @@ func (c *Channel) ingestTxMetaToUpdateBalances(resultMetaXDR string) error {
 
 			switch ledgerEntryAddress {
 			case c.localEscrowAccount.Address.Address():
-				c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
+				if txOrderID > c.localEscrowAccount.LastSeenTransactionOrderID {
+					c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
+					c.localEscrowAccount.LastSeenTransactionOrderID = txOrderID
+				}
 			case c.remoteEscrowAccount.Address.Address():
-				c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
+				if txOrderID > c.remoteEscrowAccount.LastSeenTransactionOrderID {
+					c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
+					c.remoteEscrowAccount.LastSeenTransactionOrderID = txOrderID
+				}
 			}
 		}
 	}
