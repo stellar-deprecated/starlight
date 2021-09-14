@@ -16,8 +16,9 @@ import (
 )
 
 func TestOpenDetails_Equal(t *testing.T) {
-	// The same value should be equal.
 	assert.True(t, OpenDetails{}.Equal(OpenDetails{}))
+
+	// The same value should be equal.
 	ft := time.Now().UnixNano()
 	od1 := OpenDetails{}
 	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od1)
@@ -25,7 +26,7 @@ func TestOpenDetails_Equal(t *testing.T) {
 	od2 := OpenDetails{}
 	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od2)
 	t.Log("od2:", od2)
-	assert.True(t, od2.Equal(od2))
+	assert.True(t, od1.Equal(od2))
 
 	// Different values should never be equal.
 	for i := 0; i < 20; i++ {
@@ -43,12 +44,19 @@ func TestOpenDetails_Equal(t *testing.T) {
 	}
 }
 
-func TestOpenSignature_Equal(t *testing.T) {
-	// The same value should be equal.
+func TestOpenSignatures_Equal(t *testing.T) {
 	assert.True(t, OpenSignatures{}.Equal(OpenSignatures{}))
-	assert.True(t, OpenSignatures{Formation: []byte{0x01}}.Equal(OpenSignatures{Formation: []byte{0x01}}))
-	assert.True(t, OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}}.Equal(OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}}))
-	assert.True(t, OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}, Close: []byte{0x03}}.Equal(OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}, Close: []byte{0x03}}))
+
+	// The same value should be equal. It is common for OpenSignatures to be
+	// defined in whole or not at all, so we test that use case.
+	ft := time.Now().UnixNano()
+	os1 := OpenSignatures{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&os1)
+	t.Log("os1:", os1)
+	os2 := OpenSignatures{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&os2)
+	t.Log("os2:", os2)
+	assert.True(t, os1.Equal(os2))
 
 	// Different values should never be equal.
 	for i := 0; i < 20; i++ {
@@ -67,8 +75,11 @@ func TestOpenSignature_Equal(t *testing.T) {
 }
 
 func TestOpenEnvelope_Equal(t *testing.T) {
-	// The same value should be equal.
 	assert.True(t, OpenEnvelope{}.Equal(OpenEnvelope{}))
+
+	// The same value should be equal. It's common for OpenEnvelopes to start
+	// with details then have signatures added, so we check that pattern of
+	// incrementally adding fields.
 	f := fuzz.New().NilChance(0)
 	od := OpenDetails{}
 	f.Fuzz(&od)
@@ -95,154 +106,6 @@ func TestOpenEnvelope_Equal(t *testing.T) {
 			t.Log("b:", b)
 			assert.False(t, a.Equal(b))
 			assert.False(t, b.Equal(a))
-		})
-	}
-}
-
-func TestOpenAgreement_Equal(t *testing.T) {
-	kp := keypair.MustRandom().FromAddress()
-	testCases := []struct {
-		oa1       OpenEnvelope
-		oa2       OpenEnvelope
-		wantEqual bool
-	}{
-		{OpenEnvelope{}, OpenEnvelope{}, true},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-			},
-			true,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-			},
-			OpenEnvelope{},
-			false,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			true,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{},
-			false,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-		{
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           kp,
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			OpenEnvelope{
-				Details: OpenDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					Asset:                      "native",
-					ExpiresAt:                  time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC),
-					ConfirmingSigner:           keypair.MustRandom().FromAddress(),
-				},
-				ProposerSignatures: OpenSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-	}
-	for i, tc := range testCases {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			equal := tc.oa1.Equal(tc.oa2)
-			assert.Equal(t, tc.wantEqual, equal)
 		})
 	}
 }
