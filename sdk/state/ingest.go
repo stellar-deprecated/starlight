@@ -32,7 +32,7 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 	if err != nil {
 		return fmt.Errorf("getting channel state: %w", err)
 	}
-	if cs == StateClosed {
+	if cs == StateClosed || cs == StateClosedWithOutdatedState {
 		return fmt.Errorf("channel has been closed")
 	}
 
