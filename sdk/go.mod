@@ -15,6 +15,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi v4.0.3+incompatible // indirect
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739 // indirect

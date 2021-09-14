@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	fuzz "github.com/google/gofuzz"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -13,6 +14,90 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestOpenDetails_Equal(t *testing.T) {
+	// The same value should be equal.
+	assert.True(t, OpenDetails{}.Equal(OpenDetails{}))
+	ft := time.Now().UnixNano()
+	od1 := OpenDetails{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od1)
+	t.Log("od1:", od1)
+	od2 := OpenDetails{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od2)
+	t.Log("od2:", od2)
+	assert.True(t, od2.Equal(od2))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := OpenSignatures{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := OpenSignatures{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
+
+func TestOpenSignature_Equal(t *testing.T) {
+	// The same value should be equal.
+	assert.True(t, OpenSignatures{}.Equal(OpenSignatures{}))
+	assert.True(t, OpenSignatures{Formation: []byte{0x01}}.Equal(OpenSignatures{Formation: []byte{0x01}}))
+	assert.True(t, OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}}.Equal(OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}}))
+	assert.True(t, OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}, Close: []byte{0x03}}.Equal(OpenSignatures{Formation: []byte{0x01}, Declaration: []byte{0x02}, Close: []byte{0x03}}))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := OpenSignatures{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := OpenSignatures{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
+
+func TestOpenEnvelope_Equal(t *testing.T) {
+	// The same value should be equal.
+	assert.True(t, OpenEnvelope{}.Equal(OpenEnvelope{}))
+	f := fuzz.New().NilChance(0)
+	od := OpenDetails{}
+	f.Fuzz(&od)
+	t.Log("od:", od)
+	ps := OpenSignatures{}
+	f.Fuzz(&ps)
+	t.Log("ps:", ps)
+	cs := OpenSignatures{}
+	f.Fuzz(&cs)
+	t.Log("cs:", cs)
+	assert.True(t, OpenEnvelope{Details: od}.Equal(OpenEnvelope{Details: od}))
+	assert.True(t, OpenEnvelope{Details: od, ProposerSignatures: ps}.Equal(OpenEnvelope{Details: od, ProposerSignatures: ps}))
+	assert.True(t, OpenEnvelope{Details: od, ProposerSignatures: ps, ConfirmerSignatures: cs}.Equal(OpenEnvelope{Details: od, ProposerSignatures: ps, ConfirmerSignatures: cs}))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := OpenEnvelope{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := OpenEnvelope{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
 
 func TestOpenAgreement_Equal(t *testing.T) {
 	kp := keypair.MustRandom().FromAddress()
