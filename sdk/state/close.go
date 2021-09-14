@@ -169,7 +169,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	if localSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
-	err = localSigs.Verify(txs,  c.localSigner.FromAddress())
+	err = localSigs.Verify(txs, c.localSigner.FromAddress())
 	if err != nil {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
