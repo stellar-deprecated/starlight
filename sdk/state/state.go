@@ -6,7 +6,6 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -285,18 +284,6 @@ func amountToResponder(balance int64) int64 {
 		return balance
 	}
 	return 0
-}
-
-func signTx(tx *txnbuild.Transaction, networkPassphrase string, kp *keypair.Full) (xdr.Signature, error) {
-	h, err := network.HashTransactionInEnvelope(tx.ToXDR(), networkPassphrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash transaction: %w", err)
-	}
-	sig, err := kp.Sign(h[:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction hash: %w", err)
-	}
-	return xdr.Signature(sig), nil
 }
 
 func verifySigned(tx *txnbuild.Transaction, networkPassphrase string, signer keypair.KP, sig xdr.Signature) error {
