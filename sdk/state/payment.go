@@ -1,10 +1,10 @@
 package state
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -29,23 +29,14 @@ type CloseDetails struct {
 }
 
 func (d CloseDetails) Equal(d2 CloseDetails) bool {
-	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
-		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
-		d.IterationNumber == d2.IterationNumber &&
-		d.Balance == d2.Balance &&
-		d.PaymentAmount == d2.PaymentAmount &&
-		d.ProposingSigner.Equal(d2.ProposingSigner) &&
-		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type CAD CloseDetails
+	return cmp.Equal(CAD(d), CAD(d2))
 }
 
 type CloseSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
-}
-
-func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
-	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
-		bytes.Equal(cas.Close, cas2.Close)
 }
 
 func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s CloseSignatures, err error) {
@@ -94,9 +85,9 @@ func (ca CloseEnvelope) isEmpty() bool {
 }
 
 func (ca CloseEnvelope) Equal(ca2 CloseEnvelope) bool {
-	return ca.Details.Equal(ca2.Details) &&
-		ca.ProposerSignatures.Equal(ca2.ProposerSignatures) &&
-		ca.ConfirmerSignatures.Equal(ca2.ConfirmerSignatures)
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type CA CloseEnvelope
+	return cmp.Equal(CA(ca), CA(ca2))
 }
 
 func (ca CloseEnvelope) SignaturesFor(signer *keypair.FromAddress) *CloseSignatures {

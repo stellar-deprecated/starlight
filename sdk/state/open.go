@@ -1,10 +1,10 @@
 package state
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -39,12 +39,6 @@ type OpenSignatures struct {
 
 func (oas OpenSignatures) isFull() bool {
 	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
-}
-
-func (oas OpenSignatures) Equal(oas2 OpenSignatures) bool {
-	return bytes.Equal(oas.Formation, oas2.Formation) &&
-		bytes.Equal(oas.Declaration, oas2.Declaration) &&
-		bytes.Equal(oas.Close, oas2.Close)
 }
 
 func signOpenAgreementTxs(txs OpenTransactions, closeTxs CloseTransactions, signer *keypair.Full) (s OpenSignatures, err error) {
@@ -103,9 +97,9 @@ func (oa OpenEnvelope) isFull() bool {
 }
 
 func (oa OpenEnvelope) Equal(oa2 OpenEnvelope) bool {
-	return oa.Details.Equal(oa2.Details) &&
-		oa.ProposerSignatures.Equal(oa2.ProposerSignatures) &&
-		oa.ConfirmerSignatures.Equal(oa2.ConfirmerSignatures)
+	// TODO: Replace cmp.Equal with a hand written equals.
+	type OA OpenEnvelope
+	return cmp.Equal(OA(oa), OA(oa2))
 }
 
 func (oa OpenEnvelope) SignaturesFor(signer *keypair.FromAddress) *OpenSignatures {
