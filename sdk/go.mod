@@ -5,7 +5,6 @@ go 1.17
 replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210907190404-83c9e51240c5
 
 require (
-	github.com/google/go-cmp v0.5.6
 	github.com/stellar/go v0.0.0-00010101000000-000000000000
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
