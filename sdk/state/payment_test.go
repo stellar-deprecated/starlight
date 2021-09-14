@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	fuzz "github.com/google/gofuzz"
 	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -13,195 +14,97 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCloseAgreement_Equal(t *testing.T) {
-	testCases := []struct {
-		ca1       CloseEnvelope
-		ca2       CloseEnvelope
-		wantEqual bool
-	}{
-		{CloseEnvelope{}, CloseEnvelope{}, true},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-			},
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-			},
-			true,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-			},
-			CloseEnvelope{},
-			false,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			true,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			CloseEnvelope{},
-			false,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			true,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-					ConfirmingSigner:           keypair.MustParseAddress("GDJ5SXSKKFXINP7TN4J4T4JAXL4VZL7UMIAGZWQTYSKHSNHLSPVOAXRY"),
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-		{
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-					ConfirmingSigner:           keypair.MustParseAddress("GCJFS4LZFAM7NKFQFEWE4W2SCGARSE2SMLGNWGHH2LSZ6CLX326MZWPO"),
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			CloseEnvelope{
-				Details: CloseDetails{
-					ObservationPeriodTime:      time.Minute,
-					ObservationPeriodLedgerGap: 2,
-					IterationNumber:            3,
-					Balance:                    100,
-					ConfirmingSigner:           nil,
-				},
-				ProposerSignatures: CloseSignatures{
-					Close: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-				},
-			},
-			false,
-		},
-	}
-	for i, tc := range testCases {
+func TestCloseDetails_Equal(t *testing.T) {
+	assert.True(t, CloseDetails{}.Equal(CloseDetails{}))
+
+	// The same value should be equal.
+	ft := time.Now().UnixNano()
+	od1 := CloseDetails{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od1)
+	t.Log("od1:", od1)
+	od2 := CloseDetails{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&od2)
+	t.Log("od2:", od2)
+	assert.True(t, od1.Equal(od2))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			equal := tc.ca1.Equal(tc.ca2)
-			assert.Equal(t, tc.wantEqual, equal)
+			f := fuzz.New()
+			a := CloseSignatures{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := CloseSignatures{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
+
+func TestCloseSignatures_Equal(t *testing.T) {
+	assert.True(t, CloseSignatures{}.Equal(CloseSignatures{}))
+
+	// The same value should be equal. It is common for CloseSignatures to be
+	// defined in whole or not at all, so we test that use case.
+	ft := time.Now().UnixNano()
+	os1 := CloseSignatures{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&os1)
+	t.Log("os1:", os1)
+	os2 := CloseSignatures{}
+	fuzz.NewWithSeed(ft).NilChance(0).Fuzz(&os2)
+	t.Log("os2:", os2)
+	assert.True(t, os1.Equal(os2))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := CloseSignatures{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := CloseSignatures{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
+		})
+	}
+}
+
+func TestCloseEnvelope_Equal(t *testing.T) {
+	assert.True(t, CloseEnvelope{}.Equal(CloseEnvelope{}))
+
+	// The same value should be equal. It's common for CloseEnvelopes to start
+	// with details then have signatures added, so we check that pattern of
+	// incrementally adding fields.
+	f := fuzz.New().NilChance(0)
+	od := CloseDetails{}
+	f.Fuzz(&od)
+	t.Log("od:", od)
+	ps := CloseSignatures{}
+	f.Fuzz(&ps)
+	t.Log("ps:", ps)
+	cs := CloseSignatures{}
+	f.Fuzz(&cs)
+	t.Log("cs:", cs)
+	assert.True(t, CloseEnvelope{Details: od}.Equal(CloseEnvelope{Details: od}))
+	assert.True(t, CloseEnvelope{Details: od, ProposerSignatures: ps}.Equal(CloseEnvelope{Details: od, ProposerSignatures: ps}))
+	assert.True(t, CloseEnvelope{Details: od, ProposerSignatures: ps, ConfirmerSignatures: cs}.Equal(CloseEnvelope{Details: od, ProposerSignatures: ps, ConfirmerSignatures: cs}))
+
+	// Different values should never be equal.
+	for i := 0; i < 20; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := fuzz.New()
+			a := CloseEnvelope{}
+			f.Fuzz(&a)
+			t.Log("a:", a)
+			b := CloseEnvelope{}
+			f.Fuzz(&b)
+			t.Log("b:", b)
+			assert.False(t, a.Equal(b))
+			assert.False(t, b.Equal(a))
 		})
 	}
 }
