@@ -2,7 +2,7 @@ module github.com/stellar/experimental-paymentment-channels/examples/console
 
 go 1.17
 
-replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210907190404-83c9e51240c5
+replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210920152412-d9c767035a8e
 
 replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
 
@@ -16,7 +16,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi v4.0.3+incompatible // indirect
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739 // indirect
