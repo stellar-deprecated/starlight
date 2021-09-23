@@ -54,18 +54,18 @@ func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
 }
 
 func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s CloseSignatures, err error) {
-	eg := errgroup.Group{}
-	eg.Go(func() error {
+	g := errgroup.Group{}
+	g.Go(func() error {
 		var err error
 		s.Declaration, err = signer.Sign(txs.DeclarationHash[:])
 		return err
 	})
-	eg.Go(func() error {
+	g.Go(func() error {
 		var err error
 		s.Close, err = signer.Sign(txs.CloseHash[:])
 		return err
 	})
-	return s, eg.Wait()
+	return s, g.Wait()
 }
 
 type CloseSignaturesVerifyInput struct {
@@ -74,17 +74,17 @@ type CloseSignaturesVerifyInput struct {
 }
 
 func verifyCloseSignatures(txs CloseTransactions, sigsAndSigners []CloseSignaturesVerifyInput) error {
-	eg := errgroup.Group{}
+	g := errgroup.Group{}
 	for _, s := range sigsAndSigners {
 		s := s
-		eg.Go(func() error {
+		g.Go(func() error {
 			return s.Signer.Verify(txs.DeclarationHash[:], []byte(s.Signatures.Declaration))
 		})
-		eg.Go(func() error {
+		g.Go(func() error {
 			return s.Signer.Verify(txs.CloseHash[:], []byte(s.Signatures.Close))
 		})
 	}
-	return eg.Wait()
+	return g.Wait()
 }
 
 // CloseTransactions contain all the transaction hashes and
