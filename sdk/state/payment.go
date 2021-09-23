@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
+	"golang.org/x/sync/errgroup"
 )
 
 // The high level steps for creating a channel update should be as follows, where the returned payments
@@ -43,6 +44,7 @@ type CloseSignatures struct {
 	Declaration xdr.Signature
 }
 
+<<<<<<< HEAD
 func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
 	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
 		bytes.Equal(cas.Close, cas2.Close)
@@ -70,6 +72,30 @@ func (s CloseSignatures) Verify(txs CloseTransactions, signer *keypair.FromAddre
 		return fmt.Errorf("verifying close signed: %w", err)
 	}
 	return nil
+=======
+func (cas CloseSignatures) Set() bool {
+	return len(cas.Declaration) != 0 || len(cas.Close) != 0
+}
+
+func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
+	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
+		bytes.Equal(cas.Close, cas2.Close)
+}
+
+func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s CloseSignatures, err error) {
+	g := errgroup.Group{}
+	g.Go(func() error {
+		var err error
+		s.Declaration, err = signer.Sign(txs.DeclarationHash[:])
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		s.Close, err = signer.Sign(txs.CloseHash[:])
+		return err
+	})
+	return s, g.Wait()
+>>>>>>> @{-1}
 }
 
 // CloseTransactions contain all the transaction hashes and
@@ -281,23 +307,35 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 		return CloseAgreement{}, err
 	}
 
-	// If remote has not signed the txs, error as is invalid.
 	remoteSigs := ce.SignaturesFor(c.remoteSigner)
 	if remoteSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
 	}
-	err = remoteSigs.Verify(txs, c.remoteSigner)
-	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("not signed by remote: %w", err)
-	}
 
-	// If local has not signed close, check that the payment is not to the proposer, then sign.
 	localSigs := ce.SignaturesFor(c.localSigner.FromAddress())
 	if localSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
-	err = localSigs.Verify(txs, c.localSigner.FromAddress())
+
+	// If remote has not signed the txs or signatures is invalid, or the local
+	// signatures if present are invalid, error as is invalid.
+	verifyInputs := []signatureVerificationInput{
+		{Payload: txs.DeclarationHash[:], Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{Payload: txs.CloseHash[:], Signature: remoteSigs.Close, Signer: c.remoteSigner},
+	}
+	if localSigs.Set() {
+		verifyInputs = append(verifyInputs, []signatureVerificationInput{
+			{Payload: txs.DeclarationHash[:], Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{Payload: txs.CloseHash[:], Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+		}...)
+	}
+	err = verifySignatures(verifyInputs)
 	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("invalid signature by remote or local: %w", err)
+	}
+
+	// If local has not signed close, check that the payment is not to the proposer, then sign.
+	if !localSigs.Set() {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
