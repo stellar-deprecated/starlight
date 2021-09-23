@@ -167,7 +167,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
 	verifyInputs := []CloseSignaturesVerifyInput{
-		CloseSignaturesVerifyInput{
+		{
 			Signatures: remoteSigs,
 			Signer:     c.remoteSigner,
 		},
