@@ -76,6 +76,7 @@ type CloseSignaturesVerifyInput struct {
 func verifyCloseSignatures(txs CloseTransactions, sigsAndSigners []CloseSignaturesVerifyInput) error {
 	eg := errgroup.Group{}
 	for _, s := range sigsAndSigners {
+		s := s
 		eg.Go(func() error {
 			return s.Signer.Verify(txs.DeclarationHash[:], []byte(s.Signatures.Declaration))
 		})
