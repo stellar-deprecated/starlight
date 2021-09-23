@@ -166,19 +166,17 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
-	verifyInputs := []CloseSignaturesVerifyInput{
-		{
-			Signatures: remoteSigs,
-			Signer:     c.remoteSigner,
-		},
+	verifyInputs := []signatureVerificationInput{
+		{Payload: txs.DeclarationHash[:], Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{Payload: txs.CloseHash[:], Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
 	if localSigs.Set() {
-		verifyInputs = append(verifyInputs, CloseSignaturesVerifyInput{
-			Signatures: localSigs,
-			Signer:     c.localSigner.FromAddress(),
-		})
+		verifyInputs = append(verifyInputs, []signatureVerificationInput{
+			{Payload: txs.DeclarationHash[:], Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{Payload: txs.CloseHash[:], Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+		}...)
 	}
-	err = verifyCloseSignatures(txs, verifyInputs)
+	err = verifySignatures(verifyInputs)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("invalid signature by remote or local: %w", err)
 	}

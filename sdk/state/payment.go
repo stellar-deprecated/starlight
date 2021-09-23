@@ -68,25 +68,6 @@ func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s Close
 	return s, g.Wait()
 }
 
-type CloseSignaturesVerifyInput struct {
-	Signatures *CloseSignatures
-	Signer     *keypair.FromAddress
-}
-
-func verifyCloseSignatures(txs CloseTransactions, sigsAndSigners []CloseSignaturesVerifyInput) error {
-	g := errgroup.Group{}
-	for _, s := range sigsAndSigners {
-		s := s
-		g.Go(func() error {
-			return s.Signer.Verify(txs.DeclarationHash[:], []byte(s.Signatures.Declaration))
-		})
-		g.Go(func() error {
-			return s.Signer.Verify(txs.CloseHash[:], []byte(s.Signatures.Close))
-		})
-	}
-	return g.Wait()
-}
-
 // CloseTransactions contain all the transaction hashes and
 // transactions for the transactions that make up the close agreement.
 type CloseTransactions struct {
@@ -308,19 +289,17 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
-	verifyInputs := []CloseSignaturesVerifyInput{
-		{
-			Signatures: remoteSigs,
-			Signer:     c.remoteSigner,
-		},
+	verifyInputs := []signatureVerificationInput{
+		{Payload: txs.DeclarationHash[:], Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{Payload: txs.CloseHash[:], Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
 	if localSigs.Set() {
-		verifyInputs = append(verifyInputs, CloseSignaturesVerifyInput{
-			Signatures: localSigs,
-			Signer:     c.localSigner.FromAddress(),
-		})
+		verifyInputs = append(verifyInputs, []signatureVerificationInput{
+			{Payload: txs.DeclarationHash[:], Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{Payload: txs.CloseHash[:], Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+		}...)
 	}
-	err = verifyCloseSignatures(txs, verifyInputs)
+	err = verifySignatures(verifyInputs)
 	if err != nil {
 		return CloseAgreement{}, fmt.Errorf("invalid signature by remote or local: %w", err)
 	}
