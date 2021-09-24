@@ -154,27 +154,39 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
 
-	// If remote has not signed the txs, error as is invalid.
 	remoteSigs := ce.SignaturesFor(c.remoteSigner)
 	if remoteSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
 	}
-	err = remoteSigs.Verify(txs, c.remoteSigner)
-	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("not signed by remote: %w", err)
-	}
 
-	// If local has not signed close, check that the payment is not to the proposer, then sign.
 	localSigs := ce.SignaturesFor(c.localSigner.FromAddress())
 	if localSigs == nil {
 		return CloseAgreement{}, fmt.Errorf("local is not a signer")
 	}
-	err = localSigs.Verify(txs, c.localSigner.FromAddress())
+
+	// If remote has not signed the txs or signatures is invalid, or the local
+	// signatures if present are invalid, error as is invalid.
+	verifyInputs := []signatureVerificationInput{
+		{TransactionHash: txs.DeclarationHash, Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{TransactionHash: txs.CloseHash, Signature: remoteSigs.Close, Signer: c.remoteSigner},
+	}
+	if !localSigs.Empty() {
+		verifyInputs = append(verifyInputs, []signatureVerificationInput{
+			{TransactionHash: txs.DeclarationHash, Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.CloseHash, Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+		}...)
+	}
+	err = verifySignatures(verifyInputs)
 	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("invalid signature: %w", err)
+	}
+
+	// If local has not signed close, check that the payment is not to the proposer, then sign.
+	if localSigs.Empty() {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
-			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
+			return CloseAgreement{}, fmt.Errorf("not signed by local")
 		}
 		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)
 		if err != nil {
