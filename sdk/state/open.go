@@ -42,7 +42,7 @@ func (oas OpenSignatures) Empty() bool {
 }
 
 func (oas OpenSignatures) HasAllSignatures() bool {
-	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
+	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Formation) != 0
 }
 
 func (oas OpenSignatures) Equal(oas2 OpenSignatures) bool {
