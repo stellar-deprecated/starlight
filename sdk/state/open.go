@@ -38,7 +38,7 @@ type OpenSignatures struct {
 }
 
 func (oas OpenSignatures) Empty() bool {
-	return len(oas.Declaration) == 0 && len(oas.Close) == 0
+	return len(oas.Declaration) == 0 && len(oas.Close) == 0 && len(oas.Formation) == 0
 }
 
 func (oas OpenSignatures) HasAllSignatures() bool {
