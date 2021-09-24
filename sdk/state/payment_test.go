@@ -1022,27 +1022,27 @@ func TestChannel_ConfirmPayment_signatureChecks(t *testing.T) {
 	caModified.Envelope.ProposerSignatures.Declaration = nil
 	caModified.Envelope.ProposerSignatures.Close = nil
 	_, err = responderChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that the proposer did not sign a tx.
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Declaration = nil
 	_, err = responderChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Close = nil
 	_, err = responderChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that the proposer signed the txs invalidly.
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Declaration = caModified.Envelope.ProposerSignatures.Close
 	_, err = responderChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Close = caModified.Envelope.ProposerSignatures.Declaration
 	_, err = responderChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Valid proposer signatures accepted by confirmer.
 	ca, err = responderChannel.ConfirmPayment(ca.Envelope)
@@ -1055,61 +1055,61 @@ func TestChannel_ConfirmPayment_signatureChecks(t *testing.T) {
 	caModified.Envelope.ProposerSignatures.Declaration = nil
 	caModified.Envelope.ProposerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that confirmer did not sign any tx.
 	caModified = ca
 	caModified.Envelope.ConfirmerSignatures.Declaration = nil
 	caModified.Envelope.ConfirmerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that the confirmer did not sign a tx.
 	caModified = ca
 	caModified.Envelope.ConfirmerSignatures.Declaration = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 	caModified = ca
 	caModified.Envelope.ConfirmerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that the confirmer signed the txs invalidly.
 	caModified = ca
 	caModified.Envelope.ConfirmerSignatures.Declaration = caModified.Envelope.ConfirmerSignatures.Close
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 	caModified = ca
 	caModified.Envelope.ConfirmerSignatures.Close = caModified.Envelope.ConfirmerSignatures.Declaration
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that proposer's signature is missing.
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Declaration = nil
 	caModified.Envelope.ProposerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "not signed by local")
 
 	// Pretend that the proposer's signature is missing for one tx.
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Declaration = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying close signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Pretend that the proposer's signature is invalid for one tx.
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Declaration = caModified.Envelope.ProposerSignatures.Close
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 	caModified = ca
 	caModified.Envelope.ProposerSignatures.Close = caModified.Envelope.ProposerSignatures.Declaration
 	_, err = initiatorChannel.ConfirmPayment(caModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying close signed: signature verification failed")
+	require.EqualError(t, err, "invalid signature: signature verification failed")
 
 	// Valid proposer and confirmer signatures accepted by proposer.
 	_, err = initiatorChannel.ConfirmPayment(ca.Envelope)

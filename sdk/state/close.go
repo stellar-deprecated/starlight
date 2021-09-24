@@ -178,7 +178,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	}
 	err = verifySignatures(verifyInputs)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("invalid signature by remote or local: %w", err)
+		return CloseAgreement{}, fmt.Errorf("invalid signature: %w", err)
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
@@ -186,7 +186,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
-			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
+			return CloseAgreement{}, fmt.Errorf("not signed by local")
 		}
 		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)
 		if err != nil {
