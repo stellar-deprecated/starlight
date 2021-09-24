@@ -250,9 +250,9 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 // ProposeOpen proposes the open of the channel, it is called by the participant
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
-	// if the channel is already open, error.
-	if c.openAgreement.Envelope.isFull() {
-		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
+	// if the channel is already opening, error.
+	if !c.openAgreement.Envelope.isEmpty() {
+		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opening or already open")
 	}
 
 	d := OpenDetails{
