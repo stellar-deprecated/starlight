@@ -81,12 +81,12 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 // than the original observation time.
 func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	// If an unfinished unauthorized agreement exists, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return CloseAgreement{}, fmt.Errorf("cannot propose coordinated close while an unfinished payment exists")
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a coordinated close before channel is opened")
 	}
 
@@ -118,7 +118,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 func (c *Channel) validateClose(ca CloseEnvelope) error {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return fmt.Errorf("cannot confirm a coordinated close before channel is opened")
 	}
 	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber {

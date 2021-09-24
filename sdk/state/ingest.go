@@ -25,7 +25,7 @@ import (
 // change the state of the channel.
 func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR string) error {
 	// If channel has not been opened or has been closed, return.
-	if c.OpenAgreement().Envelope.isEmpty() {
+	if c.OpenAgreement().Envelope.Empty() {
 		return fmt.Errorf("channel has not been opened")
 	}
 	cs, err := c.State()
@@ -107,7 +107,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 
 	// If there is no unauthorized close agreement, then there's no need to try
 	// and update it.
-	if ce.isEmpty() {
+	if ce.Empty() {
 		return nil
 	}
 

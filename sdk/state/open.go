@@ -37,7 +37,7 @@ type OpenSignatures struct {
 	Formation   xdr.Signature
 }
 
-func (oas OpenSignatures) isFull() bool {
+func (oas OpenSignatures) HasAllSignatures() bool {
 	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
 }
 
@@ -92,14 +92,14 @@ type OpenEnvelope struct {
 	ConfirmerSignatures OpenSignatures
 }
 
-func (oa OpenEnvelope) isEmpty() bool {
+func (oa OpenEnvelope) Empty() bool {
 	return oa.Equal(OpenEnvelope{})
 }
 
-// isFull checks if the open agreement has the max amount of signatures,
-// indicating it is fully signed by all parties.
-func (oa OpenEnvelope) isFull() bool {
-	return oa.ProposerSignatures.isFull() && oa.ConfirmerSignatures.isFull()
+// HasAllSignatures checks if the open agreement has the max amount of
+// signatures, indicating it is fully signed by all parties.
+func (oa OpenEnvelope) HasAllSignatures() bool {
+	return oa.ProposerSignatures.HasAllSignatures() && oa.ConfirmerSignatures.HasAllSignatures()
 }
 
 func (oa OpenEnvelope) Equal(oa2 OpenEnvelope) bool {
@@ -251,7 +251,7 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	// if the channel is already opening, error.
-	if !c.openAgreement.Envelope.isEmpty() {
+	if !c.openAgreement.Envelope.Empty() {
 		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opening or already open")
 	}
 
@@ -287,12 +287,12 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 
 func (c *Channel) validateOpen(m OpenEnvelope) error {
 	// if the channel is already open, error.
-	if c.openAgreement.Envelope.isFull() {
+	if c.openAgreement.Envelope.HasAllSignatures() {
 		return fmt.Errorf("cannot confirm a new open if channel is already opened")
 	}
 
 	// If the open agreement details don't match the open agreement in progress, error.
-	if !c.openAgreement.Envelope.isEmpty() && !m.Details.Equal(c.openAgreement.Envelope.Details) {
+	if !c.openAgreement.Envelope.Empty() && !m.Details.Equal(c.openAgreement.Envelope.Details) {
 		return fmt.Errorf("input open agreement details do not match the saved open agreement details")
 	}
 

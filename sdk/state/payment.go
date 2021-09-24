@@ -85,7 +85,7 @@ type CloseEnvelope struct {
 	ConfirmerSignatures CloseSignatures
 }
 
-func (ca CloseEnvelope) isEmpty() bool {
+func (ca CloseEnvelope) Empty() bool {
 	return ca.Equal(CloseEnvelope{})
 }
 
@@ -148,24 +148,24 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a payment before channel is opened")
 	}
 
 	// If a coordinated close has been accepted already, error.
-	if !c.latestAuthorizedCloseAgreement.Envelope.isEmpty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestAuthorizedCloseAgreement.Envelope.Empty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return CloseAgreement{}, fmt.Errorf("cannot propose payment after an accepted coordinated close")
 	}
 
 	// If a coordinated close has been proposed by this channel already, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return CloseAgreement{}, fmt.Errorf("cannot propose payment after proposing a coordinated close")
 	}
 
 	// If an unfinished unauthorized agreement exists, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return CloseAgreement{}, fmt.Errorf("cannot start a new payment while an unfinished one exists")
 	}
 
@@ -215,18 +215,18 @@ var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 // on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return fmt.Errorf("cannot confirm a payment before channel is opened")
 	}
 
 	// If a coordinated close has been proposed by this channel already, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return fmt.Errorf("cannot confirm payment after proposing a coordinated close")
 	}
 
 	// If a coordinated close has been accepted already, error.
-	if !c.latestAuthorizedCloseAgreement.Envelope.isEmpty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestAuthorizedCloseAgreement.Envelope.Empty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return fmt.Errorf("cannot confirm payment after an accepted coordinated close")
 	}
@@ -239,7 +239,7 @@ func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 		ce.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap {
 		return fmt.Errorf("invalid payment observation period: different than channel state")
 	}
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() && !ce.Details.Equal(c.latestUnauthorizedCloseAgreement.Envelope.Details) {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && !ce.Details.Equal(c.latestUnauthorizedCloseAgreement.Envelope.Details) {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
 	}
 	if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ce.Details.ConfirmingSigner.Equal(c.remoteSigner) {
