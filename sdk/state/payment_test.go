@@ -1020,6 +1020,7 @@ func TestChannel_ConfirmPayment_signatureChecks(t *testing.T) {
 	// Pretend that the proposer did not sign any tx.
 	caModified := ca
 	caModified.Envelope.ProposerSignatures.Declaration = nil
+	caModified.Envelope.ProposerSignatures.Close = nil
 	_, err = responderChannel.ConfirmPayment(caModified.Envelope)
 	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
 
