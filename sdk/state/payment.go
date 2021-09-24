@@ -290,13 +290,13 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
 	verifyInputs := []signatureVerificationInput{
-		{Payload: txs.DeclarationHash[:], Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
-		{Payload: txs.CloseHash[:], Signature: remoteSigs.Close, Signer: c.remoteSigner},
+		{TransactionHash: txs.DeclarationHash, Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{TransactionHash: txs.CloseHash, Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
 	if localSigs.Set() {
 		verifyInputs = append(verifyInputs, []signatureVerificationInput{
-			{Payload: txs.DeclarationHash[:], Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
-			{Payload: txs.CloseHash[:], Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.DeclarationHash, Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.CloseHash, Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
 		}...)
 	}
 	err = verifySignatures(verifyInputs)
