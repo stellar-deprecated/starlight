@@ -115,6 +115,7 @@ func TestProposeOpen_validAsset(t *testing.T) {
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := keypair.MustRandom().FromAddress()
 	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
 	sendingChannel := NewChannel(Config{
 		NetworkPassphrase:   network.TestNetworkPassphrase,
 		Initiator:           true,
@@ -123,27 +124,20 @@ func TestProposeOpen_validAsset(t *testing.T) {
 		LocalEscrowAccount:  localEscrowAccount,
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
-
 	_, err := sendingChannel.ProposeOpen(OpenParams{
 		Asset:     NativeAsset,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 	require.NoError(t, err)
 
-	// TODO(leighmcculloch): Bring this test back in a future PR.
-	// _, err = sendingChannel.ProposeOpen(OpenParams{
-	// 	Asset:     ":GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
-	// 	ExpiresAt: time.Now().Add(5 * time.Minute),
-	// })
-	// require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset code length must be between 1 and 12 characters`)
-
-	// TODO(leighmcculloch): Bring this test back in a future PR.
-	// _, err = sendingChannel.ProposeOpen(OpenParams{
-	// 	Asset:     "ABCD:GABCD:AB",
-	// 	ExpiresAt: time.Now().Add(5 * time.Minute),
-	// })
-	// require.EqualError(t, err, `validation failed for *txnbuild.ChangeTrust operation: Field: Line, Error: asset issuer: GABCD:AB is not a valid stellar public key`)
-
+	sendingChannel = NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+	})
 	_, err = sendingChannel.ProposeOpen(OpenParams{
 		Asset:     "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
 		ExpiresAt: time.Now().Add(5 * time.Minute),
@@ -223,6 +217,168 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
 	require.EqualError(t, err, "validating open agreement: input open agreement expire too far into the future")
 }
 
+func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	oa, err := initiatorChannel.ProposeOpen(OpenParams{
+		ObservationPeriodLedgerGap: 10,
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Minute),
+		StartingSequence:           101,
+	})
+	require.NoError(t, err)
+
+	// Pretend that the proposer did not sign any tx.
+	oaModified := oa
+	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Declaration = nil
+	oaModified.Envelope.ProposerSignatures.Close = nil
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+
+	// Pretend that the proposer did not sign a tx.
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Formation = nil
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Declaration = nil
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Close = nil
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Pretend that the proposer signed the txs invalidly.
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Formation = oaModified.Envelope.ProposerSignatures.Close
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Declaration = oaModified.Envelope.ProposerSignatures.Close
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Close = oaModified.Envelope.ProposerSignatures.Declaration
+	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Valid proposer signatures accepted by confirmer.
+	oa, err = responderChannel.ConfirmOpen(oa.Envelope)
+	require.NoError(t, err)
+
+	// Pretend that no one signed.
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Formation = nil
+	oaModified.Envelope.ConfirmerSignatures.Declaration = nil
+	oaModified.Envelope.ConfirmerSignatures.Close = nil
+	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Declaration = nil
+	oaModified.Envelope.ProposerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+
+	// Pretend that confirmer did not sign any tx.
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Formation = nil
+	oaModified.Envelope.ConfirmerSignatures.Declaration = nil
+	oaModified.Envelope.ConfirmerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+
+	// Pretend that the confirmer did not sign a tx.
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Formation = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Declaration = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Pretend that the confirmer signed the txs invalidly.
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Formation = oaModified.Envelope.ConfirmerSignatures.Close
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Declaration = oaModified.Envelope.ConfirmerSignatures.Close
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ConfirmerSignatures.Close = oaModified.Envelope.ConfirmerSignatures.Declaration
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Pretend that proposer's signature is missing.
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Declaration = nil
+	oaModified.Envelope.ProposerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+
+	// Pretend that the proposer's signature is missing for one tx.
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Formation = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying formation signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Declaration = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying close signed: signature verification failed")
+
+	// Pretend that the proposer's signature is invalid for one tx.
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Formation = oaModified.Envelope.ProposerSignatures.Close
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying formation signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Declaration = oaModified.Envelope.ProposerSignatures.Close
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	oaModified = oa
+	oaModified.Envelope.ProposerSignatures.Close = oaModified.Envelope.ProposerSignatures.Declaration
+	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying close signed: signature verification failed")
+
+	// Valid proposer and confirmer signatures accepted by proposer.
+	_, err = initiatorChannel.ConfirmOpen(oa.Envelope)
+	require.NoError(t, err)
+}
+
 func TestChannel_OpenTx(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
@@ -294,30 +450,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	assert.Equal(t, int64(123456789), formationTx.SequenceNumber())
 }
 
-func TestChannel_OpenAgreementIsFull(t *testing.T) {
-	oa := OpenEnvelope{}
-	assert.False(t, oa.isFull())
-
-	oa = OpenEnvelope{
-		ProposerSignatures: OpenSignatures{
-			Close:       xdr.Signature{1},
-			Declaration: xdr.Signature{1},
-			Formation:   xdr.Signature{1},
-		},
-	}
-	assert.False(t, oa.isFull())
-
-	oa.ConfirmerSignatures = OpenSignatures{
-		Close:       xdr.Signature{1},
-		Declaration: xdr.Signature{1},
-	}
-	assert.False(t, oa.isFull())
-
-	oa.ConfirmerSignatures.Formation = xdr.Signature{1}
-	assert.True(t, oa.isFull())
-}
-
-func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) {
+func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpened(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := keypair.MustRandom().FromAddress()
@@ -351,6 +484,17 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		StartingSequence:           101,
 	})
 	require.NoError(t, err)
+
+	// Try proposing a second open.
+	_, err = initiatorChannel.ProposeOpen(OpenParams{
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Second),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
+	})
+	require.EqualError(t, err, "cannot propose a new open if channel is already opening or already open")
+
+	// Continue with the first open to successfully open.
 	m, err = responderChannel.ConfirmOpen(m.Envelope)
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmOpen(m.Envelope)
@@ -395,16 +539,8 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) 
 		ObservationPeriodTime:      10,
 		ObservationPeriodLedgerGap: 10,
 	})
-	require.EqualError(t, err, "cannot propose a new open if channel is already opened")
+	require.EqualError(t, err, "cannot propose a new open if channel is already opening or already open")
 
 	_, err = responderChannel.ConfirmOpen(m.Envelope)
 	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")
-
-	// A channel without a full open agreement should be able to propose an open
-	initiatorChannel.openAgreement.Envelope.ConfirmerSignatures = OpenSignatures{}
-	_, err = initiatorChannel.ProposeOpen(OpenParams{
-		Asset:     NativeAsset,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
-	})
-	require.NoError(t, err)
 }

@@ -81,12 +81,12 @@ func (c *Channel) CloseTxs() (declTx *txnbuild.Transaction, closeTx *txnbuild.Tr
 // than the original observation time.
 func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	// If an unfinished unauthorized agreement exists, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return CloseAgreement{}, fmt.Errorf("cannot propose coordinated close while an unfinished payment exists")
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a coordinated close before channel is opened")
 	}
 
@@ -118,7 +118,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 
 func (c *Channel) validateClose(ca CloseEnvelope) error {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return fmt.Errorf("cannot confirm a coordinated close before channel is opened")
 	}
 	if ca.Details.IterationNumber != c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber {
@@ -167,18 +167,18 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
 	verifyInputs := []signatureVerificationInput{
-		{Payload: txs.DeclarationHash[:], Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
-		{Payload: txs.CloseHash[:], Signature: remoteSigs.Close, Signer: c.remoteSigner},
+		{TransactionHash: txs.DeclarationHash, Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{TransactionHash: txs.CloseHash, Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
 	if localSigs.Set() {
 		verifyInputs = append(verifyInputs, []signatureVerificationInput{
-			{Payload: txs.DeclarationHash[:], Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
-			{Payload: txs.CloseHash[:], Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.DeclarationHash, Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.CloseHash, Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
 		}...)
 	}
 	err = verifySignatures(verifyInputs)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("invalid signature by remote or local: %w", err)
+		return CloseAgreement{}, fmt.Errorf("invalid signature: %w", err)
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
@@ -186,7 +186,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
-			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
+			return CloseAgreement{}, fmt.Errorf("not signed by local")
 		}
 		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)
 		if err != nil {

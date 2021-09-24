@@ -115,7 +115,7 @@ type CloseEnvelope struct {
 	ConfirmerSignatures CloseSignatures
 }
 
-func (ca CloseEnvelope) isEmpty() bool {
+func (ca CloseEnvelope) Empty() bool {
 	return ca.Equal(CloseEnvelope{})
 }
 
@@ -178,24 +178,24 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	}
 
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return CloseAgreement{}, fmt.Errorf("cannot propose a payment before channel is opened")
 	}
 
 	// If a coordinated close has been accepted already, error.
-	if !c.latestAuthorizedCloseAgreement.Envelope.isEmpty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestAuthorizedCloseAgreement.Envelope.Empty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return CloseAgreement{}, fmt.Errorf("cannot propose payment after an accepted coordinated close")
 	}
 
 	// If a coordinated close has been proposed by this channel already, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return CloseAgreement{}, fmt.Errorf("cannot propose payment after proposing a coordinated close")
 	}
 
 	// If an unfinished unauthorized agreement exists, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return CloseAgreement{}, fmt.Errorf("cannot start a new payment while an unfinished one exists")
 	}
 
@@ -245,18 +245,18 @@ var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 // on the state of the close agreement signatures.
 func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 	// If the channel is not open yet, error.
-	if c.latestAuthorizedCloseAgreement.Envelope.isEmpty() || !c.openExecutedAndValidated {
+	if c.latestAuthorizedCloseAgreement.Envelope.Empty() || !c.openExecutedAndValidated {
 		return fmt.Errorf("cannot confirm a payment before channel is opened")
 	}
 
 	// If a coordinated close has been proposed by this channel already, error.
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestUnauthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return fmt.Errorf("cannot confirm payment after proposing a coordinated close")
 	}
 
 	// If a coordinated close has been accepted already, error.
-	if !c.latestAuthorizedCloseAgreement.Envelope.isEmpty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
+	if !c.latestAuthorizedCloseAgreement.Envelope.Empty() && c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime == 0 &&
 		c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap == 0 {
 		return fmt.Errorf("cannot confirm payment after an accepted coordinated close")
 	}
@@ -269,7 +269,7 @@ func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 		ce.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap {
 		return fmt.Errorf("invalid payment observation period: different than channel state")
 	}
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() && !ce.Details.Equal(c.latestUnauthorizedCloseAgreement.Envelope.Details) {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && !ce.Details.Equal(c.latestUnauthorizedCloseAgreement.Envelope.Details) {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
 	}
 	if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ce.Details.ConfirmingSigner.Equal(c.remoteSigner) {
@@ -320,18 +320,18 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
 	verifyInputs := []signatureVerificationInput{
-		{Payload: txs.DeclarationHash[:], Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
-		{Payload: txs.CloseHash[:], Signature: remoteSigs.Close, Signer: c.remoteSigner},
+		{TransactionHash: txs.DeclarationHash, Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
+		{TransactionHash: txs.CloseHash, Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
 	if localSigs.Set() {
 		verifyInputs = append(verifyInputs, []signatureVerificationInput{
-			{Payload: txs.DeclarationHash[:], Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
-			{Payload: txs.CloseHash[:], Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.DeclarationHash, Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
+			{TransactionHash: txs.CloseHash, Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
 		}...)
 	}
 	err = verifySignatures(verifyInputs)
 	if err != nil {
-		return CloseAgreement{}, fmt.Errorf("invalid signature by remote or local: %w", err)
+		return CloseAgreement{}, fmt.Errorf("invalid signature: %w", err)
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
@@ -339,7 +339,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
-			return CloseAgreement{}, fmt.Errorf("not signed by local: %w", err)
+			return CloseAgreement{}, fmt.Errorf("not signed by local")
 		}
 		// If the payment is to the proposer, error, because the payment channel
 		// only supports pushing money to the other participant not pulling.

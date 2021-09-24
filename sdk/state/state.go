@@ -188,7 +188,7 @@ func (c *Channel) IsInitiator() bool {
 }
 
 func (c *Channel) NextIterationNumber() int64 {
-	if !c.latestUnauthorizedCloseAgreement.Envelope.isEmpty() {
+	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber
 	}
 	return c.latestAuthorizedCloseAgreement.Envelope.Details.IterationNumber + 1

@@ -7,9 +7,9 @@ import (
 )
 
 type signatureVerificationInput struct {
-	Payload   []byte
-	Signature xdr.Signature
-	Signer    *keypair.FromAddress
+	TransactionHash TransactionHash
+	Signature       xdr.Signature
+	Signer          *keypair.FromAddress
 }
 
 func verifySignatures(inputs []signatureVerificationInput) error {
@@ -17,7 +17,7 @@ func verifySignatures(inputs []signatureVerificationInput) error {
 	for _, i := range inputs {
 		i := i
 		g.Go(func() error {
-			return i.Signer.Verify(i.Payload, []byte(i.Signature))
+			return i.Signer.Verify(i.TransactionHash[:], []byte(i.Signature))
 		})
 	}
 	return g.Wait()
