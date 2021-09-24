@@ -37,8 +37,8 @@ type OpenSignatures struct {
 	Formation   xdr.Signature
 }
 
-func (oas OpenSignatures) isFull() bool {
-	return len(oas.Close) > 0 && len(oas.Declaration) > 0 && len(oas.Formation) > 0
+func (oas OpenSignatures) HasAllSignatures() bool {
+	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Formation) != 0
 }
 
 func (oas OpenSignatures) Equal(oas2 OpenSignatures) bool {
@@ -98,8 +98,8 @@ func (oa OpenEnvelope) isEmpty() bool {
 
 // isFull checks if the open agreement has the max amount of signatures,
 // indicating it is fully signed by all parties.
-func (oa OpenEnvelope) isFull() bool {
-	return oa.ProposerSignatures.isFull() && oa.ConfirmerSignatures.isFull()
+func (oa OpenEnvelope) HasAllSignatures() bool {
+	return oa.ProposerSignatures.HasAllSignatures() && oa.ConfirmerSignatures.HasAllSignatures()
 }
 
 func (oa OpenEnvelope) Equal(oa2 OpenEnvelope) bool {
@@ -251,7 +251,7 @@ func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
 // initiating the channel.
 func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 	// if the channel is already open, error.
-	if c.openAgreement.Envelope.isFull() {
+	if c.openAgreement.Envelope.HasAllSignatures() {
 		return OpenAgreement{}, fmt.Errorf("cannot propose a new open if channel is already opened")
 	}
 
@@ -287,7 +287,7 @@ func (c *Channel) ProposeOpen(p OpenParams) (OpenAgreement, error) {
 
 func (c *Channel) validateOpen(m OpenEnvelope) error {
 	// if the channel is already open, error.
-	if c.openAgreement.Envelope.isFull() {
+	if c.openAgreement.Envelope.HasAllSignatures() {
 		return fmt.Errorf("cannot confirm a new open if channel is already opened")
 	}
 
