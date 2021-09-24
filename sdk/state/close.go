@@ -170,7 +170,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 		{TransactionHash: txs.DeclarationHash, Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
 		{TransactionHash: txs.CloseHash, Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
-	if localSigs.Set() {
+	if !localSigs.Empty() {
 		verifyInputs = append(verifyInputs, []signatureVerificationInput{
 			{TransactionHash: txs.DeclarationHash, Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
 			{TransactionHash: txs.CloseHash, Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
@@ -182,7 +182,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
-	if !localSigs.Set() {
+	if localSigs.Empty() {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
