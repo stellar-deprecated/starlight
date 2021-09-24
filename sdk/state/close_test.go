@@ -333,3 +333,177 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 	_, err = senderChannel.ConfirmClose(CloseEnvelope{})
 	require.EqualError(t, err, "validating close agreement: cannot confirm a coordinated close before channel is opened")
 }
+
+func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			ObservationPeriodLedgerGap: 10,
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		cs, err := responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		cs, err = initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
+	responderChannel.UpdateRemoteEscrowAccountBalance(200)
+
+	ca, err := initiatorChannel.ProposeClose()
+	require.NoError(t, err)
+
+	// Pretend that the proposer did not sign any tx.
+	caModified := ca
+	caModified.Envelope.ProposerSignatures.Declaration = nil
+	caModified.Envelope.ProposerSignatures.Close = nil
+	_, err = responderChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+
+	// Pretend that the proposer did not sign a tx.
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Declaration = nil
+	_, err = responderChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Close = nil
+	_, err = responderChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Pretend that the proposer signed the txs invalidly.
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Declaration = caModified.Envelope.ProposerSignatures.Close
+	_, err = responderChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Close = caModified.Envelope.ProposerSignatures.Declaration
+	_, err = responderChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Valid proposer signatures accepted by confirmer.
+	ca, err = responderChannel.ConfirmClose(ca.Envelope)
+	require.NoError(t, err)
+
+	// Pretend that no one signed.
+	caModified = ca
+	caModified.Envelope.ConfirmerSignatures.Declaration = nil
+	caModified.Envelope.ConfirmerSignatures.Close = nil
+	caModified.Envelope.ProposerSignatures.Declaration = nil
+	caModified.Envelope.ProposerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+
+	// Pretend that confirmer did not sign any tx.
+	caModified = ca
+	caModified.Envelope.ConfirmerSignatures.Declaration = nil
+	caModified.Envelope.ConfirmerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+
+	// Pretend that the confirmer did not sign a tx.
+	caModified = ca
+	caModified.Envelope.ConfirmerSignatures.Declaration = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	caModified = ca
+	caModified.Envelope.ConfirmerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Pretend that the confirmer signed the txs invalidly.
+	caModified = ca
+	caModified.Envelope.ConfirmerSignatures.Declaration = caModified.Envelope.ConfirmerSignatures.Close
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying declaration signed: signature verification failed")
+	caModified = ca
+	caModified.Envelope.ConfirmerSignatures.Close = caModified.Envelope.ConfirmerSignatures.Declaration
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by remote: verifying close signed: signature verification failed")
+
+	// Pretend that proposer's signature is missing.
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Declaration = nil
+	caModified.Envelope.ProposerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+
+	// Pretend that the proposer's signature is missing for one tx.
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Declaration = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Close = nil
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying close signed: signature verification failed")
+
+	// Pretend that the proposer's signature is invalid for one tx.
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Declaration = caModified.Envelope.ProposerSignatures.Close
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying declaration signed: signature verification failed")
+	caModified = ca
+	caModified.Envelope.ProposerSignatures.Close = caModified.Envelope.ProposerSignatures.Declaration
+	_, err = initiatorChannel.ConfirmClose(caModified.Envelope)
+	require.EqualError(t, err, "not signed by local: verifying close signed: signature verification failed")
+
+	// Valid proposer and confirmer signatures accepted by proposer.
+	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
+	require.NoError(t, err)
+}
