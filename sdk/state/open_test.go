@@ -458,7 +458,7 @@ func TestChannel_OpenTx(t *testing.T) {
 
 func TestChannel_OpenAgreementIsFull(t *testing.T) {
 	oa := OpenEnvelope{}
-	assert.False(t, oa.HasAllSignatures())
+	assert.False(t, oa.isFull())
 
 	oa = OpenEnvelope{
 		ProposerSignatures: OpenSignatures{
@@ -467,16 +467,16 @@ func TestChannel_OpenAgreementIsFull(t *testing.T) {
 			Formation:   xdr.Signature{1},
 		},
 	}
-	assert.False(t, oa.HasAllSignatures())
+	assert.False(t, oa.isFull())
 
 	oa.ConfirmerSignatures = OpenSignatures{
 		Close:       xdr.Signature{1},
 		Declaration: xdr.Signature{1},
 	}
-	assert.False(t, oa.HasAllSignatures())
+	assert.False(t, oa.isFull())
 
 	oa.ConfirmerSignatures.Formation = xdr.Signature{1}
-	assert.True(t, oa.HasAllSignatures())
+	assert.True(t, oa.isFull())
 }
 
 func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpen(t *testing.T) {
