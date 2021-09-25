@@ -48,6 +48,10 @@ func (cas CloseSignatures) Empty() bool {
 	return len(cas.Declaration) == 0 && len(cas.Close) == 0
 }
 
+func (cas CloseSignatures) HasAllSignatures() bool {
+	return len(cas.Close) != 0 && len(cas.Declaration) != 0
+}
+
 func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
 	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
 		bytes.Equal(cas.Close, cas2.Close)
