@@ -1283,7 +1283,7 @@ func TestChannel_ProposeAndConfirmPayment_rejectIfChannelNotOpen(t *testing.T) {
 	require.NoError(t, err)
 
 	// Before an open is executed and validated, proposing and confirming a payment should error.
-	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.Envelope.isEmpty())
+	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.Envelope.Empty())
 	_, err = senderChannel.ProposePayment(10)
 	require.EqualError(t, err, "cannot propose a payment before channel is opened")
 

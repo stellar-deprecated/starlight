@@ -326,7 +326,7 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 	}
 
 	// Before an open is executed and validated, proposing and confirming a payment should error.
-	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.Envelope.isEmpty())
+	assert.False(t, senderChannel.latestAuthorizedCloseAgreement.Envelope.Empty())
 	_, err = senderChannel.ProposeClose()
 	require.EqualError(t, err, "cannot propose a coordinated close before channel is opened")
 
