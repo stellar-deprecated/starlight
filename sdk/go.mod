@@ -2,7 +2,7 @@ module github.com/stellar/experimental-payment-channels/sdk
 
 go 1.17
 
-replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210920152412-d9c767035a8e
+replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210924221542-a72304844558
 
 require (
 	github.com/google/gofuzz v1.2.0
