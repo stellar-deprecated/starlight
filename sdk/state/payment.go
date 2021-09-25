@@ -44,37 +44,12 @@ type CloseSignatures struct {
 	Declaration xdr.Signature
 }
 
-<<<<<<< HEAD
-func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
-	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
-		bytes.Equal(cas.Close, cas2.Close)
+func (cas CloseSignatures) Empty() bool {
+	return len(cas.Declaration) == 0 && len(cas.Close) == 0
 }
 
-func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s CloseSignatures, err error) {
-	s.Declaration, err = signer.Sign(txs.DeclarationHash[:])
-	if err != nil {
-		return CloseSignatures{}, fmt.Errorf("signing declaration: %w", err)
-	}
-	s.Close, err = signer.Sign(txs.CloseHash[:])
-	if err != nil {
-		return CloseSignatures{}, fmt.Errorf("signing close: %w", err)
-	}
-	return s, nil
-}
-
-func (s CloseSignatures) Verify(txs CloseTransactions, signer *keypair.FromAddress) error {
-	err := signer.Verify(txs.DeclarationHash[:], []byte(s.Declaration))
-	if err != nil {
-		return fmt.Errorf("verifying declaration signed: %w", err)
-	}
-	err = signer.Verify(txs.CloseHash[:], []byte(s.Close))
-	if err != nil {
-		return fmt.Errorf("verifying close signed: %w", err)
-	}
-	return nil
-=======
-func (cas CloseSignatures) Set() bool {
-	return len(cas.Declaration) != 0 || len(cas.Close) != 0
+func (cas CloseSignatures) HasAllSignatures() bool {
+	return len(cas.Close) != 0 && len(cas.Declaration) != 0
 }
 
 func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
@@ -95,7 +70,6 @@ func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s Close
 		return err
 	})
 	return s, g.Wait()
->>>>>>> @{-1}
 }
 
 // CloseTransactions contain all the transaction hashes and
@@ -323,7 +297,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 		{TransactionHash: txs.DeclarationHash, Signature: remoteSigs.Declaration, Signer: c.remoteSigner},
 		{TransactionHash: txs.CloseHash, Signature: remoteSigs.Close, Signer: c.remoteSigner},
 	}
-	if localSigs.Set() {
+	if !localSigs.Empty() {
 		verifyInputs = append(verifyInputs, []signatureVerificationInput{
 			{TransactionHash: txs.DeclarationHash, Signature: localSigs.Declaration, Signer: c.localSigner.FromAddress()},
 			{TransactionHash: txs.CloseHash, Signature: localSigs.Close, Signer: c.localSigner.FromAddress()},
@@ -335,7 +309,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 	}
 
 	// If local has not signed close, check that the payment is not to the proposer, then sign.
-	if !localSigs.Set() {
+	if localSigs.Empty() {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
 		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
