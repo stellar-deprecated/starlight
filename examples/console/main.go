@@ -287,7 +287,11 @@ func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient h
 	case "open":
 		return agent.Open()
 	case "pay":
-		return agent.Payment(params[1])
+		amt, err := amount.ParseInt64(params[1])
+		if err != nil {
+			return err
+		}
+		return agent.Payment(amt)
 	case "declareclose":
 		return agent.DeclareClose()
 	case "close":
