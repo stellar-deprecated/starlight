@@ -942,6 +942,174 @@ func TestChannel_ConfirmPayment_responderCannotProposePaymentThatIsUnderfunded(t
 	assert.NoError(t, err)
 }
 
+func TestChannel_ProposeAndConfirmPayment_rejectNegativeAmountPayment(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			ObservationPeriodLedgerGap: 1,
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+
+	_, err := initiatorChannel.ProposePayment(-1)
+	assert.EqualError(t, err, "payment amount must not be less than 0")
+
+	// Propose a payment and modify it to be a valid payment with amount zero.
+	ca, err := initiatorChannel.ProposePayment(0)
+	require.NoError(t, err)
+	ca.Envelope.Details.PaymentAmount = -1
+	ca.Envelope.Details.Balance = -1
+	txs, err := initiatorChannel.closeTxs(initiatorChannel.openAgreement.Envelope.Details, ca.Envelope.Details)
+	require.NoError(t, err)
+	sigs, err := signCloseAgreementTxs(txs, initiatorChannel.localSigner)
+	require.NoError(t, err)
+	ca.Envelope.ProposerSignatures = sigs
+	_, err = responderChannel.ConfirmPayment(ca.Envelope)
+	assert.EqualError(t, err, "close agreement is a payment to the proposer")
+}
+
+func TestChannel_ProposeAndConfirmPayment_allowZeroAmountPayment(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			ObservationPeriodLedgerGap: 1,
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+
+	ca, err := initiatorChannel.ProposePayment(0)
+	require.NoError(t, err)
+
+	_, err = responderChannel.ConfirmPayment(ca.Envelope)
+	require.NoError(t, err)
+}
+
 func TestChannel_ConfirmPayment_signatureChecks(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()

@@ -147,8 +147,8 @@ func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
-	if amount <= 0 {
-		return CloseAgreement{}, fmt.Errorf("payment amount must be greater than 0")
+	if amount < 0 {
+		return CloseAgreement{}, fmt.Errorf("payment amount must not be less than 0")
 	}
 
 	// If the channel is not open yet, error.
