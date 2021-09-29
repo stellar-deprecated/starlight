@@ -283,7 +283,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}
 
 	// Make a payment.
-	err = localAgent.Payment("50.0")
+	err = localAgent.Payment(50_0000000)
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.NoError(t, err)
@@ -307,7 +307,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}
 
 	// Make another payment.
-	err = remoteAgent.Payment("20.0")
+	err = remoteAgent.Payment(20_0000000)
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
@@ -562,9 +562,9 @@ func TestAgent_concurrency(t *testing.T) {
 	<-remoteOpened
 
 	// Make a payment.
-	err = localAgent.Payment("50.0")
+	err = localAgent.Payment(50_0000000)
 	require.NoError(t, err)
-	err = remoteAgent.Payment("50.0")
+	err = remoteAgent.Payment(50_0000000)
 	require.NoError(t, err)
 
 	<-localPaymentConfirmedOrError

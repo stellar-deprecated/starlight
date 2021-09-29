@@ -15,7 +15,6 @@ import (
 
 	"github.com/stellar/experimental-payment-channels/sdk/msg"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 )
@@ -276,7 +275,7 @@ func (a *Agent) Open() error {
 // immediately after the payment is signed and sent to the remote participant.
 // The payment is not authorized until the remote participant signs the payment
 // and returns the payment.
-func (a *Agent) Payment(paymentAmount string) error {
+func (a *Agent) Payment(paymentAmount int64) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -286,14 +285,10 @@ func (a *Agent) Payment(paymentAmount string) error {
 	if a.channel == nil {
 		return fmt.Errorf("no channel")
 	}
-	amountValue, err := amount.ParseInt64(paymentAmount)
-	if err != nil {
-		return fmt.Errorf("parsing amount %s: %w", paymentAmount, err)
-	}
 
 	defer a.snapshot()
 
-	ca, err := a.channel.ProposePayment(amountValue)
+	ca, err := a.channel.ProposePayment(paymentAmount)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
 		var balance int64
@@ -302,10 +297,10 @@ func (a *Agent) Payment(paymentAmount string) error {
 			return err
 		}
 		a.channel.UpdateLocalEscrowAccountBalance(balance)
-		ca, err = a.channel.ProposePayment(amountValue)
+		ca, err = a.channel.ProposePayment(paymentAmount)
 	}
 	if err != nil {
-		return fmt.Errorf("proposing payment %d: %w", amountValue, err)
+		return fmt.Errorf("proposing payment %d: %w", paymentAmount, err)
 	}
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
