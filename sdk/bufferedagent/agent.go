@@ -23,7 +23,7 @@ type Config struct {
 	Events chan<- agent.Event
 }
 
-func NewBufferedAgent(c Config) *Agent {
+func NewAgent(c Config) *Agent {
 	agent := &Agent{
 		agent:       c.Agent,
 		agentEvents: c.AgentEvents,

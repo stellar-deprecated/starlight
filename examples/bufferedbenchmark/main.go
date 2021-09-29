@@ -9,6 +9,7 @@ import (
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/bufferedagent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/clients/horizonclient"
@@ -109,7 +110,7 @@ func run() error {
 	// Wait for state of escrow accounts to be ingested by Horizon.
 	time.Sleep(2 * time.Second)
 
-	events := make(chan agentpkg.Event)
+	underlyingEvents := make(chan agentpkg.Event)
 	config := agentpkg.Config{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
@@ -122,9 +123,17 @@ func run() error {
 		EscrowAccountKey:           escrowAccountKey.FromAddress(),
 		EscrowAccountSigner:        accountKey,
 		LogWriter:                  io.Discard,
-		Events:                     events,
+		Events:                     underlyingEvents,
 	}
-	agent := agentpkg.NewAgent(config)
+	underlyingAgent := agentpkg.NewAgent(config)
+	events := make(chan agentpkg.Event)
+	bufferedConfig := bufferedagent.Config{
+		Agent:       underlyingAgent,
+		AgentEvents: events,
+		LogWriter:   io.Discard,
+		Events:      events,
+	}
+	agent := bufferedagent.NewAgent(bufferedConfig)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -152,14 +161,14 @@ func run() error {
 						}
 					}
 					timeStart = time.Now()
-					_ = agent.Payment("1")
+					_ = agent.Payment(1_0000000)
 					paymentsSent++
 				}
 			case agentpkg.PaymentReceivedEvent:
 				paymentsReceived++
 			case agentpkg.PaymentSentEvent:
 				if paymentsSent < 10_000 {
-					_ = agent.Payment("1")
+					_ = agent.Payment(1_0000000)
 					paymentsSent++
 				} else {
 					timeSpent := time.Since(timeStart)
