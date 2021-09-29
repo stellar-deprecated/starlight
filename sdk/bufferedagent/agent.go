@@ -50,13 +50,15 @@ type Agent struct {
 	// lock.
 	mu sync.Mutex
 
-	queue []int64
-	agent *agent.Agent
+	waitingConfirmation bool
+	queue               []int64
+	agent               *agent.Agent
 }
 
 func (a *Agent) Open() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	go a.eventLoop()
 	return a.agent.Open()
 }
 
@@ -64,18 +66,41 @@ func (a *Agent) Payment(paymentAmount int64) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.queue = append(a.queue, paymentAmount)
+	if !a.waitingConfirmation {
+		go a.flushQueue()
+	}
 	return nil
+}
+
+func (a *Agent) flushQueue() {
+	if a.waitingConfirmation {
+		return
+	}
+
+	sum := int64(0)
+	for _, paymentAmount := range a.queue {
+		sum += paymentAmount
+	}
+	err := a.agent.Payment(sum)
+	if err != nil {
+		a.events <- agent.ErrorEvent{Err: err}
+		return
+	}
+	a.waitingConfirmation = true
+	a.queue = a.queue[:0]
 }
 
 func (a *Agent) DeclareClose() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	// TODO: Handle channel closing but payments still in queue.
 	return a.agent.DeclareClose()
 }
 
 func (a *Agent) Close() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	// TODO: Handle channel closing but payments still in queue.
 	return a.agent.Close()
 }
 
@@ -83,18 +108,18 @@ func (a *Agent) eventLoop() {
 	defer close(a.events)
 	for {
 		switch e := (<-a.agentEvents).(type) {
-		default:
-			a.events <- e
 		case agent.PaymentSentEvent:
-			a.flushQueue()
+			a.handlePaymentSent()
+		default:
+			// TODO: Handle channel closing but payments still in queue.
+			a.events <- e
 		}
-		// TODO: Handle case where channel closing but payments still in queue.
 	}
 }
 
-func (a *Agent) flushQueue() {
+func (a *Agent) handlePaymentSent() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-
-	err := a.agent.Payment(0)
+	a.waitingConfirmation = false
+	a.flushQueue()
 }
