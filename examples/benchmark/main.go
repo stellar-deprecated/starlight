@@ -152,14 +152,14 @@ func run() error {
 						}
 					}
 					timeStart = time.Now()
-					_ = agent.Payment("1")
+					_ = agent.Payment(1_0000000)
 					paymentsSent++
 				}
 			case agentpkg.PaymentReceivedEvent:
 				paymentsReceived++
 			case agentpkg.PaymentSentEvent:
 				if paymentsSent < 10_000 {
-					_ = agent.Payment("1")
+					_ = agent.Payment(1_0000000)
 					paymentsSent++
 				} else {
 					timeSpent := time.Since(timeStart)
