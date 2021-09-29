@@ -129,7 +129,7 @@ func run() error {
 	events := make(chan agentpkg.Event)
 	bufferedConfig := bufferedagent.Config{
 		Agent:       underlyingAgent,
-		AgentEvents: events,
+		AgentEvents: underlyingEvents,
 		LogWriter:   io.Discard,
 		Events:      events,
 	}

@@ -8,6 +8,7 @@
 package bufferedagent
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
@@ -58,7 +59,6 @@ type Agent struct {
 func (a *Agent) Open() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	go a.eventLoop()
 	return a.agent.Open()
 }
 
@@ -106,14 +106,17 @@ func (a *Agent) Close() error {
 
 func (a *Agent) eventLoop() {
 	defer close(a.events)
+	fmt.Fprintf(a.logWriter, "event loop started\n")
 	for {
 		switch e := (<-a.agentEvents).(type) {
 		case agent.PaymentSentEvent:
+			a.events <- e
 			a.handlePaymentSent()
 		default:
 			// TODO: Handle channel closing but payments still in queue.
 			a.events <- e
 		}
+		// TODO: Handle exiting.
 	}
 }
 
