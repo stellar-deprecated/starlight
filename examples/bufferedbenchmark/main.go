@@ -137,6 +137,7 @@ func run() error {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		microPaymentsSent := 0
 		paymentsSent := 0
 		paymentsReceived := 0
 		var timeStart time.Time
@@ -161,27 +162,31 @@ func run() error {
 						}
 					}
 					timeStart = time.Now()
-					_ = agent.Payment(1_0000000)
-					paymentsSent++
+					go func() {
+						for i := 0; i < 10_000; i++ {
+							_ = agent.Payment(1_0000000)
+							microPaymentsSent++
+						}
+					}()
 				}
 			case agentpkg.PaymentReceivedEvent:
 				paymentsReceived++
 			case agentpkg.PaymentSentEvent:
-				if paymentsSent < 10_000 {
-					_ = agent.Payment(1_0000000)
-					paymentsSent++
-				} else {
-					timeSpent := time.Since(timeStart)
-					fmt.Fprintf(os.Stderr, "time spent: %v\n", timeSpent)
-					fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
-					fmt.Fprintf(os.Stderr, "tps: %.3f\n", float64(paymentsSent)/timeSpent.Seconds())
+				paymentsSent++
+				if agent.QueueLen() == 0 {
 					err := agent.DeclareClose()
 					if err != nil {
 						panic(err)
 					}
 				}
 			case agentpkg.ClosingEvent:
+				timeSpent := time.Since(timeStart)
 				fmt.Fprintf(os.Stderr, "closing\n")
+				fmt.Fprintf(os.Stderr, "time spent: %v\n", timeSpent)
+				fmt.Fprintf(os.Stderr, "micro payments sent: %d\n", microPaymentsSent)
+				fmt.Fprintf(os.Stderr, "micro tps: %.3f\n", float64(microPaymentsSent)/timeSpent.Seconds())
+				fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
+				fmt.Fprintf(os.Stderr, "tps: %.3f\n", float64(paymentsSent)/timeSpent.Seconds())
 				fmt.Fprintf(os.Stderr, "payments received: %d\n", paymentsReceived)
 			case agentpkg.ClosedEvent:
 				fmt.Fprintf(os.Stderr, "closed\n")

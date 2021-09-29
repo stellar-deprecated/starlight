@@ -56,6 +56,12 @@ type Agent struct {
 	agent               *agent.Agent
 }
 
+func (a *Agent) QueueLen() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return len(a.queue)
+}
+
 func (a *Agent) Open() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
