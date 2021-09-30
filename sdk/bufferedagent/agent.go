@@ -12,6 +12,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
 )
 
@@ -32,6 +33,8 @@ func NewAgent(c Config) *Agent {
 		logWriter: c.LogWriter,
 
 		events: c.Events,
+
+		settlementID: uuid.NewString(),
 	}
 	return agent
 }
@@ -52,6 +55,7 @@ type Agent struct {
 	mu sync.Mutex
 
 	waitingConfirmation bool
+	settlementID        string
 	queue               []int64
 	agent               *agent.Agent
 }
@@ -72,14 +76,17 @@ func (a *Agent) Open() error {
 	return a.agent.Open()
 }
 
-func (a *Agent) Payment(paymentAmount int64) error {
+// Payment queues a payment which will be paid in the next settlement. The
+// identifier for the settlement is returned.
+func (a *Agent) Payment(paymentAmount int64) (settlementID string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.queue = append(a.queue, paymentAmount)
+	settlementID = a.settlementID
 	if !a.waitingConfirmation {
 		a.flushQueue()
 	}
-	return nil
+	return
 }
 
 func (a *Agent) flushQueue() {
@@ -96,7 +103,9 @@ func (a *Agent) flushQueue() {
 		// TODO: Handle overflow.
 		sum += paymentAmount
 	}
-	err := a.agent.Payment(sum)
+	settlementID := a.settlementID
+	a.settlementID = uuid.NewString()
+	err := a.agent.PaymentWithMemo(sum, settlementID)
 	if err != nil {
 		a.events <- agent.ErrorEvent{Err: err}
 		return

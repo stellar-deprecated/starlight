@@ -6,6 +6,7 @@ replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20
 
 require (
 	github.com/google/gofuzz v1.2.0
+	github.com/google/uuid v1.2.0
 	github.com/stellar/go v0.0.0-00010101000000-000000000000
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
