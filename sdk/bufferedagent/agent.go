@@ -22,7 +22,7 @@ type Config struct {
 
 	LogWriter io.Writer
 
-	Events chan<- agent.Event
+	Events chan<- interface{}
 }
 
 func NewAgent(c Config) *Agent {
@@ -46,7 +46,7 @@ type Agent struct {
 	logWriter io.Writer
 
 	agentEvents <-chan agent.Event
-	events      chan<- agent.Event
+	events      chan<- interface{}
 
 	// mu is a lock for the mutable fields of this type. It should be locked
 	// when reading or writing any of the mutable fields. The mutable fields are
@@ -98,14 +98,19 @@ func (a *Agent) flushQueue() {
 		return
 	}
 
+	memo := settlementMemo{
+		ID: a.settlementID,
+	}
+	a.settlementID = uuid.NewString()
+
 	sum := int64(0)
 	for _, paymentAmount := range a.queue {
 		// TODO: Handle overflow.
 		sum += paymentAmount
+		memo.Amounts = append(memo.Amounts, paymentAmount)
 	}
-	settlementID := a.settlementID
-	a.settlementID = uuid.NewString()
-	err := a.agent.PaymentWithMemo(sum, settlementID)
+
+	err := a.agent.PaymentWithMemo(sum, memo.String())
 	if err != nil {
 		a.events <- agent.ErrorEvent{Err: err}
 		return
@@ -133,9 +138,29 @@ func (a *Agent) eventLoop() {
 	fmt.Fprintf(a.logWriter, "event loop started\n")
 	for {
 		switch e := (<-a.agentEvents).(type) {
+		case agent.PaymentReceivedEvent:
+			memo, err := parseSettlementMemo(e.CloseAgreement.Envelope.Details.Memo)
+			if err != nil {
+				a.events <- agent.ErrorEvent{Err: err}
+				continue
+			}
+			a.events <- SettlementReceivedEvent{
+				CloseAgreement: e.CloseAgreement,
+				ID:             memo.ID,
+				Amounts:        memo.Amounts,
+			}
 		case agent.PaymentSentEvent:
 			a.handlePaymentSent()
-			a.events <- e
+			memo, err := parseSettlementMemo(e.CloseAgreement.Envelope.Details.Memo)
+			if err != nil {
+				a.events <- agent.ErrorEvent{Err: err}
+				continue
+			}
+			a.events <- SettlementSentEvent{
+				CloseAgreement: e.CloseAgreement,
+				ID:             memo.ID,
+				Amounts:        memo.Amounts,
+			}
 		default:
 			// TODO: Handle channel closing but payments still in queue.
 			a.events <- e
