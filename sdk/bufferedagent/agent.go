@@ -59,7 +59,11 @@ type Agent struct {
 func (a *Agent) QueueLen() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return len(a.queue)
+	queueLen := len(a.queue)
+	if queueLen == 0 && a.waitingConfirmation {
+		return 1
+	}
+	return queueLen
 }
 
 func (a *Agent) Open() error {
@@ -80,6 +84,10 @@ func (a *Agent) Payment(paymentAmount int64) error {
 
 func (a *Agent) flushQueue() {
 	if a.waitingConfirmation {
+		return
+	}
+
+	if len(a.queue) == 0 {
 		return
 	}
 
@@ -117,8 +125,8 @@ func (a *Agent) eventLoop() {
 	for {
 		switch e := (<-a.agentEvents).(type) {
 		case agent.PaymentSentEvent:
-			a.events <- e
 			a.handlePaymentSent()
+			a.events <- e
 		default:
 			// TODO: Handle channel closing but payments still in queue.
 			a.events <- e
