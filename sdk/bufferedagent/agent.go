@@ -73,7 +73,7 @@ func (a *Agent) Payment(paymentAmount int64) error {
 	defer a.mu.Unlock()
 	a.queue = append(a.queue, paymentAmount)
 	if !a.waitingConfirmation {
-		go a.flushQueue()
+		a.flushQueue()
 	}
 	return nil
 }
@@ -85,6 +85,7 @@ func (a *Agent) flushQueue() {
 
 	sum := int64(0)
 	for _, paymentAmount := range a.queue {
+		// TODO: Handle overflow.
 		sum += paymentAmount
 	}
 	err := a.agent.Payment(sum)

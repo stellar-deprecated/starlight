@@ -164,7 +164,7 @@ func run() error {
 					timeStart = time.Now()
 					go func() {
 						for i := 0; i < 10_000; i++ {
-							_ = agent.Payment(1_0000000)
+							_ = agent.Payment(1)
 							microPaymentsSent++
 						}
 					}()
