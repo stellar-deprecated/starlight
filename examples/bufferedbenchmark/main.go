@@ -167,7 +167,7 @@ func run() error {
 					}
 					timeStarted = time.Now()
 					go func() {
-						for i := 0; i < 10_000_000; i++ {
+						for i := 0; i < 50_000_000; i++ {
 							_ = agent.Payment(1)
 							paymentsSent++
 						}
@@ -179,13 +179,13 @@ func run() error {
 				}
 				settlementsReceived++
 				paymentsReceived += len(e.Amounts)
-				if paymentsReceived == 10_000_000 {
+				if paymentsReceived == 50_000_000 {
 					timeFinished = time.Now()
 				}
 			case bufferedagent.SettlementSentEvent:
 				settlementsSent++
 				paymentsSentConfirmed += len(e.Amounts)
-				if paymentsSentConfirmed == 10_000_000 {
+				if paymentsSentConfirmed == 50_000_000 {
 					timeFinished = time.Now()
 					err := agent.DeclareClose()
 					if err != nil {
