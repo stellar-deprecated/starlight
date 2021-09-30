@@ -126,7 +126,7 @@ func run() error {
 		Events:                     underlyingEvents,
 	}
 	underlyingAgent := agentpkg.NewAgent(config)
-	events := make(chan agentpkg.Event)
+	events := make(chan interface{})
 	bufferedConfig := bufferedagent.Config{
 		Agent:       underlyingAgent,
 		AgentEvents: underlyingEvents,
@@ -134,13 +134,17 @@ func run() error {
 		Events:      events,
 	}
 	agent := bufferedagent.NewAgent(bufferedConfig)
+
+	var timeStarted, timeFinished time.Time
+	paymentsSent := 0
+	paymentsSentConfirmed := 0
+	paymentsReceived := 0
+	settlementsSent := 0
+	settlementsReceived := 0
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		microPaymentsSent := 0
-		paymentsSent := 0
-		paymentsReceived := 0
-		var timeStart time.Time
 		for {
 			switch e := (<-events).(type) {
 			case agentpkg.ErrorEvent:
@@ -161,26 +165,28 @@ func run() error {
 							<-tick
 						}
 					}
-					timeStart = time.Now()
+					timeStarted = time.Now()
 					go func() {
 						for i := 0; i < 10_000_000; i++ {
 							_ = agent.Payment(1)
-							microPaymentsSent++
+							paymentsSent++
 						}
 					}()
 				}
-			case agentpkg.PaymentReceivedEvent:
-				paymentsReceived++
-			case agentpkg.PaymentSentEvent:
-				paymentsSent++
-				if agent.QueueLen() == 0 {
-					timeSpent := time.Since(timeStart)
-					fmt.Fprintf(os.Stderr, "closing\n")
-					fmt.Fprintf(os.Stderr, "time spent: %v\n", timeSpent)
-					fmt.Fprintf(os.Stderr, "micro payments sent: %d\n", microPaymentsSent)
-					fmt.Fprintf(os.Stderr, "micro tps: %.3f\n", float64(microPaymentsSent)/timeSpent.Seconds())
-					fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
-					fmt.Fprintf(os.Stderr, "tps: %.3f\n", float64(paymentsSent)/timeSpent.Seconds())
+			case bufferedagent.SettlementReceivedEvent:
+				if timeStarted.IsZero() {
+					timeStarted = time.Now()
+				}
+				settlementsReceived++
+				paymentsReceived += len(e.Amounts)
+				if paymentsReceived == 10_000_000 {
+					timeFinished = time.Now()
+				}
+			case bufferedagent.SettlementSentEvent:
+				settlementsSent++
+				paymentsSentConfirmed += len(e.Amounts)
+				if paymentsSentConfirmed == 10_000_000 {
+					timeFinished = time.Now()
 					err := agent.DeclareClose()
 					if err != nil {
 						panic(err)
@@ -190,8 +196,6 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "closing\n")
 			case agentpkg.ClosedEvent:
 				fmt.Fprintf(os.Stderr, "closed\n")
-				fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
-				fmt.Fprintf(os.Stderr, "payments received: %d\n", paymentsReceived)
 				return
 			}
 		}
@@ -213,6 +217,15 @@ func run() error {
 	}
 
 	<-done
+
+	timeSpent := timeFinished.Sub(timeStarted)
+	fmt.Fprintf(os.Stderr, "time spent: %v\n", timeSpent)
+	fmt.Fprintf(os.Stderr, "payments sent: %d\n", paymentsSent)
+	fmt.Fprintf(os.Stderr, "payments received: %d\n", paymentsReceived)
+	fmt.Fprintf(os.Stderr, "payments tps: %.3f\n", float64(paymentsSent+paymentsReceived)/timeSpent.Seconds())
+	fmt.Fprintf(os.Stderr, "settlements sent: %d\n", settlementsSent)
+	fmt.Fprintf(os.Stderr, "settlements received: %d\n", settlementsReceived)
+	fmt.Fprintf(os.Stderr, "settlements tps: %.3f\n", float64(settlementsSent+settlementsReceived)/timeSpent.Seconds())
 
 	return nil
 }

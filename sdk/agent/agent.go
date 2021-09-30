@@ -557,6 +557,8 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 
 	defer a.snapshot()
 
+	// time.Sleep(time.Millisecond * 300)
+
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
