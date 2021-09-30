@@ -24,9 +24,14 @@ type CloseDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
-	PaymentAmount              int64
 	ProposingSigner            *keypair.FromAddress
 	ConfirmingSigner           *keypair.FromAddress
+
+	// The following fields are not captured in the signatures produced by
+	// signers because the information is not embedded into the agreement's
+	// transactions.
+	PaymentAmount int64
+	Memo          string
 }
 
 func (d CloseDetails) Equal(d2 CloseDetails) bool {
@@ -34,9 +39,10 @@ func (d CloseDetails) Equal(d2 CloseDetails) bool {
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.IterationNumber == d2.IterationNumber &&
 		d.Balance == d2.Balance &&
-		d.PaymentAmount == d2.PaymentAmount &&
 		d.ProposingSigner.Equal(d2.ProposingSigner) &&
-		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
+		d.ConfirmingSigner.Equal(d2.ConfirmingSigner) &&
+		d.PaymentAmount == d2.PaymentAmount &&
+		d.Memo == d2.Memo
 }
 
 type CloseSignatures struct {
@@ -147,6 +153,10 @@ func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
+	return c.ProposePaymentWithMemo(amount, "")
+}
+
+func (c *Channel) ProposePaymentWithMemo(amount int64, memo string) (CloseAgreement, error) {
 	if amount < 0 {
 		return CloseAgreement{}, fmt.Errorf("payment amount must not be less than 0")
 	}
@@ -189,9 +199,10 @@ func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
-		PaymentAmount:              amount,
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
+		PaymentAmount:              amount,
+		Memo:                       memo,
 	}
 	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, d)
 	if err != nil {

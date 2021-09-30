@@ -276,6 +276,15 @@ func (a *Agent) Open() error {
 // The payment is not authorized until the remote participant signs the payment
 // and returns the payment.
 func (a *Agent) Payment(paymentAmount int64) error {
+	return a.PaymentWithMemo(paymentAmount, "")
+}
+
+// Payment makes a payment of the payment amount to the remote participant using
+// the open channel. The process is asynchronous and the function returns
+// immediately after the payment is signed and sent to the remote participant.
+// The payment is not authorized until the remote participant signs the payment
+// and returns the payment. The memo is attached to the payment.
+func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -288,7 +297,7 @@ func (a *Agent) Payment(paymentAmount int64) error {
 
 	defer a.snapshot()
 
-	ca, err := a.channel.ProposePayment(paymentAmount)
+	ca, err := a.channel.ProposePaymentWithMemo(paymentAmount, memo)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
 		var balance int64
