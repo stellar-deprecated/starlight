@@ -9,7 +9,7 @@ import (
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
-	"github.com/stellar/experimental-payment-channels/sdk/bufferedagent"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/bufferedagent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/clients/horizonclient"
