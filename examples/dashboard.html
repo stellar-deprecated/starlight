@@ -13,6 +13,12 @@
 
   summary {
     text-align: center;
+    padding: 20px 0;
+  }
+
+  #tx-count {
+    text-align: center;
+    font-weight: bold;
   }
 </style>
 
@@ -22,6 +28,11 @@
     <summary>Signers</summary>
     <div id="chart-signers-1"></div>
     <div id="chart-signers-2"></div>
+  </details>
+  <details open>
+    <summary>Transactions</summary>
+    <div id="tx-count"></div>
+    <div id="chart-tps"></div>
   </details>
   <details open>
     <summary>Balances</summary>
@@ -39,6 +50,7 @@
     chartAccountSigners('#chart-signers-2', agentUrl, horizonUrl, false);
     chartAccountBalances('#chart-account-balances', agentUrl, horizonUrl);
     chartChannelBalance('#chart-channel-balance', agentUrl);
+    txCount('#tx-count', agentUrl);
   });
 </script>
 
@@ -104,7 +116,7 @@
   function chartAccountBalances(bindto, agentUrl, horizonUrl) {
     const chart = c3.generate({
       bindto: bindto,
-      data: { type: 'donut', labels: true, columns: [], },
+      data: { type: 'donut', labels: true, columns: [], order: null },
       donut: {
         title: `Balances on Network`,
         label: {
@@ -133,6 +145,11 @@
           [localEscrow.slice(0, 4), Number(localHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
           [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
         ],
+        colors: {
+          [localEscrow.slice(0, 4)]: '#f08536',
+          [remoteEscrow.slice(0, 4)]: '#3976af',
+        },
+        order: null,
         unload: true,
       });
     };
@@ -174,8 +191,8 @@
       if (balance > 0) {
         chart.load({
           columns: [
-            ['balance', Math.abs(balance)],
             [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            ['balance', Math.abs(balance)],
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
@@ -190,8 +207,8 @@
         chart.load({
           columns: [
             [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
-            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
             ['balance', Math.abs(balance)],
+            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
             [leftAcc.slice(0, 4)]: '#f08536',
@@ -213,5 +230,17 @@
       }
     };
     setInterval(chartUpdate, 100);
+  }
+
+  function txCount(bindto, agentUrl) {
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const e = document.querySelector(bindto);
+      const count = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber'] - 1;
+      e.innerText = `Count: ${count}`;
+    };
+    setInterval(chartUpdate, 1000);
   }
 </script>
