@@ -17,19 +17,22 @@
 
 <div class="container">
   <div id="chart-ledger"></div>
-  <div id="chart-payments-1"></div>
-  <div id="chart-payments-2"></div>
-  <div id="chart-balance-1"></div>
-  <div id="chart-balance-2"></div>
   <div id="chart-signers-1"></div>
   <div id="chart-signers-2"></div>
+  <div id="chart-balance-1"></div>
+  <div id="chart-balance-2"></div>
+  <div id="chart-payments-1"></div>
+  <div id="chart-payments-2"></div>
+  <div id="chart-channel-contributions"></div>
+  <div id="chart-channel-balance"></div>
 </div>
 
 <script>
   window.addEventListener('load', (event) => {
     const horizonUrl = "http://192.168.64.2:8000";
-    const account1 = "GD6TNKGREVUSN6DS25YONNIBHJCFZMCQJCMDNIFW677MP2QNAPT6YW25";
-    const account2 = "GB6E2ZN2O3CVTTUODZCXJSP27O4UOZCAU5D7T2TPLZW35PAJNVVW7YFB";
+    const agentUrl = "http://localhost:9000";
+    const account1 = "GAG63CTXMPZ37LBT4S4VOSMJ47F4BOEJ6NNT5J6WFTZD3JVOYVJYPE45";
+    const account2 = "GAPZNCNXM2T6ZR5CLYMKHFV7FWCP3UFUI2CIK3JXS2V75QDO7TIWW7Y4";
     chartLedger('#chart-ledger', horizonUrl);
     chartAccountPayments('#chart-payments-1', horizonUrl, account1);
     chartAccountPayments('#chart-payments-2', horizonUrl, account2);
@@ -37,6 +40,8 @@
     chartAccountBalance('#chart-balance-2', horizonUrl, account2);
     chartAccountSigners('#chart-signers-1', horizonUrl, account1);
     chartAccountSigners('#chart-signers-2', horizonUrl, account2);
+    chartChannelContributions('#chart-channel-contributions', agentUrl, account1, account2);
+    chartChannelBalance('#chart-channel-balance', agentUrl, account1, account2);
   });
 </script>
 
@@ -87,6 +92,7 @@
       lastUpdate = r['last_modified_time'];
       chart.load({
         columns: r['signers'].filter(s => s['weight'] > 0).map(s => [s['key'].slice(0, 4), s['weight']]),
+        unload: true,
       });
     };
     setInterval(chartUpdate, 1000);
@@ -118,13 +124,13 @@
       const resp = await fetch(`${horizonUrl}/accounts/${account}`)
       const json = await resp.json();
       const r = json;
-      count ++;
+      count++;
       chart.flow({
         columns: [
           ['x', count],
           [`${account.slice(0, 4)} balance`, Number(r['balances'].find(b => b['asset_type'] == 'native')['balance'])],
         ],
-        to: Math.max(count-countMax, 0),
+        to: Math.max(count - countMax, 0),
         length: Math.min(count, countMax),
       });
     };
@@ -167,5 +173,116 @@
       });
     };
     setInterval(chartUpdate, 1000);
+  }
+
+  function chartAccountBalances(bindto, agentUrl, account1, account2) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'donut',
+        labels: true,
+        columns: [],
+      },
+      donut: {
+        label: {
+          format: function (value, ratio, id) {
+            return d3.format('$')(value / 10000000);
+          }
+        }
+      }
+    });
+    var lastUpdate = null;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const hashCode = `${r['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}`
+      if (hashCode == lastUpdate) {
+        return;
+      }
+      lastUpdate = hashCode;
+      chart.load({
+        columns: [
+          [account1.slice(0, 4), r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance']],
+          [account2.slice(0, 4), r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance']],
+        ],
+        unload: true,
+      });
+    };
+    setInterval(chartUpdate, 100);
+  }
+
+  function chartChannelBalance(bindto, agentUrl, account1, account2) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'donut',
+        labels: true,
+        columns: [],
+        order: null,
+      },
+      donut: {
+        label: {
+          format: function (value, ratio, id) {
+            return d3.format('$')(value / 10000000);
+          }
+        }
+      }
+    });
+    var lastUpdate = null;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const hashCode = `${r['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber']}`
+      if (hashCode == lastUpdate) {
+        return;
+      }
+      lastUpdate = hashCode;
+      const balance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
+      const left = r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
+      const right = r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
+      if (balance > 0) {
+        chart.load({
+          columns: [
+            ['balance', Math.abs(balance)],
+            [account1.slice(0, 4), balance > 0 ? left - balance : left],
+            [account2.slice(0, 4), balance < 0 ? right + balance : right],
+          ],
+          colors: {
+            [account1.slice(0, 4)]: '#f08536',
+            [account2.slice(0, 4)]: '#3976af',
+            'balance': '#84afd7',
+          },
+          order: null,
+          unload: true,
+        });
+      } else if (balance < 0) {
+        chart.load({
+          columns: [
+            [account1.slice(0, 4), balance > 0 ? left - balance : left],
+            [account2.slice(0, 4), balance < 0 ? right + balance : right],
+            ['balance', Math.abs(balance)],
+          ],
+          colors: {
+            [account1.slice(0, 4)]: '#f08536',
+            [account2.slice(0, 4)]: '#3976af',
+            'balance': '#f4a267',
+          },
+          order: null,
+          unload: true,
+        });
+      } else {
+        chart.load({
+          columns: [
+            [account1.slice(0, 4), balance > 0 ? left - balance : left],
+            [account2.slice(0, 4), balance < 0 ? right + balance : right],
+          ],
+          order: null,
+          unload: true,
+        });
+      }
+    };
+    setInterval(chartUpdate, 100);
   }
 </script>
