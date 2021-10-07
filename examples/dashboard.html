@@ -1,0 +1,171 @@
+<link href="https://unpkg.com/c3@0.7.2/c3.min.css" rel="stylesheet">
+<script src="https://unpkg.com/d3@5.16.0/dist/d3.js" charset="utf-8"></script>
+<script src="https://unpkg.com/c3@0.7.2/c3.js"></script>
+
+<style>
+  .container {
+    width: 100%;
+    display: grid;
+    grid-template-rows: repeat(4, 200px);
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #chart-ledger {
+    grid-column-start: span 2;
+  }
+</style>
+
+<div class="container">
+  <div id="chart-ledger"></div>
+  <div id="chart-payments-1"></div>
+  <div id="chart-payments-2"></div>
+  <div id="chart-balance-1"></div>
+  <div id="chart-balance-2"></div>
+  <div id="chart-signers-1"></div>
+  <div id="chart-signers-2"></div>
+</div>
+
+<script>
+  window.addEventListener('load', (event) => {
+    const horizonUrl = "http://192.168.64.2:8000";
+    const account1 = "GD6TNKGREVUSN6DS25YONNIBHJCFZMCQJCMDNIFW677MP2QNAPT6YW25";
+    const account2 = "GB6E2ZN2O3CVTTUODZCXJSP27O4UOZCAU5D7T2TPLZW35PAJNVVW7YFB";
+    chartLedger('#chart-ledger', horizonUrl);
+    chartAccountPayments('#chart-payments-1', horizonUrl, account1);
+    chartAccountPayments('#chart-payments-2', horizonUrl, account2);
+    chartAccountBalance('#chart-balance-1', horizonUrl, account1);
+    chartAccountBalance('#chart-balance-2', horizonUrl, account2);
+    chartAccountSigners('#chart-signers-1', horizonUrl, account1);
+    chartAccountSigners('#chart-signers-2', horizonUrl, account2);
+  });
+</script>
+
+<script>
+  function chartLedger(bindto, horizonUrl) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'line',
+        x: 'x',
+        columns: [],
+      },
+      transition: { duration: 0 },
+    });
+    const chartUpdate = async () => {
+      const resp = await fetch(`${horizonUrl}/ledgers?order=desc&limit=25`)
+      const json = await resp.json();
+      const records = json['_embedded']['records'];
+      chart.load({
+        x: 'x',
+        columns: [
+          ['x', ...records.map(r => r['sequence'])],
+          ['success', ...records.map(r => r['successful_transaction_count'])],
+          ['failed', ...records.map(r => r['failed_transaction_count'])],
+        ],
+      });
+    };
+    setInterval(chartUpdate, 1000);
+  }
+
+  function chartAccountSigners(bindto, horizonUrl, account) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'donut',
+        labels: true,
+        columns: [],
+      },
+    });
+    var lastUpdate = null;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${horizonUrl}/accounts/${account}`)
+      const json = await resp.json();
+      const r = json;
+      if (r['last_modified_time'] == lastUpdate) {
+        return;
+      }
+      lastUpdate = r['last_modified_time'];
+      chart.load({
+        columns: r['signers'].filter(s => s['weight'] > 0).map(s => [s['key'].slice(0, 4), s['weight']]),
+      });
+    };
+    setInterval(chartUpdate, 1000);
+  }
+
+  function chartAccountBalance(bindto, horizonUrl, account) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'step',
+        labels: false,
+        x: 'x',
+        columns: [['x', 0], [`${account.slice(0, 4)} balance`, 0]],
+      },
+      axis: {
+        x: { type: 'timeseries', tick: { inner: 10, show: true, format: (x) => "" } },
+        y: { type: 'log' },
+      },
+      line: {
+        step: { type: 'step-before' },
+      },
+      legend: {
+        show: false
+      },
+    });
+    const countMax = 20;
+    var count = 0;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${horizonUrl}/accounts/${account}`)
+      const json = await resp.json();
+      const r = json;
+      count ++;
+      chart.flow({
+        columns: [
+          ['x', count],
+          [`${account.slice(0, 4)} balance`, Number(r['balances'].find(b => b['asset_type'] == 'native')['balance'])],
+        ],
+        to: Math.max(count-countMax, 0),
+        length: Math.min(count, countMax),
+      });
+    };
+    setInterval(chartUpdate, 1000);
+  }
+
+  function chartAccountPayments(bindto, horizonUrl, account) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'bar',
+        labels: true,
+        x: 'x',
+        columns: [],
+        color: (color, d) => d.id && (d.value > 0 ? '#77D970' : '#D54C4C'),
+      },
+      axis: {
+        x: { type: 'timeseries', tick: { inner: 10, show: true, format: (x) => "" } },
+        y: { type: 'log' },
+      },
+      legend: {
+        show: false
+      },
+    });
+    const chartUpdate = async () => {
+      const resp = await fetch(`${horizonUrl}/accounts/${account}/payments?order=desc&limit=100`)
+      const json = await resp.json();
+      const records = json['_embedded']['records'].filter(r => r['type'] == 'payment');
+      chart.load({
+        columns: [
+          ['x', ...records.map(r => new Date(r['created_at']))],
+          ['amount', ...records.map(r => {
+            const n = Number(r['amount'] || r['starting_balance']);
+            if ((r['from'] || r['funder']) == account) {
+              return -n;
+            }
+            return n;
+          })],
+        ],
+      });
+    };
+    setInterval(chartUpdate, 1000);
+  }
+</script>
