@@ -64,6 +64,10 @@
         columns: [],
       },
       transition: { duration: 0 },
+      legend: {
+        show: false
+      },
+      size: { height: 140 }
     });
     const chartUpdate = async () => {
       const resp = await fetch(`${horizonUrl}/ledgers?order=desc&limit=25`)
@@ -84,21 +88,29 @@
   function chartAccountSigners(bindto, agentUrl, horizonUrl, local) {
     const chart = c3.generate({
       bindto: bindto,
-      data: { type: 'donut', labels: true, columns: [], },
+      data: { type: 'donut', labels: true, columns: [], order: null },
       donut: {
         title: `Signers ${local ? 'Local' : 'Remote'}`,
       },
+      legend: {
+        show: false
+      }
     });
     var lastUpdate = null;
     const chartUpdate = async () => {
       const resp = await fetch(`${agentUrl}`)
       const json = await resp.json();
       const r = json;
+      const localSigner = r['Config']['EscrowAccountSigner'];
+      const remoteSigner = r['Snapshot']['OtherEscrowAccountSigner'];
       var escrow;
+      var signer;
       if (local) {
         escrow = r['Config']['EscrowAccountKey'];
+        signer = localSigner;
       } else {
         escrow = r['Snapshot']['OtherEscrowAccount'];
+        signer = remoteSigner;
       }
       const h = await (await fetch(`${horizonUrl}/accounts/${escrow}`)).json();
       if (h['last_modified_time'] == lastUpdate) {
@@ -107,7 +119,12 @@
       lastUpdate = h['last_modified_time'];
       chart.load({
         columns: h['signers'].filter(s => s['weight'] > 0).map(s => [s['key'].slice(0, 4), s['weight']]),
+        colors: {
+          [localSigner.slice(0,4)]: '#3976af',
+          [remoteSigner.slice(0,4)]: '#f08536',
+        },
         unload: true,
+        order: null,
       });
     };
     setInterval(chartUpdate, 1000);
@@ -125,6 +142,9 @@
           }
         },
       },
+      legend: {
+        show: false
+      }
     });
     var lastUpdate = null;
     const chartUpdate = async () => {
@@ -146,8 +166,8 @@
           [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
         ],
         colors: {
-          [localEscrow.slice(0, 4)]: '#f08536',
-          [remoteEscrow.slice(0, 4)]: '#3976af',
+          [localEscrow.slice(0, 4)]: '#3976af',
+          [remoteEscrow.slice(0, 4)]: '#f08536',
         },
         order: null,
         unload: true,
@@ -168,6 +188,9 @@
           }
         },
       },
+      legend: {
+        show: false
+      }
     });
     var lastUpdate = null;
     const chartUpdate = async () => {
@@ -196,9 +219,9 @@
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: '#f08536',
-            [rightAcc.slice(0, 4)]: '#3976af',
-            'balance': '#84afd7',
+            [leftAcc.slice(0, 4)]: '#3976af',
+            [rightAcc.slice(0, 4)]: '#f08536',
+            'balance': '#f4a267',
           },
           order: null,
           unload: true,
@@ -211,9 +234,9 @@
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: '#f08536',
-            [rightAcc.slice(0, 4)]: '#3976af',
-            'balance': '#f4a267',
+            [leftAcc.slice(0, 4)]: '#3976af',
+            [rightAcc.slice(0, 4)]: '#f08536',
+            'balance': '#84afd7',
           },
           order: null,
           unload: true,
@@ -224,6 +247,10 @@
             [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
+          colors: {
+            [leftAcc.slice(0, 4)]: '#3976af',
+            [rightAcc.slice(0, 4)]: '#f08536',
+          },
           order: null,
           unload: true,
         });
