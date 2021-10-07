@@ -54,7 +54,7 @@ func run() error {
 	fs.SetOutput(os.Stdout)
 	fs.BoolVar(&showHelp, "h", showHelp, "Show this help")
 	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
-	fs.StringVar(&httpPort, "stats-port", httpPort, "Port to serve snapshots on")
+	fs.StringVar(&httpPort, "port", httpPort, "Port to serve API on")
 	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
 	fs.StringVar(&signerKeyStr, "signer", signerKeyStr, "Account S signer")
 	fs.StringVar(&filename, "f", filename, "File to write and load channel state")
