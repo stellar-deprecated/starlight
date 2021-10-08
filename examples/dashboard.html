@@ -55,6 +55,10 @@
 </script>
 
 <script>
+  const color1 = '#3976af';
+  const color1Light = '#f4a267';
+  const color2 = '#f08536';
+  const color2Light = '#84afd7';
   function chartLedger(bindto, horizonUrl) {
     const chart = c3.generate({
       bindto: bindto,
@@ -78,7 +82,6 @@
         columns: [
           ['x', ...records.map(r => r['sequence'])],
           ['success', ...records.map(r => r['successful_transaction_count'])],
-          ['failed', ...records.map(r => r['failed_transaction_count'])],
         ],
       });
     };
@@ -120,8 +123,8 @@
       chart.load({
         columns: h['signers'].filter(s => s['weight'] > 0).map(s => [s['key'].slice(0, 4), s['weight']]),
         colors: {
-          [localSigner.slice(0,4)]: '#3976af',
-          [remoteSigner.slice(0,4)]: '#f08536',
+          [localSigner.slice(0,4)]: color1,
+          [remoteSigner.slice(0,4)]: color2,
         },
         unload: true,
         order: null,
@@ -166,8 +169,8 @@
           [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
         ],
         colors: {
-          [localEscrow.slice(0, 4)]: '#3976af',
-          [remoteEscrow.slice(0, 4)]: '#f08536',
+          [localEscrow.slice(0, 4)]: color1,
+          [remoteEscrow.slice(0, 4)]: color2,
         },
         order: null,
         unload: true,
@@ -219,9 +222,9 @@
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: '#3976af',
-            [rightAcc.slice(0, 4)]: '#f08536',
-            'balance': '#f4a267',
+            [leftAcc.slice(0, 4)]: color1,
+            [rightAcc.slice(0, 4)]: color2,
+            'balance': color1Light,
           },
           order: null,
           unload: true,
@@ -234,9 +237,9 @@
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: '#3976af',
-            [rightAcc.slice(0, 4)]: '#f08536',
-            'balance': '#84afd7',
+            [leftAcc.slice(0, 4)]: color1,
+            [rightAcc.slice(0, 4)]: color2,
+            'balance': color2Light,
           },
           order: null,
           unload: true,
@@ -248,8 +251,8 @@
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: '#3976af',
-            [rightAcc.slice(0, 4)]: '#f08536',
+            [leftAcc.slice(0, 4)]: color1,
+            [rightAcc.slice(0, 4)]: color2,
           },
           order: null,
           unload: true,
