@@ -253,7 +253,7 @@ func run() error {
 	bufferedConfig := bufferedagent.Config{
 		Agent:        underlyingAgent,
 		AgentEvents:  underlyingEvents,
-		MaxQueueSize: 1_000_000,
+		MaxQueueSize: 1,
 		LogWriter:    io.Discard,
 		Events:       events,
 	}
@@ -350,6 +350,11 @@ func prompt(agent *bufferedagent.Agent, submitter agentpkg.Submitter, horizonCli
 		if err != nil {
 			return err
 		}
+		queueSize, err := strconv.Atoi(params[3])
+		if err != nil {
+			return err
+		}
+		agent.SetMaxQueueSize(queueSize)
 		for i := 0; i < x; i++ {
 			for {
 				_, err = agent.Payment(amt)
@@ -359,6 +364,7 @@ func prompt(agent *bufferedagent.Agent, submitter agentpkg.Submitter, horizonCli
 				break
 			}
 		}
+		agent.SetMaxQueueSize(1)
 		return err
 	case "declareclose":
 		return agent.DeclareClose()
