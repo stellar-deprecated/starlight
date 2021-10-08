@@ -36,6 +36,8 @@ func run() error {
 	listenAddr := ""
 	connectAddr := ""
 	cpuProfileFile := ""
+	paymentsToSend := 50_000_000
+	maxQueueSize := 20_000_000
 
 	fs := flag.NewFlagSet("benchmark", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -44,6 +46,8 @@ func run() error {
 	fs.StringVar(&listenAddr, "listen", listenAddr, "Address to listen on in listen mode")
 	fs.StringVar(&connectAddr, "connect", connectAddr, "Address to connect to in connect mode")
 	fs.StringVar(&cpuProfileFile, "cpuprofile", cpuProfileFile, "Write cpu profile to `file`")
+	fs.IntVar(&paymentsToSend, "count", paymentsToSend, "Number of payments to send")
+	fs.IntVar(&maxQueueSize, "max-queue", maxQueueSize, "Max queue size")
 
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
@@ -128,10 +132,11 @@ func run() error {
 	underlyingAgent := agentpkg.NewAgent(config)
 	events := make(chan interface{})
 	bufferedConfig := bufferedagent.Config{
-		Agent:       underlyingAgent,
-		AgentEvents: underlyingEvents,
-		LogWriter:   io.Discard,
-		Events:      events,
+		Agent:        underlyingAgent,
+		AgentEvents:  underlyingEvents,
+		MaxQueueSize: maxQueueSize,
+		LogWriter:    io.Discard,
+		Events:       events,
 	}
 	agent := bufferedagent.NewAgent(bufferedConfig)
 
@@ -143,6 +148,7 @@ func run() error {
 	settlementsReceived := 0
 
 	done := make(chan struct{})
+	open := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
@@ -156,42 +162,17 @@ func run() error {
 				}
 			case agentpkg.OpenedEvent:
 				fmt.Fprintf(os.Stderr, "opened\n")
-				if connectAddr != "" {
-					tick := time.Tick(1 * time.Second)
-					for i := 5; i >= 0; {
-						fmt.Fprintf(os.Stderr, "%d\n", i)
-						i--
-						if i >= 0 {
-							<-tick
-						}
-					}
-					timeStarted = time.Now()
-					go func() {
-						for i := 0; i < 50_000_000; i++ {
-							_ = agent.Payment(1)
-							paymentsSent++
-						}
-					}()
-				}
+				close(open)
 			case bufferedagent.SettlementReceivedEvent:
 				if timeStarted.IsZero() {
 					timeStarted = time.Now()
 				}
 				settlementsReceived++
 				paymentsReceived += len(e.Amounts)
-				if paymentsReceived == 50_000_000 {
-					timeFinished = time.Now()
-				}
+				timeFinished = time.Now()
 			case bufferedagent.SettlementSentEvent:
 				settlementsSent++
 				paymentsSentConfirmed += len(e.Amounts)
-				if paymentsSentConfirmed == 50_000_000 {
-					timeFinished = time.Now()
-					err := agent.DeclareClose()
-					if err != nil {
-						panic(err)
-					}
-				}
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "closing\n")
 			case agentpkg.ClosedEvent:
@@ -213,6 +194,36 @@ func run() error {
 		err = agent.ConnectTCP(connectAddr)
 		if err != nil {
 			return err
+		}
+	}
+
+	<-open
+
+	if connectAddr != "" {
+		time.Sleep(2 * time.Second)
+
+		timeStarted = time.Now()
+
+		for i := 0; i < paymentsToSend; i++ {
+			for {
+				_, err := agent.Payment(1)
+				if err != nil {
+					agent.Wait()
+					continue
+				}
+				break
+			}
+			paymentsSent++
+		}
+
+		fmt.Printf("waiting for all payments to finish\n")
+		agent.Wait()
+
+		timeFinished = time.Now()
+
+		err = agent.DeclareClose()
+		if err != nil {
+			panic(err)
 		}
 	}
 
