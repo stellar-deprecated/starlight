@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 
 	"github.com/google/uuid"
@@ -92,8 +93,11 @@ func (a *Agent) Payment(paymentAmount int64) (queueID string, err error) {
 	if a.maxQueueSize != 0 && len(a.queue) == a.maxQueueSize {
 		return "", ErrQueueFull
 	}
+	if paymentAmount > math.MaxInt64-a.queueTotalAmount {
+		return "", ErrQueueFull
+	}
 	a.queue = append(a.queue, paymentAmount)
-	a.queueTotalAmount += paymentAmount // TODO: Return queue full error on overflow.
+	a.queueTotalAmount += paymentAmount
 	queueID = a.queueID
 	select {
 	case a.queueReady <- struct{}{}:
