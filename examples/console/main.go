@@ -249,7 +249,6 @@ func run() error {
 		}
 		underlyingAgent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
 	}
-
 	bufferedConfig := bufferedagent.Config{
 		Agent:        underlyingAgent,
 		AgentEvents:  underlyingEvents,
