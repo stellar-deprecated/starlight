@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/agenthttp"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/bufferedagent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
@@ -109,7 +111,7 @@ func run() error {
 		return err
 	}
 
-	events := make(chan agentpkg.Event)
+	events := make(chan interface{})
 	go func() {
 		for {
 			switch e := (<-events).(type) {
@@ -119,8 +121,14 @@ func run() error {
 				fmt.Fprintf(os.Stderr, "agent connected\n")
 			case agentpkg.OpenedEvent:
 				fmt.Fprintf(os.Stderr, "agent channel opened\n")
+			case bufferedagent.SettlementReceivedEvent:
+				fmt.Fprintf(os.Stderr, "agent channel received settlement: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
+				closeAgreements = append(closeAgreements, e.CloseAgreement)
 			case agentpkg.PaymentReceivedEvent:
 				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
+				closeAgreements = append(closeAgreements, e.CloseAgreement)
+			case bufferedagent.SettlementSentEvent:
+				fmt.Fprintf(os.Stderr, "agent channel sent settlement and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
 			case agentpkg.PaymentSentEvent:
 				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
@@ -150,7 +158,8 @@ func run() error {
 	}
 
 	var escrowAccountKey *keypair.FromAddress
-	var agent *agentpkg.Agent
+	var underlyingAgent *agentpkg.Agent
+	underlyingEvents := make(chan agentpkg.Event)
 	if file == nil {
 		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 		if horizonclient.IsNotFoundError(err) {
@@ -184,8 +193,8 @@ func run() error {
 			Streamer:                   streamer,
 			EscrowAccountKey:           escrowAccountKey,
 			EscrowAccountSigner:        signerKey,
-			LogWriter:                  os.Stderr,
-			Events:                     events,
+			LogWriter:                  io.Discard,
+			Events:                     underlyingEvents,
 		}
 		if filename != "" {
 			config.Snapshotter = JSONFileSnapshotter{
@@ -196,7 +205,7 @@ func run() error {
 				EscrowAccountKey:           escrowAccountKey,
 			}
 		}
-		agent = agentpkg.NewAgent(config)
+		underlyingAgent = agentpkg.NewAgent(config)
 
 		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
 			Creator:        accountKey.FromAddress(),
@@ -235,14 +244,23 @@ func run() error {
 			},
 			EscrowAccountKey:    escrowAccountKey,
 			EscrowAccountSigner: signerKey,
-			LogWriter:           os.Stderr,
-			Events:              events,
+			LogWriter:           io.Discard,
+			Events:              underlyingEvents,
 		}
-		agent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
+		underlyingAgent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
 	}
 
+	bufferedConfig := bufferedagent.Config{
+		Agent:        underlyingAgent,
+		AgentEvents:  underlyingEvents,
+		MaxQueueSize: 1_000_000,
+		LogWriter:    io.Discard,
+		Events:       events,
+	}
+	agent := bufferedagent.NewAgent(bufferedConfig)
+
 	if httpPort != "" {
-		agentHandler := agenthttp.New(agent)
+		agentHandler := agenthttp.New(underlyingAgent)
 		fmt.Fprintf(os.Stdout, "agent http served on :%s\n", httpPort)
 		go func() {
 			_ = http.ListenAndServe(":"+httpPort, agentHandler)
@@ -289,7 +307,7 @@ func run() error {
 
 var errExit = errors.New("exit")
 
-func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
+func prompt(agent *bufferedagent.Agent, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -320,7 +338,28 @@ func prompt(agent *agentpkg.Agent, submitter agentpkg.Submitter, horizonClient h
 		if err != nil {
 			return err
 		}
-		return agent.Payment(amt)
+		_, err = agent.Payment(amt)
+		return err
+	case "payx":
+		fmt.Fprintf(os.Stdout, "sending %s payment %s times\n", params[1], params[2])
+		amt, err := amount.ParseInt64(params[1])
+		if err != nil {
+			return err
+		}
+		x, err := strconv.Atoi(params[2])
+		if err != nil {
+			return err
+		}
+		for i := 0; i < x; i++ {
+			for {
+				_, err = agent.Payment(amt)
+				if err != nil {
+					continue
+				}
+				break
+			}
+		}
+		return err
 	case "declareclose":
 		return agent.DeclareClose()
 	case "close":
