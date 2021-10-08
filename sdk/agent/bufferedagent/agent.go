@@ -221,6 +221,7 @@ func (a *Agent) flush() {
 	err := a.agent.PaymentWithMemo(queueTotalAmount, memo.String())
 	if err != nil {
 		a.events <- agent.ErrorEvent{Err: err}
+		a.sendingReady <- struct{}{}
 		return
 	}
 }
