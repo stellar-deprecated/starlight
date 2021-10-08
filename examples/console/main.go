@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/cors"
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/agenthttp"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/bufferedagent"
@@ -111,7 +112,7 @@ func run() error {
 		return err
 	}
 
-	stats := &stats{}
+	currentStats := &stats{}
 
 	events := make(chan interface{})
 	go func() {
@@ -126,15 +127,15 @@ func run() error {
 
 			case agentpkg.PaymentReceivedEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-				stats.AddPaymentsReceived(1)
+				currentStats.AddPaymentsReceived(1)
 			case agentpkg.PaymentSentEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-				stats.AddPaymentsSent(1)
+				currentStats.AddPaymentsSent(1)
 
 			case bufferedagent.BufferedPaymentsReceivedEvent:
-				stats.AddBufferedPaymentsReceived(len(e.Amounts))
+				currentStats.AddBufferedPaymentsReceived(len(e.Amounts))
 			case bufferedagent.BufferedPaymentsSentEvent:
-				stats.AddBufferedPaymentsSent(len(e.Amounts))
+				currentStats.AddBufferedPaymentsSent(len(e.Amounts))
 
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "channel closing\n")
@@ -264,8 +265,16 @@ func run() error {
 	if httpPort != "" {
 		agentHandler := agenthttp.New(underlyingAgent)
 		fmt.Fprintf(os.Stdout, "agent http served on :%s\n", httpPort)
+		mux := http.ServeMux{}
+		mux.Handle("/", agentHandler)
+		mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+			err := json.NewEncoder(w).Encode(currentStats)
+			if err != nil {
+				panic(err)
+			}
+		})
 		go func() {
-			_ = http.ListenAndServe(":"+httpPort, agentHandler)
+			_ = http.ListenAndServe(":"+httpPort, cors.Default().Handler(&mux))
 		}()
 	}
 
@@ -294,7 +303,7 @@ func run() error {
 		if len(params) == 0 {
 			continue
 		}
-		err = prompt(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
+		err = prompt(agent, currentStats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
 		if errors.Is(err, errExit) {
 			break
 		}
@@ -340,6 +349,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		if err != nil {
 			return err
 		}
+		stats.Reset()
 		_, err = agent.Payment(amt)
 		return err
 	case "payx":
@@ -358,7 +368,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		}
 		stats.Reset()
 		agent.SetMaxBufferSize(bufferSize)
-		timeStart := time.Now()
+		stats.MarkStart()
 		for i := 0; i < x; i++ {
 			for {
 				_, err = agent.Payment(amt)
@@ -372,7 +382,8 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		for stats.bufferedPaymentsSent != int64(x) {
 			// Wait for all the buffered payments to have been sent.
 		}
-		fmt.Println(stats.GetSummary(time.Since(timeStart)))
+		stats.MarkFinish()
+		fmt.Println(stats.Summary())
 		agent.SetMaxBufferSize(1)
 		return err
 	case "declareclose":
