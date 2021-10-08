@@ -111,32 +111,35 @@ func run() error {
 		return err
 	}
 
+	stats := &stats{}
+
 	events := make(chan interface{})
 	go func() {
 		for {
 			switch e := (<-events).(type) {
 			case agentpkg.ErrorEvent:
-				fmt.Fprintf(os.Stderr, "agent error: %v\n", e.Err)
+				fmt.Fprintf(os.Stderr, "error: %v\n", e.Err)
 			case agentpkg.ConnectedEvent:
-				fmt.Fprintf(os.Stderr, "agent connected\n")
+				fmt.Fprintf(os.Stderr, "connected\n")
 			case agentpkg.OpenedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel opened\n")
-			case bufferedagent.SettlementReceivedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel received settlement: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
-				closeAgreements = append(closeAgreements, e.CloseAgreement)
+				fmt.Fprintf(os.Stderr, "channel opened\n")
+
 			case agentpkg.PaymentReceivedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel received payment: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-			case bufferedagent.SettlementSentEvent:
-				fmt.Fprintf(os.Stderr, "agent channel sent settlement and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
-				closeAgreements = append(closeAgreements, e.CloseAgreement)
+				stats.AddPaymentsReceived(1)
 			case agentpkg.PaymentSentEvent:
-				fmt.Fprintf(os.Stderr, "agent channel sent payment and other participant confirmed: iteration=%d balance=%s\n", e.CloseAgreement.Envelope.Details.IterationNumber, amount.StringFromInt64(e.CloseAgreement.Envelope.Details.Balance))
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
+				stats.AddPaymentsSent(1)
+
+			case bufferedagent.BufferedPaymentsReceivedEvent:
+				stats.AddBufferedPaymentsReceived(len(e.Amounts))
+			case bufferedagent.BufferedPaymentsSentEvent:
+				stats.AddBufferedPaymentsSent(len(e.Amounts))
+
 			case agentpkg.ClosingEvent:
-				fmt.Fprintf(os.Stderr, "agent channel closing\n")
+				fmt.Fprintf(os.Stderr, "channel closing\n")
 			case agentpkg.ClosedEvent:
-				fmt.Fprintf(os.Stderr, "agent channel closed\n")
+				fmt.Fprintf(os.Stderr, "channel closed\n")
 			}
 		}
 	}()
@@ -250,11 +253,11 @@ func run() error {
 		underlyingAgent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
 	}
 	bufferedConfig := bufferedagent.Config{
-		Agent:        underlyingAgent,
-		AgentEvents:  underlyingEvents,
-		MaxQueueSize: 1,
-		LogWriter:    io.Discard,
-		Events:       events,
+		Agent:         underlyingAgent,
+		AgentEvents:   underlyingEvents,
+		MaxBufferSize: 1,
+		LogWriter:     io.Discard,
+		Events:        events,
 	}
 	agent := bufferedagent.NewAgent(bufferedConfig)
 
@@ -291,7 +294,7 @@ func run() error {
 		if len(params) == 0 {
 			continue
 		}
-		err = prompt(agent, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
+		err = prompt(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
 		if errors.Is(err, errExit) {
 			break
 		}
@@ -306,7 +309,7 @@ func run() error {
 
 var errExit = errors.New("exit")
 
-func prompt(agent *bufferedagent.Agent, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
+func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -349,11 +352,13 @@ func prompt(agent *bufferedagent.Agent, submitter agentpkg.Submitter, horizonCli
 		if err != nil {
 			return err
 		}
-		queueSize, err := strconv.Atoi(params[3])
+		bufferSize, err := strconv.Atoi(params[3])
 		if err != nil {
 			return err
 		}
-		agent.SetMaxQueueSize(queueSize)
+		stats.Reset()
+		agent.SetMaxBufferSize(bufferSize)
+		timeStart := time.Now()
 		for i := 0; i < x; i++ {
 			for {
 				_, err = agent.Payment(amt)
@@ -363,7 +368,12 @@ func prompt(agent *bufferedagent.Agent, submitter agentpkg.Submitter, horizonCli
 				break
 			}
 		}
-		agent.SetMaxQueueSize(1)
+		agent.Wait()
+		for stats.bufferedPaymentsSent != int64(x) {
+			// Wait for all the buffered payments to have been sent.
+		}
+		fmt.Println(stats.GetSummary(time.Since(timeStart)))
+		agent.SetMaxBufferSize(1)
 		return err
 	case "declareclose":
 		return agent.DeclareClose()

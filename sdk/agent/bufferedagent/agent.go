@@ -18,13 +18,13 @@ import (
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
 )
 
-var ErrQueueFull = errors.New("queue full")
+var ErrBufferFull = errors.New("buffer full")
 
 type Config struct {
 	Agent       *agent.Agent
 	AgentEvents <-chan interface{}
 
-	MaxQueueSize int
+	MaxBufferSize int
 
 	LogWriter io.Writer
 
@@ -36,17 +36,17 @@ func NewAgent(c Config) *Agent {
 		agent:       c.Agent,
 		agentEvents: c.AgentEvents,
 
-		maxQueueSize: c.MaxQueueSize,
+		maxbufferSize: c.MaxBufferSize,
 
 		logWriter: c.LogWriter,
 
-		queueReady:   make(chan struct{}, 1),
+		bufferReady:  make(chan struct{}, 1),
 		sendingReady: make(chan struct{}, 1),
 		idle:         make(chan struct{}),
 
 		events: c.Events,
 	}
-	agent.resetQueue()
+	agent.resetbuffer()
 	agent.sendingReady <- struct{}{}
 	go agent.flushLoop()
 	return agent
@@ -56,7 +56,7 @@ func NewAgent(c Config) *Agent {
 // buffers payments by collapsing them down into single payments while it waits
 // for a change to make a payment itself.
 type Agent struct {
-	maxQueueSize int
+	maxbufferSize int
 
 	logWriter io.Writer
 
@@ -71,24 +71,24 @@ type Agent struct {
 
 	agent *agent.Agent
 
-	queueID          string
-	queue            []int64
-	queueTotalAmount int64
-	queueReady       chan struct{}
-	sendingReady     chan struct{}
-	idle             chan struct{}
+	bufferID          string
+	buffer            []int64
+	bufferTotalAmount int64
+	bufferReady       chan struct{}
+	sendingReady      chan struct{}
+	idle              chan struct{}
 }
 
-func (a *Agent) MaxQueueSize() int {
+func (a *Agent) MaxBufferSize() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.maxQueueSize
+	return a.maxbufferSize
 }
 
-func (a *Agent) SetMaxQueueSize(maxQueueSize int) {
+func (a *Agent) SetMaxBufferSize(maxbufferSize int) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.maxQueueSize = maxQueueSize
+	a.maxbufferSize = maxbufferSize
 }
 
 func (a *Agent) Open() error {
@@ -97,28 +97,28 @@ func (a *Agent) Open() error {
 	return a.agent.Open()
 }
 
-// Payment queues a payment which will be paid in the next settlement. The
+// Payment buffers a payment which will be paid in the next settlement. The
 // identifier for the settlement is returned.
-func (a *Agent) Payment(paymentAmount int64) (queueID string, err error) {
+func (a *Agent) Payment(paymentAmount int64) (bufferID string, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.maxQueueSize != 0 && len(a.queue) == a.maxQueueSize {
-		return "", ErrQueueFull
+	if a.maxbufferSize != 0 && len(a.buffer) == a.maxbufferSize {
+		return "", ErrBufferFull
 	}
-	if paymentAmount > math.MaxInt64-a.queueTotalAmount {
-		return "", ErrQueueFull
+	if paymentAmount > math.MaxInt64-a.bufferTotalAmount {
+		return "", ErrBufferFull
 	}
-	a.queue = append(a.queue, paymentAmount)
-	a.queueTotalAmount += paymentAmount
-	queueID = a.queueID
+	a.buffer = append(a.buffer, paymentAmount)
+	a.bufferTotalAmount += paymentAmount
+	bufferID = a.bufferID
 	select {
-	case a.queueReady <- struct{}{}:
+	case a.bufferReady <- struct{}{}:
 	default:
 	}
 	return
 }
 
-// Wait waits for sending to complete and the queue to be empty.
+// Wait waits for sending to complete and the buffer to be empty.
 func (a *Agent) Wait() {
 	<-a.idle
 }
@@ -126,14 +126,14 @@ func (a *Agent) Wait() {
 func (a *Agent) DeclareClose() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	close(a.queueReady)
+	close(a.bufferReady)
 	return a.agent.DeclareClose()
 }
 
 func (a *Agent) Close() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	close(a.queueReady)
+	close(a.bufferReady)
 	return a.agent.Close()
 }
 
@@ -147,32 +147,34 @@ func (a *Agent) eventLoop() {
 		if !open {
 			break
 		}
+
+		// Pass all agent events up to the agent.
+		a.events <- ae
+
+		// Unpack payment received and sent events and create events for each
+		// sub-payment that was bufferd within them.
 		switch e := ae.(type) {
 		case agent.PaymentReceivedEvent:
-			memo, err := parseSettlementMemo(e.CloseAgreement.Envelope.Details.Memo)
+			memo, err := parseBufferedPaymentMemo(e.CloseAgreement.Envelope.Details.Memo)
 			if err != nil {
 				a.events <- agent.ErrorEvent{Err: err}
 				continue
 			}
-			a.events <- SettlementReceivedEvent{
-				CloseAgreement: e.CloseAgreement,
-				ID:             memo.ID,
-				Amounts:        memo.Amounts,
+			a.events <- BufferedPaymentsReceivedEvent{
+				BufferID: memo.ID,
+				Amounts:  memo.Amounts,
 			}
 		case agent.PaymentSentEvent:
 			a.sendingReady <- struct{}{}
-			memo, err := parseSettlementMemo(e.CloseAgreement.Envelope.Details.Memo)
+			memo, err := parseBufferedPaymentMemo(e.CloseAgreement.Envelope.Details.Memo)
 			if err != nil {
 				a.events <- agent.ErrorEvent{Err: err}
 				continue
 			}
-			a.events <- SettlementSentEvent{
-				CloseAgreement: e.CloseAgreement,
-				ID:             memo.ID,
-				Amounts:        memo.Amounts,
+			a.events <- BufferedPaymentsSentEvent{
+				BufferID: memo.ID,
+				Amounts:  memo.Amounts,
 			}
-		default:
-			a.events <- e
 		}
 	}
 }
@@ -186,14 +188,14 @@ func (a *Agent) flushLoop() {
 			return
 		}
 		select {
-		case _, open = <-a.queueReady:
+		case _, open = <-a.bufferReady:
 			if !open {
 				return
 			}
 			a.flush()
 		default:
 			select {
-			case _, open = <-a.queueReady:
+			case _, open = <-a.bufferReady:
 				if !open {
 					return
 				}
@@ -206,31 +208,31 @@ func (a *Agent) flushLoop() {
 }
 
 func (a *Agent) flush() {
-	var queueID string
-	var queue []int64
-	var queueTotalAmount int64
+	var bufferID string
+	var buffer []int64
+	var bufferTotalAmount int64
 
 	func() {
 		a.mu.Lock()
 		defer a.mu.Unlock()
 
-		queueID = a.queueID
-		queue = a.queue
-		queueTotalAmount = a.queueTotalAmount
-		a.resetQueue()
+		bufferID = a.bufferID
+		buffer = a.buffer
+		bufferTotalAmount = a.bufferTotalAmount
+		a.resetbuffer()
 	}()
 
-	if len(queue) == 0 {
+	if len(buffer) == 0 {
 		a.sendingReady <- struct{}{}
 		return
 	}
 
-	memo := settlementMemo{
-		ID:      queueID,
-		Amounts: queue,
+	memo := bufferedPaymentsMemo{
+		ID:      bufferID,
+		Amounts: buffer,
 	}
 
-	err := a.agent.PaymentWithMemo(queueTotalAmount, memo.String())
+	err := a.agent.PaymentWithMemo(bufferTotalAmount, memo.String())
 	if err != nil {
 		a.events <- agent.ErrorEvent{Err: err}
 		a.sendingReady <- struct{}{}
@@ -238,8 +240,8 @@ func (a *Agent) flush() {
 	}
 }
 
-func (a *Agent) resetQueue() {
-	a.queueID = uuid.NewString()
-	a.queue = nil
-	a.queueTotalAmount = 0
+func (a *Agent) resetbuffer() {
+	a.bufferID = uuid.NewString()
+	a.buffer = nil
+	a.bufferTotalAmount = 0
 }

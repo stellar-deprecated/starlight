@@ -1,22 +1,18 @@
 package bufferedagent
 
-import (
-	"github.com/stellar/experimental-payment-channels/sdk/state"
-)
+import "github.com/stellar/experimental-payment-channels/sdk/agent"
 
-// SettlementReceivedEvent occurs when a settlement is received and the balance
-// it agrees to would be the resulting disbursements from the channel if closed.
-type SettlementReceivedEvent struct {
-	CloseAgreement state.CloseAgreement
-	ID             string
-	Amounts        []int64
+// BufferedPaymentReceivedEvent occurs when a payment is received that was
+// buffered.
+type BufferedPaymentsReceivedEvent struct {
+	agent.PaymentReceivedEvent
+	BufferID string
+	Amounts  []int64
 }
 
-// SettlementSentEvent occurs when a settlement is sent and the other
-// participant has confirmed it such that the balance the agreement agrees to
-// would be the resulting disbursements from the channel if closed.
-type SettlementSentEvent struct {
-	CloseAgreement state.CloseAgreement
-	ID             string
-	Amounts        []int64
+// BufferedPaymentSentEvent occurs when a payment is sent that was buffered.
+type BufferedPaymentsSentEvent struct {
+	agent.PaymentSentEvent
+	BufferID string
+	Amounts  []int64
 }
