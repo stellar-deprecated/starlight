@@ -8,17 +8,23 @@
 package bufferedagent
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
 )
 
+var ErrQueueFull = errors.New("queue full")
+
 type Config struct {
 	Agent       *agent.Agent
 	AgentEvents <-chan agent.Event
+
+	MaxQueueSize int
 
 	LogWriter io.Writer
 
@@ -30,12 +36,19 @@ func NewAgent(c Config) *Agent {
 		agent:       c.Agent,
 		agentEvents: c.AgentEvents,
 
+		maxQueueSize: c.MaxQueueSize,
+
 		logWriter: c.LogWriter,
 
-		events: c.Events,
+		queueReady:   make(chan struct{}, 1),
+		sendingReady: make(chan struct{}, 1),
+		idle:         make(chan struct{}),
 
-		settlementID: uuid.NewString(),
+		events: c.Events,
 	}
+	agent.resetQueue()
+	agent.sendingReady <- struct{}{}
+	go agent.flushLoop()
 	return agent
 }
 
@@ -43,6 +56,8 @@ func NewAgent(c Config) *Agent {
 // buffers payments by collapsing them down into single payments while it waits
 // for a change to make a payment itself.
 type Agent struct {
+	maxQueueSize int
+
 	logWriter io.Writer
 
 	agentEvents <-chan agent.Event
@@ -54,20 +69,14 @@ type Agent struct {
 	// lock.
 	mu sync.Mutex
 
-	waitingConfirmation bool
-	settlementID        string
-	queue               []int64
-	agent               *agent.Agent
-}
+	agent *agent.Agent
 
-func (a *Agent) QueueLen() int {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	queueLen := len(a.queue)
-	if queueLen == 0 && a.waitingConfirmation {
-		return 1
-	}
-	return queueLen
+	queueID          string
+	queue            []int64
+	queueTotalAmount int64
+	queueReady       chan struct{}
+	sendingReady     chan struct{}
+	idle             chan struct{}
 }
 
 func (a *Agent) Open() error {
@@ -78,66 +87,55 @@ func (a *Agent) Open() error {
 
 // Payment queues a payment which will be paid in the next settlement. The
 // identifier for the settlement is returned.
-func (a *Agent) Payment(paymentAmount int64) (settlementID string) {
+func (a *Agent) Payment(paymentAmount int64) (queueID string, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.maxQueueSize != 0 && len(a.queue) == a.maxQueueSize {
+		return "", ErrQueueFull
+	}
+	if paymentAmount > math.MaxInt64-a.queueTotalAmount {
+		return "", ErrQueueFull
+	}
 	a.queue = append(a.queue, paymentAmount)
-	settlementID = a.settlementID
-	if !a.waitingConfirmation {
-		a.flushQueue()
+	a.queueTotalAmount += paymentAmount
+	queueID = a.queueID
+	select {
+	case a.queueReady <- struct{}{}:
+	default:
 	}
 	return
 }
 
-func (a *Agent) flushQueue() {
-	if a.waitingConfirmation {
-		return
-	}
-
-	if len(a.queue) == 0 {
-		return
-	}
-
-	memo := settlementMemo{
-		ID: a.settlementID,
-	}
-	a.settlementID = uuid.NewString()
-
-	sum := int64(0)
-	for _, paymentAmount := range a.queue {
-		// TODO: Handle overflow.
-		sum += paymentAmount
-		memo.Amounts = append(memo.Amounts, paymentAmount)
-	}
-
-	err := a.agent.PaymentWithMemo(sum, memo.String())
-	if err != nil {
-		a.events <- agent.ErrorEvent{Err: err}
-		return
-	}
-	a.waitingConfirmation = true
-	a.queue = a.queue[:0]
+// Wait waits for sending to complete and the queue to be empty.
+func (a *Agent) Wait() {
+	<-a.idle
 }
 
 func (a *Agent) DeclareClose() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	// TODO: Handle channel closing but payments still in queue.
+	close(a.queueReady)
 	return a.agent.DeclareClose()
 }
 
 func (a *Agent) Close() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	// TODO: Handle channel closing but payments still in queue.
+	close(a.queueReady)
 	return a.agent.Close()
 }
 
 func (a *Agent) eventLoop() {
 	defer close(a.events)
+	defer close(a.sendingReady)
+	defer fmt.Fprintf(a.logWriter, "event loop stopped\n")
 	fmt.Fprintf(a.logWriter, "event loop started\n")
 	for {
-		switch e := (<-a.agentEvents).(type) {
+		ae, open := <-a.agentEvents
+		if !open {
+			break
+		}
+		switch e := ae.(type) {
 		case agent.PaymentReceivedEvent:
 			memo, err := parseSettlementMemo(e.CloseAgreement.Envelope.Details.Memo)
 			if err != nil {
@@ -150,7 +148,7 @@ func (a *Agent) eventLoop() {
 				Amounts:        memo.Amounts,
 			}
 		case agent.PaymentSentEvent:
-			a.handlePaymentSent()
+			a.sendingReady <- struct{}{}
 			memo, err := parseSettlementMemo(e.CloseAgreement.Envelope.Details.Memo)
 			if err != nil {
 				a.events <- agent.ErrorEvent{Err: err}
@@ -162,16 +160,74 @@ func (a *Agent) eventLoop() {
 				Amounts:        memo.Amounts,
 			}
 		default:
-			// TODO: Handle channel closing but payments still in queue.
 			a.events <- e
 		}
-		// TODO: Handle exiting.
 	}
 }
 
-func (a *Agent) handlePaymentSent() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.waitingConfirmation = false
-	a.flushQueue()
+func (a *Agent) flushLoop() {
+	defer fmt.Fprintf(a.logWriter, "flush loop stopped\n")
+	fmt.Fprintf(a.logWriter, "flush loop started\n")
+	for {
+		_, open := <-a.sendingReady
+		if !open {
+			return
+		}
+		select {
+		case _, open = <-a.queueReady:
+			if !open {
+				return
+			}
+			a.flush()
+		default:
+			select {
+			case _, open = <-a.queueReady:
+				if !open {
+					return
+				}
+				a.flush()
+			case a.idle <- struct{}{}:
+				a.sendingReady <- struct{}{}
+			}
+		}
+	}
+}
+
+func (a *Agent) flush() {
+	var queueID string
+	var queue []int64
+	var queueTotalAmount int64
+
+	func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+
+		queueID = a.queueID
+		queue = a.queue
+		queueTotalAmount = a.queueTotalAmount
+		a.resetQueue()
+	}()
+
+	if len(queue) == 0 {
+		a.sendingReady <- struct{}{}
+		return
+	}
+
+	memo := settlementMemo{
+		ID:      queueID,
+		Amounts: queue,
+	}
+
+	err := a.agent.PaymentWithMemo(queueTotalAmount, memo.String())
+	if err != nil {
+		a.events <- agent.ErrorEvent{Err: err}
+		a.sendingReady <- struct{}{}
+		return
+	}
+}
+
+func (a *Agent) resetQueue() {
+	a.queueID = uuid.NewString()
+	a.queue = nil
+	a.queueTotalAmount = 0
 }
