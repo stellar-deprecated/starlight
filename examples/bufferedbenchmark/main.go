@@ -219,7 +219,7 @@ func run() error {
 
 		for i := 0; i < paymentsToSend; i++ {
 			for {
-				_, err := agent.Payment(100000)
+				_, err := agent.Payment(1)
 				if err != nil {
 					agent.Wait()
 					continue
