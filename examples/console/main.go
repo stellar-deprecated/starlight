@@ -159,7 +159,7 @@ func run() error {
 
 	var escrowAccountKey *keypair.FromAddress
 	var underlyingAgent *agentpkg.Agent
-	underlyingEvents := make(chan agentpkg.Event)
+	underlyingEvents := make(chan interface{})
 	if file == nil {
 		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 		if horizonclient.IsNotFoundError(err) {
