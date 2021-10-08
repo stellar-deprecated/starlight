@@ -167,10 +167,45 @@ type Agent struct {
 	streamerCancel           func()
 }
 
+// Config returns the configuration that the Agent was constructed with.
+func (a *Agent) Config() Config {
+	return Config{
+		ObservationPeriodTime:      a.observationPeriodTime,
+		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
+		MaxOpenExpiry:              a.maxOpenExpiry,
+		NetworkPassphrase:          a.networkPassphrase,
+
+		SequenceNumberCollector: a.sequenceNumberCollector,
+		BalanceCollector:        a.balanceCollector,
+		Submitter:               a.submitter,
+		Streamer:                a.streamer,
+		Snapshotter:             a.snapshotter,
+
+		EscrowAccountKey:    a.escrowAccountKey,
+		EscrowAccountSigner: a.escrowAccountSigner,
+
+		LogWriter: a.logWriter,
+
+		Events: a.events,
+	}
+}
+
+// Snapshot returns a snapshot of the agent and its channel.
+func (a *Agent) Snapshot() Snapshot {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.buildSnapshot()
+}
+
 func (a *Agent) snapshot() {
 	if a.snapshotter == nil {
 		return
 	}
+	snapshot := a.buildSnapshot()
+	a.snapshotter.Snapshot(a, snapshot)
+}
+
+func (a *Agent) buildSnapshot() Snapshot {
 	snapshot := Snapshot{
 		OtherEscrowAccount:       a.otherEscrowAccount,
 		OtherEscrowAccountSigner: a.otherEscrowAccountSigner,
@@ -185,7 +220,7 @@ func (a *Agent) snapshot() {
 			Snapshot:  a.channel.Snapshot(),
 		}
 	}
-	a.snapshotter.Snapshot(a, snapshot)
+	return snapshot
 }
 
 // hello sends a hello message to the remote participant over the connection.
