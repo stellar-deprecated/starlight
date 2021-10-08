@@ -1,0 +1,273 @@
+<link href="https://unpkg.com/c3@0.7.2/c3.min.css" rel="stylesheet">
+<script src="https://unpkg.com/d3@5.16.0/dist/d3.js" charset="utf-8"></script>
+<script src="https://unpkg.com/c3@0.7.2/c3.js"></script>
+
+<style>
+  * {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .container {
+    width: 100%;
+  }
+
+  summary {
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  #tx-count {
+    text-align: center;
+    font-weight: bold;
+  }
+</style>
+
+<div class="container">
+  <div id="chart-ledger"></div>
+  <details open>
+    <summary>Signers</summary>
+    <div id="chart-signers-1"></div>
+    <div id="chart-signers-2"></div>
+  </details>
+  <details open>
+    <summary>Transactions</summary>
+    <div id="tx-count"></div>
+    <div id="chart-tps"></div>
+  </details>
+  <details open>
+    <summary>Balances</summary>
+    <div id="chart-account-balances"></div>
+    <div id="chart-channel-balance"></div>
+  </details>
+</div>
+
+<script>
+  window.addEventListener('load', (event) => {
+    const horizonUrl = "http://192.168.64.2:8000";
+    const agentUrl = "http://localhost:9000";
+    chartLedger('#chart-ledger', horizonUrl);
+    chartAccountSigners('#chart-signers-1', agentUrl, horizonUrl, true);
+    chartAccountSigners('#chart-signers-2', agentUrl, horizonUrl, false);
+    chartAccountBalances('#chart-account-balances', agentUrl, horizonUrl);
+    chartChannelBalance('#chart-channel-balance', agentUrl);
+    txCount('#tx-count', agentUrl);
+  });
+</script>
+
+<script>
+  function chartLedger(bindto, horizonUrl) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: {
+        type: 'line',
+        x: 'x',
+        columns: [],
+      },
+      transition: { duration: 0 },
+      legend: {
+        show: false
+      },
+      size: { height: 140 }
+    });
+    const chartUpdate = async () => {
+      const resp = await fetch(`${horizonUrl}/ledgers?order=desc&limit=25`)
+      const json = await resp.json();
+      const records = json['_embedded']['records'];
+      chart.load({
+        x: 'x',
+        columns: [
+          ['x', ...records.map(r => r['sequence'])],
+          ['success', ...records.map(r => r['successful_transaction_count'])],
+          ['failed', ...records.map(r => r['failed_transaction_count'])],
+        ],
+      });
+    };
+    setInterval(chartUpdate, 1000);
+  }
+
+  function chartAccountSigners(bindto, agentUrl, horizonUrl, local) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: { type: 'donut', labels: true, columns: [], order: null },
+      donut: {
+        title: `Signers ${local ? 'Local' : 'Remote'}`,
+      },
+      legend: {
+        show: false
+      }
+    });
+    var lastUpdate = null;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const localSigner = r['Config']['EscrowAccountSigner'];
+      const remoteSigner = r['Snapshot']['OtherEscrowAccountSigner'];
+      var escrow;
+      var signer;
+      if (local) {
+        escrow = r['Config']['EscrowAccountKey'];
+        signer = localSigner;
+      } else {
+        escrow = r['Snapshot']['OtherEscrowAccount'];
+        signer = remoteSigner;
+      }
+      const h = await (await fetch(`${horizonUrl}/accounts/${escrow}`)).json();
+      if (h['last_modified_time'] == lastUpdate) {
+        return;
+      }
+      lastUpdate = h['last_modified_time'];
+      chart.load({
+        columns: h['signers'].filter(s => s['weight'] > 0).map(s => [s['key'].slice(0, 4), s['weight']]),
+        colors: {
+          [localSigner.slice(0,4)]: '#3976af',
+          [remoteSigner.slice(0,4)]: '#f08536',
+        },
+        unload: true,
+        order: null,
+      });
+    };
+    setInterval(chartUpdate, 1000);
+  }
+
+  function chartAccountBalances(bindto, agentUrl, horizonUrl) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: { type: 'donut', labels: true, columns: [], order: null },
+      donut: {
+        title: `Balances on Network`,
+        label: {
+          format: function (value, ratio, id) {
+            return d3.format('$')(value);
+          }
+        },
+      },
+      legend: {
+        show: false
+      }
+    });
+    var lastUpdate = null;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const hashCode = `${r['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}`
+      if (hashCode == lastUpdate) {
+        return;
+      }
+      lastUpdate = hashCode;
+      const localEscrow = r['Config']['EscrowAccountKey'];
+      const remoteEscrow = r['Snapshot']['OtherEscrowAccount'];
+      const localHorizon = await (await fetch(`${horizonUrl}/accounts/${localEscrow}`)).json();
+      const remoteHorizon = await (await fetch(`${horizonUrl}/accounts/${remoteEscrow}`)).json();
+      chart.load({
+        columns: [
+          [localEscrow.slice(0, 4), Number(localHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
+          [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
+        ],
+        colors: {
+          [localEscrow.slice(0, 4)]: '#3976af',
+          [remoteEscrow.slice(0, 4)]: '#f08536',
+        },
+        order: null,
+        unload: true,
+      });
+    };
+    setInterval(chartUpdate, 100);
+  }
+
+  function chartChannelBalance(bindto, agentUrl) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: { type: 'donut', labels: true, columns: [], order: null, },
+      donut: {
+        title: `Balances in Channel`,
+        label: {
+          format: function (value, ratio, id) {
+            return d3.format('$')(value / 10000000);
+          }
+        },
+      },
+      legend: {
+        show: false
+      }
+    });
+    var lastUpdate = null;
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const hashCode = `${r['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber']}`
+      if (hashCode == lastUpdate) {
+        return;
+      }
+      lastUpdate = hashCode;
+      if (r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['ObservationPeriodTime'] == 0) {
+        chart.unload();
+        return
+      }
+      const balance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
+      const left = r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
+      const right = r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
+      const leftAcc = r['Config']['EscrowAccountKey'];
+      const rightAcc = r['Snapshot']['OtherEscrowAccount'];
+      if (balance > 0) {
+        chart.load({
+          columns: [
+            [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            ['balance', Math.abs(balance)],
+            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
+          ],
+          colors: {
+            [leftAcc.slice(0, 4)]: '#3976af',
+            [rightAcc.slice(0, 4)]: '#f08536',
+            'balance': '#f4a267',
+          },
+          order: null,
+          unload: true,
+        });
+      } else if (balance < 0) {
+        chart.load({
+          columns: [
+            [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            ['balance', Math.abs(balance)],
+            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
+          ],
+          colors: {
+            [leftAcc.slice(0, 4)]: '#3976af',
+            [rightAcc.slice(0, 4)]: '#f08536',
+            'balance': '#84afd7',
+          },
+          order: null,
+          unload: true,
+        });
+      } else {
+        chart.load({
+          columns: [
+            [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
+          ],
+          colors: {
+            [leftAcc.slice(0, 4)]: '#3976af',
+            [rightAcc.slice(0, 4)]: '#f08536',
+          },
+          order: null,
+          unload: true,
+        });
+      }
+    };
+    setInterval(chartUpdate, 100);
+  }
+
+  function txCount(bindto, agentUrl) {
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}`)
+      const json = await resp.json();
+      const r = json;
+      const e = document.querySelector(bindto);
+      const count = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber'] - 1;
+      e.innerText = `Count: ${count}`;
+    };
+    setInterval(chartUpdate, 1000);
+  }
+</script>
