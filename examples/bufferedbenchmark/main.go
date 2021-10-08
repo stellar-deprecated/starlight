@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"runtime/pprof"
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/agenthttp"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/bufferedagent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
@@ -38,6 +41,7 @@ func run() error {
 	cpuProfileFile := ""
 	paymentsToSend := 50_000_000
 	maxQueueSize := 20_000_000
+	httpPort := ""
 
 	fs := flag.NewFlagSet("benchmark", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -48,6 +52,7 @@ func run() error {
 	fs.StringVar(&cpuProfileFile, "cpuprofile", cpuProfileFile, "Write cpu profile to `file`")
 	fs.IntVar(&paymentsToSend, "count", paymentsToSend, "Number of payments to send")
 	fs.IntVar(&maxQueueSize, "max-queue", maxQueueSize, "Max queue size")
+	fs.StringVar(&httpPort, "port", httpPort, "Port to serve API on")
 
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
@@ -140,6 +145,14 @@ func run() error {
 	}
 	agent := bufferedagent.NewAgent(bufferedConfig)
 
+	if httpPort != "" {
+		agentHandler := agenthttp.New(underlyingAgent)
+		fmt.Fprintf(os.Stdout, "agent http served on :%s\n", httpPort)
+		go func() {
+			_ = http.ListenAndServe(":"+httpPort, agentHandler)
+		}()
+	}
+
 	var timeStarted, timeFinished time.Time
 	paymentsSent := 0
 	paymentsSentConfirmed := 0
@@ -206,7 +219,7 @@ func run() error {
 
 		for i := 0; i < paymentsToSend; i++ {
 			for {
-				_, err := agent.Payment(1)
+				_, err := agent.Payment(100000)
 				if err != nil {
 					agent.Wait()
 					continue
@@ -237,6 +250,9 @@ func run() error {
 	fmt.Fprintf(os.Stderr, "settlements sent: %d\n", settlementsSent)
 	fmt.Fprintf(os.Stderr, "settlements received: %d\n", settlementsReceived)
 	fmt.Fprintf(os.Stderr, "settlements tps: %.3f\n", float64(settlementsSent+settlementsReceived)/timeSpent.Seconds())
+
+	fmt.Print("Press 'Enter' to exit...")
+	_, _ = bufio.NewReader(os.Stdin).ReadBytes('\n')
 
 	return nil
 }

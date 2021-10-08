@@ -93,7 +93,7 @@ func (a *Agent) Payment(paymentAmount int64) (queueID string, err error) {
 	if a.maxQueueSize != 0 && len(a.queue) == a.maxQueueSize {
 		return "", ErrQueueFull
 	}
-	if paymentAmount > math.MaxInt64-a.queueTotalAmount {
+	if paymentAmount > math.MaxInt64 - a.queueTotalAmount {
 		return "", ErrQueueFull
 	}
 	a.queue = append(a.queue, paymentAmount)
