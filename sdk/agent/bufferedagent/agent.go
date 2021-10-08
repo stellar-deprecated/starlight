@@ -22,7 +22,7 @@ var ErrQueueFull = errors.New("queue full")
 
 type Config struct {
 	Agent       *agent.Agent
-	AgentEvents <-chan agent.Event
+	AgentEvents <-chan interface{}
 
 	MaxQueueSize int
 
@@ -60,7 +60,7 @@ type Agent struct {
 
 	logWriter io.Writer
 
-	agentEvents <-chan agent.Event
+	agentEvents <-chan interface{}
 	events      chan<- interface{}
 
 	// mu is a lock for the mutable fields of this type. It should be locked

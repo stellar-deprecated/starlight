@@ -78,7 +78,7 @@ type Config struct {
 
 	LogWriter io.Writer
 
-	Events chan<- Event
+	Events chan<- interface{}
 }
 
 func NewAgent(c Config) *Agent {
@@ -150,7 +150,7 @@ type Agent struct {
 
 	logWriter io.Writer
 
-	events chan<- Event
+	events chan<- interface{}
 
 	// mu is a lock for the mutable fields of this type. It should be locked
 	// when reading or writing any of the mutable fields. The mutable fields are

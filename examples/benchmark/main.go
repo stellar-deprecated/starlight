@@ -109,7 +109,7 @@ func run() error {
 	// Wait for state of escrow accounts to be ingested by Horizon.
 	time.Sleep(2 * time.Second)
 
-	events := make(chan agentpkg.Event)
+	events := make(chan interface{})
 	config := agentpkg.Config{
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,

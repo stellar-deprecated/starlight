@@ -92,7 +92,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		transactionsStream chan StreamedTransaction
 	}{}
 	localVars.transactionsStream = make(chan StreamedTransaction)
-	localEvents := make(chan Event, 1)
+	localEvents := make(chan interface{}, 1)
 	localConfig := Config{
 		ObservationPeriodTime:      20 * time.Second,
 		ObservationPeriodLedgerGap: 1,
@@ -133,7 +133,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		transactionsStream chan StreamedTransaction
 	}{}
 	remoteVars.transactionsStream = make(chan StreamedTransaction)
-	remoteEvents := make(chan Event, 1)
+	remoteEvents := make(chan interface{}, 1)
 	remoteConfig := Config{
 		ObservationPeriodTime:      20 * time.Second,
 		ObservationPeriodLedgerGap: 1,
@@ -510,7 +510,7 @@ func TestAgent_concurrency(t *testing.T) {
 	localConnected := make(chan struct{})
 	localOpened := make(chan struct{})
 	localPaymentConfirmedOrError := make(chan struct{})
-	localEvents := make(chan Event, 2)
+	localEvents := make(chan interface{}, 2)
 	localAgent.events = localEvents
 	go func() {
 		for {
@@ -529,7 +529,7 @@ func TestAgent_concurrency(t *testing.T) {
 	remoteConnected := make(chan struct{})
 	remoteOpened := make(chan struct{})
 	remotePaymentConfirmedOrError := make(chan struct{})
-	remoteEvents := make(chan Event, 2)
+	remoteEvents := make(chan interface{}, 2)
 	remoteAgent.events = remoteEvents
 	go func() {
 		for {
