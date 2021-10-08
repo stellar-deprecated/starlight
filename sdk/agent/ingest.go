@@ -34,7 +34,7 @@ func (a *Agent) ingest() error {
 	}
 	fmt.Fprintf(a.logWriter, "state before: %v\n", stateBefore)
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	err = a.channel.IngestTx(tx.TransactionOrderID, tx.TransactionXDR, tx.ResultXDR, tx.ResultMetaXDR)
 	if err != nil {
