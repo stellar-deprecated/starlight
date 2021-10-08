@@ -167,10 +167,45 @@ type Agent struct {
 	streamerCancel           func()
 }
 
-func (a *Agent) snapshot() {
+// Config returns the configuration that the Agent was constructed with.
+func (a *Agent) Config() Config {
+	return Config{
+		ObservationPeriodTime:      a.observationPeriodTime,
+		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
+		MaxOpenExpiry:              a.maxOpenExpiry,
+		NetworkPassphrase:          a.networkPassphrase,
+
+		SequenceNumberCollector: a.sequenceNumberCollector,
+		BalanceCollector:        a.balanceCollector,
+		Submitter:               a.submitter,
+		Streamer:                a.streamer,
+		Snapshotter:             a.snapshotter,
+
+		EscrowAccountKey:    a.escrowAccountKey,
+		EscrowAccountSigner: a.escrowAccountSigner,
+
+		LogWriter: a.logWriter,
+
+		Events: a.events,
+	}
+}
+
+// Snapshot returns a snapshot of the agent and its channel.
+func (a *Agent) Snapshot() Snapshot {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.buildSnapshot()
+}
+
+func (a *Agent) takeSnapshot() {
 	if a.snapshotter == nil {
 		return
 	}
+	snapshot := a.buildSnapshot()
+	a.snapshotter.Snapshot(a, snapshot)
+}
+
+func (a *Agent) buildSnapshot() Snapshot {
 	snapshot := Snapshot{
 		OtherEscrowAccount:       a.otherEscrowAccount,
 		OtherEscrowAccountSigner: a.otherEscrowAccountSigner,
@@ -185,7 +220,7 @@ func (a *Agent) snapshot() {
 			Snapshot:  a.channel.Snapshot(),
 		}
 	}
-	a.snapshotter.Snapshot(a, snapshot)
+	return snapshot
 }
 
 // hello sends a hello message to the remote participant over the connection.
@@ -244,7 +279,7 @@ func (a *Agent) Open() error {
 		return fmt.Errorf("getting sequence number of escrow account: %w", err)
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	a.initChannel(true, nil)
 
@@ -293,7 +328,7 @@ func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	ca, err := a.channel.ProposePaymentWithMemo(paymentAmount, memo)
 	if errors.Is(err, state.ErrUnderfunded) {
@@ -353,7 +388,7 @@ func (a *Agent) DeclareClose() error {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	// Attempt revising the close agreement to close early.
 	fmt.Fprintln(a.logWriter, "proposing a revised close for immediate submission")
@@ -466,7 +501,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	h := m.Hello
 
@@ -494,7 +529,7 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
@@ -526,7 +561,7 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	openIn := *m.OpenResponse
 	_, err := a.channel.ConfirmOpen(openIn)
@@ -553,7 +588,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
@@ -589,7 +624,7 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	paymentIn := *m.PaymentResponse
 	payment, err := a.channel.ConfirmPayment(paymentIn)
@@ -611,7 +646,7 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	// Agree to the close and send it back to requesting participant.
 	closeIn := *m.CloseRequest
@@ -654,7 +689,7 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.snapshot()
+	defer a.takeSnapshot()
 
 	// Store updated agreement from other participant.
 	closeIn := *m.CloseResponse

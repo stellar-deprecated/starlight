@@ -7,12 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/agenthttp"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
@@ -44,14 +46,20 @@ func run() error {
 	accountKeyStr := "G..."
 	signerKeyStr := "S..."
 	filename := ""
+	httpPort := ""
+	listenPort := ""
+	connectAddr := ""
 
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	fs.BoolVar(&showHelp, "h", showHelp, "Show this help")
 	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
+	fs.StringVar(&httpPort, "port", httpPort, "Port to serve API on")
 	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
 	fs.StringVar(&signerKeyStr, "signer", signerKeyStr, "Account S signer")
 	fs.StringVar(&filename, "f", filename, "File to write and load channel state")
+	fs.StringVar(&listenPort, "listen-port", listenPort, "Listen on port")
+	fs.StringVar(&connectAddr, "connect-addr", connectAddr, "Address to connect to")
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return err
@@ -231,6 +239,27 @@ func run() error {
 			Events:              events,
 		}
 		agent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
+	}
+
+	if httpPort != "" {
+		agentHandler := agenthttp.New(agent)
+		fmt.Fprintf(os.Stdout, "agent http served on :%s\n", httpPort)
+		go func() {
+			_ = http.ListenAndServe(":"+httpPort, agentHandler)
+		}()
+	}
+
+	if listenPort != "" {
+		err := agent.ServeTCP(":" + listenPort)
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "error: %#v\n", err)
+		}
+	}
+	if connectAddr != "" {
+		err := agent.ConnectTCP(connectAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "error: %#v\n", err)
+		}
 	}
 
 	br := bufio.NewReader(os.Stdin)
