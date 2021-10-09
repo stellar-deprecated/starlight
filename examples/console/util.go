@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
@@ -36,4 +38,15 @@ func createAccountWithRoot(client horizonclient.ClientInterface, networkPassphra
 		return err
 	}
 	return nil
+}
+
+func retry(maxAttempts int, f func() error) (err error) {
+	for i := 0; i < maxAttempts; i++ {
+		err = f()
+		if err == nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return err
 }
