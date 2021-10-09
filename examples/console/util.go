@@ -20,7 +20,7 @@ func createAccountWithRoot(client horizonclient.ClientInterface, networkPassphra
 		Operations: []txnbuild.Operation{
 			&txnbuild.CreateAccount{
 				Destination: accountKey.Address(),
-				Amount:      "10000",
+				Amount:      "10000000",
 			},
 		},
 	})
