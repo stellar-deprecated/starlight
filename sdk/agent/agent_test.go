@@ -330,6 +330,65 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		assert.Equal(t, int64(30_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
 	}
 
+	// Make a payment with a memo.
+	err = remoteAgent.PaymentWithMemo(20_0000000, "memo")
+	require.NoError(t, err)
+	err = localAgent.receive()
+	require.NoError(t, err)
+	err = remoteAgent.receive()
+	require.NoError(t, err)
+
+	// Expect payment events.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
+		require.True(t, ok)
+		assert.Equal(t, "memo", localPaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, int64(4), localPaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(10_0000000), localPaymentEvent.CloseAgreement.Envelope.Details.Balance)
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
+		require.True(t, ok)
+		assert.Equal(t, "memo", remotePaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, int64(4), remotePaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(10_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
+	}
+
+	// Make a payment with a memo that is underfunded, but will become funded
+	// when updating balance.
+	localAgent.balanceCollector = balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		return 300_0000000, nil
+	})
+	remoteAgent.balanceCollector = balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
+		return 300_0000000, nil
+	})
+	err = remoteAgent.PaymentWithMemo(200_0000000, "memo")
+	require.NoError(t, err)
+	err = localAgent.receive()
+	require.NoError(t, err)
+	err = remoteAgent.receive()
+	require.NoError(t, err)
+
+	// Expect payment events.
+	{
+		localEvent, ok := <-localEvents
+		require.True(t, ok)
+		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
+		require.True(t, ok)
+		assert.Equal(t, "memo", localPaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, int64(5), localPaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(-190_0000000), localPaymentEvent.CloseAgreement.Envelope.Details.Balance)
+		remoteEvent, ok := <-remoteEvents
+		require.True(t, ok)
+		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
+		require.True(t, ok)
+		assert.Equal(t, "memo", remotePaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, int64(5), remotePaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
+		assert.Equal(t, int64(-190_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
+	}
+
 	// Expect no txs to have been submitted for payments.
 	assert.Nil(t, localVars.submittedTx)
 	assert.Nil(t, remoteVars.submittedTx)
