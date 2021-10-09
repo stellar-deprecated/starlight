@@ -31,7 +31,7 @@ import (
 const (
 	observationPeriodTime      = 10 * time.Second
 	observationPeriodLedgerGap = 1
-	maxOpenExpiry              = 5 * time.Minute
+	maxOpenExpiry              = 5 * time.Hour
 )
 
 func main() {
