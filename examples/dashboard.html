@@ -291,7 +291,7 @@
       const count = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber'] - 1;
       e.innerText = `Agreements Signed: ${count}`;
     };
-    setInterval(chartUpdate, 1000);
+    setInterval(chartUpdate, 100);
   }
 
   function stats(bindto, agentUrl) {

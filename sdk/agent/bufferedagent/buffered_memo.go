@@ -9,8 +9,8 @@ import (
 )
 
 type bufferedPaymentsMemo struct {
-	ID      string
-	Amounts []int64
+	ID       string
+	Payments []BufferedPayment
 }
 
 func (m bufferedPaymentsMemo) String() string {

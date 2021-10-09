@@ -133,9 +133,9 @@ func run() error {
 				stats.AddPaymentsSent(1)
 
 			case bufferedagent.BufferedPaymentsReceivedEvent:
-				stats.AddBufferedPaymentsReceived(len(e.Amounts))
+				stats.AddBufferedPaymentsReceived(len(e.Payments))
 			case bufferedagent.BufferedPaymentsSentEvent:
-				stats.AddBufferedPaymentsSent(len(e.Amounts))
+				stats.AddBufferedPaymentsSent(len(e.Payments))
 
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "channel closing\n")
@@ -370,8 +370,9 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		agent.SetMaxBufferSize(bufferSize)
 		stats.MarkStart()
 		for i := 0; i < x; i++ {
+			memo := "tx-" + strconv.Itoa(i)
 			for {
-				_, err = agent.Payment(amt)
+				_, err = agent.PaymentWithMemo(amt, memo)
 				if err != nil {
 					continue
 				}
