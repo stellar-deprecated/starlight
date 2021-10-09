@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ func run() error {
 	httpPort := ""
 	listenPort := ""
 	connectAddr := ""
+	cpuProfileFile := ""
 
 	fs := flag.NewFlagSet("console", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
@@ -63,6 +65,7 @@ func run() error {
 	fs.StringVar(&filename, "f", filename, "File to write and load channel state")
 	fs.StringVar(&listenPort, "listen-port", listenPort, "Listen on port")
 	fs.StringVar(&connectAddr, "connect-addr", connectAddr, "Address to connect to")
+	fs.StringVar(&cpuProfileFile, "cpuprofile", cpuProfileFile, "Write cpu profile to `file`")
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		return err
@@ -76,6 +79,19 @@ func run() error {
 	}
 	if signerKeyStr == "" || accountKeyStr == "S..." {
 		return fmt.Errorf("-signer required")
+	}
+
+	if cpuProfileFile != "" {
+		f, err := os.Create(cpuProfileFile)
+		if err != nil {
+			return fmt.Errorf("error creating cpu profile file: %w", err)
+		}
+		defer f.Close()
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			return fmt.Errorf("error starting cpu profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	var file *File
