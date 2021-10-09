@@ -112,7 +112,7 @@ func run() error {
 		return err
 	}
 
-	currentStats := &stats{}
+	stats := &stats{}
 
 	events := make(chan interface{})
 	go func() {
@@ -127,15 +127,15 @@ func run() error {
 
 			case agentpkg.PaymentReceivedEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-				currentStats.AddPaymentsReceived(1)
+				stats.AddPaymentsReceived(1)
 			case agentpkg.PaymentSentEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-				currentStats.AddPaymentsSent(1)
+				stats.AddPaymentsSent(1)
 
 			case bufferedagent.BufferedPaymentsReceivedEvent:
-				currentStats.AddBufferedPaymentsReceived(len(e.Amounts))
+				stats.AddBufferedPaymentsReceived(len(e.Amounts))
 			case bufferedagent.BufferedPaymentsSentEvent:
-				currentStats.AddBufferedPaymentsSent(len(e.Amounts))
+				stats.AddBufferedPaymentsSent(len(e.Amounts))
 
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "channel closing\n")
@@ -268,7 +268,7 @@ func run() error {
 		mux := http.ServeMux{}
 		mux.Handle("/", agentHandler)
 		mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-			err := json.NewEncoder(w).Encode(currentStats)
+			err := json.NewEncoder(w).Encode(stats)
 			if err != nil {
 				panic(err)
 			}
@@ -303,7 +303,7 @@ func run() error {
 		if len(params) == 0 {
 			continue
 		}
-		err = prompt(agent, currentStats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
+		err = prompt(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey, params)
 		if errors.Is(err, errExit) {
 			break
 		}
