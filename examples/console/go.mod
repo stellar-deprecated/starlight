@@ -7,6 +7,7 @@ replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20
 replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
 
 require (
+	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/stellar/experimental-payment-channels/sdk v0.0.0-00010101000000-000000000000
 	github.com/stellar/go v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v2 v2.3.0 // indirect
@@ -22,7 +23,6 @@ require (
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00 // indirect
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2 // indirect
 	github.com/sirupsen/logrus v1.4.1 // indirect
