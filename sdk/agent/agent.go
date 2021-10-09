@@ -287,7 +287,7 @@ func (a *Agent) Open() error {
 		ObservationPeriodTime:      a.observationPeriodTime,
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
 		Asset:                      "native",
-		ExpiresAt:                  time.Now().Add(a.maxOpenExpiry),
+		ExpiresAt:                  time.Now().Add(a.maxOpenExpiry / 2),
 		StartingSequence:           seqNum + 1,
 	})
 	if err != nil {
