@@ -16,7 +16,8 @@
     padding: 20px 0;
   }
 
-  #tx-count, #stats-title {
+  #tx-count,
+  #stats-title {
     text-align: center;
   }
 </style>
@@ -198,6 +199,10 @@
             return d3.format('$,')(value / 10000000);
           }
         },
+        expand: false,
+      },
+      interaction: {
+        enabled: false
       },
       tooltip: {
         format: {
@@ -206,6 +211,7 @@
           }
         },
       },
+      transition: { duration: null },
       legend: {
         show: false
       }
@@ -242,7 +248,6 @@
             'Net': color1Light,
           },
           order: null,
-          unload: true,
         });
       } else if (balance < 0) {
         chart.load({
@@ -257,7 +262,6 @@
             'Net': color2Light,
           },
           order: null,
-          unload: true,
         });
       } else {
         chart.load({
@@ -272,7 +276,6 @@
             'Net': '#000',
           },
           order: null,
-          unload: true,
         });
       }
     };
