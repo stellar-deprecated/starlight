@@ -16,7 +16,7 @@ type bufferedPaymentsMemo struct {
 func (m bufferedPaymentsMemo) String() string {
 	sb := strings.Builder{}
 	b64 := base64.NewEncoder(base64.StdEncoding, &sb)
-	z, err := gzip.NewWriterLevel(b64, gzip.BestCompression)
+	z, err := gzip.NewWriterLevel(b64, gzip.BestSpeed)
 	if err != nil {
 		panic(fmt.Errorf("creating gzip writer: %w", err))
 	}
