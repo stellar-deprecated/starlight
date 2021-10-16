@@ -47,7 +47,6 @@ var closeAgreements = []state.CloseAgreement{}
 func run() error {
 	showHelp := false
 	horizonURL := "http://localhost:8000"
-	accountKeyStr := "G..."
 	signerKeyStr := "S..."
 	filename := ""
 	httpPort := ""
@@ -60,7 +59,6 @@ func run() error {
 	fs.BoolVar(&showHelp, "h", showHelp, "Show this help")
 	fs.StringVar(&horizonURL, "horizon", horizonURL, "Horizon URL")
 	fs.StringVar(&httpPort, "port", httpPort, "Port to serve API on")
-	fs.StringVar(&accountKeyStr, "account", accountKeyStr, "Account G address")
 	fs.StringVar(&signerKeyStr, "signer", signerKeyStr, "Account S signer")
 	fs.StringVar(&filename, "f", filename, "File to write and load channel state")
 	fs.StringVar(&listenPort, "listen-port", listenPort, "Listen on port")
@@ -74,11 +72,18 @@ func run() error {
 		fs.Usage()
 		return nil
 	}
-	if accountKeyStr == "" || accountKeyStr == "G..." {
-		return fmt.Errorf("-account required")
-	}
-	if signerKeyStr == "" || accountKeyStr == "S..." {
-		return fmt.Errorf("-signer required")
+
+	if cpuProfileFile != "" {
+		f, err := os.Create(cpuProfileFile)
+		if err != nil {
+			return fmt.Errorf("error creating cpu profile file: %w", err)
+		}
+		defer f.Close()
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			return fmt.Errorf("error starting cpu profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	if cpuProfileFile != "" {
@@ -113,14 +118,16 @@ func run() error {
 		}
 	}
 
-	accountKey, err := keypair.ParseAddress(accountKeyStr)
-	if err != nil {
-		return fmt.Errorf("cannot parse -account: %w", err)
+	var signerKey *keypair.Full
+	if signerKeyStr != "" && signerKeyStr != "S..." {
+		signerKey, err = keypair.ParseFull(signerKeyStr)
+		if err != nil {
+			return fmt.Errorf("cannot parse -signer: %w", err)
+		}
+	} else {
+		signerKey = keypair.MustRandom()
 	}
-	signerKey, err := keypair.ParseFull(signerKeyStr)
-	if err != nil {
-		return fmt.Errorf("cannot parse -signer: %w", err)
-	}
+	accountKey := signerKey.FromAddress()
 
 	horizonClient := &horizonclient.Client{HorizonURL: horizonURL}
 	networkDetails, err := horizonClient.Root()
