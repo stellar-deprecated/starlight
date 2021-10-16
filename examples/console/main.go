@@ -86,6 +86,19 @@ func run() error {
 		defer pprof.StopCPUProfile()
 	}
 
+	if cpuProfileFile != "" {
+		f, err := os.Create(cpuProfileFile)
+		if err != nil {
+			return fmt.Errorf("error creating cpu profile file: %w", err)
+		}
+		defer f.Close()
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			return fmt.Errorf("error starting cpu profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	var file *File
 	if filename != "" {
 		fmt.Printf("loading file: %s\n", filename)
