@@ -72,7 +72,7 @@ type Agent struct {
 	agent *agent.Agent
 
 	bufferID          string
-	buffer            []int64
+	buffer            []BufferedPayment
 	bufferTotalAmount int64
 	bufferReady       chan struct{}
 	sendingReady      chan struct{}
@@ -97,9 +97,9 @@ func (a *Agent) Open() error {
 	return a.agent.Open()
 }
 
-// Payment buffers a payment which will be paid in the next settlement. The
-// identifier for the settlement is returned.
-func (a *Agent) Payment(paymentAmount int64) (bufferID string, err error) {
+// PaymentWithMemo buffers a payment which will be paid in the next settlement.
+// The identifier for the settlement is returned.
+func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) (bufferID string, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.maxbufferSize != 0 && len(a.buffer) == a.maxbufferSize {
@@ -108,7 +108,7 @@ func (a *Agent) Payment(paymentAmount int64) (bufferID string, err error) {
 	if paymentAmount > math.MaxInt64-a.bufferTotalAmount {
 		return "", ErrBufferFull
 	}
-	a.buffer = append(a.buffer, paymentAmount)
+	a.buffer = append(a.buffer, BufferedPayment{Amount: paymentAmount, Memo: memo})
 	a.bufferTotalAmount += paymentAmount
 	bufferID = a.bufferID
 	select {
@@ -116,6 +116,11 @@ func (a *Agent) Payment(paymentAmount int64) (bufferID string, err error) {
 	default:
 	}
 	return
+}
+
+// Payment is equivalent to calling PaymentWithMemo with an empty memo.
+func (a *Agent) Payment(paymentAmount int64) (bufferID string, err error) {
+	return a.PaymentWithMemo(paymentAmount, "")
 }
 
 // Wait waits for sending to complete and the buffer to be empty.
@@ -162,7 +167,7 @@ func (a *Agent) eventLoop() {
 			}
 			a.events <- BufferedPaymentsReceivedEvent{
 				BufferID: memo.ID,
-				Amounts:  memo.Amounts,
+				Payments: memo.Payments,
 			}
 		case agent.PaymentSentEvent:
 			a.sendingReady <- struct{}{}
@@ -173,7 +178,7 @@ func (a *Agent) eventLoop() {
 			}
 			a.events <- BufferedPaymentsSentEvent{
 				BufferID: memo.ID,
-				Amounts:  memo.Amounts,
+				Payments: memo.Payments,
 			}
 		}
 	}
@@ -209,7 +214,7 @@ func (a *Agent) flushLoop() {
 
 func (a *Agent) flush() {
 	var bufferID string
-	var buffer []int64
+	var buffer []BufferedPayment
 	var bufferTotalAmount int64
 
 	func() {
@@ -228,8 +233,8 @@ func (a *Agent) flush() {
 	}
 
 	memo := bufferedPaymentsMemo{
-		ID:      bufferID,
-		Amounts: buffer,
+		ID:       bufferID,
+		Payments: buffer,
 	}
 
 	err := a.agent.PaymentWithMemo(bufferTotalAmount, memo.String())

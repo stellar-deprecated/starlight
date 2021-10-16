@@ -7,12 +7,12 @@ import "github.com/stellar/experimental-payment-channels/sdk/agent"
 type BufferedPaymentsReceivedEvent struct {
 	agent.PaymentReceivedEvent
 	BufferID string
-	Amounts  []int64
+	Payments []BufferedPayment
 }
 
 // BufferedPaymentSentEvent occurs when a payment is sent that was buffered.
 type BufferedPaymentsSentEvent struct {
 	agent.PaymentSentEvent
 	BufferID string
-	Amounts  []int64
+	Payments []BufferedPayment
 }

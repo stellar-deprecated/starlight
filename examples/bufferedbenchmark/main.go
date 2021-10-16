@@ -181,11 +181,11 @@ func run() error {
 					timeStarted = time.Now()
 				}
 				paymentsReceived++
-				bufferedPaymentsReceived += len(e.Amounts)
+				bufferedPaymentsReceived += len(e.Payments)
 				timeFinished = time.Now()
 			case bufferedagent.BufferedPaymentsSentEvent:
 				paymentsSent++
-				bufferedPaymentsSentConfirmed += len(e.Amounts)
+				bufferedPaymentsSentConfirmed += len(e.Payments)
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "closing\n")
 			case agentpkg.ClosedEvent:
