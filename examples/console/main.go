@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/cors"
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/agenthttp"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/bufferedagent"
@@ -30,7 +31,7 @@ import (
 const (
 	observationPeriodTime      = 10 * time.Second
 	observationPeriodLedgerGap = 1
-	maxOpenExpiry              = 5 * time.Minute
+	maxOpenExpiry              = 5 * time.Hour
 )
 
 func main() {
@@ -264,8 +265,16 @@ func run() error {
 	if httpPort != "" {
 		agentHandler := agenthttp.New(underlyingAgent)
 		fmt.Fprintf(os.Stdout, "agent http served on :%s\n", httpPort)
+		mux := http.ServeMux{}
+		mux.Handle("/", agentHandler)
+		mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+			err := json.NewEncoder(w).Encode(stats)
+			if err != nil {
+				panic(err)
+			}
+		})
 		go func() {
-			_ = http.ListenAndServe(":"+httpPort, agentHandler)
+			_ = http.ListenAndServe(":"+httpPort, cors.Default().Handler(&mux))
 		}()
 	}
 
@@ -340,6 +349,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		if err != nil {
 			return err
 		}
+		stats.Reset()
 		_, err = agent.Payment(amt)
 		return err
 	case "payx":
@@ -358,7 +368,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		}
 		stats.Reset()
 		agent.SetMaxBufferSize(bufferSize)
-		timeStart := time.Now()
+		stats.MarkStart()
 		for i := 0; i < x; i++ {
 			for {
 				_, err = agent.Payment(amt)
@@ -372,7 +382,8 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		for stats.bufferedPaymentsSent != int64(x) {
 			// Wait for all the buffered payments to have been sent.
 		}
-		fmt.Println(stats.GetSummary(time.Since(timeStart)))
+		stats.MarkFinish()
+		fmt.Println(stats.Summary())
 		agent.SetMaxBufferSize(1)
 		return err
 	case "declareclose":

@@ -16,9 +16,9 @@
     padding: 20px 0;
   }
 
-  #tx-count {
+  #tx-count,
+  #stats-title {
     text-align: center;
-    font-weight: bold;
   }
 </style>
 
@@ -30,14 +30,15 @@
     <div id="chart-signers-2"></div>
   </details>
   <details open>
-    <summary>Transactions</summary>
-    <div id="tx-count"></div>
-    <div id="chart-tps"></div>
-  </details>
-  <details open>
     <summary>Balances</summary>
     <div id="chart-account-balances"></div>
     <div id="chart-channel-balance"></div>
+  </details>
+  <details open>
+    <summary>Payments</summary>
+    <div id="stats"></div>
+    <div id="stats-title">Buffered Payments per Second</div>
+    <div id="tx-count"></div>
   </details>
 </div>
 
@@ -51,6 +52,7 @@
     chartAccountBalances('#chart-account-balances', agentUrl, horizonUrl);
     chartChannelBalance('#chart-channel-balance', agentUrl);
     txCount('#tx-count', agentUrl);
+    stats('#stats', agentUrl);
   });
 </script>
 
@@ -123,8 +125,8 @@
       chart.load({
         columns: h['signers'].filter(s => s['weight'] > 0).map(s => [s['key'].slice(0, 4), s['weight']]),
         colors: {
-          [localSigner.slice(0,4)]: color1,
-          [remoteSigner.slice(0,4)]: color2,
+          [localSigner.slice(0, 4)]: color1,
+          [remoteSigner.slice(0, 4)]: color2,
         },
         unload: true,
         order: null,
@@ -141,7 +143,14 @@
         title: `Balances on Network`,
         label: {
           format: function (value, ratio, id) {
-            return d3.format('$')(value);
+            return d3.format('$,')(value);
+          }
+        },
+      },
+      tooltip: {
+        format: {
+          value: function (value, ratio, id, index) {
+            return d3.format('$,')(value);
           }
         },
       },
@@ -187,10 +196,22 @@
         title: `Balances in Channel`,
         label: {
           format: function (value, ratio, id) {
-            return d3.format('$')(value / 10000000);
+            return d3.format('$,')(value / 10000000);
+          }
+        },
+        expand: false,
+      },
+      interaction: {
+        enabled: false
+      },
+      tooltip: {
+        format: {
+          value: function (value, ratio, id, index) {
+            return d3.format('$,')(value / 10000000);
           }
         },
       },
+      transition: { duration: null },
       legend: {
         show: false
       }
@@ -206,7 +227,7 @@
       }
       lastUpdate = hashCode;
       if (r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['ObservationPeriodTime'] == 0) {
-        chart.unload();
+        // chart.unload();
         return
       }
       const balance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
@@ -218,44 +239,43 @@
         chart.load({
           columns: [
             [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
-            ['balance', Math.abs(balance)],
+            ['Net', Math.abs(balance)],
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
             [leftAcc.slice(0, 4)]: color1,
             [rightAcc.slice(0, 4)]: color2,
-            'balance': color1Light,
+            'Net': color1Light,
           },
           order: null,
-          unload: true,
         });
       } else if (balance < 0) {
         chart.load({
           columns: [
             [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
-            ['balance', Math.abs(balance)],
+            ['Net', Math.abs(balance)],
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
             [leftAcc.slice(0, 4)]: color1,
             [rightAcc.slice(0, 4)]: color2,
-            'balance': color2Light,
+            'Net': color2Light,
           },
           order: null,
-          unload: true,
         });
       } else {
         chart.load({
           columns: [
             [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            ['Net', 0],
             [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
           ],
           colors: {
             [leftAcc.slice(0, 4)]: color1,
             [rightAcc.slice(0, 4)]: color2,
+            'Net': '#000',
           },
           order: null,
-          unload: true,
         });
       }
     };
@@ -269,8 +289,40 @@
       const r = json;
       const e = document.querySelector(bindto);
       const count = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber'] - 1;
-      e.innerText = `Count: ${count}`;
+      e.innerText = `Agreements Signed: ${count}`;
     };
-    setInterval(chartUpdate, 1000);
+    setInterval(chartUpdate, 100);
+  }
+
+  function stats(bindto, agentUrl) {
+    const chart = c3.generate({
+      bindto: bindto,
+      data: { type: 'gauge', labels: true, columns: [] },
+      gauge: {
+        label: {
+          format: function (value, ratio) {
+            return d3.format(',')(value);
+          },
+          show: false
+        },
+        min: 0,
+        max: 24_000,
+        units: ' BTPS',
+      },
+      transition: { duration: 250 },
+      tooltip: { show: false },
+      legend: { show: false },
+    });
+    const chartUpdate = async () => {
+      const resp = await fetch(`${agentUrl}/stats`)
+      const json = await resp.json();
+      const r = json;
+      chart.load({
+        columns: [
+          ['BTPS', r['BufferedPaymentsPerSecond']],
+        ],
+      });
+    };
+    setInterval(chartUpdate, 100);
   }
 </script>
