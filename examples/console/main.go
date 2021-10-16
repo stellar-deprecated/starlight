@@ -247,7 +247,9 @@ func run() error {
 		if err != nil {
 			return fmt.Errorf("signing tx to create escrow account: %w", err)
 		}
-		err = submitter.SubmitTx(tx)
+		err = retry(10, func() error {
+			return submitter.SubmitTx(tx)
+		})
 		if err != nil {
 			return fmt.Errorf("submitting tx to create escrow account: %w", err)
 		}
