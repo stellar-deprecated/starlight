@@ -11,6 +11,20 @@
     width: 100%;
   }
 
+  .chart-container {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    grid-template-areas: "cell1 cell2";
+  }
+
+  .chart-cell-1 {
+    grid-area: cell1;
+  }
+
+  .chart-cell-2 {
+    grid-area: cell2;
+  }
+
   summary {
     text-align: center;
     padding: 20px 0;
@@ -26,15 +40,19 @@
   <div id="chart-ledger"></div>
   <details open>
     <summary>Signers</summary>
-    <div id="chart-signers-1"></div>
-    <div id="chart-signers-2"></div>
+    <div class="chart-container">
+      <div class="chart-cell-1" id="chart-signers-1"></div>
+      <div class="chart-cell-2" id="chart-signers-2"></div>
+    </div>
   </details>
-  <details open>
+  <details id="charts-balances" open>
     <summary>Balances</summary>
-    <div id="chart-account-balances"></div>
-    <div id="chart-channel-balance"></div>
+    <div class="chart-container">
+      <div class="chart-cell-1" id="chart-account-balances"></div>
+      <div class="chart-cell-2" id="chart-channel-balance"></div>
+    </div>
   </details>
-  <details open>
+  <details id="charts-payments" open>
     <summary>Payments</summary>
     <div id="stats"></div>
     <div id="stats-title">Buffered Payments per Second</div>
@@ -95,7 +113,7 @@
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null },
       donut: {
-        title: `Signers ${local ? 'Local' : 'Remote'}`,
+        title: `${local ? 'Local' : 'Remote'} Account Signers`,
       },
       legend: {
         show: false
