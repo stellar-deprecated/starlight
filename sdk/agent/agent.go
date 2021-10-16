@@ -339,7 +339,7 @@ func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) error {
 			return err
 		}
 		a.channel.UpdateLocalEscrowAccountBalance(balance)
-		ca, err = a.channel.ProposePayment(paymentAmount)
+		ca, err = a.channel.ProposePaymentWithMemo(paymentAmount, memo)
 	}
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", paymentAmount, err)
