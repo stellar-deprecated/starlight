@@ -283,11 +283,17 @@ func (a *Agent) Open() error {
 
 	a.initChannel(true, nil)
 
+	// Expire the channel before the max open expiry. If both participants are
+	// using the same max open expiry, we need to set the expiry earlier so that
+	// small amounts of clock drift doesn't cause the open agreement to be
+	// rejected by the other participant.
+	openExpiresAt := time.Now().Add(a.maxOpenExpiry / 2)
+
 	open, err := a.channel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      a.observationPeriodTime,
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
 		Asset:                      "native",
-		ExpiresAt:                  time.Now().Add(a.maxOpenExpiry / 2),
+		ExpiresAt:                  openExpiresAt,
 		StartingSequence:           seqNum + 1,
 	})
 	if err != nil {
