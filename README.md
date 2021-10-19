@@ -34,8 +34,8 @@ The code and documents in this repository are under active development and are i
 
 The code in this repository uses forks of some software with partial implementations of [CAP-21] and [CAP-40].
 
-- xdr: https://github.com/leighmcculloch/stellar--stellar-core/tree/cap21/src/xdr
-- stellar-core: https://github.com/leighmcculloch/stellar--stellar-core/pull/1
+- xdr: https://github.com/stellar/stellar-core-experimental-cap21and40/tree/cap21and40/src/xdr
+- stellar-core: https://github.com/stellar/stellar-core-experimental-cap21and40/pull/1
 - horizon & Go SDK: https://github.com/stellar/go/pull/4013
 - quickstart: https://github.com/stellar/docker-stellar-core-horizon/pull/294
 - stc: https://github.com/leighmcculloch/xdrpp--stc/pull/1
