@@ -4,7 +4,7 @@
 To run a standalone network and Horizon instance use the fork of the quickstart docker image:
 
 ```
-docker build -t stellar/quickstart:cap21and40 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21and40
+docker build -t stellar/quickstart:cap21and40 https://github.com/stellar/docker-stellar-core-horizon.git#cap21and40
 ```
 
 ```

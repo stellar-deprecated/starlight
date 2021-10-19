@@ -205,8 +205,6 @@ github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/lann/builder v0.0.0-20180802200727-47ae307949d0/go.mod h1:dXGbAdH5GtBTC4WfIxhKZfyBF/HBFgRZSWwZ9g/He9o=
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
-github.com/leighmcculloch/stellar--go v0.0.0-20210924221542-a72304844558 h1:CXK0ZPLdyCde60WeTCSasyKmgW89jBWl9f6CIvo25y0=
-github.com/leighmcculloch/stellar--go v0.0.0-20210924221542-a72304844558/go.mod h1:GUYGng5T2YXpniTJwCU8VcHMpRmSejibArP1Ow9wdLY=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/magiconair/properties v1.5.4/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
@@ -264,6 +262,8 @@ github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e/go.mod h1:1l0Ry5zgKvJa
 github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431/go.mod h1:cQK4TGJAtQXfYWX+Ddv3mKDzgVb68N+wFjFa4jdeBTo=
 github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189/go.mod h1:A8kyI5cUJhb8N+3pkfONlcEcZbueH6nhAm0Fq7SrnBM=
+github.com/stellar/go v0.0.0-20210924221542-a72304844558 h1:al6mVZRenC2zz0s7yKWUTqtuOyYaXWzahRhPugirj1U=
+github.com/stellar/go v0.0.0-20210924221542-a72304844558/go.mod h1:GUYGng5T2YXpniTJwCU8VcHMpRmSejibArP1Ow9wdLY=
 github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a h1:GnM0ArRp7EDbaTiFhSp/CLgyk2cacXxdUklqJmdJs1Q=
 github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a/go.mod h1:yoxyU/M8nl9LKeWIoBrbDPQ7Cy+4jxRcWcOayZ4BMps=
 github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible/go.mod h1:7CJ23pXirXBJq45DqvO6clzTEGM/l1SfKrgrzLry8b4=

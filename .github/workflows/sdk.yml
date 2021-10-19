@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: "Stellar Quickstart w/ CAP-21: Build"
-      run: docker build -t stellar/quickstart:cap21and40 https://github.com/leighmcculloch/stellar--docker-stellar-core-horizon.git#cap21and40
+      run: docker build -t stellar/quickstart:cap21and40 https://github.com/stellar/docker-stellar-core-horizon.git#cap21and40
     - name: "Stellar Quickstart w/ CAP-21: Run"
       run: docker run -d -p 8000:8000 --name stellar stellar/quickstart:cap21and40 --standalone --enable-core-artificially-accelerate-time-for-testing
     - name: "Stellar Quickstart w/ CAP-21: Wait for Ready"

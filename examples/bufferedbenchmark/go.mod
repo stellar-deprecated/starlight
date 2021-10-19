@@ -2,7 +2,7 @@ module github.com/stellar/experimental-paymentment-channels/examples/bufferedben
 
 go 1.17
 
-replace github.com/stellar/go => github.com/leighmcculloch/stellar--go v0.0.0-20210924221542-a72304844558
+replace github.com/stellar/go => github.com/stellar/go v0.0.0-20210924221542-a72304844558
 
 replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
 
