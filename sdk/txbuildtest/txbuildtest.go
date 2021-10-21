@@ -115,7 +115,7 @@ func BuildFormationResultMetaXDR(params FormationResultMetaParams) (string, erro
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(params.InitiatorEscrow),
 					Balance:   0,
-					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()),
+					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 				},
 			},
@@ -124,7 +124,7 @@ func BuildFormationResultMetaXDR(params FormationResultMetaParams) (string, erro
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(params.ResponderEscrow),
 					Balance:   0,
-					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()),
+					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 				},
 			},

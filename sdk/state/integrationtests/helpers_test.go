@@ -176,7 +176,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 			Operations: []txnbuild.Operation{
 				&txnbuild.ChangeTrust{
-					Line:  asset,
+					Line:  asset.MustToChangeTrustAsset(),
 					Limit: "5000",
 				},
 				&txnbuild.Payment{
@@ -239,7 +239,7 @@ func fundAsset(asset state.Asset, amount int64, accountKP *keypair.Full, distrib
 	if !asset.IsNative() {
 		ops = append(ops, &txnbuild.ChangeTrust{
 			SourceAccount: accountKP.Address(),
-			Line:          asset.Asset(),
+			Line:          asset.Asset().MustToChangeTrustAsset(),
 			Limit:         "5000",
 		})
 	}

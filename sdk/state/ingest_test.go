@@ -644,7 +644,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(tc.escrowAccount.Address()),
-					Asset:     xdr.MustNewCreditAsset(asset.Code(), asset.Issuer()),
+					Asset:     xdr.MustNewCreditAsset(asset.Code(), asset.Issuer()).ToTrustLineAsset(),
 					Balance:   tc.trustLineBalance,
 					Ext:       tle,
 				},

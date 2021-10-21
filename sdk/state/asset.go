@@ -41,3 +41,11 @@ func (a Asset) StringCanonical() string {
 	}
 	return fmt.Sprintf("%s:%s", a.Code(), a.Issuer())
 }
+
+func (a Asset) EqualTrustLineAsset(ta xdr.TrustLineAsset) bool {
+	switch ta.Type {
+	case xdr.AssetTypeAssetTypeNative, xdr.AssetTypeAssetTypeCreditAlphanum4, xdr.AssetTypeAssetTypeCreditAlphanum12:
+		return ta.ToAsset().StringCanonical() == a.StringCanonical()
+	}
+	return false
+}

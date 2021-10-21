@@ -72,7 +72,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	})
 	if !p.Asset.IsNative() {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-			Line:          p.Asset,
+			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
 			SourceAccount: p.InitiatorEscrow.Address(),
 		})
@@ -99,7 +99,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	})
 	if !p.Asset.IsNative() {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-			Line:          p.Asset,
+			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
 			SourceAccount: p.ResponderEscrow.Address(),
 		})

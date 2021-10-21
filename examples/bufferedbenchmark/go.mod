@@ -2,13 +2,11 @@ module github.com/stellar/experimental-paymentment-channels/examples/bufferedben
 
 go 1.17
 
-replace github.com/stellar/go => github.com/stellar/go v0.0.0-20210924221542-a72304844558
-
 replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
 
 require (
 	github.com/stellar/experimental-payment-channels/sdk v0.0.0-00010101000000-000000000000
-	github.com/stellar/go v0.0.0-00010101000000-000000000000
+	github.com/stellar/go v0.0.0-20211019190220-c47964999c2a
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 
