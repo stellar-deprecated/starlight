@@ -391,7 +391,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		for i := 0; i < x; i++ {
 			memo := "tx-" + strconv.Itoa(i)
 			for {
-				amt := rand.Int63n(amt-1+1) + 1
+				amt := rand.Int63n(amt) + 1
 				_, err = agent.PaymentWithMemo(amt, memo)
 				if err != nil {
 					continue
