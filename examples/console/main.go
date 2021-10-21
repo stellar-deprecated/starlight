@@ -382,9 +382,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		if err != nil {
 			return err
 		}
-
 		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 		stats.Reset()
 		agent.SetMaxBufferSize(bufferSize)
 		stats.MarkStart()
