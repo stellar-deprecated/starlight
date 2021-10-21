@@ -1,7 +1,6 @@
 package txbuild
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -72,12 +71,8 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		Signer:          &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
 	if !p.Asset.IsNative() {
-		cta, err := p.Asset.ToChangeTrustAsset()
-		if err != nil {
-			return nil, fmt.Errorf("getting change trust asset from non-native asset: %w", err)
-		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-			Line:          cta,
+			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
 			SourceAccount: p.InitiatorEscrow.Address(),
 		})
@@ -103,12 +98,8 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 		Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
 	if !p.Asset.IsNative() {
-		cta, err := p.Asset.ToChangeTrustAsset()
-		if err != nil {
-			return nil, fmt.Errorf("getting change trust asset from non-native asset: %w", err)
-		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
-			Line:          cta,
+			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
 			SourceAccount: p.ResponderEscrow.Address(),
 		})
