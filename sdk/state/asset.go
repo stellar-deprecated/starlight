@@ -41,3 +41,10 @@ func (a Asset) StringCanonical() string {
 	}
 	return fmt.Sprintf("%s:%s", a.Code(), a.Issuer())
 }
+
+func (a Asset) EqualsTrustLineAsset(ta xdr.TrustLineAsset) bool {
+	if ta.Type == xdr.AssetTypeAssetTypePoolShare {
+		return false
+	}
+	return ta.ToAsset().StringCanonical() == a.StringCanonical()
+}
