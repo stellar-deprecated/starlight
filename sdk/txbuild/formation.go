@@ -74,7 +74,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	if !p.Asset.IsNative() {
 		cta, err := p.Asset.ToChangeTrustAsset()
 		if err != nil {
-			return nil, fmt.Errorf("getting change trust asset from nonnative asset: %w", err)
+			return nil, fmt.Errorf("getting change trust asset from non-native asset: %w", err)
 		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 			Line:          cta,
@@ -105,7 +105,7 @@ func Formation(p FormationParams) (*txnbuild.Transaction, error) {
 	if !p.Asset.IsNative() {
 		cta, err := p.Asset.ToChangeTrustAsset()
 		if err != nil {
-			return nil, fmt.Errorf("getting change trust asset from nonnative asset: %w", err)
+			return nil, fmt.Errorf("getting change trust asset from non-native asset: %w", err)
 		}
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 			Line:          cta,
