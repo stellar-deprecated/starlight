@@ -286,7 +286,10 @@ func run() error {
 			}
 		})
 		go func() {
-			_ = http.ListenAndServe(":"+httpPort, cors.Default().Handler(&mux))
+			err = http.ListenAndServe(":"+httpPort, cors.Default().Handler(&mux))
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "error: http listening: %#v\n", err)
+			}
 		}()
 	}
 
