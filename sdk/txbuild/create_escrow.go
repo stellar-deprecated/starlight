@@ -36,13 +36,12 @@ func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
 		},
 	}
 	if !p.Asset.IsNative() {
-		// Alec TODO - diff between changetrust asset and trustline asset?
-		asset, err := p.Asset.ToChangeTrustAsset()
+		cta, err := p.Asset.ToChangeTrustAsset()
 		if err != nil {
 			return nil, fmt.Errorf("getting change trust asset from nonnative asset: %w", err)
 		}
 		ops = append(ops, &txnbuild.ChangeTrust{
-			Line:          asset,
+			Line:          cta,
 			Limit:         amount.StringFromInt64(math.MaxInt64),
 			SourceAccount: p.Escrow.Address(),
 		})

@@ -189,7 +189,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 				if !ok {
 					continue
 				}
-				if channelAsset.StringCanonical() != tl.Asset.StringCanonical() {
+				if channelAsset.StringCanonical() != tl.Asset.ToAsset().StringCanonical() {
 					continue
 				}
 				ledgerEntryAddress = tl.AccountId.Address()
@@ -277,7 +277,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 
 			switch updated.Data.Type {
 			case xdr.LedgerEntryTypeTrustline:
-				if updated.Data.TrustLine.Asset.StringCanonical() != c.openAgreement.Envelope.Details.Asset.StringCanonical() {
+				if updated.Data.TrustLine.Asset.ToAsset().StringCanonical() != c.openAgreement.Envelope.Details.Asset.StringCanonical() {
 					continue
 				}
 				if updated.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
