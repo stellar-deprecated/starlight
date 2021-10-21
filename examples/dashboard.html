@@ -28,18 +28,23 @@
   summary {
     text-align: center;
     padding: 20px 0;
+    font-size: 30px;
   }
 
   #tx-count,
   #stats-title {
     text-align: center;
   }
+
+  .c3-chart-arcs-title {
+    font-size: 30px;
+  }
 </style>
 
 <div class="container">
   <div id="chart-ledger"></div>
   <details open>
-    <summary>Signers</summary>
+    <summary>Account Signers</summary>
     <div class="chart-container">
       <div class="chart-cell-1" id="chart-signers-1"></div>
       <div class="chart-cell-2" id="chart-signers-2"></div>
@@ -61,16 +66,20 @@
 </div>
 
 <script>
+  const params = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+  params.localName ||= "Local";
+  params.remoteName ||= "Remote";
+
   window.addEventListener('load', (event) => {
     const horizonUrl = "http://192.168.64.2:8000";
     const agentUrl = "http://localhost:9000";
-    chartLedger('#chart-ledger', horizonUrl);
-    chartAccountSigners('#chart-signers-1', agentUrl, horizonUrl, true);
-    chartAccountSigners('#chart-signers-2', agentUrl, horizonUrl, false);
-    chartAccountBalances('#chart-account-balances', agentUrl, horizonUrl);
-    chartChannelBalance('#chart-channel-balance', agentUrl);
-    txCount('#tx-count', agentUrl);
-    stats('#stats', agentUrl);
+    chartLedger(params, '#chart-ledger', horizonUrl);
+    chartAccountSigners(params, '#chart-signers-1', agentUrl, horizonUrl, true);
+    chartAccountSigners(params, '#chart-signers-2', agentUrl, horizonUrl, false);
+    chartAccountBalances(params, '#chart-account-balances', agentUrl, horizonUrl);
+    chartChannelBalance(params, '#chart-channel-balance', agentUrl);
+    txCount(params, '#tx-count', agentUrl);
+    stats(params, '#stats', agentUrl);
   });
 </script>
 
@@ -79,7 +88,7 @@
   const color1Light = '#f4a267';
   const color2 = '#f08536';
   const color2Light = '#84afd7';
-  function chartLedger(bindto, horizonUrl) {
+  function chartLedger(params, bindto, horizonUrl) {
     const chart = c3.generate({
       bindto: bindto,
       data: {
@@ -108,12 +117,12 @@
     setInterval(chartUpdate, 1000);
   }
 
-  function chartAccountSigners(bindto, agentUrl, horizonUrl, local) {
+  function chartAccountSigners(params, bindto, agentUrl, horizonUrl, local) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null },
       donut: {
-        title: `${local ? 'Local' : 'Remote'} Account Signers`,
+        title: `${local ? params.localName : params.remoteName}`,
       },
       legend: {
         show: false
@@ -153,12 +162,12 @@
     setInterval(chartUpdate, 1000);
   }
 
-  function chartAccountBalances(bindto, agentUrl, horizonUrl) {
+  function chartAccountBalances(params, bindto, agentUrl, horizonUrl) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null },
       donut: {
-        title: `Balances on Network`,
+        title: `Network`,
         label: {
           format: function (value, ratio, id) {
             return d3.format('$,')(value);
@@ -206,12 +215,12 @@
     setInterval(chartUpdate, 100);
   }
 
-  function chartChannelBalance(bindto, agentUrl) {
+  function chartChannelBalance(params, bindto, agentUrl) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null, },
       donut: {
-        title: `Balances in Channel`,
+        title: `Channel`,
         label: {
           format: function (value, ratio, id) {
             return d3.format('$,')(value / 10000000);
@@ -220,7 +229,7 @@
         expand: false,
       },
       interaction: {
-        enabled: false
+        enabled: true
       },
       tooltip: {
         format: {
@@ -300,7 +309,7 @@
     setInterval(chartUpdate, 100);
   }
 
-  function txCount(bindto, agentUrl) {
+  function txCount(params, bindto, agentUrl) {
     const chartUpdate = async () => {
       const resp = await fetch(`${agentUrl}`)
       const json = await resp.json();
@@ -312,7 +321,7 @@
     setInterval(chartUpdate, 100);
   }
 
-  function stats(bindto, agentUrl) {
+  function stats(params, bindto, agentUrl) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'gauge', labels: true, columns: [] },
