@@ -43,8 +43,9 @@ func (a Asset) StringCanonical() string {
 }
 
 func (a Asset) EqualTrustLineAsset(ta xdr.TrustLineAsset) bool {
-	if ta.Type == xdr.AssetTypeAssetTypePoolShare {
-		return false
+	switch ta.Type {
+	case xdr.AssetTypeAssetTypeNative, xdr.AssetTypeAssetTypeCreditAlphanum4, xdr.AssetTypeAssetTypeCreditAlphanum12:
+		return ta.ToAsset().StringCanonical() == a.StringCanonical()
 	}
-	return ta.ToAsset().StringCanonical() == a.StringCanonical()
+	return false
 }
