@@ -195,14 +195,22 @@
         return;
       }
       lastUpdate = hashCode;
+      const asset = r['Snapshot']['State']['Snapshot']['OpenAgreement']['Envelope']['Details']['Asset'];
+      const assetParts = asset.split(":", 2);
+      const balanceFunc = assetParts.length == 1
+        ? (b) => b['asset_type'] == 'native'
+        : (b) =>
+          (b['asset_type'] == 'credit_alphanum4' || b['asset_type'] == 'credit_alphanum12') &&
+          (b['asset_code'] == assetParts[0]) &&
+          (b['asset_issuer'] == assetParts[1]);
       const localEscrow = r['Config']['EscrowAccountKey'];
       const remoteEscrow = r['Snapshot']['OtherEscrowAccount'];
       const localHorizon = await (await fetch(`${horizonUrl}/accounts/${localEscrow}`)).json();
       const remoteHorizon = await (await fetch(`${horizonUrl}/accounts/${remoteEscrow}`)).json();
       chart.load({
         columns: [
-          [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
-          [localEscrow.slice(0, 4), Number(localHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
+          [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(balanceFunc)['balance'])],
+          [localEscrow.slice(0, 4), Number(localHorizon['balances'].find(balanceFunc)['balance'])],
         ],
         colors: {
           [remoteEscrow.slice(0, 4)]: color2,
