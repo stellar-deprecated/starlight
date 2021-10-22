@@ -195,6 +195,8 @@ func run() error {
 
 		escrowAccountKeyFull := keypair.MustRandom()
 		escrowAccountKey = escrowAccountKeyFull.FromAddress()
+		fmt.Fprintln(os.Stdout, "waiting before creating escrow")
+		time.Sleep(5 * time.Second)
 		fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
 
 		config := agentpkg.Config{
@@ -241,6 +243,7 @@ func run() error {
 		if err != nil {
 			return fmt.Errorf("submitting tx to create escrow account: %w", err)
 		}
+		fmt.Fprintln(os.Stdout, "escrow created")
 	} else {
 		escrowAccountKey = file.EscrowAccountKey
 		config := agentpkg.Config{
