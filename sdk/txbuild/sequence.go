@@ -12,7 +12,7 @@ type TransactionType string
 
 const (
 	TransactionTypeUnrecognized TransactionType = "unrecognized"
-	TransactionTypeFormation    TransactionType = "formation"
+	TransactionTypeOpen         TransactionType = "open"
 	TransactionTypeDeclaration  TransactionType = "declaration"
 	TransactionTypeClose        TransactionType = "close"
 )
@@ -20,7 +20,7 @@ const (
 func SequenceNumberToTransactionType(startingSeqNum, seqNum int64) TransactionType {
 	seqRelative := seqNum - startingSeqNum
 	if seqRelative == 0 {
-		return TransactionTypeFormation
+		return TransactionTypeOpen
 	} else if seqRelative > 0 && seqRelative < m {
 		return TransactionTypeUnrecognized
 	} else if seqRelative%m == 0 {

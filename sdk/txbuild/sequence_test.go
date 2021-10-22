@@ -7,8 +7,8 @@ import (
 )
 
 func TestSequenceNumberToTransactionType(t *testing.T) {
-	assert.Equal(t, TransactionTypeFormation, SequenceNumberToTransactionType(100, 100))
-	assert.Equal(t, TransactionTypeFormation, SequenceNumberToTransactionType(101, 101))
+	assert.Equal(t, TransactionTypeOpen, SequenceNumberToTransactionType(100, 100))
+	assert.Equal(t, TransactionTypeOpen, SequenceNumberToTransactionType(101, 101))
 
 	assert.Equal(t, TransactionTypeUnrecognized, SequenceNumberToTransactionType(100, 101))
 	assert.Equal(t, TransactionTypeUnrecognized, SequenceNumberToTransactionType(101, 102))

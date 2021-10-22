@@ -65,7 +65,7 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 		return err
 	}
 
-	err = c.ingestFormationTx(tx, resultXDR, resultMetaXDR)
+	err = c.ingestOpenTx(tx, resultXDR, resultMetaXDR)
 	if err != nil {
 		return err
 	}
@@ -219,28 +219,28 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 	return nil
 }
 
-// ingestFormationTx accepts a transaction, resultXDR, and resultMetaXDR. The
+// ingestOpenTx accepts a transaction, resultXDR, and resultMetaXDR. The
 // method returns with no error if either 1. the resultXDR shows the transaction
-// was unsuccessful, or 2. the transaction is not the formation transaction this
+// was unsuccessful, or 2. the transaction is not the open transaction this
 // channel is expecting, the method returns with no error. Lastly, this method
-// will validate that the resulting account and trustlines after the formation
+// will validate that the resulting account and trustlines after the open
 // transaction was submitted are in this channel's expected states to mark the
 // channel as open.
-func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
-	// If the transaction is not the formation transaction, ignore.
-	formationTx, err := c.OpenTx()
+func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resultMetaXDR string) (err error) {
+	// If the transaction is not the open transaction, ignore.
+	openTx, err := c.OpenTx()
 	if err != nil {
-		return fmt.Errorf("creating formation tx: %w", err)
+		return fmt.Errorf("creating open tx: %w", err)
 	}
 	txHash, err := tx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("getting transaction hash: %w", err)
 	}
-	formationHash, err := formationTx.Hash(c.networkPassphrase)
+	openHash, err := openTx.Hash(c.networkPassphrase)
 	if err != nil {
 		return fmt.Errorf("getting transaction hash: %w", err)
 	}
-	if txHash != formationHash {
+	if txHash != openHash {
 		return nil
 	}
 
@@ -312,9 +312,9 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 	}
 
 	// Validate the initiator escrow account sequence number is correct.
-	if int64(initiatorEscrowAccountEntry.SeqNum) != formationTx.SequenceNumber() {
+	if int64(initiatorEscrowAccountEntry.SeqNum) != openTx.SequenceNumber() {
 		c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
-			int64(initiatorEscrowAccountEntry.SeqNum), formationTx.SequenceNumber())
+			int64(initiatorEscrowAccountEntry.SeqNum), openTx.SequenceNumber())
 		return nil
 	}
 
@@ -333,7 +333,7 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 		for _, signer := range ea.Signers {
 			address, err := signer.Key.GetAddress()
 			if err != nil {
-				c.openExecutedWithError = fmt.Errorf("parsing formation transaction escrow account signer keys: %w", err)
+				c.openExecutedWithError = fmt.Errorf("parsing open transaction escrow account signer keys: %w", err)
 				return nil
 			}
 

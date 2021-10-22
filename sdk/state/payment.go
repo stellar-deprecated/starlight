@@ -140,7 +140,7 @@ func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 		closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Close, ca.Envelope.Details.ConfirmingSigner.Hint()))
 
 		// Add the close signature provided by the confirming signer that is
-		// required to be an extra signer on the declaration tx to the formation tx.
+		// required to be an extra signer on the declaration tx to the open tx.
 		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(ca.Envelope.ConfirmerSignatures.Close, ca.Envelope.Details.ConfirmingSigner.Hint(), ca.Transactions.CloseHash[:]))
 	}
 
