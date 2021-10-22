@@ -88,7 +88,7 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
 			InitiatorEscrow: localEscrowAccount.Address(),

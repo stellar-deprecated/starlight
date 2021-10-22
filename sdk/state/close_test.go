@@ -160,7 +160,7 @@ func TestChannel_ProposeClose(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
 			InitiatorEscrow: localEscrowAccount.Address(),
@@ -244,7 +244,7 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
 			InitiatorEscrow: localEscrowAccount.Address(),
@@ -381,7 +381,7 @@ func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: remoteSigner.Address(),
 			ResponderSigner: localSigner.Address(),
 			InitiatorEscrow: remoteEscrowAccount.Address(),

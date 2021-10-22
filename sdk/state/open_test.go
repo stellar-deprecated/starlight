@@ -192,7 +192,7 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 	}
 }
 
-func TestConfirmOpen_rejectsOpenAgreementsWithLongFormations(t *testing.T) {
+func TestConfirmOpen_rejectsOpenAgreementsWithLongOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
 	localEscrowAccount := keypair.MustRandom().FromAddress()
@@ -253,7 +253,7 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the proposer did not sign any tx.
 	oaModified := oa
-	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Open = nil
 	oaModified.Envelope.ProposerSignatures.Declaration = nil
 	oaModified.Envelope.ProposerSignatures.Close = nil
 	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
@@ -261,9 +261,9 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the proposer did not sign a tx.
 	oaModified = oa
-	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Open = nil
 	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	require.EqualError(t, err, "not signed by remote: verifying open signed: signature verification failed")
 	oaModified = oa
 	oaModified.Envelope.ProposerSignatures.Declaration = nil
 	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
@@ -275,9 +275,9 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the proposer signed the txs invalidly.
 	oaModified = oa
-	oaModified.Envelope.ProposerSignatures.Formation = oaModified.Envelope.ProposerSignatures.Close
+	oaModified.Envelope.ProposerSignatures.Open = oaModified.Envelope.ProposerSignatures.Close
 	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	require.EqualError(t, err, "not signed by remote: verifying open signed: signature verification failed")
 	oaModified = oa
 	oaModified.Envelope.ProposerSignatures.Declaration = oaModified.Envelope.ProposerSignatures.Close
 	_, err = responderChannel.ConfirmOpen(oaModified.Envelope)
@@ -293,10 +293,10 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that no one signed.
 	oaModified = oa
-	oaModified.Envelope.ConfirmerSignatures.Formation = nil
+	oaModified.Envelope.ConfirmerSignatures.Open = nil
 	oaModified.Envelope.ConfirmerSignatures.Declaration = nil
 	oaModified.Envelope.ConfirmerSignatures.Close = nil
-	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Open = nil
 	oaModified.Envelope.ProposerSignatures.Declaration = nil
 	oaModified.Envelope.ProposerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -304,7 +304,7 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that confirmer did not sign any tx.
 	oaModified = oa
-	oaModified.Envelope.ConfirmerSignatures.Formation = nil
+	oaModified.Envelope.ConfirmerSignatures.Open = nil
 	oaModified.Envelope.ConfirmerSignatures.Declaration = nil
 	oaModified.Envelope.ConfirmerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -312,9 +312,9 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the confirmer did not sign a tx.
 	oaModified = oa
-	oaModified.Envelope.ConfirmerSignatures.Formation = nil
+	oaModified.Envelope.ConfirmerSignatures.Open = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	require.EqualError(t, err, "not signed by remote: verifying open signed: signature verification failed")
 	oaModified = oa
 	oaModified.Envelope.ConfirmerSignatures.Declaration = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -326,9 +326,9 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the confirmer signed the txs invalidly.
 	oaModified = oa
-	oaModified.Envelope.ConfirmerSignatures.Formation = oaModified.Envelope.ConfirmerSignatures.Close
+	oaModified.Envelope.ConfirmerSignatures.Open = oaModified.Envelope.ConfirmerSignatures.Close
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
-	require.EqualError(t, err, "not signed by remote: verifying formation signed: signature verification failed")
+	require.EqualError(t, err, "not signed by remote: verifying open signed: signature verification failed")
 	oaModified = oa
 	oaModified.Envelope.ConfirmerSignatures.Declaration = oaModified.Envelope.ConfirmerSignatures.Close
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -340,7 +340,7 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that proposer's signature is missing.
 	oaModified = oa
-	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Open = nil
 	oaModified.Envelope.ProposerSignatures.Declaration = nil
 	oaModified.Envelope.ProposerSignatures.Close = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -348,9 +348,9 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the proposer's signature is missing for one tx.
 	oaModified = oa
-	oaModified.Envelope.ProposerSignatures.Formation = nil
+	oaModified.Envelope.ProposerSignatures.Open = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying formation signed: signature verification failed")
+	require.EqualError(t, err, "not signed by local: verifying open signed: signature verification failed")
 	oaModified = oa
 	oaModified.Envelope.ProposerSignatures.Declaration = nil
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -362,9 +362,9 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 
 	// Pretend that the proposer's signature is invalid for one tx.
 	oaModified = oa
-	oaModified.Envelope.ProposerSignatures.Formation = oaModified.Envelope.ProposerSignatures.Close
+	oaModified.Envelope.ProposerSignatures.Open = oaModified.Envelope.ProposerSignatures.Close
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
-	require.EqualError(t, err, "not signed by local: verifying formation signed: signature verification failed")
+	require.EqualError(t, err, "not signed by local: verifying open signed: signature verification failed")
 	oaModified = oa
 	oaModified.Envelope.ProposerSignatures.Declaration = oaModified.Envelope.ProposerSignatures.Close
 	_, err = initiatorChannel.ConfirmOpen(oaModified.Envelope)
@@ -405,12 +405,12 @@ func TestChannel_OpenTx(t *testing.T) {
 		ProposerSignatures: OpenSignatures{
 			Declaration: xdr.Signature{0},
 			Close:       xdr.Signature{1},
-			Formation:   xdr.Signature{2},
+			Open:        xdr.Signature{2},
 		},
 		ConfirmerSignatures: OpenSignatures{
 			Declaration: xdr.Signature{3},
 			Close:       xdr.Signature{4},
-			Formation:   xdr.Signature{5},
+			Open:        xdr.Signature{5},
 		},
 	}
 	txs, closeTxs, err := channel.openTxs(oe.Details)
@@ -419,19 +419,19 @@ func TestChannel_OpenTx(t *testing.T) {
 	declTxHash := closeTxs.DeclarationHash
 	closeTxHash := closeTxs.CloseHash
 
-	// TODO: Compare the non-signature parts of formationTx with the result of
+	// TODO: Compare the non-signature parts of openTx with the result of
 	// channel.openTx() when there is an practical way of doing that added to
 	// txnbuild.
 
 	// Check signatures are populated.
-	formationTx, err := channel.OpenTx()
+	openTx, err := channel.OpenTx()
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []xdr.DecoratedSignature{
 		{Hint: localSigner.Hint(), Signature: []byte{2}},
 		{Hint: remoteSigner.Hint(), Signature: []byte{5}},
 		xdr.NewDecoratedSignatureForPayload([]byte{3}, remoteSigner.Hint(), declTxHash[:]),
 		xdr.NewDecoratedSignatureForPayload([]byte{4}, remoteSigner.Hint(), closeTxHash[:]),
-	}, formationTx.Signatures())
+	}, openTx.Signatures())
 
 	// Check stored txs are used by replacing the stored tx with an identifiable
 	// tx and checking that's what is used.
@@ -443,11 +443,11 @@ func TestChannel_OpenTx(t *testing.T) {
 	})
 	require.NoError(t, err)
 	channel.openAgreement.Transactions = OpenTransactions{
-		Formation: testTx,
+		Open: testTx,
 	}
-	formationTx, err = channel.OpenTx()
+	openTx, err = channel.OpenTx()
 	require.NoError(t, err)
-	assert.Equal(t, int64(123456789), formationTx.SequenceNumber())
+	assert.Equal(t, int64(123456789), openTx.SequenceNumber())
 }
 
 func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpened(t *testing.T) {
@@ -501,7 +501,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpe
 	require.NoError(t, err)
 
 	{
-		// Ingest the formationTx successfully to enter the Open state.
+		// Ingest the openTx successfully to enter the Open state.
 		ftx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
@@ -509,7 +509,7 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpe
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: localSigner.Address(),
 			ResponderSigner: remoteSigner.Address(),
 			InitiatorEscrow: localEscrowAccount.Address(),

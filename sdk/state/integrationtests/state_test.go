@@ -30,7 +30,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-	const formationExpiry = 5 * time.Minute
+	const openExpiry = 5 * time.Minute
 
 	asset := state.NativeAsset
 	// native asset has no asset limit
@@ -59,13 +59,13 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
-		ExpiresAt:                  time.Now().Add(formationExpiry),
+		ExpiresAt:                  time.Now().Add(openExpiry),
 		StartingSequence:           s,
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 	{
 		// R signs, R is done
@@ -73,20 +73,20 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 	}
 
 	{
@@ -111,7 +111,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	}
 
 	{
-		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
@@ -119,7 +119,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: initiator.KP.Address(),
 			ResponderSigner: responder.KP.Address(),
 			InitiatorEscrow: initiator.Escrow.Address(),
@@ -314,7 +314,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-	const formationExpiry = 5 * time.Minute
+	const openExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
 	initiator, responder := initAccounts(t, AssetParam{
@@ -335,13 +335,13 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
-		ExpiresAt:                  time.Now().Add(formationExpiry),
+		ExpiresAt:                  time.Now().Add(openExpiry),
 		StartingSequence:           s,
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 	{
 		// R signs, R is done
@@ -349,20 +349,20 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 
 		// I stores the signatures, I is done.
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 	}
 
 	{
@@ -382,7 +382,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	}
 
 	{
-		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
@@ -390,7 +390,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: initiator.KP.Address(),
 			ResponderSigner: responder.KP.Address(),
 			InitiatorEscrow: initiator.Escrow.Address(),
@@ -529,7 +529,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-	const formationExpiry = 5 * time.Minute
+	const openExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
 	initiator, responder := initAccounts(t, AssetParam{
@@ -550,14 +550,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
-		ExpiresAt:                  time.Now().Add(formationExpiry),
+		ExpiresAt:                  time.Now().Add(openExpiry),
 		StartingSequence:           s,
 	})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 
 	{
@@ -566,20 +566,20 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 	}
 
 	{
@@ -599,7 +599,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	}
 
 	{
-		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
@@ -607,7 +607,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: initiator.KP.Address(),
 			ResponderSigner: responder.KP.Address(),
 			InitiatorEscrow: initiator.Escrow.Address(),
@@ -747,7 +747,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-	const formationExpiry = 5 * time.Minute
+	const openExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
 	initiator, responder := initAccounts(t, AssetParam{
@@ -768,14 +768,14 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		ObservationPeriodTime:      observationPeriodTime,
 		ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 		Asset:                      asset,
-		ExpiresAt:                  time.Now().Add(formationExpiry),
+		ExpiresAt:                  time.Now().Add(openExpiry),
 		StartingSequence:           s,
 	})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 	assert.Empty(t, open.Envelope.ConfirmerSignatures)
 	{
 		// R signs
@@ -783,20 +783,20 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
 		require.NoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Close)
-		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Formation)
+		assert.NotEmpty(t, open.Envelope.ConfirmerSignatures.Open)
 	}
 
 	{
@@ -816,7 +816,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	}
 
 	{
-		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
@@ -824,7 +824,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: initiator.KP.Address(),
 			ResponderSigner: responder.KP.Address(),
 			InitiatorEscrow: initiator.Escrow.Address(),
@@ -964,7 +964,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
 	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
-	const formationExpiry = 5 * time.Minute
+	const openExpiry = 5 * time.Minute
 
 	asset := state.NativeAsset
 	// native asset has no asset limit
@@ -989,7 +989,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			ObservationPeriodTime:      observationPeriodTime,
 			ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 			Asset:                      asset,
-			ExpiresAt:                  time.Now().Add(formationExpiry),
+			ExpiresAt:                  time.Now().Add(openExpiry),
 			StartingSequence:           s,
 		})
 		require.NoError(t, err)
@@ -1012,7 +1012,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	{
-		t.Log("Initiator and Responder channels ingest the formation tx ...")
+		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
 		require.NoError(t, err)
 		ftxXDR, err := ftx.Base64()
@@ -1020,7 +1020,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
-		resultMetaXDR, err := txbuildtest.BuildFormationResultMetaXDR(txbuildtest.FormationResultMetaParams{
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner: initiator.KP.Address(),
 			ResponderSigner: responder.KP.Address(),
 			InitiatorEscrow: initiator.Escrow.Address(),

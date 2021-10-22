@@ -10,7 +10,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type FormationParams struct {
+type OpenParams struct {
 	InitiatorSigner   *keypair.FromAddress
 	ResponderSigner   *keypair.FromAddress
 	InitiatorEscrow   *keypair.FromAddress
@@ -23,13 +23,13 @@ type FormationParams struct {
 	ConfirmingSigner  *keypair.FromAddress
 }
 
-func Formation(p FormationParams) (*txnbuild.Transaction, error) {
-	// Build the list of extra signatures required for signing the formation
+func Open(p OpenParams) (*txnbuild.Transaction, error) {
+	// Build the list of extra signatures required for signing the open
 	// transaction that will be required in addition to the signers for the
 	// account signers. The extra signers will be signatures by the confirming
 	// signer for the declaration and close transaction so that the confirming
 	// signer must reveal those signatures publicly when submitting the
-	// formation transaction. This prevents the confirming signer from
+	// open transaction. This prevents the confirming signer from
 	// withholding signatures for the declaration and closing transactions.
 	extraSignerKeys := [2]xdr.SignerKey{}
 	err := extraSignerKeys[0].SetSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
