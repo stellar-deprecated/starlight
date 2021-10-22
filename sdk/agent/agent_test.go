@@ -196,10 +196,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	{
 		localEvent, ok := <-localEvents
 		require.True(t, ok)
-		assert.Equal(t, localEvent, ConnectedEvent{})
+		assert.IsType(t, ConnectedEvent{}, localEvent)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
-		assert.Equal(t, remoteEvent, ConnectedEvent{})
+		assert.IsType(t, ConnectedEvent{}, remoteEvent)
 	}
 
 	// Extra hellos are allowed and have no consequence.
@@ -212,7 +212,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	{
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
-		assert.Equal(t, remoteEvent, ConnectedEvent{})
+		assert.IsType(t, ConnectedEvent{}, remoteEvent)
 	}
 
 	// Extra hellos with wrong data raise an error.
@@ -248,7 +248,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}
 
 	// Open the channel.
-	err = localAgent.Open()
+	err = localAgent.Open(state.NativeAsset)
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.NoError(t, err)
@@ -276,10 +276,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	{
 		localEvent, ok := <-localEvents
 		require.True(t, ok)
-		assert.Equal(t, localEvent, OpenedEvent{})
+		assert.IsType(t, OpenedEvent{}, localEvent)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
-		assert.Equal(t, remoteEvent, OpenedEvent{})
+		assert.IsType(t, OpenedEvent{}, remoteEvent)
 	}
 
 	// Make a payment.
@@ -614,7 +614,7 @@ func TestAgent_concurrency(t *testing.T) {
 	<-remoteConnected
 
 	// Open the channel.
-	err = localAgent.Open()
+	err = localAgent.Open(state.NativeAsset)
 	require.NoError(t, err)
 
 	<-localOpened

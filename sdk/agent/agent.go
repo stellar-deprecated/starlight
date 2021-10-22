@@ -263,7 +263,7 @@ func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) {
 
 // Open kicks off the open process which will continue after the function
 // returns.
-func (a *Agent) Open() error {
+func (a *Agent) Open(asset state.Asset) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -292,7 +292,7 @@ func (a *Agent) Open() error {
 	open, err := a.channel.ProposeOpen(state.OpenParams{
 		ObservationPeriodTime:      a.observationPeriodTime,
 		ObservationPeriodLedgerGap: a.observationPeriodLedgerGap,
-		Asset:                      "native",
+		Asset:                      asset,
 		ExpiresAt:                  openExpiresAt,
 		StartingSequence:           seqNum + 1,
 	})
@@ -525,7 +525,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	fmt.Fprintf(a.logWriter, "other's signer: %v\n", a.otherEscrowAccountSigner.Address())
 
 	if a.events != nil {
-		a.events <- ConnectedEvent{}
+		a.events <- ConnectedEvent{EscrowAccount: &h.EscrowAccount, Signer: &h.Signer}
 	}
 
 	return nil

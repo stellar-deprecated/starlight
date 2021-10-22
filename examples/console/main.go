@@ -43,7 +43,11 @@ func main() {
 	}
 }
 
-var closeAgreements = []state.CloseAgreement{}
+var (
+	asset              = state.Asset("")
+	otherEscrowAccount = (*keypair.FromAddress)(nil)
+	closeAgreements    = []state.CloseAgreement{}
+)
 
 func run() error {
 	showHelp := false
@@ -132,9 +136,11 @@ func run() error {
 			case agentpkg.ErrorEvent:
 				fmt.Fprintf(os.Stderr, "error: %v\n", e.Err)
 			case agentpkg.ConnectedEvent:
+				otherEscrowAccount = e.EscrowAccount
 				fmt.Fprintf(os.Stderr, "connected\n")
 			case agentpkg.OpenedEvent:
-				fmt.Fprintf(os.Stderr, "channel opened\n")
+				asset = e.OpenAgreement.Envelope.Details.Asset
+				fmt.Fprintf(os.Stderr, "channel opened for asset %v\n", asset)
 
 			case agentpkg.PaymentReceivedEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
@@ -362,7 +368,15 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 	case "connect":
 		return agent.ConnectTCP(params[1])
 	case "open":
-		return agent.Open()
+		assetCode := ""
+		if len(params) >= 2 {
+			assetCode = params[1]
+		}
+		asset := state.NativeAsset
+		if assetCode != "" && assetCode != "native" {
+			asset = state.Asset(assetCode + ":" + signer.Address())
+		}
+		return agent.Open(asset)
 	case "pay":
 		amt, err := amount.ParseInt64(params[1])
 		if err != nil {
@@ -458,6 +472,10 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		return nil
 	case "deposit":
 		depositAmountStr := params[1]
+		destination := escrowAccount
+		if len(params) >= 3 && params[2] == "other" {
+			destination = otherEscrowAccount
+		}
 		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
 		if err != nil {
 			return fmt.Errorf("getting state of local escrow account: %w", err)
@@ -468,7 +486,7 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
 			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{Destination: escrowAccount.Address(), Asset: txnbuild.NativeAsset{}, Amount: depositAmountStr},
+				&txnbuild.Payment{Destination: destination.Address(), Asset: asset.Asset(), Amount: depositAmountStr},
 			},
 		})
 		if err != nil {

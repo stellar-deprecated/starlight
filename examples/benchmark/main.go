@@ -10,6 +10,7 @@ import (
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/horizon"
+	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -138,7 +139,7 @@ func run() error {
 			case agentpkg.ConnectedEvent:
 				fmt.Fprintf(os.Stderr, "connected\n")
 				if connectAddr != "" {
-					_ = agent.Open()
+					_ = agent.Open(state.NativeAsset)
 				}
 			case agentpkg.OpenedEvent:
 				fmt.Fprintf(os.Stderr, "opened\n")
