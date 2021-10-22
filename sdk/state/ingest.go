@@ -287,7 +287,6 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 
 			switch entry.Data.Type {
 			case xdr.LedgerEntryTypeTrustline:
-				fmt.Println("Account:", entry.Data.TrustLine.AccountId, "TrustLine:", entry.Data.TrustLine.Asset)
 				if !c.openAgreement.Envelope.Details.Asset.EqualTrustLineAsset(entry.Data.TrustLine.Asset) {
 					continue
 				}
