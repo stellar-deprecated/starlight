@@ -2,6 +2,8 @@ package txbuildtest
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -43,13 +45,24 @@ func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error
 		},
 	}
 
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for _, result := range ledgerEntryResults {
-		tm.V2.Operations[0].Changes = append(tm.V2.Operations[0].Changes, xdr.LedgerEntryChange{
-			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
-			Updated: &xdr.LedgerEntry{
-				Data: result,
-			},
-		})
+		change := xdr.LedgerEntryChange{}
+		// When operations like ChangeTrustOp execute they potentially create or
+		// update existing ledger entries. The operation encoded in the
+		// transaction doesn't actually know which will occur because it depends
+		// on the state of the network at the time the transaction is executed.
+		// Randomly simulating whether a create or update change occurs
+		// simulates that uncertainty while also ensuring we broadly test that
+		// different behavior across all of our tests.
+		if rand.Int()%2 == 0 {
+			change.Type = xdr.LedgerEntryChangeTypeLedgerEntryCreated
+			change.Created = &xdr.LedgerEntry{Data: result}
+		} else {
+			change.Type = xdr.LedgerEntryChangeTypeLedgerEntryUpdated
+			change.Updated = &xdr.LedgerEntry{Data: result}
+		}
+		tm.V2.Operations[0].Changes = append(tm.V2.Operations[0].Changes, change)
 	}
 
 	tmXDR, err := xdr.MarshalBase64(tm)
