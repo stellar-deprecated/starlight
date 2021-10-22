@@ -168,8 +168,13 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 	// if any, and then update.
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
-			updated, ok := change.GetUpdated()
-			if !ok {
+			var entry *xdr.LedgerEntry
+			switch change.Type {
+			case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+				entry = change.Created
+			case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+				entry = change.Updated
+			default:
 				continue
 			}
 
@@ -177,7 +182,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 			var ledgerEntryAvailableBalance int64
 
 			if channelAsset.IsNative() {
-				account, ok := updated.Data.GetAccount()
+				account, ok := entry.Data.GetAccount()
 				if !ok {
 					continue
 				}
@@ -185,7 +190,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 				liabilities := account.Liabilities()
 				ledgerEntryAvailableBalance = int64(account.Balance - liabilities.Buying)
 			} else {
-				tl, ok := updated.Data.GetTrustLine()
+				tl, ok := entry.Data.GetTrustLine()
 				if !ok {
 					continue
 				}
@@ -270,26 +275,31 @@ func (c *Channel) ingestFormationTx(tx *txnbuild.Transaction, resultXDR string, 
 	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry *xdr.TrustLineEntry
 	for _, o := range txMetaV2.Operations {
 		for _, change := range o.Changes {
-			updated, ok := change.GetUpdated()
-			if !ok {
+			var entry *xdr.LedgerEntry
+			switch change.Type {
+			case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+				entry = change.Created
+			case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+				entry = change.Updated
+			default:
 				continue
 			}
 
-			switch updated.Data.Type {
+			switch entry.Data.Type {
 			case xdr.LedgerEntryTypeTrustline:
-				if !c.openAgreement.Envelope.Details.Asset.EqualTrustLineAsset(updated.Data.TrustLine.Asset) {
+				if !c.openAgreement.Envelope.Details.Asset.EqualTrustLineAsset(entry.Data.TrustLine.Asset) {
 					continue
 				}
-				if updated.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
-					initiatorEscrowTrustlineEntry = updated.Data.TrustLine
-				} else if updated.Data.TrustLine.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
-					responderEscrowTrustlineEntry = updated.Data.TrustLine
+				if entry.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
+					initiatorEscrowTrustlineEntry = entry.Data.TrustLine
+				} else if entry.Data.TrustLine.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
+					responderEscrowTrustlineEntry = entry.Data.TrustLine
 				}
 			case xdr.LedgerEntryTypeAccount:
-				if updated.Data.Account.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
-					initiatorEscrowAccountEntry = updated.Data.Account
-				} else if updated.Data.Account.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
-					responderEscrowAccountEntry = updated.Data.Account
+				if entry.Data.Account.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
+					initiatorEscrowAccountEntry = entry.Data.Account
+				} else if entry.Data.Account.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
+					responderEscrowAccountEntry = entry.Data.Account
 				}
 			}
 		}

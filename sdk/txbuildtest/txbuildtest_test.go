@@ -55,9 +55,15 @@ func Test_txbuildtest_buildResultMetaXDR(t *testing.T) {
 
 	for _, o := range txMetaV2.Operations {
 		for i, change := range o.Changes {
-			updated, ok := change.GetUpdated()
-			require.True(t, ok)
-			assert.Equal(t, led[i], updated.Data)
+			created, createdOK := change.GetCreated()
+			updated, updatedOK := change.GetUpdated()
+			if createdOK {
+				assert.Equal(t, led[i], created.Data)
+			} else if updatedOK {
+				assert.Equal(t, led[i], updated.Data)
+			} else {
+				assert.Fail(t, "change didn't contain a created or updated")
+			}
 		}
 	}
 }
