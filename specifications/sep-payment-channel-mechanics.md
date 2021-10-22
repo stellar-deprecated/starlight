@@ -166,21 +166,21 @@ To setup the payment channel:
    - e to 0.
 4. Increment i.
 5. I signs and shares:
-   - A formation transaction F.
+   - A open transaction F.
    - A declaration transaction D_i.
    - A closing transaction C_i, that closes the channel without any payment.
 6. R signs and submits F.
 
 Participants should check the state of the other participant's escrow account
-after the formation transaction is submitted to ensure the state is as
-expected. Participants may wish to reduce their exposure to griefing by making
-deposits of initial contributions after formation. See [Security](#Security).
+after the open transaction is submitted to ensure the state is as expected. 
+Participants may wish to reduce their exposure to griefing by making deposits of 
+initial contributions after the channel is open. See [Security](#Security).
 
 Signatures for F, D_i, and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
-- F, the _formation transaction_, changes escrow accounts EI and ER to be 2-of-2
+- F, the _open transaction_, changes escrow accounts EI and ER to be 2-of-2
 multisig accounts. F has source account E, and sequence number set to s.
 
   F has two signers in its `extraSigners` precondition that ensures that if F is
@@ -231,12 +231,12 @@ multisig accounts. F has source account E, and sequence number set to s.
     future reserves of subsequent operations.
 
   The escrow accounts EI and ER will likely have the necessary trustline
-  before the formation transaction is built. This means the `CHANGE_TRUST`
+  before the open transaction is built. This means the `CHANGE_TRUST`
   operation will likely be a no-op. The `CHANGE_TRUST` operation must be
-  included in the formation transaction so that participants are guaranteed the
-  trustline is still in the same state after formation. If the operation is
-  not included a participant could intentionally or accidentally remove a
-  trustline between escrow account setup and formation causing the presigned
+  included in the open transaction so that participants are guaranteed the
+  trustline is still in the same state after the channel is open. If the 
+  operation is not included a participant could intentionally or accidentally 
+  remove a trustline between escrow account setup and open causing the presigned
   closing transaction to become invalid.
 
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
@@ -325,8 +325,8 @@ change `minSeqAge` and `minSeqLedgerGap` to zero.
 
 If participants choose to coordinate a close before submitting D_i they must
 take care that the new C_i's hash is included in the D_i's `extraSigners`,
-or keep a copy of the old C_i's signature required to satisfy D_i's `extraSigners` 
-precondition.
+or keep a copy of the old C_i's signature required to satisfy D_i's 
+`extraSigners` precondition.
 
 #### Uncoordinated Close
 
@@ -664,21 +664,22 @@ its payment operation is dependent on amounts clawed back.
 ### Escrow Account and Trustline State
 
 Participants can inspect the state of escrow accounts and trustlines before
-execution of the formation to check the state of the accounts and trustlines are
+execution of the open to check the state of the accounts and trustlines are
 acceptable, but there is no guarantee that state will remain constant until
-after the formation transaction is executed.
+after the open transaction is executed.
 
 It is critical to check the state of the other participants escrow account and
-their trustlines after formation because there is no way for participants to
-guarantee that the other participant has not altered its state. For example, the
-other participant could add an additional signer to their account. Or, for
-example, the other participant could intentionally or accidentally cause flags
-on their trustline to be changed, such as the clawback enabled flag.
+their trustlines after opening the channel because there is no way for 
+participants to guarantee that the other participant has not altered its state. 
+For example, the other participant could add an additional signer to their 
+account. Or, for example, the other participant could intentionally or 
+accidentally cause flags on their trustline to be changed, such as the clawback 
+enabled flag.
 
 ### Escrow Account and Trustline Balance
 
 Participants should inspect the state of the escrow accounts and their
-trustlines after formation to determine the starting balance of each
+trustlines after opening the channel to determine the starting balance of each
 participants contribution.
 
 To calculate the balance available for spending, participants should get the
