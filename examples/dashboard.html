@@ -201,12 +201,12 @@
       const remoteHorizon = await (await fetch(`${horizonUrl}/accounts/${remoteEscrow}`)).json();
       chart.load({
         columns: [
-          [localEscrow.slice(0, 4), Number(localHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
           [remoteEscrow.slice(0, 4), Number(remoteHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
+          [localEscrow.slice(0, 4), Number(localHorizon['balances'].find(b => b['asset_type'] == 'native')['balance'])],
         ],
         colors: {
-          [localEscrow.slice(0, 4)]: color1,
           [remoteEscrow.slice(0, 4)]: color2,
+          [localEscrow.slice(0, 4)]: color1,
         },
         order: null,
         unload: true,
@@ -258,20 +258,20 @@
         return
       }
       const balance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
-      const left = r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
-      const right = r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
-      const leftAcc = r['Config']['EscrowAccountKey'];
-      const rightAcc = r['Snapshot']['OtherEscrowAccount'];
+      const local = r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
+      const remote = r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
+      const localAcc = r['Config']['EscrowAccountKey'];
+      const remoteAcc = r['Snapshot']['OtherEscrowAccount'];
       if (balance > 0) {
         chart.load({
           columns: [
-            [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            [remoteAcc.slice(0, 4), balance < 0 ? remote + balance : remote],
             ['Net', Math.abs(balance)],
-            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
+            [localAcc.slice(0, 4), balance > 0 ? local - balance : local],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: color1,
-            [rightAcc.slice(0, 4)]: color2,
+            [localAcc.slice(0, 4)]: color1,
+            [remoteAcc.slice(0, 4)]: color2,
             'Net': color1Light,
           },
           order: null,
@@ -279,13 +279,13 @@
       } else if (balance < 0) {
         chart.load({
           columns: [
-            [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            [remoteAcc.slice(0, 4), balance < 0 ? remote + balance : remote],
             ['Net', Math.abs(balance)],
-            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
+            [localAcc.slice(0, 4), balance > 0 ? local - balance : local],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: color1,
-            [rightAcc.slice(0, 4)]: color2,
+            [localAcc.slice(0, 4)]: color1,
+            [remoteAcc.slice(0, 4)]: color2,
             'Net': color2Light,
           },
           order: null,
@@ -293,13 +293,13 @@
       } else {
         chart.load({
           columns: [
-            [leftAcc.slice(0, 4), balance > 0 ? left - balance : left],
+            [remoteAcc.slice(0, 4), balance < 0 ? remote + balance : remote],
             ['Net', 0],
-            [rightAcc.slice(0, 4), balance < 0 ? right + balance : right],
+            [localAcc.slice(0, 4), balance > 0 ? local - balance : local],
           ],
           colors: {
-            [leftAcc.slice(0, 4)]: color1,
-            [rightAcc.slice(0, 4)]: color2,
+            [localAcc.slice(0, 4)]: color1,
+            [remoteAcc.slice(0, 4)]: color2,
             'Net': '#000',
           },
           order: null,
