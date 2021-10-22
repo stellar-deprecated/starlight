@@ -1,6 +1,9 @@
 package agent
 
-import "github.com/stellar/experimental-payment-channels/sdk/state"
+import (
+	"github.com/stellar/experimental-payment-channels/sdk/state"
+	"github.com/stellar/go/keypair"
+)
 
 // ErrorEvent occurs when an error has occurred, and contains the error
 // occurred.
@@ -9,10 +12,15 @@ type ErrorEvent struct {
 }
 
 // ConnectedEvent occurs when the agent is connected to another participant.
-type ConnectedEvent struct{}
+type ConnectedEvent struct {
+	EscrowAccount *keypair.FromAddress
+	Signer        *keypair.FromAddress
+}
 
 // OpenedEvent occurs when the channel has been opened.
-type OpenedEvent struct{}
+type OpenedEvent struct {
+	OpenAgreement state.OpenAgreement
+}
 
 // PaymentReceivedEvent occurs when a payment is received and the balance it
 // agrees to would be the resulting disbursements from the channel if closed.

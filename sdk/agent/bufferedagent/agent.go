@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stellar/experimental-payment-channels/sdk/agent"
+	"github.com/stellar/experimental-payment-channels/sdk/state"
 )
 
 var ErrBufferFull = errors.New("buffer full")
@@ -91,10 +92,10 @@ func (a *Agent) SetMaxBufferSize(maxbufferSize int) {
 	a.maxbufferSize = maxbufferSize
 }
 
-func (a *Agent) Open() error {
+func (a *Agent) Open(asset state.Asset) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.agent.Open()
+	return a.agent.Open(asset)
 }
 
 // PaymentWithMemo buffers a payment which will be paid in the next settlement.

@@ -56,7 +56,7 @@ func (a *Agent) ingest() error {
 			fmt.Fprintf(a.logWriter, "writing event: %v\n", stateAfter)
 			switch stateAfter {
 			case state.StateOpen:
-				a.events <- OpenedEvent{}
+				a.events <- OpenedEvent{a.channel.OpenAgreement()}
 			case state.StateClosing:
 				a.events <- ClosingEvent{}
 			case state.StateClosingWithOutdatedState:
