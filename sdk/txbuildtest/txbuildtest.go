@@ -72,7 +72,7 @@ func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error
 	return tmXDR, nil
 }
 
-type FormationResultMetaParams struct {
+type OpenResultMetaParams struct {
 	InitiatorSigner string
 	ResponderSigner string
 	InitiatorEscrow string
@@ -81,7 +81,7 @@ type FormationResultMetaParams struct {
 	Asset           txnbuild.Asset
 }
 
-func BuildFormationResultMetaXDR(params FormationResultMetaParams) (string, error) {
+func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 	led := []xdr.LedgerEntryData{
 		{
 			Type: xdr.LedgerEntryTypeAccount,

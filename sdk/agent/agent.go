@@ -575,13 +575,13 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming open: %w", err)
 	}
 	fmt.Fprintf(a.logWriter, "open authorized\n")
-	formationTx, err := a.channel.OpenTx()
+	openTx, err := a.channel.OpenTx()
 	if err != nil {
-		return fmt.Errorf("building formation tx: %w", err)
+		return fmt.Errorf("building open tx: %w", err)
 	}
-	err = a.submitter.SubmitTx(formationTx)
+	err = a.submitter.SubmitTx(openTx)
 	if err != nil {
-		return fmt.Errorf("submitting formation tx: %w", err)
+		return fmt.Errorf("submitting open tx: %w", err)
 	}
 	return nil
 }

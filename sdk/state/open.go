@@ -34,19 +34,19 @@ func (d OpenDetails) Equal(d2 OpenDetails) bool {
 type OpenSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
-	Formation   xdr.Signature
+	Open        xdr.Signature
 }
 
 func (oas OpenSignatures) Empty() bool {
-	return len(oas.Declaration) == 0 && len(oas.Close) == 0 && len(oas.Formation) == 0
+	return len(oas.Declaration) == 0 && len(oas.Close) == 0 && len(oas.Open) == 0
 }
 
 func (oas OpenSignatures) HasAllSignatures() bool {
-	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Formation) != 0
+	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Open) != 0
 }
 
 func (oas OpenSignatures) Equal(oas2 OpenSignatures) bool {
-	return bytes.Equal(oas.Formation, oas2.Formation) &&
+	return bytes.Equal(oas.Open, oas2.Open) &&
 		bytes.Equal(oas.Declaration, oas2.Declaration) &&
 		bytes.Equal(oas.Close, oas2.Close)
 }
@@ -60,9 +60,9 @@ func signOpenAgreementTxs(txs OpenTransactions, closeTxs CloseTransactions, sign
 	if err != nil {
 		return OpenSignatures{}, fmt.Errorf("signing close: %w", err)
 	}
-	s.Formation, err = signer.Sign(txs.FormationHash[:])
+	s.Open, err = signer.Sign(txs.OpenHash[:])
 	if err != nil {
-		return OpenSignatures{}, fmt.Errorf("signing formation: %w", err)
+		return OpenSignatures{}, fmt.Errorf("signing open: %w", err)
 	}
 	return s, nil
 }
@@ -76,9 +76,9 @@ func (s OpenSignatures) Verify(txs OpenTransactions, closeTxs CloseTransactions,
 	if err != nil {
 		return fmt.Errorf("verifying close signed: %w", err)
 	}
-	err = signer.Verify(txs.FormationHash[:], s.Formation)
+	err = signer.Verify(txs.OpenHash[:], s.Open)
 	if err != nil {
-		return fmt.Errorf("verifying formation signed: %w", err)
+		return fmt.Errorf("verifying open signed: %w", err)
 	}
 	return nil
 }
@@ -86,8 +86,8 @@ func (s OpenSignatures) Verify(txs OpenTransactions, closeTxs CloseTransactions,
 // OpenTransactions contain all the transaction hashes and transactions
 // that make up the open agreement.
 type OpenTransactions struct {
-	FormationHash TransactionHash
-	Formation     *txnbuild.Transaction
+	OpenHash TransactionHash
+	Open     *txnbuild.Transaction
 }
 
 type OpenEnvelope struct {
@@ -160,23 +160,23 @@ func (oa OpenAgreement) CloseAgreement() CloseAgreement {
 }
 
 func (oa OpenAgreement) SignedTransactions() OpenTransactions {
-	formationTx := oa.Transactions.Formation
+	openTx := oa.Transactions.Open
 
-	// Add the formation signatures to the formation tx.
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.Envelope.ProposerSignatures.Formation, oa.Envelope.Details.ProposingSigner.Hint()))
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.Envelope.ConfirmerSignatures.Formation, oa.Envelope.Details.ConfirmingSigner.Hint()))
+	// Add the open signatures to the open tx.
+	openTx, _ = openTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.Envelope.ProposerSignatures.Open, oa.Envelope.Details.ProposingSigner.Hint()))
+	openTx, _ = openTx.AddSignatureDecorated(xdr.NewDecoratedSignature(oa.Envelope.ConfirmerSignatures.Open, oa.Envelope.Details.ConfirmingSigner.Hint()))
 
 	// Add the declaration signature provided by the confirming signer that is
-	// required to be an extra signer on the formation tx to the formation tx.
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.Envelope.ConfirmerSignatures.Declaration, oa.Envelope.Details.ConfirmingSigner.Hint(), oa.CloseTransactions.DeclarationHash[:]))
+	// required to be an extra signer on the open tx to the open tx.
+	openTx, _ = openTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.Envelope.ConfirmerSignatures.Declaration, oa.Envelope.Details.ConfirmingSigner.Hint(), oa.CloseTransactions.DeclarationHash[:]))
 
 	// Add the close signature provided by the confirming signer that is
-	// required to be an extra signer on the formation tx to the formation tx.
-	formationTx, _ = formationTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.Envelope.ConfirmerSignatures.Close, oa.Envelope.Details.ConfirmingSigner.Hint(), oa.CloseTransactions.CloseHash[:]))
+	// required to be an extra signer on the open tx to the open tx.
+	openTx, _ = openTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(oa.Envelope.ConfirmerSignatures.Close, oa.Envelope.Details.ConfirmingSigner.Hint(), oa.CloseTransactions.CloseHash[:]))
 
 	return OpenTransactions{
-		FormationHash: oa.Transactions.FormationHash,
-		Formation:     formationTx,
+		OpenHash: oa.Transactions.OpenHash,
+		Open:     openTx,
 	}
 }
 
@@ -213,7 +213,7 @@ func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, closeTxs CloseTr
 		return
 	}
 
-	formation, err := txbuild.Formation(txbuild.FormationParams{
+	open, err := txbuild.Open(txbuild.OpenParams{
 		InitiatorSigner:   c.initiatorSigner(),
 		ResponderSigner:   c.responderSigner(),
 		InitiatorEscrow:   c.initiatorEscrowAccount().Address,
@@ -226,29 +226,29 @@ func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, closeTxs CloseTr
 		ConfirmingSigner:  d.ConfirmingSigner,
 	})
 	if err != nil {
-		err = fmt.Errorf("building formation tx for open: %w", err)
+		err = fmt.Errorf("building open tx for open: %w", err)
 		return
 	}
-	formationHash, err := formation.Hash(c.networkPassphrase)
+	openHash, err := open.Hash(c.networkPassphrase)
 	if err != nil {
-		err = fmt.Errorf("hashing formation tx: %w", err)
+		err = fmt.Errorf("hashing open tx: %w", err)
 		return
 	}
 
 	txs = OpenTransactions{
-		FormationHash: formationHash,
-		Formation:     formation,
+		OpenHash: openHash,
+		Open:     open,
 	}
 	return
 }
 
-// OpenTx builds the formation transaction used for opening the channel. The
+// OpenTx builds the open transaction used for opening the channel. The
 // transaction is signed and ready to submit. ProposeOpen and ConfirmOpen must
 // be used prior to prepare an open agreement with the other participant.
-func (c *Channel) OpenTx() (formationTx *txnbuild.Transaction, err error) {
+func (c *Channel) OpenTx() (openTx *txnbuild.Transaction, err error) {
 	oa := c.openAgreement
 	txs := oa.SignedTransactions()
-	return txs.Formation, nil
+	return txs.Open, nil
 }
 
 // ProposeOpen proposes the open of the channel, it is called by the participant
