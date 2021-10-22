@@ -257,11 +257,13 @@
         // chart.unload();
         return
       }
-      const balance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
+      const localIsInitiator = r['Snapshot']['State']['Initiator'];
+      const rawBalance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
       const local = r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
       const remote = r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
       const localAcc = r['Config']['EscrowAccountKey'];
       const remoteAcc = r['Snapshot']['OtherEscrowAccount'];
+      const balance = localIsInitiator ? rawBalance : -rawBalance;
       if (balance > 0) {
         chart.load({
           columns: [
