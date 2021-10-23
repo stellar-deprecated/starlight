@@ -64,7 +64,7 @@ $ go run -horizon=<horizon> -http=9000 -connect=<IP>:8001
 
 ## Tests and Results
 
-### 1
+### Test 1
 Sending 10m payments, buffering up to 95k at a time, all payments with amount
 0.0000001, all payments with unique memos.
 
@@ -72,6 +72,20 @@ Sending 10m payments, buffering up to 95k at a time, all payments with amount
 > deposit 10000000
 > deposit 10000000 other
 > payx 0.0000001 10000000 95000
+```
+
+```
+// TODO: OUTPUT HERE
+```
+
+### Test 2
+Sending 10m payments, buffering up to 95k at a time, payment amounts randomly
+selected in the range 100.0 to 0.0000001, all payments with unique memos.
+
+```
+> deposit 10000000
+> deposit 10000000 other
+> payx 100.0 10000000 95000
 ```
 
 ```
