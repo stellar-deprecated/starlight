@@ -159,8 +159,10 @@ func run() error {
 
 			case bufferedagent.BufferedPaymentsReceivedEvent:
 				stats.AddBufferedPaymentsReceived(len(e.Payments))
+				stats.AddBufferByteSize(e.BufferByteSize)
 			case bufferedagent.BufferedPaymentsSentEvent:
 				stats.AddBufferedPaymentsSent(len(e.Payments))
+				stats.AddBufferByteSize(e.BufferByteSize)
 
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "channel closing\n")

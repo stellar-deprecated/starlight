@@ -17,6 +17,9 @@ type stats struct {
 	agreementsReceived       int64
 	bufferedPaymentsSent     int64
 	bufferedPaymentsReceived int64
+	maxBufferByteSize        int
+	minBufferByteSize        int
+	avgBufferByteSize        int
 }
 
 func (s *stats) Reset() {
@@ -28,6 +31,9 @@ func (s *stats) Reset() {
 	s.agreementsReceived = 0
 	s.bufferedPaymentsSent = 0
 	s.bufferedPaymentsReceived = 0
+	s.maxBufferByteSize = 0
+	s.minBufferByteSize = 0
+	s.avgBufferByteSize = 0
 }
 
 func (s *stats) Clone() *stats {
@@ -38,17 +44,8 @@ func (s *stats) Clone() *stats {
 		agreementsReceived:       s.agreementsReceived,
 		bufferedPaymentsSent:     s.bufferedPaymentsSent,
 		bufferedPaymentsReceived: s.bufferedPaymentsReceived,
-	}
-}
-
-func (s *stats) Merge(o *stats) *stats {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return &stats{
-		agreementsSent:           s.agreementsSent + o.agreementsSent,
-		agreementsReceived:       s.agreementsReceived + o.agreementsReceived,
-		bufferedPaymentsSent:     s.bufferedPaymentsSent + o.bufferedPaymentsSent,
-		bufferedPaymentsReceived: s.bufferedPaymentsReceived + o.bufferedPaymentsReceived,
+		maxBufferByteSize:        s.maxBufferByteSize,
+		minBufferByteSize:        s.minBufferByteSize,
 	}
 }
 
@@ -94,6 +91,18 @@ func (s *stats) AddBufferedPaymentsReceived(delta int) {
 	s.bufferedPaymentsReceived += int64(delta)
 }
 
+func (s *stats) AddBufferByteSize(size int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if size > s.maxBufferByteSize {
+		s.maxBufferByteSize = size
+	}
+	if s.minBufferByteSize == 0 || size < s.minBufferByteSize {
+		s.minBufferByteSize = size
+	}
+	s.avgBufferByteSize = (s.avgBufferByteSize + size) / 2
+}
+
 func (s *stats) AgreementsPerSecond() float64 {
 	timeFinish := s.timeFinish
 	if timeFinish.IsZero() {
@@ -136,6 +145,9 @@ func (s *stats) Summary() string {
 	fmt.Fprintf(&sb, "buffered payments sent: %d\n", s.bufferedPaymentsSent)
 	fmt.Fprintf(&sb, "buffered payments received: %d\n", s.bufferedPaymentsReceived)
 	fmt.Fprintf(&sb, "buffered payments tps: %.3f\n", s.BufferedPaymentsPerSecond())
+	fmt.Fprintf(&sb, "buffered payments max buffer size: %d\n", s.maxBufferByteSize)
+	fmt.Fprintf(&sb, "buffered payments min buffer size: %d\n", s.minBufferByteSize)
+	fmt.Fprintf(&sb, "buffered payments avg buffer size: %d\n", s.avgBufferByteSize)
 	return sb.String()
 }
 
@@ -149,6 +161,9 @@ func (s *stats) MarshalJSON() ([]byte, error) {
 		BufferedPaymentsSent      int64
 		BufferedPaymentsReceived  int64
 		BufferedPaymentsPerSecond int64
+		MaxBufferByteSize         int
+		MinBufferByteSize         int
+		AvgBufferByteSize         int
 	}{
 		AgreementsSent:            s.agreementsSent,
 		AgreementsReceived:        s.agreementsReceived,
@@ -156,6 +171,9 @@ func (s *stats) MarshalJSON() ([]byte, error) {
 		BufferedPaymentsSent:      s.bufferedPaymentsSent,
 		BufferedPaymentsReceived:  s.bufferedPaymentsReceived,
 		BufferedPaymentsPerSecond: int64(s.BufferedPaymentsPerSecond()),
+		MaxBufferByteSize:         s.maxBufferByteSize,
+		MinBufferByteSize:         s.minBufferByteSize,
+		AvgBufferByteSize:         s.avgBufferByteSize,
 	}
 	return json.MarshalIndent(v, "", "  ")
 }

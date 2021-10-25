@@ -167,8 +167,9 @@ func (a *Agent) eventLoop() {
 				continue
 			}
 			a.events <- BufferedPaymentsReceivedEvent{
-				BufferID: memo.ID,
-				Payments: memo.Payments,
+				BufferID:       memo.ID,
+				BufferByteSize: len(e.CloseAgreement.Envelope.Details.Memo),
+				Payments:       memo.Payments,
 			}
 		case agent.PaymentSentEvent:
 			a.sendingReady <- struct{}{}
@@ -178,8 +179,9 @@ func (a *Agent) eventLoop() {
 				continue
 			}
 			a.events <- BufferedPaymentsSentEvent{
-				BufferID: memo.ID,
-				Payments: memo.Payments,
+				BufferID:       memo.ID,
+				BufferByteSize: len(e.CloseAgreement.Envelope.Details.Memo),
+				Payments:       memo.Payments,
 			}
 		}
 	}
