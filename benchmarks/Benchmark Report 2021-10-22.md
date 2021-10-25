@@ -17,27 +17,43 @@ The test demonstrated that at least ____ transactions per second is possible
 with consumer hardware when using a Starlight payment channel and buffering
 payments.
 
-## Hardware
+## Participants
 
-The two participants were using the following hardware:
+Three participants were involved in the tests, with two participants formed
+from participants A and B, and participants A and C.
 
+### Participant A
+
+Location: San Francisco, US
+Network: 1gbps
+Hardware:
 ```
 MacBook Pro (13-inch, 2019, Four Thunderbolt 3 ports)
 2.8 GHz Quad-Core Intel Core i7
 16 GB 2133 MHz LPDDR3
 ```
 
+### Participant B
+
+Location: ?, US
+Network: ?
+Hardware:
 ```
 ???
 2.6 GHz 6-Core Intel Core i7
 ???
 ```
 
-## Network
+### Participant C
 
-Participants were connected over Tailscale using 1gbps and ____ speed networks.
-
-Participants witnessed a __ms ping time between their computers.
+Location: Brazil
+Network: 200mbps
+Hardware:
+```
+???
+???
+???
+```
 
 ## Setup
 
