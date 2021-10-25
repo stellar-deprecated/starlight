@@ -27,36 +27,36 @@ from participants A and B, and participants A and C.
 
 ### Participant A
 
-Location: San Francisco, US
-Network: 1gbps
-Hardware:
-```
-MacBook Pro (13-inch, 2019, Four Thunderbolt 3 ports)
-2.8 GHz Quad-Core Intel Core i7
-16 GB 2133 MHz LPDDR3
-```
+- Location: San Francisco, US
+- Network: 1gbps
+- Hardware:
+   ```
+   MacBook Pro (13-inch, 2019, Four Thunderbolt 3 ports)
+   2.8 GHz Quad-Core Intel Core i7
+   16 GB 2133 MHz LPDDR3
+   ```
 
 ### Participant B
 
-Location: ?, US
-Network: ?
-Hardware:
-```
-???
-2.6 GHz 6-Core Intel Core i7
-???
-```
+- Location: ?, US
+- Network: ?
+- Hardware:
+   ```
+   ???
+   2.6 GHz 6-Core Intel Core i7
+   ???
+   ```
 
 ### Participant C
 
-Location: Florianopolis, Brazil
-Network: 200mbps
-Hardware:
-```
-MacBook Air (M1, 2020)
-Apple M1
-16 GB
-```
+- Location: Florianopolis, Brazil
+- Network: 200mbps
+- Hardware:
+   ```
+   MacBook Air (M1, 2020)
+   Apple M1
+   16 GB
+   ```
 
 ## Setup
 
