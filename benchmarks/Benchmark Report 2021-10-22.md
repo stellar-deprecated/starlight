@@ -19,7 +19,7 @@ payments.
 
 ## Participants
 
-Three participants were involved in the tests, with two participants formed
+Three participants were involved in the tests, with two participant sets formed
 from participants A and B, and participants A and C.
 
 ### Participant A
