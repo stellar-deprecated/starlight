@@ -13,9 +13,12 @@ maximum possible performance possible with a Starlight payment channel.
 
 ## Summary
 
-The test demonstrated that at least \____ transactions per second is possible
+The test demonstrated that at least \____ payments per second is possible
 with consumer hardware when using a Starlight payment channel and buffering
 payments.
+
+The test also demonstrated that at least 130,000 payments per second is
+possible on networks with latency as high as 215ms.
 
 ## Participants
 
@@ -98,9 +101,56 @@ Buffered payments average buffer size is the average size in bytes of the buffer
 
 For more information on buffering payments, see this discussion: https://github.com/stellar/experimental-payment-channels/discussions/330#discussioncomment-1345257
 
+#### Participants A (US) and B (US)
+
+Latency between participants A and B was observed to be approximately 30ms.
+
+##### Test AB1
+
+Sending 3m payments, buffering up to 15k at a time, all payments with amount
+0.0000001, all payments with unique memos.
+
+```
+> payx 0.0000001 3000000 15000
+
+```
+
+##### Test AB2
+
+Sending 3m payments, buffering up to 95k at a time, all payments with amount
+0.0000001, all payments with unique memos.
+
+```
+> payx 0.0000001 3000000 95000
+
+```
+
+##### Test AB3
+
+Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
+0.0000001, all payments with unique memos.
+
+```
+> payx 1 3000000 15000
+
+```
+
+##### Test AB3
+
+Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
+0.0000001, all payments with unique memos.
+
+```
+> payx 1 3000000 1000
+
+```
+
+
 #### Participants A (US) and C (Brazil)
 
-##### Test 1
+Latency between participants A and C was observed to be approximately 215ms.
+
+##### Test AC1
 
 Sending 3m payments, buffering up to 15k at a time, all payments with amount
 0.0000001, all payments with unique memos.
@@ -120,13 +170,13 @@ buffered payments min buffer size: 1520
 buffered payments avg buffer size: 47475
 ```
 
-##### Test 2
+##### Test AC2
 
 Sending 3m payments, buffering up to 95k at a time, all payments with amount
 0.0000001, all payments with unique memos.
 
 ```
-> payx 0.0000001 3000000 95000                                
+> payx 0.0000001 3000000 95000
 sending 0.0000001 payment 3000000 times
 time spent: 22.827299992s
 agreements sent: 33
@@ -140,7 +190,7 @@ buffered payments min buffer size: 952
 buffered payments avg buffer size: 240436
 ```
 
-##### Test 3
+##### Test AC3
 
 Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
 0.0000001, all payments with unique memos.
@@ -166,7 +216,7 @@ Sending 3m payments, buffering up to 15k at a time, payments with varying amount
 0.0000001, all payments with unique memos.
 
 ```
-> payx 1 3000000 1000 
+> payx 1 3000000 1000
 sending 1 payment 3000000 times
 time spent: 12m37.733772304s
 agreements sent: 3001
