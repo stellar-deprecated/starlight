@@ -2,9 +2,9 @@
 
 Author: Leigh McCulloch <@leighmcculloch>
 
-This report is a summary of the results seen on 2021-10-25 benchmarking a
-Starlight payment channel. This report details the setup and how the benchmark
-was run, as well as the results.
+This report is a summary of the results seen on 2021-10-25 and 2021-10-26
+benchmarking a Starlight payment channel. This report details the setup and
+how the benchmark was run, as well as the results.
 
 The application used for the benchmarking is the `examples/console` application
 in this repository. Some aspects of the application have been optimized, but
@@ -13,17 +13,27 @@ maximum possible performance possible with a Starlight payment channel.
 
 ## Summary
 
-The test demonstrated that at least \____ payments per second is possible
+The test demonstrated that performance varies wildly and is influenced
+significantly by the latency of the network connection between the payment
+channel participants. However, even poor connectivity can result in high
+numbers of payments per second.
+
+The test demonstrated over 1,190,000 payments per second is possible
 with consumer hardware when using a Starlight payment channel and buffering
-payments on networks with latency as low as 30ms.
+payments on networks with latency as low as 10ms. However the current
+implementation only demonstrates this performance with the tiniest of
+micro-payments where every payment is for 0.0000001.
+
+The test demonstrated over 700,000 payments per second for payments varying
+from 0.0000001 to 1.0.
 
 The test also demonstrated that at least 130,000 payments per second is
 possible on networks with latency as high as 215ms.
 
 ## Participants
 
-Three participants were involved in the tests, with two participant sets formed
-from participants A and B, and participants A and C.
+Three participants were involved in the tests, with a payment channel formed
+between participants A and B, and also between participants A and C.
 
 ### Participant A
 
@@ -38,13 +48,13 @@ from participants A and B, and participants A and C.
 
 ### Participant B
 
-- Location: ?, US
-- Network: ?
+- Location: San Francisco, US
+- Network: ~200mbps
 - Hardware:
    ```
-   ???
+   MacBook Pro (16-inch, 2019)
    2.6 GHz 6-Core Intel Core i7
-   ???
+   32 GB 2667 MHz DDR4
    ```
 
 ### Participant C
@@ -103,7 +113,7 @@ For more information on buffering payments, see this discussion: https://github.
 
 #### Participants A (US) and B (US)
 
-Latency between participants A and B was observed to be approximately 30ms.
+Latency between participants A and B was observed to be approximately 10-30ms.
 
 ##### Test AB1
 
@@ -112,7 +122,17 @@ Sending 3m payments, buffering up to 15k at a time, all payments with amount
 
 ```
 > payx 0.0000001 3000000 15000
-
+sending 0.0000001 payment 3000000 times
+time spent: 4.063101492s
+agreements sent: 201
+agreements received: 0
+agreements tps: 49.470
+buffered payments sent: 3000000
+buffered payments received: 0
+buffered payments tps: 738352.218
+buffered payments max buffer size: 55072
+buffered payments min buffer size: 600
+buffered payments avg buffer size: 48020
 ```
 
 ##### Test AB2
@@ -122,7 +142,17 @@ Sending 3m payments, buffering up to 95k at a time, all payments with amount
 
 ```
 > payx 0.0000001 3000000 95000
-
+sending 0.0000001 payment 3000000 times
+time spent: 2.50396729s
+agreements sent: 33
+agreements received: 0
+agreements tps: 13.179
+buffered payments sent: 3000000
+buffered payments received: 0
+buffered payments tps: 1198098.718
+buffered payments max buffer size: 349356
+buffered payments min buffer size: 13380
+buffered payments avg buffer size: 234642
 ```
 
 ##### Test AB3
@@ -132,7 +162,17 @@ Sending 3m payments, buffering up to 15k at a time, payments with varying amount
 
 ```
 > payx 1 3000000 15000
-
+sending 1 payment 3000000 times
+time spent: 5.898862686s
+agreements sent: 201
+agreements received: 0
+agreements tps: 34.074
+buffered payments sent: 3000000
+buffered payments received: 0
+buffered payments tps: 508572.611
+buffered payments max buffer size: 153684
+buffered payments min buffer size: 1980
+buffered payments avg buffer size: 152424
 ```
 
 ##### Test AB3
@@ -142,9 +182,55 @@ Sending 3m payments, buffering up to 15k at a time, payments with varying amount
 
 ```
 > payx 1 3000000 1000
-
+sending 1 payment 3000000 times
+time spent: 39.129140064s
+agreements sent: 3001
+agreements received: 0
+agreements tps: 76.695
+buffered payments sent: 3000000
+buffered payments received: 0
+buffered payments tps: 76669.203
+buffered payments max buffer size: 10292
+buffered payments min buffer size: 1140
+buffered payments avg buffer size: 9601
 ```
 
+##### Test AB4
+
+Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
+0.0000001, all payments with unique memos.
+
+```
+> payx 1 1000000 50000
+sending 1 payment 1000000 times
+time spent: 1.427511708s
+agreements sent: 21
+agreements received: 0
+agreements tps: 14.711
+buffered payments sent: 1000000
+buffered payments received: 0
+buffered payments tps: 700519.649
+buffered payments max buffer size: 503908
+buffered payments min buffer size: 1992
+buffered payments avg buffer size: 502620
+```
+
+##### Test AB5
+
+```
+> payx 1000 1000000 50000
+sending 1000 payment 1000000 times
+time spent: 2.421638555s
+agreements sent: 21
+agreements received: 0
+agreements tps: 8.672
+buffered payments sent: 1000000
+buffered payments received: 0
+buffered payments tps: 412943.541
+buffered payments max buffer size: 619884
+buffered payments min buffer size: 138768
+buffered payments avg buffer size: 549220
+```
 
 #### Participants A (US) and C (Brazil)
 
