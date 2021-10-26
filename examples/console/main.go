@@ -144,15 +144,25 @@ func run() error {
 
 			case agentpkg.PaymentReceivedEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-				stats.AddPaymentsReceived(1)
+				// As this example uses the buffered agent, each
+				// PaymentReceivedEvent, is a new CloseAgreement containing many
+				// buffered payments. The BufferedPaymentsReceivedEvent will
+				// also be triggered and will contain the buffered payments.
+				stats.AddAgreementsReceived(1)
 			case agentpkg.PaymentSentEvent:
 				closeAgreements = append(closeAgreements, e.CloseAgreement)
-				stats.AddPaymentsSent(1)
+				// As this example uses the buffered agent, each
+				// PaymentSentEvent, is a new CloseAgreement containing many
+				// buffered payments. The BufferedPaymentsSentEvent will also be
+				// triggered and will contain the buffered payments.
+				stats.AddAgreementsSent(1)
 
 			case bufferedagent.BufferedPaymentsReceivedEvent:
 				stats.AddBufferedPaymentsReceived(len(e.Payments))
+				stats.AddBufferByteSize(e.BufferByteSize)
 			case bufferedagent.BufferedPaymentsSentEvent:
 				stats.AddBufferedPaymentsSent(len(e.Payments))
+				stats.AddBufferByteSize(e.BufferByteSize)
 
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "channel closing\n")
