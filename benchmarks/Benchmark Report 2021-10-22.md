@@ -93,9 +93,9 @@ Each test sends payments in one direction on the bi-directional payment channel.
 
 Payments are buffered until the channel is available to propose the next agreement. An agreement is then built containing one or more buffered payments. The agreement containing a list of all buffered payments are transmitted to the recipient, and back again in full.
 
-Agreements TPS is the number of agreements per second that the participants have signed and exchanged.
+Agreements TPS is the number of agreements per second that the participants have signed and exchanged. Agreements are transmitted across the wire and so the agreements TPS is limited by the patency of both participants and their capability to quickly produce ed25519 signatures for the two transactions that form each agreement. Agreements TPS is limited by the latency between both participants. For example, if the participants have a ping time of 30ms, the highest agreements TPS value possible will be 1s/30ms=33tps. Or if the participants have a ping time of 200ms, the highest agreements TPS value possible will be 1s/200ms=5tps.
 
-Buffered payments TPS is the number of buffered payments per second that the participants have exchanged inside agreements.
+Buffered payments TPS is the number of buffered payments per second that the participants have exchanged inside agreements. Buffered payments are transmitted across the wire inside an agreement. The maximum buffer size is the maximum number of payments that will be transmitted inside a single agreement. Buffered payments TPS area limited by the bandwidth and latency between both participants.
 
 Buffered payments average buffer size is the average size in bytes of the buffers that were transmitted between participants.
 
@@ -172,7 +172,7 @@ buffered payments avg buffer size: 47475
 
 ##### Test AC2
 
-Sending 3m payments, buffering up to 95k at a time, all payments with amount
+Sending 3m payments, ` up to 95k at a time, all payments with amount
 0.0000001, all payments with unique memos.
 
 ```
