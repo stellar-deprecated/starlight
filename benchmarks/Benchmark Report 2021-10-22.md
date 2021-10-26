@@ -1,7 +1,5 @@
 # Benchmark Report 2021-10-25
 
-Author: Leigh McCulloch <@leighmcculloch>
-
 This report is a summary of the results seen on 2021-10-25 and 2021-10-26
 benchmarking a Starlight payment channel. This report details the setup and
 how the benchmark was run, as well as the results.
