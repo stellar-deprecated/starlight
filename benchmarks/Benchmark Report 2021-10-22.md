@@ -22,18 +22,18 @@ The tests use a Starlight bi-directional payment channel, but only move
 assets in a single direction for the duration of the test. The tests send
 payments using buffering, where payments are buffered and sent in batches.
 
-The test demonstrated over 400,000 payments per second for payments varying
+Test AB6 demonstrated over 400,000 payments per second for payments varying
 from 0.0000001 to 1000.0, over Internet with 10-20ms latency.
 
 Since smaller amounts results in smaller buffer sizes over the wire, higher
 payments per second were observed for payments that trend towards
 micro-payments.
 
-For example, the test demonstrated over 700,000 payments per second for
-payments varying from 0.0000001 to 1.0. And, over 1,190,000 payments per
+For example, test AB5 demonstrated over 700,000 payments per second for
+payments varying from 0.0000001 to 1.0. And, test AB2 over 1,190,000 payments per
 second with micro-payments where every payment is for 0.0000001.
 
-The test also demonstrated that at least 17,000 to 130,000 payments per
+Tests AC1, AC2, AC3 also demonstrated that at least 17,000 to 130,000 payments per
 second is possible on networks with latency as high as 215ms.
 
 ## Participants
@@ -105,7 +105,9 @@ $ go run -horizon=<horizon> -http=9000 -connect=<IP>:8001
 
 ### Understanding the Tests
 
-Each test sends payments in one direction on the bi-directional payment channel. Each test specifies a payment count, max payment amount, and a maximum buffer size in the `payx` command. i.e. `payx <maximum payment amount> <payment count> <max buffer size>`.
+Each test sends payments in one direction on the bi-directional payment channel. Each test specifies a max payment amount, payment count, and a maximum buffer size in the `payx` command. i.e. `payx <maximum payment amount> <payment count> <max buffer size>`.
+
+For example, test AB6 `payx 1000 1000000 50000`, sent 1 million payments, with amounts varying from 0.0000001 to 1000.0, and it allowed payments to buffer into batches holding up to 50k payments.
 
 Payments are buffered until the channel is available to propose the next agreement. An agreement is then built containing one or more buffered payments. The agreement containing a list of all buffered payments are transmitted to the recipient, and back again in full.
 
