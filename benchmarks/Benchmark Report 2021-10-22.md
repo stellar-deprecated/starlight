@@ -8,7 +8,7 @@ how the benchmark was run, as well as the results.
 
 The application used for the benchmarking is the `examples/console` application
 in this repository. Some aspects of the application have been optimized, but
-many parts have not. The results in this report should not be viewed as the
+many parts have not. As an example, participants use simple JSON where some of the message is compressed. The results in this report should not be viewed as the
 maximum possible performance possible with a Starlight payment channel.
 
 ## Summary
