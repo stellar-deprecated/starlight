@@ -15,20 +15,26 @@ maximum possible performance possible with a Starlight payment channel.
 
 The test demonstrated that performance varies wildly and is influenced
 significantly by the latency of the network connection between the payment
-channel participants. However, even poor connectivity can result in high
-numbers of payments per second.
+channel participants. However, even connections with greater latency, such
+as those spanning countries, can deliver high numbers of payments per second.
 
-The test demonstrated over 1,190,000 payments per second is possible
-with consumer hardware when using a Starlight payment channel and buffering
-payments on networks with latency as low as 10ms. However the current
-implementation only demonstrates this performance with the tiniest of
-micro-payments where every payment is for 0.0000001.
+The tests use a Starlight bi-directional payment channel, but only move
+assets in a single direction for the duration of the test. The tests send
+payments using buffering, where payments are buffered and sent in batches.
 
-The test demonstrated over 700,000 payments per second for payments varying
-from 0.0000001 to 1.0.
+The test demonstrated over 400,000 payments per second for payments varying
+from 0.0000001 to 1000.0, over Internet with 10-20ms latency.
 
-The test also demonstrated that at least 130,000 payments per second is
-possible on networks with latency as high as 215ms.
+Since smaller amounts results in smaller buffer sizes over the wire, higher
+payments per second were observed for payments that trend towards
+micro-payments.
+
+For example, the test demonstrated over 700,000 payments per second for
+payments varying from 0.0000001 to 1.0. And, over 1,190,000 payments per
+second with micro-payments where every payment is for 0.0000001.
+
+The test also demonstrated that at least 17,000 to 130,000 payments per
+second is possible on networks with latency as high as 215ms.
 
 ## Participants
 
