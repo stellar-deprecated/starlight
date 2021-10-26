@@ -15,7 +15,7 @@ maximum possible performance possible with a Starlight payment channel.
 
 The test demonstrated that at least \____ payments per second is possible
 with consumer hardware when using a Starlight payment channel and buffering
-payments.
+payments on networks with latency as low as 30ms.
 
 The test also demonstrated that at least 130,000 payments per second is
 possible on networks with latency as high as 215ms.
