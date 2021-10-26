@@ -163,9 +163,6 @@ buffered payments avg buffer size: 234642
 
 ##### Test AB3
 
-Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
-0.0000001, all payments with unique memos.
-
 ```
 > payx 1 3000000 15000
 sending 1 payment 3000000 times
@@ -181,10 +178,7 @@ buffered payments min buffer size: 1980
 buffered payments avg buffer size: 152424
 ```
 
-##### Test AB3
-
-Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
-0.0000001, all payments with unique memos.
+##### Test AB4
 
 ```
 > payx 1 3000000 1000
@@ -201,10 +195,7 @@ buffered payments min buffer size: 1140
 buffered payments avg buffer size: 9601
 ```
 
-##### Test AB4
-
-Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
-0.0000001, all payments with unique memos.
+##### Test AB5
 
 ```
 > payx 1 1000000 50000
@@ -221,7 +212,7 @@ buffered payments min buffer size: 1992
 buffered payments avg buffer size: 502620
 ```
 
-##### Test AB5
+##### Test AB6
 
 ```
 > payx 1000 1000000 50000
@@ -244,9 +235,6 @@ Latency between participants A and C was observed to be approximately 215ms.
 
 ##### Test AC1
 
-Sending 3m payments, buffering up to 15k at a time, all payments with amount
-0.0000001, all payments with unique memos.
-
 ```
 > payx 0.0000001 3000000 15000
 sending 0.0000001 payment 3000000 times
@@ -263,9 +251,6 @@ buffered payments avg buffer size: 47475
 ```
 
 ##### Test AC2
-
-Sending 3m payments, ` up to 95k at a time, all payments with amount
-0.0000001, all payments with unique memos.
 
 ```
 > payx 0.0000001 3000000 95000
@@ -284,9 +269,6 @@ buffered payments avg buffer size: 240436
 
 ##### Test AC3
 
-Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
-0.0000001, all payments with unique memos.
-
 ```
 > payx 1 3000000 15000
 sending 1 payment 3000000 times
@@ -302,10 +284,7 @@ buffered payments min buffer size: 1648
 buffered payments avg buffer size: 152538
 ```
 
-##### Test 3
-
-Sending 3m payments, buffering up to 15k at a time, payments with varying amounts ranging from 1.0 to
-0.0000001, all payments with unique memos.
+##### Test AC4
 
 ```
 > payx 1 3000000 1000
