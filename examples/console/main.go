@@ -414,7 +414,9 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		for i := 0; i < x; i++ {
 			memo := "tx-" + strconv.Itoa(i)
 			for {
-				amt := int64(i)%amt + 1
+				// Make each payment have an amount that is distributed between
+				// the minimum amount, 0.0000001 and the amount given.
+				amt := int64(i+1) * amt / int64(x)
 				_, err = agent.PaymentWithMemo(amt, memo)
 				if err != nil {
 					continue
