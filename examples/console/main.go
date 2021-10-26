@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -409,14 +408,13 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		if err != nil {
 			return err
 		}
-		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 		stats.Reset()
 		agent.SetMaxBufferSize(bufferSize)
 		stats.MarkStart()
 		for i := 0; i < x; i++ {
 			memo := "tx-" + strconv.Itoa(i)
 			for {
-				amt := rand.Int63n(amt) + 1
+				amt := int64(i)%amt + 1
 				_, err = agent.PaymentWithMemo(amt, memo)
 				if err != nil {
 					continue
