@@ -547,8 +547,8 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming open: %w", err)
 	}
 	a.takeSnapshot()
-
 	fmt.Fprintf(a.logWriter, "open authorized\n")
+
 	err = send.Encode(msg.Message{
 		Type:         msg.TypeOpenResponse,
 		OpenResponse: &open.Envelope,
@@ -573,8 +573,8 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming open: %w", err)
 	}
 	a.takeSnapshot()
-
 	fmt.Fprintf(a.logWriter, "open authorized\n")
+
 	openTx, err := a.channel.OpenTx()
 	if err != nil {
 		return fmt.Errorf("building open tx: %w", err)
@@ -610,8 +610,8 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	a.takeSnapshot()
-
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
+
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope})
 	if a.events != nil {
 		a.events <- PaymentReceivedEvent{CloseAgreement: payment}
@@ -636,8 +636,8 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
 	a.takeSnapshot()
-
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
+
 	if a.events != nil {
 		a.events <- PaymentSentEvent{CloseAgreement: payment}
 	}
@@ -702,7 +702,6 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
 	a.takeSnapshot()
-
 	fmt.Fprintln(a.logWriter, "close ready")
 
 	// Submit the close immediately since it is valid immediately.
