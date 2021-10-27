@@ -279,8 +279,6 @@ func (a *Agent) Open(asset state.Asset) error {
 		return fmt.Errorf("getting sequence number of escrow account: %w", err)
 	}
 
-	defer a.takeSnapshot()
-
 	a.initChannel(true, nil)
 
 	// Expire the channel before the max open expiry. If both participants are
@@ -299,6 +297,8 @@ func (a *Agent) Open(asset state.Asset) error {
 	if err != nil {
 		return fmt.Errorf("proposing open: %w", err)
 	}
+	a.takeSnapshot()
+
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:        msg.TypeOpenRequest,
@@ -334,8 +334,6 @@ func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.takeSnapshot()
-
 	ca, err := a.channel.ProposePaymentWithMemo(paymentAmount, memo)
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking escrow account...\n")
@@ -350,6 +348,8 @@ func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) error {
 	if err != nil {
 		return fmt.Errorf("proposing payment %d: %w", paymentAmount, err)
 	}
+	a.takeSnapshot()
+
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:           msg.TypePaymentRequest,
@@ -394,14 +394,14 @@ func (a *Agent) DeclareClose() error {
 		return fmt.Errorf("submitting declaration tx: %w", err)
 	}
 
-	defer a.takeSnapshot()
-
 	// Attempt revising the close agreement to close early.
 	fmt.Fprintln(a.logWriter, "proposing a revised close for immediate submission")
 	ca, err := a.channel.ProposeClose()
 	if err != nil {
 		return fmt.Errorf("proposing the close: %w", err)
 	}
+	a.takeSnapshot()
+
 	enc := msg.NewEncoder(io.MultiWriter(a.conn, a.logWriter))
 	err = enc.Encode(msg.Message{
 		Type:         msg.TypeCloseRequest,
@@ -535,8 +535,6 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	defer a.takeSnapshot()
-
 	if a.channel != nil {
 		return fmt.Errorf("channel already exists")
 	}
@@ -548,6 +546,8 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
+	a.takeSnapshot()
+
 	fmt.Fprintf(a.logWriter, "open authorized\n")
 	err = send.Encode(msg.Message{
 		Type:         msg.TypeOpenResponse,
@@ -567,13 +567,13 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.takeSnapshot()
-
 	openIn := *m.OpenResponse
 	_, err := a.channel.ConfirmOpen(openIn)
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
+	a.takeSnapshot()
+
 	fmt.Fprintf(a.logWriter, "open authorized\n")
 	openTx, err := a.channel.OpenTx()
 	if err != nil {
@@ -594,8 +594,6 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.takeSnapshot()
-
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
@@ -611,6 +609,8 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
+	a.takeSnapshot()
+
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
 	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope})
 	if a.events != nil {
@@ -630,13 +630,13 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.takeSnapshot()
-
 	paymentIn := *m.PaymentResponse
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
+	a.takeSnapshot()
+
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
 	if a.events != nil {
 		a.events <- PaymentSentEvent{CloseAgreement: payment}
@@ -652,14 +652,14 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.takeSnapshot()
-
 	// Agree to the close and send it back to requesting participant.
 	closeIn := *m.CloseRequest
 	close, err := a.channel.ConfirmClose(closeIn)
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
+	a.takeSnapshot()
+
 	err = send.Encode(msg.Message{
 		Type:          msg.TypeCloseResponse,
 		CloseResponse: &close.Envelope,
@@ -695,14 +695,14 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	defer a.takeSnapshot()
-
 	// Store updated agreement from other participant.
 	closeIn := *m.CloseResponse
 	_, err := a.channel.ConfirmClose(closeIn)
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}
+	a.takeSnapshot()
+
 	fmt.Fprintln(a.logWriter, "close ready")
 
 	// Submit the close immediately since it is valid immediately.
