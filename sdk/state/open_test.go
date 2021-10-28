@@ -1,6 +1,7 @@
 package state
 
 import (
+	"math"
 	"strconv"
 	"testing"
 	"time"
@@ -543,4 +544,115 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpe
 
 	_, err = responderChannel.ConfirmOpen(m.Envelope)
 	require.EqualError(t, err, "validating open agreement: cannot confirm a new open if channel is already opened")
+}
+
+func TestChannel_OpenAndPayment_sequenceOverflow(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Proposing or Confirming Open that would move s over maxint64 should error.
+	for i := 0; i < 3; i++ {
+		_, err := initiatorChannel.ProposeOpen(OpenParams{
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Second),
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+			StartingSequence:           math.MaxInt64 - int64(i),
+		})
+		assert.EqualError(t, err, "building close txs for open: invalid sequence number: cannot be negative")
+
+		_, err = initiatorChannel.ConfirmOpen(OpenEnvelope{Details: OpenDetails{
+			ObservationPeriodTime:      1,
+			ObservationPeriodLedgerGap: 1,
+			Asset:                      NativeAsset,
+			StartingSequence:           math.MaxInt64 - int64(i),
+		}})
+		assert.EqualError(t, err, "building close txs for open: invalid sequence number: cannot be negative")
+	}
+
+	// Successful Open with the max start sequence allowed.
+	m, err := initiatorChannel.ProposeOpen(OpenParams{
+		Asset:                      NativeAsset,
+		ExpiresAt:                  time.Now().Add(5 * time.Second),
+		ObservationPeriodTime:      10,
+		ObservationPeriodLedgerGap: 10,
+		StartingSequence:           math.MaxInt64 - 3,
+	})
+	m, err = responderChannel.ConfirmOpen(m.Envelope)
+	require.NoError(t, err)
+	_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+	require.NoError(t, err)
+
+	{
+		// Ingest the openTx successfully to enter the Open state.
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
+			InitiatorSigner: localSigner.Address(),
+			ResponderSigner: remoteSigner.Address(),
+			InitiatorEscrow: localEscrowAccount.Address(),
+			ResponderEscrow: remoteEscrowAccount.Address(),
+			StartSequence:   math.MaxInt64 - 3,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+
+		cs, err := initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		cs, err = responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
+
+	// Proposing Payment that pushes the sequence number over max int64 should error.
+	_, err = initiatorChannel.ProposePayment(10)
+	assert.EqualError(t, err, "invalid sequence number: cannot be negative")
+	initiatorChannel.latestUnauthorizedCloseAgreement = CloseAgreement{}
+
+	// Confirming Payment that pushes the sequence number over max int64 should error.
+	_, err = initiatorChannel.ConfirmPayment(CloseEnvelope{
+		Details: CloseDetails{
+			IterationNumber:            2,
+			ObservationPeriodTime:      10,
+			ObservationPeriodLedgerGap: 10,
+			Balance:                    0,
+			ConfirmingSigner:           localSigner.FromAddress(),
+			ProposingSigner:            remoteSigner.FromAddress(),
+		},
+	})
+	assert.EqualError(t, err, "invalid sequence number: cannot be negative")
 }
