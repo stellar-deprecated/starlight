@@ -6,7 +6,7 @@ require (
 	github.com/google/gofuzz v1.2.0
 	github.com/google/uuid v1.2.0
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
-	github.com/stellar/go v0.0.0-20211019190220-c47964999c2a
+	github.com/stellar/go v0.0.0-20211028180858-8c1a6e631c48
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
