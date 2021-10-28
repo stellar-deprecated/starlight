@@ -599,6 +599,7 @@ func TestChannel_OpenAndPayment_sequenceOverflow(t *testing.T) {
 		ObservationPeriodLedgerGap: 10,
 		StartingSequence:           math.MaxInt64 - 3,
 	})
+	require.NoError(t, err)
 	m, err = responderChannel.ConfirmOpen(m.Envelope)
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmOpen(m.Envelope)
