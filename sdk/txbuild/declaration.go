@@ -18,13 +18,14 @@ type DeclarationParams struct {
 }
 
 func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
+	if p.IterationNumber < 0 || p.StartSequence < 0 {
+		return nil, fmt.Errorf("invalid iteration number or start sequence: cannot be negative")
+	}
+
 	// Declaration is the first transaction in an iteration's transaction set.
 	seq := startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 0
 	if seq < 0 {
 		return nil, fmt.Errorf("invalid sequence number: cannot be negative")
-	}
-	if p.IterationNumber < 0 || p.StartSequence < 0 {
-		return nil, fmt.Errorf("invalid iteration number or start sequence: cannot be negative")
 	}
 
 	minSequenceNumber := startSequenceOfIteration(p.StartSequence, p.IterationNumberExecuted)
