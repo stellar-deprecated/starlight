@@ -1,9 +1,9 @@
 # Getting Started
 
 - [Running a network with CAP-21 and CAP-40](#running-core-and-horizon-with-cap-21-and-cap-40)
-- [Experiment with the prototype Starlight Go SDK](#)
-- [Run the console example application](#)
-- [Manually build transactions](#)
+- [Experiment with the prototype Starlight Go SDK](#experiment-with-the-prototype-starlight-go-sdk)
+- [Run the console example application](#run-the-console-example-application)
+- [Manually build transactions](#manually-build-transactions)
 
 ## Running a network with CAP-21 and CAP-40
 
