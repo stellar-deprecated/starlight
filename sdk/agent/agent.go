@@ -551,7 +551,7 @@ func (a *Agent) handleOpenRequest(m msg.Message, send *msg.Encoder) error {
 
 	err = send.Encode(msg.Message{
 		Type:         msg.TypeOpenResponse,
-		OpenResponse: &open.Envelope,
+		OpenResponse: &open.Envelope.ConfirmerSignatures,
 	})
 	if err != nil {
 		return fmt.Errorf("encoding open to send back: %w", err)
@@ -567,8 +567,9 @@ func (a *Agent) handleOpenResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	openIn := *m.OpenResponse
-	_, err := a.channel.ConfirmOpen(openIn)
+	openEnvelope := a.channel.OpenAgreement().Envelope
+	openEnvelope.ConfirmerSignatures = *m.OpenResponse
+	_, err := a.channel.ConfirmOpen(openEnvelope)
 	if err != nil {
 		return fmt.Errorf("confirming open: %w", err)
 	}
@@ -612,7 +613,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	a.takeSnapshot()
 	fmt.Fprintf(a.logWriter, "payment authorized\n")
 
-	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope})
+	err = send.Encode(msg.Message{Type: msg.TypePaymentResponse, PaymentResponse: &payment.Envelope.ConfirmerSignatures})
 	if a.events != nil {
 		a.events <- PaymentReceivedEvent{CloseAgreement: payment}
 	}
@@ -630,8 +631,10 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	paymentIn := *m.PaymentResponse
-	payment, err := a.channel.ConfirmPayment(paymentIn)
+	closeAgreement, _ := a.channel.LatestUnauthorizedCloseAgreement()
+	closeEnvelope := closeAgreement.Envelope
+	closeEnvelope.ConfirmerSignatures = *m.PaymentResponse
+	payment, err := a.channel.ConfirmPayment(closeEnvelope)
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}
@@ -662,7 +665,7 @@ func (a *Agent) handleCloseRequest(m msg.Message, send *msg.Encoder) error {
 
 	err = send.Encode(msg.Message{
 		Type:          msg.TypeCloseResponse,
-		CloseResponse: &close.Envelope,
+		CloseResponse: &close.Envelope.ConfirmerSignatures,
 	})
 	if err != nil {
 		return fmt.Errorf("encoding close to send back: %v\n", err)
@@ -696,8 +699,10 @@ func (a *Agent) handleCloseResponse(m msg.Message, send *msg.Encoder) error {
 	}
 
 	// Store updated agreement from other participant.
-	closeIn := *m.CloseResponse
-	_, err := a.channel.ConfirmClose(closeIn)
+	closeAgreement, _ := a.channel.LatestUnauthorizedCloseAgreement()
+	closeEnvelope := closeAgreement.Envelope
+	closeEnvelope.ConfirmerSignatures = *m.CloseResponse
+	_, err := a.channel.ConfirmClose(closeEnvelope)
 	if err != nil {
 		return fmt.Errorf("confirming close: %v\n", err)
 	}

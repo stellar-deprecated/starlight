@@ -25,14 +25,14 @@ type Message struct {
 
 	Hello *Hello `json:",omitempty"`
 
-	OpenRequest  *state.OpenEnvelope `json:",omitempty"`
-	OpenResponse *state.OpenEnvelope `json:",omitempty"`
+	OpenRequest  *state.OpenEnvelope   `json:",omitempty"`
+	OpenResponse *state.OpenSignatures `json:",omitempty"`
 
-	PaymentRequest  *state.CloseEnvelope `json:",omitempty"`
-	PaymentResponse *state.CloseEnvelope `json:",omitempty"`
+	PaymentRequest  *state.CloseEnvelope   `json:",omitempty"`
+	PaymentResponse *state.CloseSignatures `json:",omitempty"`
 
-	CloseRequest  *state.CloseEnvelope `json:",omitempty"`
-	CloseResponse *state.CloseEnvelope `json:",omitempty"`
+	CloseRequest  *state.CloseEnvelope   `json:",omitempty"`
+	CloseResponse *state.CloseSignatures `json:",omitempty"`
 }
 
 type Hello struct {
