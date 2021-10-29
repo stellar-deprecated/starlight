@@ -23,7 +23,7 @@ The code and documents in this repository are under active development.
 - [Discussions](https://github.com/stellar/experimental-payment-channels/discussions)
 - [Demos](https://github.com/stellar/experimental-payment-channels/discussions/categories/demos)
 - [Getting Started](Getting%20Started.md)
-- [SEP](specifications/sep-payment-channel-mechanism.md)
+- [Specifications](specifications/)
 - [Examples](examples/)
 
 ## Discussions
