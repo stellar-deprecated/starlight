@@ -18,7 +18,7 @@ type DeclarationParams struct {
 }
 
 func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
-	if p.IterationNumber < 0 || p.StartSequence < 0 {
+	if p.IterationNumber < 0 || p.StartSequence <= 0 {
 		return nil, fmt.Errorf("invalid iteration number or start sequence: cannot be negative")
 	}
 
