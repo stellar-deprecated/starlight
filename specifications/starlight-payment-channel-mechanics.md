@@ -2,7 +2,7 @@
 
 ```
 SEP: ????
-Title: Payment Channel Mechanics
+Title: Starlight Payment Channel Mechanics
 Author: David Mazières <@standford-scs>, Leigh McCulloch <@leighmcculloch>
 Track: Standard
 Status: Draft
