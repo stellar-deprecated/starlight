@@ -1,6 +1,11 @@
 # Getting Started
 
-## Running Core and Horizon with CAP-21 and CAP-40
+- [Running a network with CAP-21 and CAP-40](#running-core-and-horizon-with-cap-21-and-cap-40)
+- [Experiment with the prototype Starlight SDK](#)
+- [Run the console example application](#)
+- [Manually build transactions](#)
+
+## Running a network with CAP-21 and CAP-40
 
 To run a standalone network use the branch of the `stellar/quickstart` docker image:
 
@@ -20,7 +25,7 @@ SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
 
 There is no friendbot, so you'll need to create a transaction funding accounts from the root account.
 
-## Experiment using the prototype Starlight SDK
+## Experiment with the prototype Starlight SDK
 
 The `sdk` directory contains the prototype Starlight Go SDK.
 
@@ -34,13 +39,13 @@ https://pkg.go.dev/github.com/stellar/starlight/sdk
 go get github.com/stellar/starlight/sdk
 ```
 
-## Test using the console example application
+## Run the console example application
 
 The `examples/console` directory contains an example application that operates a payment channel between two participants over a TCP connection. Requires a network to be running with support for CAP-21 and CAP-40.
 
 See the [README](https://github.com/stellar/experimental-payment-channels/tree/readme/examples/console) for more details.
 
-## Manually building transactions
+## Manually build transactions
 
 You can use `stc` to manually build transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
 
