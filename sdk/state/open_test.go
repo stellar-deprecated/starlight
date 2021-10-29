@@ -126,8 +126,9 @@ func TestProposeOpen_validAsset(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	_, err := sendingChannel.ProposeOpen(OpenParams{
-		Asset:     NativeAsset,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
+		Asset:            NativeAsset,
+		ExpiresAt:        time.Now().Add(5 * time.Minute),
+		StartingSequence: 1,
 	})
 	require.NoError(t, err)
 
@@ -140,8 +141,9 @@ func TestProposeOpen_validAsset(t *testing.T) {
 		RemoteEscrowAccount: remoteEscrowAccount,
 	})
 	_, err = sendingChannel.ProposeOpen(OpenParams{
-		Asset:     "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
-		ExpiresAt: time.Now().Add(5 * time.Minute),
+		Asset:            "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
+		ExpiresAt:        time.Now().Add(5 * time.Minute),
+		StartingSequence: 1,
 	})
 	require.NoError(t, err)
 }
@@ -396,6 +398,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	})
 	oe := OpenEnvelope{
 		Details: OpenDetails{
+			StartingSequence:           1,
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      NativeAsset,
