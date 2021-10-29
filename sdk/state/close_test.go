@@ -31,6 +31,7 @@ func TestChannel_CloseTx(t *testing.T) {
 		Details: OpenDetails{
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
+			StartingSequence:           1,
 			Asset:                      NativeAsset,
 			ExpiresAt:                  time.Now(),
 		},
@@ -317,6 +318,7 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 			ExpiresAt:                  time.Now().Add(5 * time.Second),
 			ObservationPeriodTime:      10,
 			ObservationPeriodLedgerGap: 10,
+			StartingSequence:           1,
 		})
 		require.NoError(t, err)
 		m, err = receiverChannel.ConfirmOpen(m.Envelope)

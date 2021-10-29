@@ -1,6 +1,7 @@
 package txbuild
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/stellar/go/amount"
@@ -23,10 +24,20 @@ type CloseParams struct {
 }
 
 func Close(p CloseParams) (*txnbuild.Transaction, error) {
+	if p.IterationNumber < 0 || p.StartSequence <= 0 {
+		return nil, fmt.Errorf("invalid iteration number or start sequence: cannot be negative")
+	}
+
+	// Close is the second transaction in an iteration's transaction set.
+	seq := startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 1
+	if seq < 0 {
+		return nil, fmt.Errorf("invalid sequence number: cannot be negative")
+	}
+
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: p.InitiatorEscrow.Address(),
-			Sequence:  startSequenceOfIteration(p.StartSequence, p.IterationNumber) + 1, // Close is the second transaction in an iteration's transaction set.
+			Sequence:  seq,
 		},
 		BaseFee:              0,
 		Timebounds:           txnbuild.NewInfiniteTimeout(),

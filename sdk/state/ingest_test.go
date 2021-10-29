@@ -46,6 +46,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           1,
 	})
 	require.NoError(t, err)
 	open, err = responderChannel.ConfirmOpen(open.Envelope)
@@ -60,6 +61,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
 	responderChannel.openExecutedAndValidated = true
+	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -88,8 +90,10 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 	declTxFeeBumpXDR, err := declTxFeeBump.Base64()
 	require.NoError(t, err)
 	validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
+
 	err = initiatorChannel.IngestTx(1, declTxFeeBumpXDR, validResultXDR, placeholderXDR)
 	require.NoError(t, err)
+
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
 	require.Equal(t, StateClosing, cs)
@@ -129,6 +133,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           1,
 	})
 	require.NoError(t, err)
 	open, err = responderChannel.ConfirmOpen(open.Envelope)
@@ -143,6 +148,7 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
 	responderChannel.openExecutedAndValidated = true
+	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -204,6 +210,7 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           1,
 	})
 	require.NoError(t, err)
 	open, err = responderChannel.ConfirmOpen(open.Envelope)
@@ -213,6 +220,7 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
+	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -259,6 +267,7 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 		ObservationPeriodTime:      1,
 		ObservationPeriodLedgerGap: 1,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           1,
 	})
 	require.NoError(t, err)
 	open, err = responderChannel.ConfirmOpen(open.Envelope)
@@ -273,6 +282,7 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
 	responderChannel.openExecutedAndValidated = true
+	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -401,6 +411,7 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 		ObservationPeriodLedgerGap: 1,
 		Asset:                      asset,
 		ExpiresAt:                  time.Now().Add(time.Minute),
+		StartingSequence:           1,
 	})
 	require.NoError(t, err)
 	open, err = responderChannel.ConfirmOpen(open.Envelope)
@@ -499,6 +510,7 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 			ObservationPeriodTime:      1,
 			ObservationPeriodLedgerGap: 1,
 			ExpiresAt:                  time.Now().Add(time.Minute),
+			StartingSequence:           1,
 		})
 		require.NoError(t, err)
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
@@ -595,6 +607,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 			ObservationPeriodLedgerGap: 1,
 			Asset:                      asset,
 			ExpiresAt:                  time.Now().Add(time.Minute),
+			StartingSequence:           1,
 		})
 		require.NoError(t, err)
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
