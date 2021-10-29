@@ -1,7 +1,7 @@
 # Getting Started
 
 - [Running a network with CAP-21 and CAP-40](#running-core-and-horizon-with-cap-21-and-cap-40)
-- [Experiment with the prototype Starlight SDK](#)
+- [Experiment with the prototype Starlight Go SDK](#)
 - [Run the console example application](#)
 - [Manually build transactions](#)
 
@@ -25,7 +25,7 @@ SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
 
 There is no friendbot, so you'll need to create a transaction funding accounts from the root account.
 
-## Experiment with the prototype Starlight SDK
+## Experiment with the prototype Starlight Go SDK
 
 The `sdk` directory contains the prototype Starlight Go SDK.
 
