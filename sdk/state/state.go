@@ -208,6 +208,10 @@ func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestAuthorizedCloseAgreement
 }
 
+func (c *Channel) LatestUnauthorizedCloseAgreement() (CloseAgreement, bool) {
+	return c.latestUnauthorizedCloseAgreement, !c.latestUnauthorizedCloseAgreement.Envelope.Empty()
+}
+
 func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
 	c.localEscrowAccount.Balance = balance
 }
