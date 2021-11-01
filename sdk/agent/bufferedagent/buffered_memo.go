@@ -3,7 +3,7 @@ package bufferedagent
 import (
 	"compress/gzip"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"strings"
 )
@@ -20,7 +20,7 @@ func (m bufferedPaymentsMemo) String() string {
 	if err != nil {
 		panic(fmt.Errorf("creating gzip writer: %w", err))
 	}
-	enc := json.NewEncoder(z)
+	enc := gob.NewEncoder(z)
 	err = enc.Encode(m)
 	if err != nil {
 		panic(fmt.Errorf("encoding buffered payments memo as json: %w", err))
@@ -36,7 +36,7 @@ func parseBufferedPaymentMemo(memo string) (bufferedPaymentsMemo, error) {
 	if err != nil {
 		return bufferedPaymentsMemo{}, fmt.Errorf("creating gzip reader: %w", err)
 	}
-	dec := json.NewDecoder(z)
+	dec := gob.NewDecoder(z)
 	m := bufferedPaymentsMemo{}
 	err = dec.Decode(&m)
 	if err != nil {
