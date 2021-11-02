@@ -411,10 +411,14 @@ func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitt
 		stats.Reset()
 		agent.SetMaxBufferSize(bufferSize)
 		stats.MarkStart()
+		amtRange := int64(bufferSize)
+		if amtRange > amt {
+			amtRange = amt
+		}
 		for i := 0; i < x; i++ {
 			memo := "tx-" + strconv.Itoa(i)
 			for {
-				amt := amt - (int64(i) % int64(bufferSize))
+				amt := amt - (int64(i) % amtRange)
 				_, err = agent.PaymentWithMemo(amt, memo)
 				if err != nil {
 					continue
