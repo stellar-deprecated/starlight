@@ -13,14 +13,15 @@ type bufferedPaymentsMemo struct {
 	Payments []BufferedPayment
 }
 
-func (m bufferedPaymentsMemo) MarshalBinary() ([]byte, error) {
+func (m *bufferedPaymentsMemo) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	z, err := gzip.NewWriterLevel(&b, gzip.BestSpeed)
 	if err != nil {
 		panic(fmt.Errorf("creating gzip writer: %w", err))
 	}
 	enc := gob.NewEncoder(z)
-	err = enc.Encode(m)
+	type bpm bufferedPaymentsMemo
+	err = enc.Encode((*bpm)(m))
 	if err != nil {
 		return nil, fmt.Errorf("encoding buffered payments memo: %w", err)
 	}
@@ -35,7 +36,8 @@ func (m *bufferedPaymentsMemo) UnmarshalBinary(b []byte) error {
 		return fmt.Errorf("creating gzip reader: %w", err)
 	}
 	dec := gob.NewDecoder(z)
-	err = dec.Decode(m)
+	type bpm bufferedPaymentsMemo
+	err = dec.Decode((*bpm)(m))
 	if err != nil {
 		return fmt.Errorf("decoding buffered payments memo: %w", err)
 	}
