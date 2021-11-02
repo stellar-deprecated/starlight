@@ -240,7 +240,7 @@ func (a *Agent) flush() {
 		Payments: buffer,
 	}
 
-	err := a.agent.PaymentWithMemo(bufferTotalAmount, memo.String())
+	err := a.agent.PaymentWithMemo(bufferTotalAmount, memo.Bytes())
 	if err != nil {
 		a.events <- agent.ErrorEvent{Err: err}
 		a.sendingReady <- struct{}{}

@@ -1,10 +1,9 @@
 package bufferedagent
 
 import (
+	"bytes"
 	"encoding/gob"
 	"fmt"
-	"strings"
-
 	// "github.com/klauspost/compress/gzip"
 )
 
@@ -13,8 +12,8 @@ type bufferedPaymentsMemo struct {
 	Payments []BufferedPayment
 }
 
-func (m bufferedPaymentsMemo) String() string {
-	sb := strings.Builder{}
+func (m bufferedPaymentsMemo) Bytes() []byte {
+	sb := bytes.Buffer{}
 	z := &sb
 	// z, err := gzip.NewWriterLevel(&sb, gzip.BestSpeed)
 	// if err != nil {
@@ -26,11 +25,11 @@ func (m bufferedPaymentsMemo) String() string {
 		panic(fmt.Errorf("encoding buffered payments memo as json: %w", err))
 	}
 	// z.Close()
-	return sb.String()
+	return sb.Bytes()
 }
 
-func parseBufferedPaymentMemo(memo string) (bufferedPaymentsMemo, error) {
-	r := strings.NewReader(memo)
+func parseBufferedPaymentMemo(memo []byte) (bufferedPaymentsMemo, error) {
+	r := bytes.NewReader(memo)
 	z := r
 	// z, err := gzip.NewReader(r)
 	// if err != nil {
