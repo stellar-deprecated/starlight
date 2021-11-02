@@ -161,7 +161,8 @@ func (a *Agent) eventLoop() {
 		// sub-payment that was bufferd within them.
 		switch e := ae.(type) {
 		case agent.PaymentReceivedEvent:
-			memo, err := parseBufferedPaymentMemo(e.CloseAgreement.Envelope.Details.Memo)
+			memo := bufferedPaymentsMemo{}
+			err := memo.UnmarshalBinary(e.CloseAgreement.Envelope.Details.Memo)
 			if err != nil {
 				a.events <- agent.ErrorEvent{Err: err}
 				continue
@@ -173,7 +174,8 @@ func (a *Agent) eventLoop() {
 			}
 		case agent.PaymentSentEvent:
 			a.sendingReady <- struct{}{}
-			memo, err := parseBufferedPaymentMemo(e.CloseAgreement.Envelope.Details.Memo)
+			memo := bufferedPaymentsMemo{}
+			err := memo.UnmarshalBinary(e.CloseAgreement.Envelope.Details.Memo)
 			if err != nil {
 				a.events <- agent.ErrorEvent{Err: err}
 				continue
@@ -239,8 +241,14 @@ func (a *Agent) flush() {
 		ID:       bufferID,
 		Payments: buffer,
 	}
+	memoBytes, err := memo.MarshalBinary()
+	if err != nil {
+		a.events <- agent.ErrorEvent{Err: err}
+		a.sendingReady <- struct{}{}
+		return
+	}
 
-	err := a.agent.PaymentWithMemo(bufferTotalAmount, memo.Bytes())
+	err = a.agent.PaymentWithMemo(bufferTotalAmount, memoBytes)
 	if err != nil {
 		a.events <- agent.ErrorEvent{Err: err}
 		a.sendingReady <- struct{}{}
