@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	// "github.com/klauspost/compress/gzip"
+
+	"github.com/klauspost/compress/gzip"
 )
 
 type bufferedPaymentsMemo struct {
@@ -14,30 +15,28 @@ type bufferedPaymentsMemo struct {
 
 func (m bufferedPaymentsMemo) Bytes() []byte {
 	sb := bytes.Buffer{}
-	z := &sb
-	// z, err := gzip.NewWriterLevel(&sb, gzip.BestSpeed)
-	// if err != nil {
-	// 	panic(fmt.Errorf("creating gzip writer: %w", err))
-	// }
+	z, err := gzip.NewWriterLevel(&sb, gzip.BestSpeed)
+	if err != nil {
+		panic(fmt.Errorf("creating gzip writer: %w", err))
+	}
 	enc := gob.NewEncoder(z)
-	err := enc.Encode(m)
+	err = enc.Encode(m)
 	if err != nil {
 		panic(fmt.Errorf("encoding buffered payments memo as json: %w", err))
 	}
-	// z.Close()
+	z.Close()
 	return sb.Bytes()
 }
 
 func parseBufferedPaymentMemo(memo []byte) (bufferedPaymentsMemo, error) {
 	r := bytes.NewReader(memo)
-	z := r
-	// z, err := gzip.NewReader(r)
-	// if err != nil {
-	// 	return bufferedPaymentsMemo{}, fmt.Errorf("creating gzip reader: %w", err)
-	// }
+	z, err := gzip.NewReader(r)
+	if err != nil {
+		return bufferedPaymentsMemo{}, fmt.Errorf("creating gzip reader: %w", err)
+	}
 	dec := gob.NewDecoder(z)
 	m := bufferedPaymentsMemo{}
-	err := dec.Decode(&m)
+	err = dec.Decode(&m)
 	if err != nil {
 		return bufferedPaymentsMemo{}, fmt.Errorf("decoding buffered payments memo from json: %w", err)
 	}
