@@ -73,13 +73,31 @@
   window.addEventListener('load', (event) => {
     const horizonUrl = "http://192.168.64.2:8000";
     const agentUrl = "http://localhost:9000";
-    chartLedger(params, '#chart-ledger', horizonUrl);
-    chartAccountSigners(params, '#chart-signers-1', agentUrl, horizonUrl, true);
-    chartAccountSigners(params, '#chart-signers-2', agentUrl, horizonUrl, false);
-    chartAccountBalances(params, '#chart-account-balances', agentUrl, horizonUrl);
-    chartChannelBalance(params, '#chart-channel-balance', agentUrl);
-    txCount(params, '#tx-count', agentUrl);
-    stats(params, '#stats', agentUrl);
+
+    const updateCharts = async (chartUpdateFuncs) => {
+      const snapshotResp = await fetch(`${agentUrl}`)
+      const snapshotJson = await snapshotResp.json();
+      const statsResp = await fetch(`${agentUrl}/stats`)
+      const statsJson = await statsResp.json();
+      for (const f of chartUpdateFuncs) {
+        f(snapshotJson, statsJson);
+      }
+    };
+
+    const freqFuncs = [
+      chartChannelBalance(params, '#chart-channel-balance'),
+      txCount(params, '#tx-count'),
+      stats(params, '#stats'),
+    ];
+    setInterval(() => updateCharts(freqFuncs), 100);
+
+    const infreqFuncs = [
+      chartLedger(params, '#chart-ledger', horizonUrl),
+      chartAccountSigners(params, '#chart-signers-1', horizonUrl, true),
+      chartAccountSigners(params, '#chart-signers-2', horizonUrl, false),
+      chartAccountBalances(params, '#chart-account-balances', horizonUrl),
+    ];
+    setInterval(() => updateCharts(infreqFuncs), 2000);
   });
 </script>
 
@@ -114,10 +132,10 @@
         ],
       });
     };
-    setInterval(chartUpdate, 1000);
+    return chartUpdate;
   }
 
-  function chartAccountSigners(params, bindto, agentUrl, horizonUrl, local) {
+  function chartAccountSigners(params, bindto, horizonUrl, local) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null },
@@ -129,10 +147,7 @@
       }
     });
     var lastUpdate = null;
-    const chartUpdate = async () => {
-      const resp = await fetch(`${agentUrl}`)
-      const json = await resp.json();
-      const r = json;
+    const chartUpdate = async (r) => {
       const localSigner = r['Config']['EscrowAccountSigner'];
       const remoteSigner = r['Snapshot']['OtherEscrowAccountSigner'];
       var escrow;
@@ -159,10 +174,10 @@
         order: null,
       });
     };
-    setInterval(chartUpdate, 1000);
+    return chartUpdate;
   }
 
-  function chartAccountBalances(params, bindto, agentUrl, horizonUrl) {
+  function chartAccountBalances(params, bindto, horizonUrl) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null },
@@ -186,16 +201,13 @@
       }
     });
     var lastUpdate = null;
-    const chartUpdate = async () => {
-      const resp = await fetch(`${agentUrl}`)
-      const json = await resp.json();
-      const r = json;
-      const hashCode = `${r['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}`
+    const chartUpdate = async (snapshot) => {
+      const hashCode = `${snapshot['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}`
       if (hashCode == lastUpdate) {
         return;
       }
       lastUpdate = hashCode;
-      const asset = r['Snapshot']['State']['Snapshot']['OpenAgreement']['Envelope']['Details']['Asset'];
+      const asset = snapshot['Snapshot']['State']['Snapshot']['OpenAgreement']['Envelope']['Details']['Asset'];
       const assetParts = asset.split(":", 2);
       const balanceFunc = assetParts.length == 1
         ? (b) => b['asset_type'] == 'native'
@@ -203,8 +215,8 @@
           (b['asset_type'] == 'credit_alphanum4' || b['asset_type'] == 'credit_alphanum12') &&
           (b['asset_code'] == assetParts[0]) &&
           (b['asset_issuer'] == assetParts[1]);
-      const localEscrow = r['Config']['EscrowAccountKey'];
-      const remoteEscrow = r['Snapshot']['OtherEscrowAccount'];
+      const localEscrow = snapshot['Config']['EscrowAccountKey'];
+      const remoteEscrow = snapshot['Snapshot']['OtherEscrowAccount'];
       const localHorizon = await (await fetch(`${horizonUrl}/accounts/${localEscrow}`)).json();
       const remoteHorizon = await (await fetch(`${horizonUrl}/accounts/${remoteEscrow}`)).json();
       chart.load({
@@ -220,10 +232,10 @@
         unload: true,
       });
     };
-    setInterval(chartUpdate, 100);
+    return chartUpdate;
   }
 
-  function chartChannelBalance(params, bindto, agentUrl) {
+  function chartChannelBalance(params, bindto) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'donut', labels: true, columns: [], order: null, },
@@ -252,25 +264,22 @@
       }
     });
     var lastUpdate = null;
-    const chartUpdate = async () => {
-      const resp = await fetch(`${agentUrl}`)
-      const json = await resp.json();
-      const r = json;
-      const hashCode = `${r['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}-${r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber']}`
+    const chartUpdate = async (snapshot) => {
+      const hashCode = `${snapshot['Snapshot']['State']['Snapshot']['LocalEscrowAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['RemoteEscrowAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber']}`
       if (hashCode == lastUpdate) {
         return;
       }
       lastUpdate = hashCode;
-      if (r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['ObservationPeriodTime'] == 0) {
+      if (snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['ObservationPeriodTime'] == 0) {
         // chart.unload();
         return
       }
-      const localIsInitiator = r['Snapshot']['State']['Initiator'];
-      const rawBalance = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
-      const local = r['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
-      const remote = r['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
-      const localAcc = r['Config']['EscrowAccountKey'];
-      const remoteAcc = r['Snapshot']['OtherEscrowAccount'];
+      const localIsInitiator = snapshot['Snapshot']['State']['Initiator'];
+      const rawBalance = snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
+      const local = snapshot['Snapshot']['State']['Snapshot']['LocalEscrowAccountBalance'];
+      const remote = snapshot['Snapshot']['State']['Snapshot']['RemoteEscrowAccountBalance'];
+      const localAcc = snapshot['Config']['EscrowAccountKey'];
+      const remoteAcc = snapshot['Snapshot']['OtherEscrowAccount'];
       const balance = localIsInitiator ? rawBalance : -rawBalance;
       if (balance > 0) {
         chart.load({
@@ -316,22 +325,19 @@
         });
       }
     };
-    setInterval(chartUpdate, 100);
+    return chartUpdate;
   }
 
-  function txCount(params, bindto, agentUrl) {
-    const chartUpdate = async () => {
-      const resp = await fetch(`${agentUrl}`)
-      const json = await resp.json();
-      const r = json;
+  function txCount(params, bindto) {
+    const chartUpdate = async (snapshot) => {
       const e = document.querySelector(bindto);
-      const count = r['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber'] - 1;
+      const count = snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber'] - 1;
       e.innerText = `Agreements Signed: ${count}`;
     };
-    setInterval(chartUpdate, 100);
+    return chartUpdate;
   }
 
-  function stats(params, bindto, agentUrl) {
+  function stats(params, bindto) {
     const chart = c3.generate({
       bindto: bindto,
       data: { type: 'gauge', labels: true, columns: [] },
@@ -350,16 +356,13 @@
       tooltip: { show: false },
       legend: { show: false },
     });
-    const chartUpdate = async () => {
-      const resp = await fetch(`${agentUrl}/stats`)
-      const json = await resp.json();
-      const r = json;
+    const chartUpdate = async (snapshot, stats) => {
       chart.load({
         columns: [
-          ['BTPS', r['BufferedPaymentsPerSecond']],
+          ['BTPS', stats['BufferedPaymentsPerSecond']],
         ],
       });
     };
-    setInterval(chartUpdate, 100);
+    return chartUpdate;
   }
 </script>
