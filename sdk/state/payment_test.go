@@ -1185,12 +1185,12 @@ func TestChannel_ProposeAndConfirmPayment_withMemo(t *testing.T) {
 	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
 	responderChannel.UpdateRemoteEscrowAccountBalance(100)
 
-	ca, err := initiatorChannel.ProposePaymentWithMemo(1, "id1")
+	ca, err := initiatorChannel.ProposePaymentWithMemo(1, []byte("id1"))
 	require.NoError(t, err)
-	assert.Equal(t, "id1", ca.Envelope.Details.Memo)
+	assert.Equal(t, []byte("id1"), ca.Envelope.Details.Memo)
 	caResponse, err := responderChannel.ConfirmPayment(ca.Envelope)
 	require.NoError(t, err)
-	assert.Equal(t, "id1", caResponse.Envelope.Details.Memo)
+	assert.Equal(t, []byte("id1"), caResponse.Envelope.Details.Memo)
 	_, err = initiatorChannel.ConfirmPayment(caResponse.Envelope)
 	require.NoError(t, err)
 }
