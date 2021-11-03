@@ -42,12 +42,13 @@ func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactio
 	if err != nil {
 		return CloseTransactions{}, err
 	}
+	confirmingSigner := c.signer(!d.ProposerIsInitiator)
 	txDecl, err := txbuild.Declaration(txbuild.DeclarationParams{
 		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
 		StartSequence:           oad.StartingSequence,
 		IterationNumber:         d.IterationNumber,
 		IterationNumberExecuted: 0,
-		ConfirmingSigner:        d.ConfirmingSigner,
+		ConfirmingSigner:        confirmingSigner,
 		CloseTxHash:             txCloseHash,
 	})
 	if err != nil {
@@ -93,8 +94,7 @@ func (c *Channel) ProposeClose() (CloseAgreement, error) {
 	d := c.latestAuthorizedCloseAgreement.Envelope.Details
 	d.ObservationPeriodTime = 0
 	d.ObservationPeriodLedgerGap = 0
-	d.ProposingSigner = c.localSigner.FromAddress()
-	d.ConfirmingSigner = c.remoteSigner
+	d.ProposerIsInitiator = c.initiator
 
 	txs, err := c.closeTxs(c.openAgreement.Envelope.Details, d)
 	if err != nil {
@@ -133,9 +133,6 @@ func (c *Channel) validateClose(ca CloseEnvelope) error {
 	if ca.Details.ObservationPeriodLedgerGap != 0 {
 		return fmt.Errorf("close agreement observation period ledger gap is not zero")
 	}
-	if !ca.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ca.Details.ConfirmingSigner.Equal(c.remoteSigner) {
-		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ca.Details.ConfirmingSigner.Address())
-	}
 	return nil
 }
 
@@ -154,15 +151,8 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 		return CloseAgreement{}, fmt.Errorf("making close transactions: %w", err)
 	}
 
-	remoteSigs := ce.SignaturesFor(c.remoteSigner)
-	if remoteSigs == nil {
-		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
-	}
-
-	localSigs := ce.SignaturesFor(c.localSigner.FromAddress())
-	if localSigs == nil {
-		return CloseAgreement{}, fmt.Errorf("local is not a signer")
-	}
+	remoteSigs := ce.SignaturesFor(!c.initiator)
+	localSigs := ce.SignaturesFor(c.initiator)
 
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
@@ -185,7 +175,7 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	if localSigs.Empty() {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
-		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
+		if ce.Details.ProposerIsInitiator == c.initiator {
 			return CloseAgreement{}, fmt.Errorf("not signed by local")
 		}
 		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)
@@ -195,8 +185,13 @@ func (c *Channel) ConfirmClose(ce CloseEnvelope) (closeAgreement CloseAgreement,
 	}
 
 	// The new close agreement is valid and authorized, store and promote it.
+	signers := CloseSigners{
+		ProposingSigner:  c.signer(ce.Details.ProposerIsInitiator),
+		ConfirmingSigner: c.signer(!ce.Details.ProposerIsInitiator),
+	}
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Envelope:     ce,
+		Signers:      signers,
 		Transactions: txs,
 	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}

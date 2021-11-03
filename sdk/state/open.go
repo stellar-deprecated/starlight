@@ -130,8 +130,7 @@ func (oe OpenEnvelope) CloseEnvelope() CloseEnvelope {
 			Balance:                    0,
 			ObservationPeriodTime:      oe.Details.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: oe.Details.ObservationPeriodLedgerGap,
-			ProposingSigner:            oe.Details.ProposingSigner,
-			ConfirmingSigner:           oe.Details.ConfirmingSigner,
+			ProposerIsInitiator:        true,
 		},
 		ProposerSignatures: CloseSignatures{
 			Declaration: oe.ProposerSignatures.Declaration,
@@ -154,7 +153,11 @@ type OpenAgreement struct {
 
 func (oa OpenAgreement) CloseAgreement() CloseAgreement {
 	return CloseAgreement{
-		Envelope:     oa.Envelope.CloseEnvelope(),
+		Envelope: oa.Envelope.CloseEnvelope(),
+		Signers: CloseSigners{
+			ProposingSigner:  oa.Envelope.Details.ProposingSigner,
+			ConfirmingSigner: oa.Envelope.Details.ConfirmingSigner,
+		},
 		Transactions: oa.CloseTransactions,
 	}
 }
@@ -204,7 +207,7 @@ func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, closeTxs CloseTr
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		IterationNumber:            1,
 		Balance:                    0,
-		ConfirmingSigner:           d.ConfirmingSigner,
+		ProposerIsInitiator:        d.ProposingSigner.Equal(c.initiatorSigner()),
 	}
 
 	closeTxs, err = c.closeTxs(d, cad)

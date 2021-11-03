@@ -260,6 +260,14 @@ func (c *Channel) responderSigner() *keypair.FromAddress {
 	}
 }
 
+func (c *Channel) signer(initiator bool) *keypair.FromAddress {
+	if c.initiator == initiator {
+		return c.localSigner.FromAddress()
+	} else {
+		return c.remoteSigner
+	}
+}
+
 func (c *Channel) amountToLocal(balance int64) int64 {
 	if c.initiator {
 		return amountToInitiator(balance)

@@ -493,16 +493,13 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Func: func(c *ishell.Context) {
 			for i, a := range closeAgreements {
 				var sender string
-				if signer.FromAddress().Equal(a.Envelope.Details.ProposingSigner) {
-					sender = "me"
-				} else {
-					sender = "them"
-				}
 				var receiver string
-				if signer.FromAddress().Equal(a.Envelope.Details.ConfirmingSigner) {
-					receiver = "me"
+				if a.Envelope.Details.ProposerIsInitiator {
+					sender = "i"
+					receiver = "r"
 				} else {
-					receiver = "them"
+					sender = "r"
+					receiver = "i"
 				}
 				payment := amount.StringFromInt64(a.Envelope.Details.PaymentAmount)
 				balance := amount.StringFromInt64(a.Envelope.Details.Balance)

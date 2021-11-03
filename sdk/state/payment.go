@@ -24,8 +24,7 @@ type CloseDetails struct {
 	ObservationPeriodLedgerGap int64
 	IterationNumber            int64
 	Balance                    int64
-	ProposingSigner            *keypair.FromAddress
-	ConfirmingSigner           *keypair.FromAddress
+	ProposerIsInitiator        bool
 
 	// The following fields are not captured in the signatures produced by
 	// signers because the information is not embedded into the agreement's
@@ -39,8 +38,7 @@ func (d CloseDetails) Equal(d2 CloseDetails) bool {
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
 		d.IterationNumber == d2.IterationNumber &&
 		d.Balance == d2.Balance &&
-		d.ProposingSigner.Equal(d2.ProposingSigner) &&
-		d.ConfirmingSigner.Equal(d2.ConfirmingSigner) &&
+		d.ProposerIsInitiator == d2.ProposerIsInitiator &&
 		d.PaymentAmount == d2.PaymentAmount &&
 		bytes.Equal(d.Memo, d2.Memo)
 }
@@ -78,6 +76,11 @@ func signCloseAgreementTxs(txs CloseTransactions, signer *keypair.Full) (s Close
 	return s, g.Wait()
 }
 
+type CloseSigners struct {
+	ProposingSigner  *keypair.FromAddress
+	ConfirmingSigner *keypair.FromAddress
+}
+
 // CloseTransactions contain all the transaction hashes and
 // transactions for the transactions that make up the close agreement.
 type CloseTransactions struct {
@@ -105,20 +108,18 @@ func (ca CloseEnvelope) Equal(ca2 CloseEnvelope) bool {
 		ca.ConfirmerSignatures.Equal(ca2.ConfirmerSignatures)
 }
 
-func (ca CloseEnvelope) SignaturesFor(signer *keypair.FromAddress) *CloseSignatures {
-	if ca.Details.ProposingSigner.Equal(signer) {
-		return &ca.ProposerSignatures
+func (ca CloseEnvelope) SignaturesFor(initiator bool) CloseSignatures {
+	if ca.Details.ProposerIsInitiator == initiator {
+		return ca.ProposerSignatures
 	}
-	if ca.Details.ConfirmingSigner.Equal(signer) {
-		return &ca.ConfirmerSignatures
-	}
-	return nil
+	return ca.ConfirmerSignatures
 }
 
 // CloseAgreement contains all the information known for an agreement proposed
 // or confirmed by the channel.
 type CloseAgreement struct {
 	Envelope     CloseEnvelope
+	Signers      CloseSigners
 	Transactions CloseTransactions
 }
 
@@ -129,19 +130,19 @@ func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 	closeTx := ca.Transactions.Close
 
 	// Add the signatures that are from the proposer.
-	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Declaration, ca.Envelope.Details.ProposingSigner.Hint()))
-	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Close, ca.Envelope.Details.ProposingSigner.Hint()))
+	declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Declaration, ca.Signers.ProposingSigner.Hint()))
+	closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ProposerSignatures.Close, ca.Signers.ProposingSigner.Hint()))
 
 	// Add signatures that are from the confirmer.
 	if ca.Envelope.ConfirmerSignatures.Declaration != nil {
-		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Declaration, ca.Envelope.Details.ConfirmingSigner.Hint()))
+		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Declaration, ca.Signers.ConfirmingSigner.Hint()))
 	}
 	if ca.Envelope.ConfirmerSignatures.Close != nil {
-		closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Close, ca.Envelope.Details.ConfirmingSigner.Hint()))
+		closeTx, _ = closeTx.AddSignatureDecorated(xdr.NewDecoratedSignature(ca.Envelope.ConfirmerSignatures.Close, ca.Signers.ConfirmingSigner.Hint()))
 
 		// Add the close signature provided by the confirming signer that is
 		// required to be an extra signer on the declaration tx to the open tx.
-		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(ca.Envelope.ConfirmerSignatures.Close, ca.Envelope.Details.ConfirmingSigner.Hint(), ca.Transactions.CloseHash[:]))
+		declTx, _ = declTx.AddSignatureDecorated(xdr.NewDecoratedSignatureForPayload(ca.Envelope.ConfirmerSignatures.Close, ca.Signers.ConfirmingSigner.Hint(), ca.Transactions.CloseHash[:]))
 	}
 
 	return CloseTransactions{
@@ -199,8 +200,7 @@ func (c *Channel) ProposePaymentWithMemo(amount int64, memo []byte) (CloseAgreem
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap,
 		IterationNumber:            c.NextIterationNumber(),
 		Balance:                    newBalance,
-		ProposingSigner:            c.localSigner.FromAddress(),
-		ConfirmingSigner:           c.remoteSigner,
+		ProposerIsInitiator:        c.initiator,
 		PaymentAmount:              amount,
 		Memo:                       memo,
 	}
@@ -257,16 +257,10 @@ func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() && !ce.Details.Equal(c.latestUnauthorizedCloseAgreement.Envelope.Details) {
 		return fmt.Errorf("close agreement does not match the close agreement already in progress")
 	}
-	if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) && !ce.Details.ConfirmingSigner.Equal(c.remoteSigner) {
-		return fmt.Errorf("close agreement confirmer does not match a local or remote signer, got: %s", ce.Details.ConfirmingSigner.Address())
-	}
-	if !ce.Details.ProposingSigner.Equal(c.localSigner.FromAddress()) && !ce.Details.ProposingSigner.Equal(c.remoteSigner) {
-		return fmt.Errorf("close agreement proposer does not match a local or remote signer, got: %s", ce.Details.ProposingSigner.Address())
-	}
 
 	// If the close agreement payment amount is incorrect, error.
 	pa := ce.Details.PaymentAmount
-	proposerIsResponder := ce.Details.ProposingSigner.Equal(c.responderSigner())
+	proposerIsResponder := !ce.Details.ProposerIsInitiator
 	if proposerIsResponder {
 		pa = ce.Details.PaymentAmount * -1
 	}
@@ -292,15 +286,8 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 		return CloseAgreement{}, err
 	}
 
-	remoteSigs := ce.SignaturesFor(c.remoteSigner)
-	if remoteSigs == nil {
-		return CloseAgreement{}, fmt.Errorf("remote is not a signer")
-	}
-
-	localSigs := ce.SignaturesFor(c.localSigner.FromAddress())
-	if localSigs == nil {
-		return CloseAgreement{}, fmt.Errorf("local is not a signer")
-	}
+	remoteSigs := ce.SignaturesFor(!c.initiator)
+	localSigs := ce.SignaturesFor(c.initiator)
 
 	// If remote has not signed the txs or signatures is invalid, or the local
 	// signatures if present are invalid, error as is invalid.
@@ -323,7 +310,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 	if localSigs.Empty() {
 		// If the local is not the confirmer, do not sign, because being the
 		// proposer they should have signed earlier.
-		if !ce.Details.ConfirmingSigner.Equal(c.localSigner.FromAddress()) {
+		if ce.Details.ProposerIsInitiator == c.initiator {
 			return CloseAgreement{}, fmt.Errorf("not signed by local")
 		}
 		// If the payment is to the proposer, error, because the payment channel
@@ -344,8 +331,13 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 
 	// All signatures are present that would be required to submit all
 	// transactions in the payment.
+	signers := CloseSigners{
+		ProposingSigner:  c.signer(ce.Details.ProposerIsInitiator),
+		ConfirmingSigner: c.signer(!ce.Details.ProposerIsInitiator),
+	}
 	c.latestAuthorizedCloseAgreement = CloseAgreement{
 		Envelope:     ce,
+		Signers:      signers,
 		Transactions: txs,
 	}
 	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
