@@ -346,6 +346,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			err := agent.ServeTCP(c.Args[0])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 		},
 	})
@@ -354,6 +355,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "connect <addr>:<port> - connect to a peer",
 		Func: func(c *ishell.Context) {
 			c.Err(agent.ConnectTCP(c.Args[0]))
+			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -369,6 +371,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 				asset = state.Asset(assetCode + ":" + signer.Address())
 			}
 			c.Err(agent.Open(asset))
+			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -383,6 +386,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
 			if err != nil {
 				c.Err(fmt.Errorf("getting state of local escrow account: %w", err))
+				return
 			}
 			tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 				SourceAccount:        &account,
@@ -395,14 +399,17 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			})
 			if err != nil {
 				c.Err(fmt.Errorf("building deposit payment tx: %w", err))
+				return
 			}
 			tx, err = tx.Sign(networkPassphrase, signer)
 			if err != nil {
 				c.Err(fmt.Errorf("signing deposit payment tx: %w", err))
+				return
 			}
 			_, err = horizonClient.SubmitTransaction(tx)
 			if err != nil {
 				c.Err(fmt.Errorf("submitting deposit payment tx: %w", err))
+				return
 			}
 		},
 	})
@@ -413,10 +420,12 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			amt, err := amount.ParseInt64(c.Args[0])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 			stats.Reset()
 			_, err = agent.Payment(amt)
 			c.Err(err)
+			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -427,14 +436,17 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			amt, err := amount.ParseInt64(c.Args[0])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 			x, err := strconv.Atoi(c.Args[1])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 			bufferSize, err := strconv.Atoi(c.Args[2])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 			stats.Reset()
 			agent.SetMaxBufferSize(bufferSize)
@@ -462,6 +474,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			fmt.Println(stats.Summary())
 			agent.SetMaxBufferSize(1)
 			c.Err(err)
+			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -469,6 +482,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "declareclose - declare to close the channel",
 		Func: func(c *ishell.Context) {
 			c.Err(agent.DeclareClose())
+			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -476,6 +490,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "close - close the channel",
 		Func: func(c *ishell.Context) {
 			c.Err(agent.Close())
+			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -508,14 +523,17 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			idx, err := strconv.Atoi(c.Args[0])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 			if idx >= len(closeAgreements) {
 				c.Err(fmt.Errorf("invalid index, got %d must be between %d and %d", idx, 0, len(closeAgreements)-1))
+				return
 			}
 			tx := closeAgreements[idx].SignedTransactions().Declaration
 			err = submitter.SubmitTx(tx)
 			if err != nil {
 				c.Err(err)
+				return
 			}
 		},
 	})
@@ -526,11 +544,13 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			idx, err := strconv.Atoi(c.Args[0])
 			if err != nil {
 				c.Err(err)
+				return
 			}
 			tx := closeAgreements[idx].SignedTransactions().Close
 			err = submitter.SubmitTx(tx)
 			if err != nil {
 				c.Err(err)
+				return
 			}
 		},
 	})
