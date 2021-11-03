@@ -631,10 +631,7 @@ func (a *Agent) handlePaymentResponse(m msg.Message, send *msg.Encoder) error {
 		return fmt.Errorf("no channel")
 	}
 
-	closeAgreement, _ := a.channel.LatestUnauthorizedCloseAgreement()
-	closeEnvelope := closeAgreement.Envelope
-	closeEnvelope.ConfirmerSignatures = *m.PaymentResponse
-	payment, err := a.channel.ConfirmPayment(closeEnvelope)
+	payment, err := a.channel.FinalizePayment(*m.PaymentResponse)
 	if err != nil {
 		return fmt.Errorf("confirming payment: %w", err)
 	}

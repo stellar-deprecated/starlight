@@ -352,3 +352,34 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 
 	return c.latestAuthorizedCloseAgreement, nil
 }
+
+// FinalizePayment finalizes a payment, making it authorized, by attaching the
+// close signatures to the agreement as the confirmers signatures. The proposer
+// of a payment calls this once with the confirmers signatures when the
+// confirmer provides them. This can only be used to finalize the most recent
+// unauthorized payment.
+func (c *Channel) FinalizePayment(cs CloseSignatures) (closeAgreement CloseAgreement, err error) {
+	if c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
+		return CloseAgreement{}, fmt.Errorf("no unauthorized close agreement to finalize")
+	}
+
+	txs := c.latestUnauthorizedCloseAgreement.Transactions
+
+	// If remote has not signed the txs or signatures is invalid, error as is invalid.
+	verifyInputs := []signatureVerificationInput{
+		{TransactionHash: txs.DeclarationHash, Signature: cs.Declaration, Signer: c.remoteSigner},
+		{TransactionHash: txs.CloseHash, Signature: cs.Close, Signer: c.remoteSigner},
+	}
+	err = verifySignatures(verifyInputs)
+	if err != nil {
+		return CloseAgreement{}, fmt.Errorf("invalid signature: %w", err)
+	}
+
+	// All signatures are present that would be required to submit all
+	// transactions in the payment.
+	c.latestUnauthorizedCloseAgreement.Envelope.ConfirmerSignatures = cs
+	c.latestAuthorizedCloseAgreement = c.latestUnauthorizedCloseAgreement
+	c.latestUnauthorizedCloseAgreement = CloseAgreement{}
+
+	return c.latestAuthorizedCloseAgreement, nil
+}
