@@ -421,7 +421,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 	})
 	shell.AddCmd(&ishell.Cmd{
 		Name: "payx",
-		Help: "payx <amount> <number of times> - pay an amount a certain number of times",
+		Help: "payx <max-amount> <number of times> <max buffer size> - pay an amount a certain number of times",
 		Func: func(c *ishell.Context) {
 			fmt.Fprintf(os.Stdout, "sending %s payment %s times\n", c.Args[0], c.Args[1])
 			amt, err := amount.ParseInt64(c.Args[0])
