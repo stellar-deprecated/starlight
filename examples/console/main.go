@@ -360,7 +360,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Name: "open",
 		Help: "open [asset-code] - open a channel with optional asset",
 		Func: func(c *ishell.Context) {
-
 			assetCode := ""
 			if len(c.Args) >= 1 {
 				assetCode = c.Args[0]
