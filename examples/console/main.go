@@ -550,5 +550,4 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 	})
 
 	shell.Run()
-	return
 }
