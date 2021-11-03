@@ -1369,6 +1369,112 @@ func TestChannel_ConfirmPayment_signatureChecks(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestChannel_FinalizePayment_signatureChecks(t *testing.T) {
+	localSigner := keypair.MustRandom()
+	remoteSigner := keypair.MustRandom()
+	localEscrowAccount := keypair.MustRandom().FromAddress()
+	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+
+	// Given a channel with observation periods set to 1.
+	responderChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           false,
+		LocalSigner:         localSigner,
+		RemoteSigner:        remoteSigner.FromAddress(),
+		LocalEscrowAccount:  localEscrowAccount,
+		RemoteEscrowAccount: remoteEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+	initiatorChannel := NewChannel(Config{
+		NetworkPassphrase:   network.TestNetworkPassphrase,
+		Initiator:           true,
+		LocalSigner:         remoteSigner,
+		RemoteSigner:        localSigner.FromAddress(),
+		LocalEscrowAccount:  remoteEscrowAccount,
+		RemoteEscrowAccount: localEscrowAccount,
+		MaxOpenExpiry:       2 * time.Hour,
+	})
+
+	// Put channel into the Open state.
+	{
+		m, err := initiatorChannel.ProposeOpen(OpenParams{
+			ObservationPeriodLedgerGap: 10,
+			Asset:                      NativeAsset,
+			ExpiresAt:                  time.Now().Add(5 * time.Minute),
+			StartingSequence:           101,
+		})
+		require.NoError(t, err)
+		m, err = responderChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+		_, err = initiatorChannel.ConfirmOpen(m.Envelope)
+		require.NoError(t, err)
+
+		ftx, err := initiatorChannel.OpenTx()
+		require.NoError(t, err)
+		ftxXDR, err := ftx.Base64()
+		require.NoError(t, err)
+
+		successResultXDR, err := txbuildtest.BuildResultXDR(true)
+		require.NoError(t, err)
+		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
+			InitiatorSigner: remoteSigner.Address(),
+			ResponderSigner: localSigner.Address(),
+			InitiatorEscrow: remoteEscrowAccount.Address(),
+			ResponderEscrow: localEscrowAccount.Address(),
+			StartSequence:   101,
+			Asset:           txnbuild.NativeAsset{},
+		})
+		require.NoError(t, err)
+
+		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		cs, err := responderChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+
+		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
+		require.NoError(t, err)
+		cs, err = initiatorChannel.State()
+		require.NoError(t, err)
+		assert.Equal(t, StateOpen, cs)
+	}
+	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
+	responderChannel.UpdateRemoteEscrowAccountBalance(200)
+
+	ca, err := initiatorChannel.ProposePayment(100)
+	require.NoError(t, err)
+	ca, err = responderChannel.ConfirmPayment(ca.Envelope)
+	require.NoError(t, err)
+
+	// Pretend that confirmer did not sign any tx.
+	_, err = initiatorChannel.FinalizePayment(CloseSignatures{})
+	require.EqualError(t, err, "invalid signature: signature verification failed")
+
+	// Pretend that the confirmer did not sign a tx.
+	_, err = initiatorChannel.FinalizePayment(CloseSignatures{
+		Declaration: ca.Envelope.ConfirmerSignatures.Declaration,
+	})
+	require.EqualError(t, err, "invalid signature: signature verification failed")
+	_, err = initiatorChannel.FinalizePayment(CloseSignatures{
+		Close: ca.Envelope.ConfirmerSignatures.Close,
+	})
+	require.EqualError(t, err, "invalid signature: signature verification failed")
+
+	// Pretend that the confirmer signed the txs invalidly.
+	_, err = initiatorChannel.FinalizePayment(CloseSignatures{
+		Close: ca.Envelope.ConfirmerSignatures.Declaration,
+	})
+	require.EqualError(t, err, "invalid signature: signature verification failed")
+	_, err = initiatorChannel.FinalizePayment(CloseSignatures{
+		Declaration: ca.Envelope.ConfirmerSignatures.Close,
+	})
+	require.EqualError(t, err, "invalid signature: signature verification failed")
+
+	// Valid proposer and confirmer signatures accepted by proposer.
+	_, err = initiatorChannel.FinalizePayment(ca.Envelope.ConfirmerSignatures)
+	require.NoError(t, err)
+}
+
 func TestLastConfirmedPayment(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
