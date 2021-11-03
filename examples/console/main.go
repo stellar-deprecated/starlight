@@ -355,7 +355,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "connect <addr>:<port> - connect to a peer",
 		Func: func(c *ishell.Context) {
 			c.Err(agent.ConnectTCP(c.Args[0]))
-			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -371,7 +370,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 				asset = state.Asset(assetCode + ":" + signer.Address())
 			}
 			c.Err(agent.Open(asset))
-			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -425,7 +423,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			stats.Reset()
 			_, err = agent.Payment(amt)
 			c.Err(err)
-			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -474,7 +471,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			fmt.Println(stats.Summary())
 			agent.SetMaxBufferSize(1)
 			c.Err(err)
-			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -482,7 +478,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "declareclose - declare to close the channel",
 		Func: func(c *ishell.Context) {
 			c.Err(agent.DeclareClose())
-			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
@@ -490,7 +485,6 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "close - close the channel",
 		Func: func(c *ishell.Context) {
 			c.Err(agent.Close())
-			return
 		},
 	})
 	shell.AddCmd(&ishell.Cmd{
