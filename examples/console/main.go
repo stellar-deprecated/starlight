@@ -358,7 +358,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 	})
 	shell.AddCmd(&ishell.Cmd{
 		Name: "open",
-		Help: "open - open a channel with optional asset",
+		Help: "open [asset-code] - open a channel with optional asset",
 		Func: func(c *ishell.Context) {
 
 			assetCode := ""
