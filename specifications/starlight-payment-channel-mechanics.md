@@ -669,7 +669,7 @@ execution of the open to check the state of the accounts and trustlines are
 acceptable, but there is no guarantee that state will remain constant until
 after the open transaction is executed.
 
-It is critical to check the state of the other participants multi-sig account 
+It is critical to check the state of the other participants account 
 and their trustlines after opening the channel because there is no way for 
 participants to guarantee that the other participant has not altered its state. 
 For example, the other participant could add an additional signer to their 
