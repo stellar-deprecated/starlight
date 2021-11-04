@@ -575,13 +575,13 @@ The total reserves required for each participant are:
 
 - Participant I
 
-  - 1 (Multi-sig Account MI)
+  - 1 (Account MI)
   - \+ Number of Assets (for Trustlines on MI, always 0 or 1)
   - \+ 2 x Number of I's Signers
 
 - Participant R
 
-  - 1 (Multi-sig Account MR)
+  - 1 (Account MR)
   - \+ Number of Assets (for Trustlines on MR, always 0 or 1)
   - \+ 2 x Number of R's Signers
 
