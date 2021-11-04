@@ -438,7 +438,7 @@ withdrawing and X is the participant witnessing the withdrawal:
 7. I or R submit W_i.
 
 If the withdrawal transaction W_i fails or is never submitted, the C_i and D_i
-are not executable because multisig account MI's sequence number was not bumped 
+are not executable because account MI's sequence number was not bumped 
 to s_i.  The participants should take the following steps since the withdrawal 
 did not succeed:
 
