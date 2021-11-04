@@ -74,13 +74,14 @@ transaction that will disburse $8 to I and $22 to R.
 
 A payment channel has two participants:
 
-- I, the _initiator_, who proposes the payment channel, and creates the multi-sig
-account that will be used for sequence numbers.  I creates multi-sig account MI and
-receives disbursement through regaining control of MI at channel close.
+- I, the _initiator_, who proposes the payment channel, and creates the 
+multi-sig account that will be used for sequence numbers.  I creates multi-sig 
+account MI and receives disbursement through regaining control of MI at channel 
+close.
 
 - R, the _responder_, who joins the payment channel, and creates the other
-multi-sig account. R creates multi-sig account MR and receives disbursement through
-regaining control of MR at channel close.
+multi-sig account. R creates multi-sig account MR and receives disbursement 
+through regaining control of MR at channel close.
 
 ### Observation Period
 
@@ -202,8 +203,8 @@ multi-sig accounts. F has source account E, and sequence number set to s.
     participant I as a sponsor of future reserves.
     - One `CHANGE_TRUST` operation configuring trustlines on MI if the asset is 
     not the native asset.
-    - One `SET_OPTIONS` operation adjusting multi-sig account MI's thresholds such
-    that I and R's signers must both sign.
+    - One `SET_OPTIONS` operation adjusting multi-sig account MI's thresholds 
+    such that I and R's signers must both sign.
     - One `SET_OPTIONS` operation adding I signers to MI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
@@ -218,8 +219,8 @@ multi-sig accounts. F has source account E, and sequence number set to s.
     account R as a sponsor of future reserves.
     - One `CHANGE_TRUST` operation configuring trustlines on MR if the asset is 
     not the native asset.
-    - One `SET_OPTIONS` operation adjusting multi-sig account MR's thresholds such
-    that R and I's signers must both sign.
+    - One `SET_OPTIONS` operation adjusting multi-sig account MR's thresholds 
+    such that R and I's signers must both sign.
     - One `SET_OPTIONS` operation adding R's signers to MR.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
@@ -236,8 +237,8 @@ multi-sig accounts. F has source account E, and sequence number set to s.
   included in the open transaction so that participants are guaranteed the
   trustline is still in the same state after the channel is open. If the 
   operation is not included a participant could intentionally or accidentally 
-  remove a trustline between multi-sig account setup and open causing the presigned
-  closing transaction to become invalid.
+  remove a trustline between multi-sig account setup and open causing the 
+  presigned closing transaction to become invalid.
 
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
   which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
@@ -288,8 +289,8 @@ ledger count).
   - Zero or one `PAYMENT` operations that disburses funds from MI to MR, or from
   MR to MI, that may be omitted if the final state at this update does not
   require the movement of funds.
-  - One or more `SET_OPTIONS` operation adjusting multi-sig account MI's thresholds
-  to give I full control of MI, and removing R's signers.
+  - One or more `SET_OPTIONS` operation adjusting multi-sig account MI's 
+  thresholds to give I full control of MI, and removing R's signers.
   - One or more `SET_OPTIONS` operation adjusting reserve account MR's
   thresholds to give R full control of MR, and removing I's signers.
 
@@ -381,8 +382,8 @@ Some operations are implemented in a two-step process. Participants agree on a
 new closing state at a future iteration by signing C_i and D_i transactions
 where i has skipped an iteration that is not yet executable because the D_i's
 `minSeqNum` is also set in the future. Participants then sign a transaction to
-make the change that only moves the sequence of multi-sig account MI to satisfy the
-`minSeqNum` of the future D_i.
+make the change that only moves the sequence of multi-sig account MI to satisfy 
+the `minSeqNum` of the future D_i.
 
 Operations that can fail and change the balances of the channel have the
 following requirements as well:
@@ -437,17 +438,17 @@ withdrawing and X is the participant witnessing the withdrawal:
 7. I or R submit W_i.
 
 If the withdrawal transaction W_i fails or is never submitted, the C_i and D_i
-are not executable because multi-sig account MI's sequence number was not bumped to
-s_i.  The participants should take the following steps since the withdrawal did
-not succeed:
+are not executable because multi-sig account MI's sequence number was not bumped 
+to s_i.  The participants should take the following steps since the withdrawal 
+did not succeed:
 
 8. Set e to the value of e'.
 
 The transactions are constructed as follows:
 
-- W_i, the _withdrawal transaction_, makes one or more payments from the multi-sig
-account MI and/or MR to any Stellar account. W_i has any source account that is
-not MI, typically the participant proposing the change.
+- W_i, the _withdrawal transaction_, makes one or more payments from the 
+multi-sig account MI and/or MR to any Stellar account. W_i has any source 
+account that is not MI, typically the participant proposing the change.
 
   W_i has two signers in its `extraSigners` precondition that ensures that if
   W_i is authorized, signed, and submitted, that the signatures for D_i+1 and
@@ -463,10 +464,10 @@ not MI, typically the participant proposing the change.
 
   W_i contains operations:
 
-  - One `PAYMENT` operations withdrawing assets from multi-sig accounts MI and/or
-  MR.
-  - One `BUMP_SEQUENCE` operation bumping the sequence number of multi-sig account
-  MI to s_i.
+  - One `PAYMENT` operations withdrawing assets from multi-sig accounts MI 
+  and/or MR.
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of multi-sig 
+  account MI to s_i.
 
 - C_i, see [Payment](#Payment) process.
 
@@ -540,10 +541,10 @@ account have their fees set to zero.  The submitter of a transaction wraps the
 transaction in a fee bump transaction envelope and provides an appropriate fee,
 paying the fee themselves.
 
-Credits and debits to multi-sig accounts MI and MR only ever represent deposits or
-withdrawals by I or R, and the sum of all disbursements at close equal the sum
-of all deposits minus the sum of all withdrawals.  Network transaction fees do
-not change the balance of the channel.
+Credits and debits to multi-sig accounts MI and MR only ever represent deposits 
+or withdrawals by I or R, and the sum of all disbursements at close equal the 
+sum of all deposits minus the sum of all withdrawals.  Network transaction fees 
+do not change the balance of the channel.
 
 ### Reserves
 
@@ -626,16 +627,16 @@ auth revoked, could compromise the payment channel's ability to close
 successfully.
 
 If the issuer of any auth revocable asset submits an allow trust operation
-freezing the amounts in either multi-sig account, the close transaction may fail to
-process if its payment operation is dependent on amounts frozen.
+freezing the amounts in either multi-sig account, the close transaction may fail 
+to process if its payment operation is dependent on amounts frozen.
 
 There is nothing participants can do to prevent this, other than using only auth
 immutable assets.
 
 ### Trustline Limits
 
-Trustlines on the multi-sig accounts are defined as always having a maximum asset
-limit. This restriction makes the behavior of the closing transaction as
+Trustlines on the multi-sig accounts are defined as always having a maximum 
+asset limit. This restriction makes the behavior of the closing transaction as
 predictable as possible and simplifies implementations that are designed for
 operating on common assets that do not have excessive supply.
 
@@ -654,12 +655,12 @@ being consumed causing the closing transaction's payment to fail.
 
 ### Clawback
 
-Any trustline on the multi-sig accounts that has clawback enabled could compromise
-the payment channels ability to close successfully.
+Any trustline on the multi-sig accounts that has clawback enabled could 
+compromise the payment channels ability to close successfully.
 
 If the issuer of a clawback enabled trustline submits a clawback operation for
-amounts in either multi-sig account, the close transaction may fail to process if
-its payment operation is dependent on amounts clawed back.
+amounts in either multi-sig account, the close transaction may fail to process 
+if its payment operation is dependent on amounts clawed back.
 
 ### Multi-sig Account and Trustline State
 
@@ -668,8 +669,8 @@ execution of the open to check the state of the accounts and trustlines are
 acceptable, but there is no guarantee that state will remain constant until
 after the open transaction is executed.
 
-It is critical to check the state of the other participants multi-sig account and
-their trustlines after opening the channel because there is no way for 
+It is critical to check the state of the other participants multi-sig account 
+and their trustlines after opening the channel because there is no way for 
 participants to guarantee that the other participant has not altered its state. 
 For example, the other participant could add an additional signer to their 
 account. Or, for example, the other participant could intentionally or 
