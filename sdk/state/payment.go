@@ -31,7 +31,7 @@ type CloseDetails struct {
 	// signers because the information is not embedded into the agreement's
 	// transactions.
 	PaymentAmount int64
-	Memo          string
+	Memo          []byte
 }
 
 func (d CloseDetails) Equal(d2 CloseDetails) bool {
@@ -42,7 +42,7 @@ func (d CloseDetails) Equal(d2 CloseDetails) bool {
 		d.ProposingSigner.Equal(d2.ProposingSigner) &&
 		d.ConfirmingSigner.Equal(d2.ConfirmingSigner) &&
 		d.PaymentAmount == d2.PaymentAmount &&
-		d.Memo == d2.Memo
+		bytes.Equal(d.Memo, d2.Memo)
 }
 
 type CloseSignatures struct {
@@ -153,10 +153,10 @@ func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 }
 
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
-	return c.ProposePaymentWithMemo(amount, "")
+	return c.ProposePaymentWithMemo(amount, nil)
 }
 
-func (c *Channel) ProposePaymentWithMemo(amount int64, memo string) (CloseAgreement, error) {
+func (c *Channel) ProposePaymentWithMemo(amount int64, memo []byte) (CloseAgreement, error) {
 	if amount < 0 {
 		return CloseAgreement{}, fmt.Errorf("payment amount must not be less than 0")
 	}

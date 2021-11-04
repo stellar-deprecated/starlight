@@ -221,7 +221,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
-	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected multi-sig account: "+incorrectMultiSig.Address()+" expected: "+localMultiSig.Address())
+	require.EqualError(t, err, "handling message: handling message 10: hello received with unexpected multi-sig account: "+incorrectMultiSig.Address()+" expected: "+localMultiSig.Address())
 	localAgent.multiSigAccountKey = localMultiSig
 
 	// Expect error event.
@@ -237,7 +237,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
-	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected signer: "+incorrectSigner.Address()+" expected: "+localSigner.Address())
+	require.EqualError(t, err, "handling message: handling message 10: hello received with unexpected signer: "+incorrectSigner.Address()+" expected: "+localSigner.Address())
 	localAgent.multiSigAccountSigner = localSigner
 
 	// Expect error event.
@@ -331,7 +331,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}
 
 	// Make a payment with a memo.
-	err = remoteAgent.PaymentWithMemo(20_0000000, "memo")
+	err = remoteAgent.PaymentWithMemo(20_0000000, []byte("memo"))
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
@@ -344,14 +344,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		require.True(t, ok)
 		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
 		require.True(t, ok)
-		assert.Equal(t, "memo", localPaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, []byte("memo"), localPaymentEvent.CloseAgreement.Envelope.Details.Memo)
 		assert.Equal(t, int64(4), localPaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
 		assert.Equal(t, int64(10_0000000), localPaymentEvent.CloseAgreement.Envelope.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
 		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
 		require.True(t, ok)
-		assert.Equal(t, "memo", remotePaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, []byte("memo"), remotePaymentEvent.CloseAgreement.Envelope.Details.Memo)
 		assert.Equal(t, int64(4), remotePaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
 		assert.Equal(t, int64(10_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
 	}
@@ -364,7 +364,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	remoteAgent.balanceCollector = balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 		return 300_0000000, nil
 	})
-	err = remoteAgent.PaymentWithMemo(200_0000000, "memo")
+	err = remoteAgent.PaymentWithMemo(200_0000000, []byte("memo"))
 	require.NoError(t, err)
 	err = localAgent.receive()
 	require.NoError(t, err)
@@ -377,14 +377,14 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		require.True(t, ok)
 		localPaymentEvent, ok := localEvent.(PaymentReceivedEvent)
 		require.True(t, ok)
-		assert.Equal(t, "memo", localPaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, []byte("memo"), localPaymentEvent.CloseAgreement.Envelope.Details.Memo)
 		assert.Equal(t, int64(5), localPaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
 		assert.Equal(t, int64(-190_0000000), localPaymentEvent.CloseAgreement.Envelope.Details.Balance)
 		remoteEvent, ok := <-remoteEvents
 		require.True(t, ok)
 		remotePaymentEvent, ok := remoteEvent.(PaymentSentEvent)
 		require.True(t, ok)
-		assert.Equal(t, "memo", remotePaymentEvent.CloseAgreement.Envelope.Details.Memo)
+		assert.Equal(t, []byte("memo"), remotePaymentEvent.CloseAgreement.Envelope.Details.Memo)
 		assert.Equal(t, int64(5), remotePaymentEvent.CloseAgreement.Envelope.Details.IterationNumber)
 		assert.Equal(t, int64(-190_0000000), remotePaymentEvent.CloseAgreement.Envelope.Details.Balance)
 	}

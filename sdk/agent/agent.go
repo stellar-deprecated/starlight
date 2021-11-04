@@ -314,7 +314,7 @@ func (a *Agent) Open(asset state.Asset) error {
 // Payment makes a payment with an empty memo. It is equivalent to calling
 // PaymentWithMemo(paymentAmount, "").
 func (a *Agent) Payment(paymentAmount int64) error {
-	return a.PaymentWithMemo(paymentAmount, "")
+	return a.PaymentWithMemo(paymentAmount, nil)
 }
 
 // PaymentWithMemo makes a payment of the payment amount to the remote
@@ -323,7 +323,7 @@ func (a *Agent) Payment(paymentAmount int64) error {
 // remote participant.  The payment is not authorized until the remote
 // participant signs the payment and returns the payment. The memo is attached
 // to the payment.
-func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) error {
+func (a *Agent) PaymentWithMemo(paymentAmount int64, memo []byte) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 

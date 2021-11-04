@@ -1,7 +1,7 @@
 package msg
 
 import (
-	"encoding/json"
+	"encoding/gob"
 	"io"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
@@ -11,28 +11,28 @@ import (
 type Type int
 
 const (
-	TypeHello           Type = 100
-	TypeOpenRequest     Type = 200
-	TypeOpenResponse    Type = 201
-	TypePaymentRequest  Type = 300
-	TypePaymentResponse Type = 301
-	TypeCloseRequest    Type = 400
-	TypeCloseResponse   Type = 401
+	TypeHello           Type = 10
+	TypeOpenRequest     Type = 20
+	TypeOpenResponse    Type = 21
+	TypePaymentRequest  Type = 30
+	TypePaymentResponse Type = 31
+	TypeCloseRequest    Type = 40
+	TypeCloseResponse   Type = 41
 )
 
 type Message struct {
 	Type Type
 
-	Hello *Hello `json:",omitempty"`
+	Hello *Hello
 
-	OpenRequest  *state.OpenEnvelope   `json:",omitempty"`
-	OpenResponse *state.OpenSignatures `json:",omitempty"`
+	OpenRequest  *state.OpenEnvelope
+	OpenResponse *state.OpenSignatures
 
-	PaymentRequest  *state.CloseEnvelope   `json:",omitempty"`
-	PaymentResponse *state.CloseSignatures `json:",omitempty"`
+	PaymentRequest  *state.CloseEnvelope
+	PaymentResponse *state.CloseSignatures
 
-	CloseRequest  *state.CloseEnvelope   `json:",omitempty"`
-	CloseResponse *state.CloseSignatures `json:",omitempty"`
+	CloseRequest  *state.CloseEnvelope
+	CloseResponse *state.CloseSignatures
 }
 
 type Hello struct {
@@ -40,14 +40,14 @@ type Hello struct {
 	Signer          keypair.FromAddress
 }
 
-type Encoder = json.Encoder
+type Encoder = gob.Encoder
 
 func NewEncoder(w io.Writer) *Encoder {
-	return json.NewEncoder(w)
+	return gob.NewEncoder(w)
 }
 
-type Decoder = json.Decoder
+type Decoder = gob.Decoder
 
 func NewDecoder(r io.Reader) *Decoder {
-	return json.NewDecoder(r)
+	return gob.NewDecoder(r)
 }

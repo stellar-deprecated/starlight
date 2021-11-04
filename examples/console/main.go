@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -12,9 +10,9 @@ import (
 	"os"
 	"runtime/pprof"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/abiosoft/ishell"
 	"github.com/rs/cors"
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/experimental-payment-channels/sdk/agent/agenthttp"
@@ -325,197 +323,232 @@ func run() error {
 		}
 	}
 
-	br := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Fprintf(os.Stdout, "> ")
-		line, err := br.ReadString('\n')
-		if err != nil {
-			fmt.Fprintf(os.Stdout, "error: %#v\n", err)
-			continue
-		}
-		params := strings.Fields(line)
-		if len(params) == 0 {
-			continue
-		}
-		err = prompt(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, multiSigKey, signerKey, params)
-		if errors.Is(err, errExit) {
-			break
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stdout, "error: %#v\n", err)
-			continue
-		}
+	err = runShell(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, multiSigKey, signerKey)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "error: %#v\n", err)
 	}
 
 	return nil
 }
 
-var errExit = errors.New("exit")
-
-func prompt(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, multiSig *keypair.FromAddress, signer *keypair.Full, params []string) (err error) {
+func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, multiSigAccount *keypair.FromAddress, signer *keypair.Full) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
 		}
 	}()
-	switch params[0] {
-	case "help":
-		fmt.Fprintf(os.Stdout, "listen [addr]:<port> - listen for a peer to connect\n")
-		fmt.Fprintf(os.Stdout, "connect <addr>:<port> - connect to a peer\n")
-		fmt.Fprintf(os.Stdout, "open - open a channel with asset\n")
-		fmt.Fprintf(os.Stdout, "deposit <amount> - deposit asset into multi-sig account\n")
-		fmt.Fprintf(os.Stdout, "pay <amount> - pay amount of asset to peer\n")
-		fmt.Fprintf(os.Stdout, "declareclose - declare to close the channel\n")
-		fmt.Fprintf(os.Stdout, "close - close the channel\n")
-		fmt.Fprintf(os.Stdout, "listagreements - list agreements/payments\n")
-		fmt.Fprintf(os.Stdout, "declarecloseidx - declare to close the channel with a specific previous declaration tx\n")
-		fmt.Fprintf(os.Stdout, "closeidx - close the channel with a specific previous close tx\n")
-		fmt.Fprintf(os.Stdout, "exit - exit the application\n")
-		return nil
-	case "listen":
-		return agent.ServeTCP(params[1])
-	case "connect":
-		return agent.ConnectTCP(params[1])
-	case "open":
-		assetCode := ""
-		if len(params) >= 2 {
-			assetCode = params[1]
-		}
-		asset := state.NativeAsset
-		if assetCode != "" && assetCode != "native" {
-			asset = state.Asset(assetCode + ":" + signer.Address())
-		}
-		return agent.Open(asset)
-	case "pay":
-		amt, err := amount.ParseInt64(params[1])
-		if err != nil {
-			return err
-		}
-		stats.Reset()
-		_, err = agent.Payment(amt)
-		return err
-	case "payx":
-		fmt.Fprintf(os.Stdout, "sending %s payment %s times\n", params[1], params[2])
-		amt, err := amount.ParseInt64(params[1])
-		if err != nil {
-			return err
-		}
-		x, err := strconv.Atoi(params[2])
-		if err != nil {
-			return err
-		}
-		bufferSize, err := strconv.Atoi(params[3])
-		if err != nil {
-			return err
-		}
-		stats.Reset()
-		agent.SetMaxBufferSize(bufferSize)
-		stats.MarkStart()
-		amtRange := int64(bufferSize)
-		if amtRange > amt {
-			amtRange = amt
-		}
-		for i := 0; i < x; i++ {
-			memo := "tx-" + strconv.Itoa(i)
-			for {
-				amt := amt - (int64(i) % amtRange)
-				_, err = agent.PaymentWithMemo(amt, memo)
-				if err != nil {
-					continue
+
+	shell := ishell.New()
+	shell.AddCmd(&ishell.Cmd{
+		Name: "listen",
+		Help: "listen [addr]:<port> - listen for a peer to connect",
+		Func: func(c *ishell.Context) {
+			err := agent.ServeTCP(c.Args[0])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "connect",
+		Help: "connect <addr>:<port> - connect to a peer",
+		Func: func(c *ishell.Context) {
+			c.Err(agent.ConnectTCP(c.Args[0]))
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "open",
+		Help: "open [asset-code] - open a channel with optional asset",
+		Func: func(c *ishell.Context) {
+			assetCode := ""
+			if len(c.Args) >= 1 {
+				assetCode = c.Args[0]
+			}
+			asset := state.NativeAsset
+			if assetCode != "" && assetCode != "native" {
+				asset = state.Asset(assetCode + ":" + signer.Address())
+			}
+			c.Err(agent.Open(asset))
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "deposit",
+		Help: "deposit <amount> - deposit asset into multi-sig account",
+		Func: func(c *ishell.Context) {
+			depositAmountStr := c.Args[0]
+			destination := multiSigAccount
+			if len(c.Args) >= 3 && c.Args[1] == "other" {
+				destination = otherMultiSigAccount
+			}
+			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
+			if err != nil {
+				c.Err(fmt.Errorf("getting state of local multi-sig account: %w", err))
+				return
+			}
+			tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+				SourceAccount:        &account,
+				IncrementSequenceNum: true,
+				BaseFee:              txnbuild.MinBaseFee,
+				Timebounds:           txnbuild.NewTimeout(300),
+				Operations: []txnbuild.Operation{
+					&txnbuild.Payment{Destination: destination.Address(), Asset: asset.Asset(), Amount: depositAmountStr},
+				},
+			})
+			if err != nil {
+				c.Err(fmt.Errorf("building deposit payment tx: %w", err))
+				return
+			}
+			tx, err = tx.Sign(networkPassphrase, signer)
+			if err != nil {
+				c.Err(fmt.Errorf("signing deposit payment tx: %w", err))
+				return
+			}
+			_, err = horizonClient.SubmitTransaction(tx)
+			if err != nil {
+				c.Err(fmt.Errorf("submitting deposit payment tx: %w", err))
+				return
+			}
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "pay",
+		Help: "pay <amount> - pay amount of asset to peer",
+		Func: func(c *ishell.Context) {
+			amt, err := amount.ParseInt64(c.Args[0])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+			stats.Reset()
+			_, err = agent.Payment(amt)
+			c.Err(err)
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "payx",
+		Help: "payx <max-amount> <number of times> <max buffer size> - pay an amount a certain number of times",
+		Func: func(c *ishell.Context) {
+			fmt.Fprintf(os.Stdout, "sending %s payment %s times\n", c.Args[0], c.Args[1])
+			amt, err := amount.ParseInt64(c.Args[0])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+			x, err := strconv.Atoi(c.Args[1])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+			bufferSize, err := strconv.Atoi(c.Args[2])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+			stats.Reset()
+			agent.SetMaxBufferSize(bufferSize)
+			stats.MarkStart()
+			amtRange := int64(bufferSize)
+			if amtRange > amt {
+				amtRange = amt
+			}
+			for i := 0; i < x; i++ {
+				memo := "tx-" + strconv.Itoa(i)
+				for {
+					amt := amt - (int64(i) % amtRange)
+					_, err = agent.PaymentWithMemo(amt, memo)
+					if err != nil {
+						continue
+					}
+					break
 				}
-				break
 			}
-		}
-		agent.Wait()
-		for stats.bufferedPaymentsSent != int64(x) {
-			// Wait for all the buffered payments to have been sent.
-		}
-		stats.MarkFinish()
-		fmt.Println(stats.Summary())
-		agent.SetMaxBufferSize(1)
-		return err
-	case "declareclose":
-		return agent.DeclareClose()
-	case "close":
-		return agent.Close()
-	case "listagreements":
-		for i, a := range closeAgreements {
-			var sender string
-			if signer.FromAddress().Equal(a.Envelope.Details.ProposingSigner) {
-				sender = "me"
-			} else {
-				sender = "them"
+			agent.Wait()
+			for stats.bufferedPaymentsSent != int64(x) {
+				// Wait for all the buffered payments to have been sent.
 			}
-			var receiver string
-			if signer.FromAddress().Equal(a.Envelope.Details.ConfirmingSigner) {
-				receiver = "me"
-			} else {
-				receiver = "them"
+			stats.MarkFinish()
+			fmt.Println(stats.Summary())
+			agent.SetMaxBufferSize(1)
+			c.Err(err)
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "declareclose",
+		Help: "declareclose - declare to close the channel",
+		Func: func(c *ishell.Context) {
+			c.Err(agent.DeclareClose())
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "close",
+		Help: "close - close the channel",
+		Func: func(c *ishell.Context) {
+			c.Err(agent.Close())
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "listagreements",
+		Help: "listagreements - list agreements/payments",
+		Func: func(c *ishell.Context) {
+			for i, a := range closeAgreements {
+				var sender string
+				if signer.FromAddress().Equal(a.Envelope.Details.ProposingSigner) {
+					sender = "me"
+				} else {
+					sender = "them"
+				}
+				var receiver string
+				if signer.FromAddress().Equal(a.Envelope.Details.ConfirmingSigner) {
+					receiver = "me"
+				} else {
+					receiver = "them"
+				}
+				payment := amount.StringFromInt64(a.Envelope.Details.PaymentAmount)
+				balance := amount.StringFromInt64(a.Envelope.Details.Balance)
+				fmt.Fprintf(os.Stdout, "%d: amount=%s %s=>%s balance=%s\n", i, payment, sender, receiver, balance)
 			}
-			payment := amount.StringFromInt64(a.Envelope.Details.PaymentAmount)
-			balance := amount.StringFromInt64(a.Envelope.Details.Balance)
-			fmt.Fprintf(os.Stdout, "%d: amount=%s %s=>%s balance=%s\n", i, payment, sender, receiver, balance)
-		}
-		return nil
-	case "declarecloseidx":
-		idx, err := strconv.Atoi(params[1])
-		if err != nil {
-			return err
-		}
-		if idx >= len(closeAgreements) {
-			return fmt.Errorf("invalid index, got %d must be between %d and %d", idx, 0, len(closeAgreements)-1)
-		}
-		tx := closeAgreements[idx].SignedTransactions().Declaration
-		err = submitter.SubmitTx(tx)
-		if err != nil {
-			return err
-		}
-		return nil
-	case "closeidx":
-		idx, err := strconv.Atoi(params[1])
-		if err != nil {
-			return err
-		}
-		tx := closeAgreements[idx].SignedTransactions().Close
-		err = submitter.SubmitTx(tx)
-		if err != nil {
-			return err
-		}
-		return nil
-	case "deposit":
-		depositAmountStr := params[1]
-		destination := multiSig
-		if len(params) >= 3 && params[2] == "other" {
-			destination = otherMultiSigAccount
-		}
-		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
-		if err != nil {
-			return fmt.Errorf("getting state of local multi-sig account: %w", err)
-		}
-		tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
-			SourceAccount:        &account,
-			IncrementSequenceNum: true,
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimeout(300),
-			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{Destination: destination.Address(), Asset: asset.Asset(), Amount: depositAmountStr},
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("building deposit payment tx: %w", err)
-		}
-		tx, err = tx.Sign(networkPassphrase, signer)
-		if err != nil {
-			return fmt.Errorf("signing deposit payment tx: %w", err)
-		}
-		_, err = horizonClient.SubmitTransaction(tx)
-		if err != nil {
-			return fmt.Errorf("submitting deposit payment tx: %w", err)
-		}
-		return nil
-	case "exit":
-		return errExit
-	default:
-		return fmt.Errorf("error: unrecognized command")
-	}
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "declarecloseidx",
+		Help: "declarecloseidx <idx> - declare to close the channel with a specific previous declaration tx",
+		Func: func(c *ishell.Context) {
+			idx, err := strconv.Atoi(c.Args[0])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+			if idx >= len(closeAgreements) {
+				c.Err(fmt.Errorf("invalid index, got %d must be between %d and %d", idx, 0, len(closeAgreements)-1))
+				return
+			}
+			tx := closeAgreements[idx].SignedTransactions().Declaration
+			err = submitter.SubmitTx(tx)
+			if err != nil {
+				c.Err(err)
+				return
+			}
+		},
+	})
+	shell.AddCmd(&ishell.Cmd{
+		Name: "closeidx",
+		Help: "closeidx <idx> - close the channel with a specific previous close tx",
+		Func: func(c *ishell.Context) {
+			idx, err := strconv.Atoi(c.Args[0])
+			if err != nil {
+				c.Err(err)
+				return
+			}
+			tx := closeAgreements[idx].SignedTransactions().Close
+			err = submitter.SubmitTx(tx)
+			if err != nil {
+				c.Err(err)
+				return
+			}
+		},
+	})
+
+	shell.Run()
+	return nil
 }
