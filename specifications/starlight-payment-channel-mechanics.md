@@ -466,7 +466,7 @@ account that is not MI, typically the participant proposing the change.
 
   - One `PAYMENT` operations withdrawing assets from accounts MI 
   and/or MR.
-  - One `BUMP_SEQUENCE` operation bumping the sequence number of multisig 
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of
   account MI to s_i.
 
 - C_i, see [Payment](#Payment) process.
