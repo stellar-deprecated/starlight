@@ -354,8 +354,8 @@ Close](#Uncoordinated-Close) process with a declaration transaction that is not
 the most recently signed declaration transaction.
 
 The other participant can identify that the close process has started at an
-earlier state by monitoring changes in multisig account MI's sequence. If the
-other participant sees the sequence number of multisig account MI change to a
+earlier state by monitoring changes in account MI's sequence. If the
+other participant sees the sequence number of account MI change to a
 value that is not the most recently used s_i, they can use the following process
 to contest the close. A participant contests a close by submitting a more recent
 declaration transaction and closing the channel at the actual final state. A
