@@ -382,7 +382,7 @@ Some operations are implemented in a two-step process. Participants agree on a
 new closing state at a future iteration by signing C_i and D_i transactions
 where i has skipped an iteration that is not yet executable because the D_i's
 `minSeqNum` is also set in the future. Participants then sign a transaction to
-make the change that only moves the sequence of multisig account MI to satisfy 
+make the change that only moves the sequence of account MI to satisfy 
 the `minSeqNum` of the future D_i.
 
 Operations that can fail and change the balances of the channel have the
