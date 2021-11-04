@@ -389,7 +389,7 @@ Operations that can fail and change the balances of the channel have the
 following requirements as well:
 
 - The transaction that can fail must have its source account set to an account
-that is not multisig account MI.
+that is not account MI.
 - The transaction that can fail must contain a `BUMP_SEQUENCE` operation that
 bumps multisig account MI's sequence number to a sequence number that makes the
 D_i executable.
