@@ -19,19 +19,14 @@ The Open, Payment, and Close operations are broken up into three steps:
 signatures.
 
     +-----------+      +-----------+
-    |           |      |           |
     |   Payer   |      |   Payee   |
-    |           |      |           |
     +-----+-----+      +-----+-----+
-          |                  |
           |                  |
           |Propose           |
           +----------------->+
           |                  |
-          |                  |
           |           Confirm|
   Finalize+<-----------------+
-        | |                  |
         | |                  |
         | |                  |
         +->                  |
