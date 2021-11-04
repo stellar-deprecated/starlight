@@ -71,7 +71,7 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 }
 
 func initMultiSigAccount(t *testing.T, participant *Participant, assetParam AssetParam) {
-	// create multi-sig account
+	// create multisig account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
 	seqNum, err := account.GetSequenceNumber()

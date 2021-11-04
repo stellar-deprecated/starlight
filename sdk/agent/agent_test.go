@@ -105,7 +105,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown multi-sig account")
+			return 0, fmt.Errorf("unknown multisig account")
 		}),
 		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -146,7 +146,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown multi-sig account")
+			return 0, fmt.Errorf("unknown multisig account")
 		}),
 		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -221,7 +221,7 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
-	require.EqualError(t, err, "handling message: handling message 10: hello received with unexpected multi-sig account: "+incorrectMultiSig.Address()+" expected: "+localMultiSig.Address())
+	require.EqualError(t, err, "handling message: handling message 10: hello received with unexpected multisig account: "+incorrectMultiSig.Address()+" expected: "+localMultiSig.Address())
 	localAgent.multiSigAccountKey = localMultiSig
 
 	// Expect error event.
@@ -492,7 +492,7 @@ func TestAgent_concurrency(t *testing.T) {
 			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown multi-sig account")
+			return 0, fmt.Errorf("unknown multisig account")
 		}),
 		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -532,7 +532,7 @@ func TestAgent_concurrency(t *testing.T) {
 			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown multi-sig account")
+			return 0, fmt.Errorf("unknown multisig account")
 		}),
 		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil

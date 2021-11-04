@@ -9,14 +9,14 @@ import (
 
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
-// channel if the transaction relates to one of the channel's multi-sig accounts.
+// channel if the transaction relates to one of the channel's multisig accounts.
 //
 // The txOrderID is an identifier that orders transactions as they were
 // executed on the Stellar network.
 //
-// The function may be called with transactions for each multi-sig account out of
-// order. For example, transactions for the initiator multi-sig account can be
-// processed in order, and transactions for the responder multi-sig account can be
+// The function may be called with transactions for each multisig account out of
+// order. For example, transactions for the initiator multisig account can be
+// processed in order, and transactions for the responder multisig account can be
 // processed in order, but relative to each other they may be out of order. If
 // transactions for a single account are processed out of order some state
 // transition may be skipped.
@@ -74,7 +74,7 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 }
 
 func (c *Channel) ingestTxToUpdateInitiatorMultiSigAccountSequence(tx *txnbuild.Transaction) {
-	// If the transaction's source account is not the initiator's multi-sig
+	// If the transaction's source account is not the initiator's multisig
 	// account, return.
 	if tx.SourceAccount().AccountID != c.initiatorMultiSigAccount().Address.Address() {
 		return
@@ -97,7 +97,7 @@ func (c *Channel) ingestTxToUpdateInitiatorMultiSigAccountSequence(tx *txnbuild.
 // If the transaction should be able to provide this data and cannot, the
 // function errors.
 func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transaction) error {
-	// If the transaction's source account is not the initiator's multi-sig
+	// If the transaction's source account is not the initiator's multisig
 	// account, then the transaction is not a part of a close agreement.
 	if tx.SourceAccount().AccountID != c.initiatorMultiSigAccount().Address.Address() {
 		return nil
@@ -152,7 +152,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 }
 
 // ingestTxMetaToUpdateBalances uses the transaction result meta data
-// from a transaction response to update local and remote multi-sig account
+// from a transaction response to update local and remote multisig account
 // balances.
 func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR string) error {
 	// If not a valid resultMetaXDR string, return.
@@ -164,7 +164,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 
 	channelAsset := c.openAgreement.Envelope.Details.Asset
 
-	// Find ledger changes for the multi-sig accounts' balances,
+	// Find ledger changes for the multisig accounts' balances,
 	// if any, and then update.
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
@@ -269,7 +269,7 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 		return fmt.Errorf("result meta version unrecognized")
 	}
 
-	// Find multi-sig account ledger changes. Grabs the latest entry, which gives
+	// Find multisig account ledger changes. Grabs the latest entry, which gives
 	// the latest ledger entry state.
 	var initiatorMultiSigAccountEntry, responderMultiSigAccountEntry *xdr.AccountEntry
 	var initiatorMultiSigTrustlineEntry, responderMultiSigTrustlineEntry *xdr.TrustLineEntry
@@ -305,35 +305,35 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 		}
 	}
 
-	// Validate both multi-sig accounts have been updated.
+	// Validate both multisig accounts have been updated.
 	if initiatorMultiSigAccountEntry == nil || responderMultiSigAccountEntry == nil {
-		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both multi-sig accounts")
+		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both multisig accounts")
 		return nil
 	}
 
-	// Validate the initiator multi-sig account sequence number is correct.
+	// Validate the initiator multisig account sequence number is correct.
 	if int64(initiatorMultiSigAccountEntry.SeqNum) != openTx.SequenceNumber() {
-		c.openExecutedWithError = fmt.Errorf("incorrect initiator multi-sig account sequence number found, found: %d want: %d",
+		c.openExecutedWithError = fmt.Errorf("incorrect initiator multisig account sequence number found, found: %d want: %d",
 			int64(initiatorMultiSigAccountEntry.SeqNum), openTx.SequenceNumber())
 		return nil
 	}
 
 	multiSigAccounts := [2]*xdr.AccountEntry{initiatorMultiSigAccountEntry, responderMultiSigAccountEntry}
 	for _, ea := range multiSigAccounts {
-		// Validate the multi-sig account thresholds are equal to the number of
+		// Validate the multisig account thresholds are equal to the number of
 		// signers so that all signers are required to sign all transactions.
 		// Thresholds are: Master Key, Low, Medium, High.
 		if ea.Thresholds != (xdr.Thresholds{0, requiredThresholds, requiredThresholds, requiredThresholds}) {
-			c.openExecutedWithError = fmt.Errorf("incorrect initiator multi-sig account thresholds found")
+			c.openExecutedWithError = fmt.Errorf("incorrect initiator multisig account thresholds found")
 			return nil
 		}
 
-		// Validate the multi-sig account has the correct signers and signer weights.
+		// Validate the multisig account has the correct signers and signer weights.
 		var initiatorSignerCorrect, responderSignerCorrect bool
 		for _, signer := range ea.Signers {
 			address, err := signer.Key.GetAddress()
 			if err != nil {
-				c.openExecutedWithError = fmt.Errorf("parsing open transaction multi-sig account signer keys: %w", err)
+				c.openExecutedWithError = fmt.Errorf("parsing open transaction multisig account signer keys: %w", err)
 				return nil
 			}
 
@@ -342,7 +342,7 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 			} else if address == c.responderSigner().Address() {
 				responderSignerCorrect = signer.Weight == requiredSignerWeight
 			} else {
-				c.openExecutedWithError = fmt.Errorf("unexpected signer found on multi-sig account")
+				c.openExecutedWithError = fmt.Errorf("unexpected signer found on multisig account")
 				return nil
 			}
 		}

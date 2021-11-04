@@ -276,7 +276,7 @@ func (a *Agent) Open(asset state.Asset) error {
 
 	seqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.multiSigAccountKey)
 	if err != nil {
-		return fmt.Errorf("getting sequence number of multi-sig account: %w", err)
+		return fmt.Errorf("getting sequence number of multisig account: %w", err)
 	}
 
 	a.initChannel(true, nil)
@@ -336,7 +336,7 @@ func (a *Agent) PaymentWithMemo(paymentAmount int64, memo []byte) error {
 
 	ca, err := a.channel.ProposePaymentWithMemo(paymentAmount, memo)
 	if errors.Is(err, state.ErrUnderfunded) {
-		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking multi-sig account...\n")
+		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking multisig account...\n")
 		var balance int64
 		balance, err = a.balanceCollector.GetBalance(a.channel.LocalMultiSigAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
 		if err != nil {
@@ -512,7 +512,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	h := m.Hello
 
 	if a.otherMultiSigAccount != nil && !a.otherMultiSigAccount.Equal(&h.MultiSigAccount) {
-		return fmt.Errorf("hello received with unexpected multi-sig account: %s expected: %s", h.MultiSigAccount.Address(), a.otherMultiSigAccount.Address())
+		return fmt.Errorf("hello received with unexpected multisig account: %s expected: %s", h.MultiSigAccount.Address(), a.otherMultiSigAccount.Address())
 	}
 	if a.otherMultiSigAccountSigner != nil && !a.otherMultiSigAccountSigner.Equal(&h.Signer) {
 		return fmt.Errorf("hello received with unexpected signer: %s expected: %s", h.Signer.Address(), a.otherMultiSigAccountSigner.Address())
@@ -521,7 +521,7 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 	a.otherMultiSigAccount = &h.MultiSigAccount
 	a.otherMultiSigAccountSigner = &h.Signer
 
-	fmt.Fprintf(a.logWriter, "other's multi-sig account: %v\n", a.otherMultiSigAccount.Address())
+	fmt.Fprintf(a.logWriter, "other's multisig account: %v\n", a.otherMultiSigAccount.Address())
 	fmt.Fprintf(a.logWriter, "other's signer: %v\n", a.otherMultiSigAccountSigner.Address())
 
 	if a.events != nil {
@@ -598,7 +598,7 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	paymentIn := *m.PaymentRequest
 	payment, err := a.channel.ConfirmPayment(paymentIn)
 	if errors.Is(err, state.ErrUnderfunded) {
-		fmt.Fprintf(a.logWriter, "remote is underfunded for this payment based on cached account balances, checking their multi-sig account...\n")
+		fmt.Fprintf(a.logWriter, "remote is underfunded for this payment based on cached account balances, checking their multisig account...\n")
 		var balance int64
 		balance, err = a.balanceCollector.GetBalance(a.channel.RemoteMultiSigAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
 		if err != nil {

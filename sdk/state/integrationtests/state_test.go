@@ -297,7 +297,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		t.Fatal("Channel close timed out after waiting 1 minute.")
 	}
 
-	// check final multi-sig fund amounts are correct
+	// check final multisig fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
 	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
@@ -512,7 +512,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	}
 	t.Log("Coordinated close successful")
 
-	// check final multi-sig fund amounts are correct
+	// check final multisig fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
 	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
@@ -730,7 +730,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	}
 	t.Log("Coordinated close successful")
 
-	// check final multi-sig fund amounts are correct
+	// check final multisig fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
 	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
@@ -947,7 +947,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	}
 	t.Log("Coordinated close successful")
 
-	// check final multi-sig fund amounts are correct
+	// check final multisig fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
 	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
@@ -1178,7 +1178,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		t.Log("Closed")
 	}
 
-	// Check the final state of the multi-sig accounts.
+	// Check the final state of the multisig accounts.
 	{
 		// Initiator should be down 10 (0.0000010).
 		initiatorMultiSigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()})

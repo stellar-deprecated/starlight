@@ -208,9 +208,9 @@ func run() error {
 
 		multiSigKeyFull := keypair.MustRandom()
 		multiSigKey = multiSigKeyFull.FromAddress()
-		fmt.Fprintln(os.Stdout, "waiting before creating multi-sig")
+		fmt.Fprintln(os.Stdout, "waiting before creating multisig")
 		time.Sleep(5 * time.Second)
-		fmt.Fprintln(os.Stdout, "multi-sig account:", multiSigKey.Address())
+		fmt.Fprintln(os.Stdout, "multisig account:", multiSigKey.Address())
 
 		config := agentpkg.Config{
 			ObservationPeriodTime:      observationPeriodTime,
@@ -244,19 +244,19 @@ func run() error {
 			Asset:          txnbuild.NativeAsset{},
 		})
 		if err != nil {
-			return fmt.Errorf("creating multi-sig account tx: %w", err)
+			return fmt.Errorf("creating multisig account tx: %w", err)
 		}
 		tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, multiSigKeyFull)
 		if err != nil {
-			return fmt.Errorf("signing tx to create multi-sig account: %w", err)
+			return fmt.Errorf("signing tx to create multisig account: %w", err)
 		}
 		err = retry(10, func() error {
 			return submitter.SubmitTx(tx)
 		})
 		if err != nil {
-			return fmt.Errorf("submitting tx to create multi-sig account: %w", err)
+			return fmt.Errorf("submitting tx to create multisig account: %w", err)
 		}
-		fmt.Fprintln(os.Stdout, "multi-sig created")
+		fmt.Fprintln(os.Stdout, "multisig created")
 	} else {
 		multiSigKey = file.MultiSigAccountKey
 		config := agentpkg.Config{
@@ -374,7 +374,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 	})
 	shell.AddCmd(&ishell.Cmd{
 		Name: "deposit",
-		Help: "deposit <amount> - deposit asset into multi-sig account",
+		Help: "deposit <amount> - deposit asset into multisig account",
 		Func: func(c *ishell.Context) {
 			depositAmountStr := c.Args[0]
 			destination := multiSigAccount
@@ -383,7 +383,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			}
 			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
 			if err != nil {
-				c.Err(fmt.Errorf("getting state of local multi-sig account: %w", err))
+				c.Err(fmt.Errorf("getting state of local multisig account: %w", err))
 				return
 			}
 			tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
