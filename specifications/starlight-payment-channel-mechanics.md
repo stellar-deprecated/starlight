@@ -80,7 +80,7 @@ account MI and receives disbursement through regaining control of MI at channel
 close.
 
 - R, the _responder_, who joins the payment channel, and creates the other
-multi-sig account. R creates multi-sig account MR and receives disbursement 
+multisig account. R creates account MR and receives disbursement 
 through regaining control of MR at channel close.
 
 ### Observation Period
