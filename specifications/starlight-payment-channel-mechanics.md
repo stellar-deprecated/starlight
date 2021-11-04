@@ -536,7 +536,7 @@ being set to zero.
 All transaction fees are paid by the participant submitting the transaction to
 the Stellar network.
 
-All transactions defined in the protocol with multisig account MI as the source
+All transactions defined in the protocol with account MI as the source
 account have their fees set to zero.  The submitter of a transaction wraps the
 transaction in a fee bump transaction envelope and provides an appropriate fee,
 paying the fee themselves.
