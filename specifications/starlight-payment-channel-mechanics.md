@@ -231,7 +231,7 @@ multisig accounts. F has source account E, and sequence number set to s.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
 
-  The multisig accounts MI and MR will likely have the necessary trustline
+  The accounts MI and MR will likely have the necessary trustline
   before the open transaction is built. This means the `CHANGE_TRUST`
   operation will likely be a no-op. The `CHANGE_TRUST` operation must be
   included in the open transaction so that participants are guaranteed the
