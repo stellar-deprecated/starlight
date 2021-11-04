@@ -289,7 +289,7 @@ ledger count).
   - Zero or one `PAYMENT` operations that disburses funds from MI to MR, or from
   MR to MI, that may be omitted if the final state at this update does not
   require the movement of funds.
-  - One or more `SET_OPTIONS` operation adjusting multisig account MI's 
+  - One or more `SET_OPTIONS` operation adjusting account MI's 
   thresholds to give I full control of MI, and removing R's signers.
   - One or more `SET_OPTIONS` operation adjusting reserve account MR's
   thresholds to give R full control of MR, and removing I's signers.
