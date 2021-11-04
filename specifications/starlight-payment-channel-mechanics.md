@@ -677,7 +677,7 @@ account. Or, for example, the other participant could intentionally or
 accidentally cause flags on their trustline to be changed, such as the clawback 
 enabled flag.
 
-### Multi-sig Account and Trustline Balance
+### Account and Trustline Balance
 
 Participants should inspect the state of the multi-sig accounts and their
 trustlines after opening the channel to determine the starting balance of each
