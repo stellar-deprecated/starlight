@@ -664,7 +664,7 @@ if its payment operation is dependent on amounts clawed back.
 
 ### Account and Trustline State
 
-Participants can inspect the state of multi-sig accounts and trustlines before
+Participants can inspect the state of accounts and trustlines before
 execution of the open to check the state of the accounts and trustlines are
 acceptable, but there is no guarantee that state will remain constant until
 after the open transaction is executed.
