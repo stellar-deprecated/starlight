@@ -464,7 +464,7 @@ account that is not MI, typically the participant proposing the change.
 
   W_i contains operations:
 
-  - One `PAYMENT` operations withdrawing assets from multisig accounts MI 
+  - One `PAYMENT` operations withdrawing assets from accounts MI 
   and/or MR.
   - One `BUMP_SEQUENCE` operation bumping the sequence number of multisig 
   account MI to s_i.
