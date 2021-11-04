@@ -414,7 +414,7 @@ operation to MI.
 Participant R deposits or tops-up their balance by using a standard payment
 operation to MR.
 
-If participants wish to deposit an asset that multisig accounts MI or MR do not
+If participants wish to deposit an asset that accounts MI or MR do not
 hold a trustline for, the [Add Trustlines](#Add-Trustline) process must be used
 first.
 
