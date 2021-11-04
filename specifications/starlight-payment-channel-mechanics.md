@@ -8,8 +8,8 @@ Track: Standard
 Status: Draft
 Discussion: https://github.com/stellar/experimental-payment-channels/issues
 Created: 2021-04-21
-Updated: 2021-07-06
-Version: 0.4.0
+Updated: 2021-11-04
+Version: 0.5.0
 ```
 
 ## Summary
