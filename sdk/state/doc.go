@@ -26,10 +26,10 @@ signatures.
         +----------------->+
         |               Confirm
         +<-----------------+
-    Finalize               |
+    Finalize*              |
         |                  |
 
-Note that the Open and Close processes do not have a Finalize operation, and the
+* Note that the Open and Close processes do not have a Finalize operation, and the
 Confirm is used in its place at this time. A Finalize operation is likely to be
 added in the future.
 
