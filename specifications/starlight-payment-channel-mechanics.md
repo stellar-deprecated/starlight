@@ -40,7 +40,7 @@ make it easier to do this.
 ## Abstract
 
 This protocol defines the Stellar transactions that two participants use to open
-and close a payment channel by using multi-sig accounts to hold a single asset.
+and close a payment channel by using multisig accounts to hold a single asset.
 
 A payment channel has two participants, an initiator I and a responder R.
 
