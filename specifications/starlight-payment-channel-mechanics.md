@@ -732,6 +732,5 @@ proposals.
 TODO: Add implementation.
 
 [CAP-21]: https://stellar.org/protocol/cap-21
-[CAP-23]: https://stellar.org/protocol/cap-23
 [CAP-33]: https://stellar.org/protocol/cap-33
 [CAP-40]: https://stellar.org/protocol/cap-40
