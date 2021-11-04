@@ -172,7 +172,7 @@ To setup the payment channel:
    - A closing transaction C_i, that closes the channel without any payment.
 6. R signs and submits F.
 
-Participants should check the state of the other participant's multisig account
+Participants should check the state of the other participant's account
 after the open transaction is submitted to ensure the state is as expected. 
 Participants may wish to reduce their exposure to griefing by making deposits of 
 initial contributions after the channel is open. See [Security](#Security).
