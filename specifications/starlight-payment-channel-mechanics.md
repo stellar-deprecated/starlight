@@ -525,7 +525,7 @@ MI, sequence number s_i.
 
 #### Reusing a Channel
 
-After close, multisig accounts MI and MR can be reused for another channel with
+After close, accounts MI and MR can be reused for another channel with
 the same or different participants. The relevant account creation steps during
 [Setup](#Setup) are skipped. All variable values from the closed channel are
 discarded and set anew with iteration number i and executed iteration number e
