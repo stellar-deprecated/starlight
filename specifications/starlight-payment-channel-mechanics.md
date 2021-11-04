@@ -541,7 +541,7 @@ account have their fees set to zero.  The submitter of a transaction wraps the
 transaction in a fee bump transaction envelope and provides an appropriate fee,
 paying the fee themselves.
 
-Credits and debits to multisig accounts MI and MR only ever represent deposits 
+Credits and debits to accounts MI and MR only ever represent deposits 
 or withdrawals by I or R, and the sum of all disbursements at close equal the 
 sum of all deposits minus the sum of all withdrawals.  Network transaction fees 
 do not change the balance of the channel.
