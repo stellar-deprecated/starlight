@@ -203,7 +203,7 @@ multisig accounts. F has source account E, and sequence number set to s.
     participant I as a sponsor of future reserves.
     - One `CHANGE_TRUST` operation configuring trustlines on MI if the asset is 
     not the native asset.
-    - One `SET_OPTIONS` operation adjusting multisig account MI's thresholds 
+    - One `SET_OPTIONS` operation adjusting account MI's thresholds 
     such that I and R's signers must both sign.
     - One `SET_OPTIONS` operation adding I signers to MI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
