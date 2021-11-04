@@ -237,7 +237,7 @@ multisig accounts. F has source account E, and sequence number set to s.
   included in the open transaction so that participants are guaranteed the
   trustline is still in the same state after the channel is open. If the 
   operation is not included a participant could intentionally or accidentally 
-  remove a trustline between multisig account setup and open causing the 
+  remove a trustline between account setup and open causing the 
   presigned closing transaction to become invalid.
 
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
