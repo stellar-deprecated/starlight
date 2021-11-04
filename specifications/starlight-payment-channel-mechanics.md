@@ -31,8 +31,8 @@ trust each other, are limited to performing all their transactions on-chain
 to get the benefits of the network enforcing transaction finality.  The
 network is fast, but not as fast as two parties forming an agreement directly
 with each other.  For high-frequency transactors it would be beneficial if
-there was a simple method on Stellar to allow two parties to hold funds
-in an account that is controlled by both parties, where agreements can be
+there was a simple method on Stellar to allow two parties to escrow funds
+into an account that is controlled by both parties, where agreements can be
 formed and guaranteed to be executable and contested on-chain.  [CAP-21],
 [CAP-40] and [CAP-33] introduce new functionality to the Stellar protocol that
 make it easier to do this.
@@ -40,7 +40,7 @@ make it easier to do this.
 ## Abstract
 
 This protocol defines the Stellar transactions that two participants use to open
-and close a payment channel by using multisig accounts to hold a single asset.
+and close a payment channel by using escrow accounts to hold a single asset.
 
 A payment channel has two participants, an initiator I and a responder R.
 
@@ -48,13 +48,13 @@ The protocol assumes some _observation period_, O, such that both parties are
 guaranteed to be able to observe the blockchain state and submit transactions
 within any period of length O.
 
-The payment channel consists of two 2-of-2 multisig accounts MI and MR,
+The payment channel consists of two 2-of-2 multisig escrow accounts EI and ER,
 and a series of transaction sets that contain _declaration_ and _closing_
-transactions with MI as their source account, signed by both participants.  The
+transactions with EI as their source account, signed by both participants.  The
 closing transaction defines the final state of the channel that disburses the
-asset from MI to MR and/or from MR to MI such that the final balances of MI and
-MR match the amounts belonging to I and R. The closing transaction also returns
-control of MI to I and control of MR to R.  Each generation of declaration and
+asset from EI to ER and/or from ER to EI such that the final balances of EI and
+ER match the amounts belonging to I and R. The closing transaction also returns
+control of EI to I and control of ER to R.  Each generation of declaration and
 closing transaction sets in the series are an agreement on a new final state for
 the channel.
 
@@ -74,14 +74,13 @@ transaction that will disburse $8 to I and $22 to R.
 
 A payment channel has two participants:
 
-- I, the _initiator_, who proposes the payment channel, and creates the 
-multisig account that will be used for sequence numbers.  I creates  
-account MI and receives disbursement through regaining control of MI at channel 
-close.
+- I, the _initiator_, who proposes the payment channel, and creates the escrow
+account that will be used for sequence numbers.  I creates escrow account EI and
+receives disbursement through regaining control of EI at channel close.
 
 - R, the _responder_, who joins the payment channel, and creates the other
-multisig account. R creates account MR and receives disbursement 
-through regaining control of MR at channel close.
+escrow account. R creates escrow account ER and receives disbursement through
+regaining control of ER at channel close.
 
 ### Observation Period
 
@@ -99,19 +98,19 @@ throughout the protocol.
 The participants may agree to change the period O at anytime by following the
 [Change the Observation Period](#Change-the-Observation-Period) process.
 
-### Multisig Accounts
+### Escrow Accounts
 
 The payment channel utilizes two Stellar accounts that are both 2-of-2
 multisig accounts while the channel is open:
 
-- MI, the _multisig account belonging to I_, that holds the assets that I has
+- EI, the _escrow account belonging to I_, that holds the assets that I has
 contributed to the channel and that will be distributed to the participants at
 channel close according to the final close transactions submitted.  Created by
 I.  Jointly controlled by I and R while the channel is open.  Control is
 returned to I at close.  Provides sequence numbers for the channel while the
 channel is open.
 
-- MR, the _multisig account belonging to R_, that holds the assets that R has
+- ER, the _escrow account belonging to R_, that holds the assets that R has
 contributed to the channel and that will be distributed to the participants at
 channel close according to the final close transactions submitted.  Created by
 R.  Jointly controlled by I and R while the channel is open.  Control is
@@ -132,7 +131,7 @@ The two participants maintain the following variables during the lifetime of
 the channel:
 
 - s, the _starting sequence number_, is initialized to one greater than the
-sequence number of account MI after MI has been created. It is the first
+sequence number of escrow account EI after EI has been created. It is the first
 available sequence number for iterations to consume.
 
 - i, the _iteration number_, is initialized to zero.  It is incremented with
@@ -159,10 +158,10 @@ executed iteration e's transaction set starts at, and is computable as, s+(m*e).
 
 To setup the payment channel:
 
-1. I creates multisig account MI.
-2. R creates multisig account MR.
+1. I creates escrow account EI.
+2. R creates escrow account ER.
 3. Set variable initial states:
-   - s to MI's sequence number + 1.
+   - s to EI's sequence number + 1.
    - i to 0.
    - e to 0.
 4. Increment i.
@@ -172,7 +171,7 @@ To setup the payment channel:
    - A closing transaction C_i, that closes the channel without any payment.
 6. R signs and submits F.
 
-Participants should check the state of the other participant's multisig account
+Participants should check the state of the other participant's escrow account
 after the open transaction is submitted to ensure the state is as expected. 
 Participants may wish to reduce their exposure to griefing by making deposits of 
 initial contributions after the channel is open. See [Security](#Security).
@@ -181,7 +180,7 @@ Signatures for F, D_i, and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
-- F, the _open transaction_, changes multisig accounts MI and MR to be 2-of-2
+- F, the _open transaction_, changes escrow accounts EI and ER to be 2-of-2
 multisig accounts. F has source account E, and sequence number set to s.
 
   F has two signers in its `extraSigners` precondition that ensures that if F is
@@ -198,47 +197,47 @@ multisig accounts. F has source account E, and sequence number set to s.
 
   F contains operations:
 
-  - Operations sponsored by I for MI:
+  - Operations sponsored by I for EI:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
-    - One `CHANGE_TRUST` operation configuring trustlines on MI if the asset is 
+    - One `CHANGE_TRUST` operation configuring trustlines on EI if the asset is 
     not the native asset.
-    - One `SET_OPTIONS` operation adjusting multisig account MI's thresholds 
-    such that I and R's signers must both sign.
-    - One `SET_OPTIONS` operation adding I signers to MI.
+    - One `SET_OPTIONS` operation adjusting escrow account EI's thresholds such
+    that I and R's signers must both sign.
+    - One `SET_OPTIONS` operation adding I signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
-  - Operations sponsored by I for MR:
+  - Operations sponsored by I for ER:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies
     participant I as a sponsor of future reserves.
-    - One `SET_OPTIONS` operation adding I signers to MR.
+    - One `SET_OPTIONS` operation adding I signers to ER.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops I sponsoring
     future reserves of subsequent operations.
-  - Operations sponsored by R for MR:
+  - Operations sponsored by R for ER:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
-    - One `CHANGE_TRUST` operation configuring trustlines on MR if the asset is 
+    - One `CHANGE_TRUST` operation configuring trustlines on ER if the asset is 
     not the native asset.
-    - One `SET_OPTIONS` operation adjusting multisig account MR's thresholds 
-    such that R and I's signers must both sign.
-    - One `SET_OPTIONS` operation adding R's signers to MR.
+    - One `SET_OPTIONS` operation adjusting escrow account ER's thresholds such
+    that R and I's signers must both sign.
+    - One `SET_OPTIONS` operation adding R's signers to ER.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
-  - Operations sponsored by R for MI:
+  - Operations sponsored by R for EI:
     - One `BEGIN_SPONSORING_FUTURE_RESERVES` operation that specifies reserve
     account R as a sponsor of future reserves.
-    - One `SET_OPTIONS` operations adding R's signers to MI.
+    - One `SET_OPTIONS` operations adding R's signers to EI.
     - One `END_SPONSORING_FUTURE_RESERVES` operation that stops R sponsoring
     future reserves of subsequent operations.
 
-  The multisig accounts MI and MR will likely have the necessary trustline
+  The escrow accounts EI and ER will likely have the necessary trustline
   before the open transaction is built. This means the `CHANGE_TRUST`
   operation will likely be a no-op. The `CHANGE_TRUST` operation must be
   included in the open transaction so that participants are guaranteed the
   trustline is still in the same state after the channel is open. If the 
   operation is not included a participant could intentionally or accidentally 
-  remove a trustline between multisig account setup and open causing the 
-  presigned closing transaction to become invalid.
+  remove a trustline between escrow account setup and open causing the presigned
+  closing transaction to become invalid.
 
   The `CHANGE_TRUST` operations configure the trustlines with the maximum limit,
   which is the maximum value of an `int64`, `0x7FFFFFFFFFFFFFFF`.
@@ -273,10 +272,10 @@ Signatures for D_i and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
-- C_i, the _closing transaction_, disburses funds from MI to MR and/or from MR
-to MI, and changes the signing weights on MI such that I unilaterally controls
-MI, and the signing weights on MR such that R unilaterally controls MR.  C_i has
-source account MI, sequence number s_i+1, a `minSeqAge` of O (the observation
+- C_i, the _closing transaction_, disburses funds from EI to ER and/or from ER
+to EI, and changes the signing weights on EI such that I unilaterally controls
+EI, and the signing weights on ER such that R unilaterally controls ER.  C_i has
+source account EI, sequence number s_i+1, a `minSeqAge` of O (the observation
 period time duration), and a `minSeqLedgerGap` of O (the observation period
 ledger count).
 
@@ -286,19 +285,19 @@ ledger count).
   submitting D_i' for some i' > i.
   
   C_i contains operations:
-  - Zero or one `PAYMENT` operations that disburses funds from MI to MR, or from
-  MR to MI, that may be omitted if the final state at this update does not
+  - Zero or one `PAYMENT` operations that disburses funds from EI to ER, or from
+  ER to EI, that may be omitted if the final state at this update does not
   require the movement of funds.
-  - One or more `SET_OPTIONS` operation adjusting multisig account MI's 
-  thresholds to give I full control of MI, and removing R's signers.
-  - One or more `SET_OPTIONS` operation adjusting reserve account MR's
-  thresholds to give R full control of MR, and removing I's signers.
+  - One or more `SET_OPTIONS` operation adjusting escrow account EI's thresholds
+  to give I full control of EI, and removing R's signers.
+  - One or more `SET_OPTIONS` operation adjusting reserve account ER's
+  thresholds to give R full control of ER, and removing I's signers.
 
 - D_i, the _declaration transaction_, declares an intent to execute the
-corresponding closing transaction C_i.  D_i has source account MI, sequence
+corresponding closing transaction C_i.  D_i has source account EI, sequence
 number s_i, and `minSeqNum` set to s_e.  Hence, D_i can execute at any time, so
-long as MI's sequence number n satisfies s_e <= n < s_i.  Because C_i has source
-account MI and sequence number s_i+1, D_i leaves MI in a state where C_i can
+long as EI's sequence number n satisfies s_e <= n < s_i.  Because C_i has source
+account EI and sequence number s_i+1, D_i leaves EI in a state where C_i can
 execute.
 
   D_i has a single signer in its `extraSigners` precondition that ensures that
@@ -354,8 +353,8 @@ Close](#Uncoordinated-Close) process with a declaration transaction that is not
 the most recently signed declaration transaction.
 
 The other participant can identify that the close process has started at an
-earlier state by monitoring changes in multisig account MI's sequence. If the
-other participant sees the sequence number of multisig account MI change to a
+earlier state by monitoring changes in escrow account EI's sequence. If the
+other participant sees the sequence number of escrow account EI change to a
 value that is not the most recently used s_i, they can use the following process
 to contest the close. A participant contests a close by submitting a more recent
 declaration transaction and closing the channel at the actual final state. A
@@ -365,7 +364,7 @@ submitted. The more recent declaration transaction prevents the malicious actor
 from submitting the older closing transaction because it has a lower sequence
 number making that transaction invalid.
 
-1. Get MI's sequence number n
+1. Get EI's sequence number n
 2. If s_{e+1} >= n < s_i, go to step 3, else go to step 1
 3. Submit most recent D_i
 4. Wait observation period O
@@ -382,16 +381,16 @@ Some operations are implemented in a two-step process. Participants agree on a
 new closing state at a future iteration by signing C_i and D_i transactions
 where i has skipped an iteration that is not yet executable because the D_i's
 `minSeqNum` is also set in the future. Participants then sign a transaction to
-make the change that only moves the sequence of multisig account MI to satisfy 
-the `minSeqNum` of the future D_i.
+make the change that only moves the sequence of escrow account EI to satisfy the
+`minSeqNum` of the future D_i.
 
 Operations that can fail and change the balances of the channel have the
 following requirements as well:
 
 - The transaction that can fail must have its source account set to an account
-that is not multisig account MI.
+that is not escrow account EI.
 - The transaction that can fail must contain a `BUMP_SEQUENCE` operation that
-bumps multisig account MI's sequence number to a sequence number that makes the
+bumps escrow account EI's sequence number to a sequence number that makes the
 D_i executable.
 
 Operations where failure cannot occur or is of no consequence:
@@ -405,16 +404,16 @@ Operations that can fail and where the additional requirements apply:
 ##### Deposit / Top-up
 
 Participants may deposit into the channel without coordination, as long as both
-multisig accounts MI and MR already have a trustline for the asset being
+escrow accounts EI and ER already have a trustline for the asset being
 deposited.
 
 Participant I deposits or tops-up their balance by using a standard payment
-operation to MI.
+operation to EI.
 
 Participant R deposits or tops-up their balance by using a standard payment
-operation to MR.
+operation to ER.
 
-If participants wish to deposit an asset that multisig accounts MI or MR do not
+If participants wish to deposit an asset that escrow accounts EI or ER do not
 hold a trustline for, the [Add Trustlines](#Add-Trustline) process must be used
 first.
 
@@ -438,17 +437,17 @@ withdrawing and X is the participant witnessing the withdrawal:
 7. I or R submit W_i.
 
 If the withdrawal transaction W_i fails or is never submitted, the C_i and D_i
-are not executable because multisig account MI's sequence number was not bumped 
-to s_i.  The participants should take the following steps since the withdrawal 
-did not succeed:
+are not executable because escrow account EI's sequence number was not bumped to
+s_i.  The participants should take the following steps since the withdrawal did
+not succeed:
 
 8. Set e to the value of e'.
 
 The transactions are constructed as follows:
 
-- W_i, the _withdrawal transaction_, makes one or more payments from the 
-multisig account MI and/or MR to any Stellar account. W_i has any source 
-account that is not MI, typically the participant proposing the change.
+- W_i, the _withdrawal transaction_, makes one or more payments from the escrow
+account EI and/or ER to any Stellar account. W_i has any source account that is
+not EI, typically the participant proposing the change.
 
   W_i has two signers in its `extraSigners` precondition that ensures that if
   W_i is authorized, signed, and submitted, that the signatures for D_i+1 and
@@ -464,10 +463,10 @@ account that is not MI, typically the participant proposing the change.
 
   W_i contains operations:
 
-  - One `PAYMENT` operations withdrawing assets from multisig accounts MI 
-  and/or MR.
-  - One `BUMP_SEQUENCE` operation bumping the sequence number of multisig 
-  account MI to s_i.
+  - One `PAYMENT` operations withdrawing assets from escrow accounts EI and/or
+  ER.
+  - One `BUMP_SEQUENCE` operation bumping the sequence number of escrow account
+  EI to s_i.
 
 - C_i, see [Payment](#Payment) process.
 
@@ -483,7 +482,7 @@ to the network.
 The participants may agree at anytime to increase period O by using a larger
 value for O in the next and future transaction sets, or regenerating the most
 recent transaction set, then signing and submitting a transaction that bumps the
-sequence number of the multisig account to the sequence before the most recent
+sequence number of the escrow account to the sequence before the most recent
 D_i. The sequence bump ensures only the most recent transaction with the new
 period O is valid.
 
@@ -503,9 +502,9 @@ participants:
 
 The transactions are constructed as follows:
 
-- B_i, the _bump transaction_, bumps the sequence number of multisig account E
+- B_i, the _bump transaction_, bumps the sequence number of escrow account E
 such that only the most recent transaction set is valid. B has source account
-MI, sequence number s_i.
+EI, sequence number s_i.
 
   B_i has two signers in its `extraSigners` precondition that ensures that if
   B_i is authorized, signed, and submitted, that the signatures for D_i+1 and
@@ -525,7 +524,7 @@ MI, sequence number s_i.
 
 #### Reusing a Channel
 
-After close, multisig accounts MI and MR can be reused for another channel with
+After close, escrow accounts EI and ER can be reused for another channel with
 the same or different participants. The relevant account creation steps during
 [Setup](#Setup) are skipped. All variable values from the closed channel are
 discarded and set anew with iteration number i and executed iteration number e
@@ -536,15 +535,15 @@ being set to zero.
 All transaction fees are paid by the participant submitting the transaction to
 the Stellar network.
 
-All transactions defined in the protocol with multisig account MI as the source
+All transactions defined in the protocol with escrow account EI as the source
 account have their fees set to zero.  The submitter of a transaction wraps the
 transaction in a fee bump transaction envelope and provides an appropriate fee,
 paying the fee themselves.
 
-Credits and debits to multisig accounts MI and MR only ever represent deposits 
-or withdrawals by I or R, and the sum of all disbursements at close equal the 
-sum of all deposits minus the sum of all withdrawals.  Network transaction fees 
-do not change the balance of the channel.
+Credits and debits to escrow accounts EI and ER only ever represent deposits or
+withdrawals by I or R, and the sum of all disbursements at close equal the sum
+of all deposits minus the sum of all withdrawals.  Network transaction fees do
+not change the balance of the channel.
 
 ### Reserves
 
@@ -553,36 +552,36 @@ supplied by the participant who will be in control of the ledger entry at
 channel close.  Participants should have no impact or dependence on each other
 after channel close, and so they must not sponsor ledger entries that only the
 other party controls after channel close, either directly or indirectly through
-the multisig or reserve accounts.
+the escrow or reserve accounts.
 
 Ledger entries that do not survive channel close, such as signers, are sponsored
 by their beneficiary.  Participants pay for their own key and signing
 requirements.
 
 Participant I provides reserves for:
-- Multisig account MI
-- Trustlines added to MI
-- Signers added to MI for I
-- Signers added to MR for I
+- Escrow account EI
+- Trustlines added to EI
+- Signers added to EI for I
+- Signers added to ER for I
 
 Participant R provides reserves for:
-- Multisig account MR
-- Trustlines added to MR
-- Signers added to MR for R
-- Signers added to MI for R
+- Escrow account ER
+- Trustlines added to ER
+- Signers added to ER for R
+- Signers added to EI for R
 
 The total reserves required for each participant are:
 
 - Participant I
 
-  - 1 (Account MI)
-  - \+ Number of Assets (for Trustlines on MI, always 0 or 1)
+  - 1 (Escrow Account EI)
+  - \+ Number of Assets (for Trustlines on EI, always 0 or 1)
   - \+ 2 x Number of I's Signers
 
 - Participant R
 
-  - 1 (Account MR)
-  - \+ Number of Assets (for Trustlines on MR, always 0 or 1)
+  - 1 (Escrow Account ER)
+  - \+ Number of Assets (for Trustlines on ER, always 0 or 1)
   - \+ 2 x Number of R's Signers
 
 Changes in the networks base reserve do not impact the channel.
@@ -605,38 +604,38 @@ protocol, and assuming no changes in the authorized state of the channels
 trustlines, there is no known conditions that will cause it to fail.  It will be
 either invalid or valid and successful, but not valid and failed.  If C_i was to
 be valid and fail it would consume a sequence number and fair distribution of
-the assets within the multisig account would require the cooperation of all
+the assets within the escrow account would require the cooperation of all
 participants.
 
 A condition that can result in the closing transaction failing is if the payment
-operations between the multisig accounts are changed to pay out to some other
+operations between the escrow accounts are changed to pay out to some other
 accounts. If those other accounts do not exist, or some attribute of the
 accounts do not allow a payment to be received, then the payment operations may
 fail and as such a closing transaction containing a payment can fail.
 
 Another condition that can result in the closing transaction failing is if the
-payment operations between the multisig accounts would exceed any limits either
+payment operations between the escrow accounts would exceed any limits either
 account has on making a payment, due to liabilities, or would exceed limits on
 the receiving account, such as a trustline limit. Participants must ensure that
-the payments they sign for are receivable by the multisig accounts.
+the payments they sign for are receivable by the escrow accounts.
 
 ### Trustline Authorization
 
-Any trustline on the multisig accounts that have been auth revoked, or could be
+Any trustline on the escrow accounts that have been auth revoked, or could be
 auth revoked, could compromise the payment channel's ability to close
 successfully.
 
 If the issuer of any auth revocable asset submits an allow trust operation
-freezing the amounts in either multisig account, the close transaction may fail 
-to process if its payment operation is dependent on amounts frozen.
+freezing the amounts in either escrow account, the close transaction may fail to
+process if its payment operation is dependent on amounts frozen.
 
 There is nothing participants can do to prevent this, other than using only auth
 immutable assets.
 
 ### Trustline Limits
 
-Trustlines on the multisig accounts are defined as always having a maximum 
-asset limit. This restriction makes the behavior of the closing transaction as
+Trustlines on the escrow accounts are defined as always having a maximum asset
+limit. This restriction makes the behavior of the closing transaction as
 predictable as possible and simplifies implementations that are designed for
 operating on common assets that do not have excessive supply.
 
@@ -649,37 +648,37 @@ may also produce closing transactions that could fail if trustline limits would
 be exceeded because of excessive deposits.
 
 In both cases a party who is not a participant can deposit an amount into the
-multisig accounts to cause the closing transaction's payment to fail. Also a
+escrow accounts to cause the closing transaction's payment to fail. Also a
 trustline's buying liabilities could also result in some of the available limit
 being consumed causing the closing transaction's payment to fail.
 
 ### Clawback
 
-Any trustline on the multisig accounts that has clawback enabled could 
-compromise the payment channels ability to close successfully.
+Any trustline on the escrow accounts that has clawback enabled could compromise
+the payment channels ability to close successfully.
 
 If the issuer of a clawback enabled trustline submits a clawback operation for
-amounts in either multisig account, the close transaction may fail to process 
-if its payment operation is dependent on amounts clawed back.
+amounts in either escrow account, the close transaction may fail to process if
+its payment operation is dependent on amounts clawed back.
 
-### Account and Trustline State
+### Escrow Account and Trustline State
 
-Participants can inspect the state of accounts and trustlines before
+Participants can inspect the state of escrow accounts and trustlines before
 execution of the open to check the state of the accounts and trustlines are
 acceptable, but there is no guarantee that state will remain constant until
 after the open transaction is executed.
 
-It is critical to check the state of the other participants account 
-and their trustlines after opening the channel because there is no way for 
+It is critical to check the state of the other participants escrow account and
+their trustlines after opening the channel because there is no way for 
 participants to guarantee that the other participant has not altered its state. 
 For example, the other participant could add an additional signer to their 
 account. Or, for example, the other participant could intentionally or 
 accidentally cause flags on their trustline to be changed, such as the clawback 
 enabled flag.
 
-### Account and Trustline Balance
+### Escrow Account and Trustline Balance
 
-Participants should inspect the state of the multisig accounts and their
+Participants should inspect the state of the escrow accounts and their
 trustlines after opening the channel to determine the starting balance of each
 participants contribution.
 
