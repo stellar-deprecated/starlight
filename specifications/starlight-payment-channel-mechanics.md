@@ -503,7 +503,7 @@ participants:
 
 The transactions are constructed as follows:
 
-- B_i, the _bump transaction_, bumps the sequence number of multisig account MI
+- B_i, the _bump transaction_, bumps the sequence number of account MI
 such that only the most recent transaction set is valid. B has source account
 MI, sequence number s_i.
 
