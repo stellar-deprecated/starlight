@@ -48,7 +48,7 @@ The protocol assumes some _observation period_, O, such that both parties are
 guaranteed to be able to observe the blockchain state and submit transactions
 within any period of length O.
 
-The payment channel consists of two 2-of-2 multi-sig accounts MI and MR,
+The payment channel consists of two 2-of-2 multisig accounts MI and MR,
 and a series of transaction sets that contain _declaration_ and _closing_
 transactions with MI as their source account, signed by both participants.  The
 closing transaction defines the final state of the channel that disburses the
