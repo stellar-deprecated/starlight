@@ -72,18 +72,18 @@ func assertAgentSnapshotsAndRestores(t *testing.T, agent *Agent, config Config, 
 	assert.Equal(t, agent.observationPeriodLedgerGap, restoredAgent.observationPeriodLedgerGap)
 	assert.Equal(t, agent.maxOpenExpiry, restoredAgent.maxOpenExpiry)
 	assert.Equal(t, agent.networkPassphrase, restoredAgent.networkPassphrase)
-	assert.Equal(t, agent.escrowAccountKey, restoredAgent.escrowAccountKey)
-	assert.Equal(t, agent.escrowAccountSigner, restoredAgent.escrowAccountSigner)
-	assert.Equal(t, agent.otherEscrowAccount, restoredAgent.otherEscrowAccount)
-	assert.Equal(t, agent.otherEscrowAccountSigner, restoredAgent.otherEscrowAccountSigner)
+	assert.Equal(t, agent.multiSigAccountKey, restoredAgent.multiSigAccountKey)
+	assert.Equal(t, agent.multiSigAccountSigner, restoredAgent.multiSigAccountSigner)
+	assert.Equal(t, agent.otherMultiSigAccount, restoredAgent.otherMultiSigAccount)
+	assert.Equal(t, agent.otherMultiSigAccountSigner, restoredAgent.otherMultiSigAccountSigner)
 	assert.Equal(t, agent.channel, restoredAgent.channel)
 	assert.Equal(t, agent.streamerCursor, restoredAgent.streamerCursor)
 }
 
 func TestAgent_openPaymentClose(t *testing.T) {
-	localEscrow := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
+	localMultiSig := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
 	localSigner := keypair.MustParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
-	remoteEscrow := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
+	remoteMultiSig := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
 	remoteSigner := keypair.MustParseFull("SBM7D2IIDSRX5Y3VMTMTXXPB6AIB4WYGZBC2M64U742BNOK32X6SW4NF")
 
 	// Setup the local agent.
@@ -99,13 +99,13 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		MaxOpenExpiry:              5 * time.Minute,
 		NetworkPassphrase:          network.TestNetworkPassphrase,
 		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
-			if accountID.Equal(localEscrow) {
+			if accountID.Equal(localMultiSig) {
 				return 28037546508288, nil
 			}
-			if accountID.Equal(remoteEscrow) {
+			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown escrow account")
+			return 0, fmt.Errorf("unknown multi-sig account")
 		}),
 		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -117,10 +117,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
-		EscrowAccountKey:    localEscrow.FromAddress(),
-		EscrowAccountSigner: localSigner,
-		LogWriter:           io.Discard,
-		Events:              localEvents,
+		MultiSigAccountKey:    localMultiSig.FromAddress(),
+		MultiSigAccountSigner: localSigner,
+		LogWriter:             io.Discard,
+		Events:                localEvents,
 	}
 	localConfig.Snapshotter = snapshotterFunc(func(a *Agent, s Snapshot) {
 		assertAgentSnapshotsAndRestores(t, a, localConfig, s)
@@ -140,13 +140,13 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		MaxOpenExpiry:              5 * time.Minute,
 		NetworkPassphrase:          network.TestNetworkPassphrase,
 		SequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
-			if accountID.Equal(localEscrow) {
+			if accountID.Equal(localMultiSig) {
 				return 28037546508288, nil
 			}
-			if accountID.Equal(remoteEscrow) {
+			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown escrow account")
+			return 0, fmt.Errorf("unknown multi-sig account")
 		}),
 		BalanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -158,10 +158,10 @@ func TestAgent_openPaymentClose(t *testing.T) {
 		Streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
-		EscrowAccountKey:    remoteEscrow.FromAddress(),
-		EscrowAccountSigner: remoteSigner,
-		LogWriter:           io.Discard,
-		Events:              remoteEvents,
+		MultiSigAccountKey:    remoteMultiSig.FromAddress(),
+		MultiSigAccountSigner: remoteSigner,
+		LogWriter:             io.Discard,
+		Events:                remoteEvents,
 	}
 	remoteConfig.Snapshotter = snapshotterFunc(func(a *Agent, s Snapshot) {
 		assertAgentSnapshotsAndRestores(t, a, remoteConfig, s)
@@ -216,13 +216,13 @@ func TestAgent_openPaymentClose(t *testing.T) {
 	}
 
 	// Extra hellos with wrong data raise an error.
-	incorrectEscrow := keypair.MustRandom().FromAddress()
-	localAgent.escrowAccountKey = incorrectEscrow
+	incorrectMultiSig := keypair.MustRandom().FromAddress()
+	localAgent.multiSigAccountKey = incorrectMultiSig
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
-	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected escrow account: "+incorrectEscrow.Address()+" expected: "+localEscrow.Address())
-	localAgent.escrowAccountKey = localEscrow
+	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected multi-sig account: "+incorrectMultiSig.Address()+" expected: "+localMultiSig.Address())
+	localAgent.multiSigAccountKey = localMultiSig
 
 	// Expect error event.
 	{
@@ -233,12 +233,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Extra hellos with wrong data raise an error.
 	incorrectSigner := keypair.MustRandom()
-	localAgent.escrowAccountSigner = incorrectSigner
+	localAgent.multiSigAccountSigner = incorrectSigner
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.EqualError(t, err, "handling message: handling message 100: hello received with unexpected signer: "+incorrectSigner.Address()+" expected: "+localSigner.Address())
-	localAgent.escrowAccountSigner = localSigner
+	localAgent.multiSigAccountSigner = localSigner
 
 	// Expect error event.
 	{
@@ -465,9 +465,9 @@ func TestAgent_openPaymentClose(t *testing.T) {
 }
 
 func TestAgent_concurrency(t *testing.T) {
-	localEscrow := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
+	localMultiSig := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
 	localSigner := keypair.MustParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
-	remoteEscrow := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
+	remoteMultiSig := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
 	remoteSigner := keypair.MustParseFull("SBM7D2IIDSRX5Y3VMTMTXXPB6AIB4WYGZBC2M64U742BNOK32X6SW4NF")
 
 	localVars := struct {
@@ -486,13 +486,13 @@ func TestAgent_concurrency(t *testing.T) {
 		maxOpenExpiry:              5 * time.Minute,
 		networkPassphrase:          network.TestNetworkPassphrase,
 		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
-			if accountID.Equal(localEscrow) {
+			if accountID.Equal(localMultiSig) {
 				return 28037546508288, nil
 			}
-			if accountID.Equal(remoteEscrow) {
+			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown escrow account")
+			return 0, fmt.Errorf("unknown multi-sig account")
 		}),
 		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -514,9 +514,9 @@ func TestAgent_concurrency(t *testing.T) {
 		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
-		escrowAccountKey:    localEscrow.FromAddress(),
-		escrowAccountSigner: localSigner,
-		logWriter:           io.Discard,
+		multiSigAccountKey:    localMultiSig.FromAddress(),
+		multiSigAccountSigner: localSigner,
+		logWriter:             io.Discard,
 	}
 
 	// Setup the remote agent.
@@ -526,13 +526,13 @@ func TestAgent_concurrency(t *testing.T) {
 		maxOpenExpiry:              5 * time.Minute,
 		networkPassphrase:          network.TestNetworkPassphrase,
 		sequenceNumberCollector: sequenceNumberCollector(func(accountID *keypair.FromAddress) (int64, error) {
-			if accountID.Equal(localEscrow) {
+			if accountID.Equal(localMultiSig) {
 				return 28037546508288, nil
 			}
-			if accountID.Equal(remoteEscrow) {
+			if accountID.Equal(remoteMultiSig) {
 				return 28054726377472, nil
 			}
-			return 0, fmt.Errorf("unknown escrow account")
+			return 0, fmt.Errorf("unknown multi-sig account")
 		}),
 		balanceCollector: balanceCollectorFunc(func(accountID *keypair.FromAddress, asset state.Asset) (int64, error) {
 			return 100_0000000, nil
@@ -543,9 +543,9 @@ func TestAgent_concurrency(t *testing.T) {
 		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
-		escrowAccountKey:    remoteEscrow.FromAddress(),
-		escrowAccountSigner: remoteSigner,
-		logWriter:           io.Discard,
+		multiSigAccountKey:    remoteMultiSig.FromAddress(),
+		multiSigAccountSigner: remoteSigner,
+		logWriter:             io.Discard,
 	}
 
 	// Connect the two agents.

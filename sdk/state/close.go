@@ -27,8 +27,8 @@ func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactio
 		ObservationPeriodLedgerGap: d.ObservationPeriodLedgerGap,
 		InitiatorSigner:            c.initiatorSigner(),
 		ResponderSigner:            c.responderSigner(),
-		InitiatorEscrow:            c.initiatorEscrowAccount().Address,
-		ResponderEscrow:            c.responderEscrowAccount().Address,
+		InitiatorMultiSig:          c.initiatorMultiSigAccount().Address,
+		ResponderMultiSig:          c.responderMultiSigAccount().Address,
 		StartSequence:              oad.StartingSequence,
 		IterationNumber:            d.IterationNumber,
 		AmountToInitiator:          amountToInitiator(d.Balance),
@@ -43,7 +43,7 @@ func (c *Channel) closeTxs(oad OpenDetails, d CloseDetails) (txs CloseTransactio
 		return CloseTransactions{}, err
 	}
 	txDecl, err := txbuild.Declaration(txbuild.DeclarationParams{
-		InitiatorEscrow:         c.initiatorEscrowAccount().Address,
+		InitiatorMultiSig:       c.initiatorMultiSigAccount().Address,
 		StartSequence:           oad.StartingSequence,
 		IterationNumber:         d.IterationNumber,
 		IterationNumberExecuted: 0,

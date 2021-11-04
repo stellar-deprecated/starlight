@@ -32,27 +32,27 @@ func assertChannelSnapshotsAndRestores(t *testing.T, config Config, channel *Cha
 func TestNewChannelWithSnapshot(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := keypair.MustRandom().FromAddress()
-	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+	localMultiSigAccount := keypair.MustRandom().FromAddress()
+	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
 
 	localConfig := Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           localSigner,
+		RemoteSigner:          remoteSigner.FromAddress(),
+		LocalMultiSigAccount:  localMultiSigAccount,
+		RemoteMultiSigAccount: remoteMultiSigAccount,
+		MaxOpenExpiry:         2 * time.Hour,
 	}
 	localChannel := NewChannel(localConfig)
 	remoteConfig := Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         remoteSigner,
-		RemoteSigner:        localSigner.FromAddress(),
-		LocalEscrowAccount:  remoteEscrowAccount,
-		RemoteEscrowAccount: localEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           remoteSigner,
+		RemoteSigner:          localSigner.FromAddress(),
+		LocalMultiSigAccount:  remoteMultiSigAccount,
+		RemoteMultiSigAccount: localMultiSigAccount,
+		MaxOpenExpiry:         2 * time.Hour,
 	}
 	remoteChannel := NewChannel(remoteConfig)
 
@@ -89,12 +89,12 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: localSigner.Address(),
-			ResponderSigner: remoteSigner.Address(),
-			InitiatorEscrow: localEscrowAccount.Address(),
-			ResponderEscrow: remoteEscrowAccount.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   localSigner.Address(),
+			ResponderSigner:   remoteSigner.Address(),
+			InitiatorMultiSig: localMultiSigAccount.Address(),
+			ResponderMultiSig: remoteMultiSigAccount.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -117,10 +117,10 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 	assertChannelSnapshotsAndRestores(t, remoteConfig, remoteChannel)
 
 	// Update balances.
-	localChannel.UpdateLocalEscrowAccountBalance(100)
-	localChannel.UpdateRemoteEscrowAccountBalance(200)
-	remoteChannel.UpdateLocalEscrowAccountBalance(300)
-	remoteChannel.UpdateRemoteEscrowAccountBalance(400)
+	localChannel.UpdateLocalMultiSigBalance(100)
+	localChannel.UpdateRemoteMultiSigBalance(200)
+	remoteChannel.UpdateLocalMultiSigBalance(300)
+	remoteChannel.UpdateRemoteMultiSigBalance(400)
 
 	// Check snapshot rehydrates the channel identically when open and with
 	// balances updated.
@@ -167,7 +167,7 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 			{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress(localEscrowAccount.Address()),
+					AccountId: xdr.MustAddress(localMultiSigAccount.Address()),
 					SeqNum:    102,
 					Signers: []xdr.Signer{
 						{Key: xdr.MustSigner(localSigner.Address()), Weight: 1},
@@ -179,7 +179,7 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 			{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress(remoteEscrowAccount.Address()),
+					AccountId: xdr.MustAddress(remoteMultiSigAccount.Address()),
 					SeqNum:    103,
 					Signers: []xdr.Signer{
 						{Key: xdr.MustSigner(remoteSigner.Address()), Weight: 1},

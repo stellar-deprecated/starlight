@@ -9,14 +9,14 @@ import (
 
 // IngestTx accepts any transaction that has been seen as successful or
 // unsuccessful on the network. The function updates the internal state of the
-// channel if the transaction relates to one of the channel's escrow accounts.
+// channel if the transaction relates to one of the channel's multi-sig accounts.
 //
 // The txOrderID is an identifier that orders transactions as they were
 // executed on the Stellar network.
 //
-// The function may be called with transactions for each escrow account out of
-// order. For example, transactions for the initiator escrow account can be
-// processed in order, and transactions for the responder escrow account can be
+// The function may be called with transactions for each multi-sig account out of
+// order. For example, transactions for the initiator multi-sig account can be
+// processed in order, and transactions for the responder multi-sig account can be
 // processed in order, but relative to each other they may be out of order. If
 // transactions for a single account are processed out of order some state
 // transition may be skipped.
@@ -53,7 +53,7 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 	}
 
 	// Ingest the transaction and update channel state if valid.
-	c.ingestTxToUpdateInitiatorEscrowAccountSequence(tx)
+	c.ingestTxToUpdateInitiatorMultiSigAccountSequence(tx)
 
 	err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
 	if err != nil {
@@ -73,19 +73,19 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 	return nil
 }
 
-func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Transaction) {
-	// If the transaction's source account is not the initiator's escrow
+func (c *Channel) ingestTxToUpdateInitiatorMultiSigAccountSequence(tx *txnbuild.Transaction) {
+	// If the transaction's source account is not the initiator's multi-sig
 	// account, return.
-	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+	if tx.SourceAccount().AccountID != c.initiatorMultiSigAccount().Address.Address() {
 		return
 	}
 
 	// If the transaction is from an earlier sequence number, return.
-	if tx.SourceAccount().Sequence <= c.initiatorEscrowAccount().SequenceNumber {
+	if tx.SourceAccount().Sequence <= c.initiatorMultiSigAccount().SequenceNumber {
 		return
 	}
 
-	c.setInitiatorEscrowAccountSequence(tx.SourceAccount().Sequence)
+	c.setInitiatorMultiSigAccountSequence(tx.SourceAccount().Sequence)
 }
 
 // ingestTxToUpdateUnauthorizedCloseAgreement uses the signatures in the transaction to
@@ -97,9 +97,9 @@ func (c *Channel) ingestTxToUpdateInitiatorEscrowAccountSequence(tx *txnbuild.Tr
 // If the transaction should be able to provide this data and cannot, the
 // function errors.
 func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transaction) error {
-	// If the transaction's source account is not the initiator's escrow
+	// If the transaction's source account is not the initiator's multi-sig
 	// account, then the transaction is not a part of a close agreement.
-	if tx.SourceAccount().AccountID != c.initiatorEscrowAccount().Address.Address() {
+	if tx.SourceAccount().AccountID != c.initiatorMultiSigAccount().Address.Address() {
 		return nil
 	}
 
@@ -152,7 +152,7 @@ func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transa
 }
 
 // ingestTxMetaToUpdateBalances uses the transaction result meta data
-// from a transaction response to update local and remote escrow account
+// from a transaction response to update local and remote multi-sig account
 // balances.
 func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR string) error {
 	// If not a valid resultMetaXDR string, return.
@@ -164,7 +164,7 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 
 	channelAsset := c.openAgreement.Envelope.Details.Asset
 
-	// Find ledger changes for the escrow accounts' balances,
+	// Find ledger changes for the multi-sig accounts' balances,
 	// if any, and then update.
 	for _, o := range txMeta.V2.Operations {
 		for _, change := range o.Changes {
@@ -203,15 +203,15 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 			}
 
 			switch ledgerEntryAddress {
-			case c.localEscrowAccount.Address.Address():
-				if txOrderID > c.localEscrowAccount.LastSeenTransactionOrderID {
-					c.UpdateLocalEscrowAccountBalance(ledgerEntryAvailableBalance)
-					c.localEscrowAccount.LastSeenTransactionOrderID = txOrderID
+			case c.localMultiSigAccount.Address.Address():
+				if txOrderID > c.localMultiSigAccount.LastSeenTransactionOrderID {
+					c.UpdateLocalMultiSigBalance(ledgerEntryAvailableBalance)
+					c.localMultiSigAccount.LastSeenTransactionOrderID = txOrderID
 				}
-			case c.remoteEscrowAccount.Address.Address():
-				if txOrderID > c.remoteEscrowAccount.LastSeenTransactionOrderID {
-					c.UpdateRemoteEscrowAccountBalance(ledgerEntryAvailableBalance)
-					c.remoteEscrowAccount.LastSeenTransactionOrderID = txOrderID
+			case c.remoteMultiSigAccount.Address.Address():
+				if txOrderID > c.remoteMultiSigAccount.LastSeenTransactionOrderID {
+					c.UpdateRemoteMultiSigBalance(ledgerEntryAvailableBalance)
+					c.remoteMultiSigAccount.LastSeenTransactionOrderID = txOrderID
 				}
 			}
 		}
@@ -269,10 +269,10 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 		return fmt.Errorf("result meta version unrecognized")
 	}
 
-	// Find escrow account ledger changes. Grabs the latest entry, which gives
+	// Find multi-sig account ledger changes. Grabs the latest entry, which gives
 	// the latest ledger entry state.
-	var initiatorEscrowAccountEntry, responderEscrowAccountEntry *xdr.AccountEntry
-	var initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry *xdr.TrustLineEntry
+	var initiatorMultiSigAccountEntry, responderMultiSigAccountEntry *xdr.AccountEntry
+	var initiatorMultiSigTrustlineEntry, responderMultiSigTrustlineEntry *xdr.TrustLineEntry
 	for _, o := range txMetaV2.Operations {
 		for _, change := range o.Changes {
 			var entry *xdr.LedgerEntry
@@ -290,50 +290,50 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 				if !c.openAgreement.Envelope.Details.Asset.EqualTrustLineAsset(entry.Data.TrustLine.Asset) {
 					continue
 				}
-				if entry.Data.TrustLine.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
-					initiatorEscrowTrustlineEntry = entry.Data.TrustLine
-				} else if entry.Data.TrustLine.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
-					responderEscrowTrustlineEntry = entry.Data.TrustLine
+				if entry.Data.TrustLine.AccountId.Address() == c.initiatorMultiSigAccount().Address.Address() {
+					initiatorMultiSigTrustlineEntry = entry.Data.TrustLine
+				} else if entry.Data.TrustLine.AccountId.Address() == c.responderMultiSigAccount().Address.Address() {
+					responderMultiSigTrustlineEntry = entry.Data.TrustLine
 				}
 			case xdr.LedgerEntryTypeAccount:
-				if entry.Data.Account.AccountId.Address() == c.initiatorEscrowAccount().Address.Address() {
-					initiatorEscrowAccountEntry = entry.Data.Account
-				} else if entry.Data.Account.AccountId.Address() == c.responderEscrowAccount().Address.Address() {
-					responderEscrowAccountEntry = entry.Data.Account
+				if entry.Data.Account.AccountId.Address() == c.initiatorMultiSigAccount().Address.Address() {
+					initiatorMultiSigAccountEntry = entry.Data.Account
+				} else if entry.Data.Account.AccountId.Address() == c.responderMultiSigAccount().Address.Address() {
+					responderMultiSigAccountEntry = entry.Data.Account
 				}
 			}
 		}
 	}
 
-	// Validate both escrow accounts have been updated.
-	if initiatorEscrowAccountEntry == nil || responderEscrowAccountEntry == nil {
-		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both escrow accounts")
+	// Validate both multi-sig accounts have been updated.
+	if initiatorMultiSigAccountEntry == nil || responderMultiSigAccountEntry == nil {
+		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both multi-sig accounts")
 		return nil
 	}
 
-	// Validate the initiator escrow account sequence number is correct.
-	if int64(initiatorEscrowAccountEntry.SeqNum) != openTx.SequenceNumber() {
-		c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account sequence number found, found: %d want: %d",
-			int64(initiatorEscrowAccountEntry.SeqNum), openTx.SequenceNumber())
+	// Validate the initiator multi-sig account sequence number is correct.
+	if int64(initiatorMultiSigAccountEntry.SeqNum) != openTx.SequenceNumber() {
+		c.openExecutedWithError = fmt.Errorf("incorrect initiator multi-sig account sequence number found, found: %d want: %d",
+			int64(initiatorMultiSigAccountEntry.SeqNum), openTx.SequenceNumber())
 		return nil
 	}
 
-	escrowAccounts := [2]*xdr.AccountEntry{initiatorEscrowAccountEntry, responderEscrowAccountEntry}
-	for _, ea := range escrowAccounts {
-		// Validate the escrow account thresholds are equal to the number of
+	multiSigAccounts := [2]*xdr.AccountEntry{initiatorMultiSigAccountEntry, responderMultiSigAccountEntry}
+	for _, ea := range multiSigAccounts {
+		// Validate the multi-sig account thresholds are equal to the number of
 		// signers so that all signers are required to sign all transactions.
 		// Thresholds are: Master Key, Low, Medium, High.
 		if ea.Thresholds != (xdr.Thresholds{0, requiredThresholds, requiredThresholds, requiredThresholds}) {
-			c.openExecutedWithError = fmt.Errorf("incorrect initiator escrow account thresholds found")
+			c.openExecutedWithError = fmt.Errorf("incorrect initiator multi-sig account thresholds found")
 			return nil
 		}
 
-		// Validate the escrow account has the correct signers and signer weights.
+		// Validate the multi-sig account has the correct signers and signer weights.
 		var initiatorSignerCorrect, responderSignerCorrect bool
 		for _, signer := range ea.Signers {
 			address, err := signer.Key.GetAddress()
 			if err != nil {
-				c.openExecutedWithError = fmt.Errorf("parsing open transaction escrow account signer keys: %w", err)
+				c.openExecutedWithError = fmt.Errorf("parsing open transaction multi-sig account signer keys: %w", err)
 				return nil
 			}
 
@@ -342,7 +342,7 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 			} else if address == c.responderSigner().Address() {
 				responderSignerCorrect = signer.Weight == requiredSignerWeight
 			} else {
-				c.openExecutedWithError = fmt.Errorf("unexpected signer found on escrow account")
+				c.openExecutedWithError = fmt.Errorf("unexpected signer found on multi-sig account")
 				return nil
 			}
 		}
@@ -354,7 +354,7 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 
 	// Validate the required trustlines are correct for a non-native channel.
 	if !c.openAgreement.Envelope.Details.Asset.IsNative() {
-		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorEscrowTrustlineEntry, responderEscrowTrustlineEntry}
+		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorMultiSigTrustlineEntry, responderMultiSigTrustlineEntry}
 		for _, te := range trustlineEntries {
 			// Validate trustline exists.
 			if te == nil {

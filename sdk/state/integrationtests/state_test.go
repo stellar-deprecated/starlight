@@ -18,11 +18,11 @@ import (
 )
 
 type Participant struct {
-	Name                 string
-	KP                   *keypair.Full
-	Escrow               *keypair.Full
-	EscrowSequenceNumber int64
-	Contribution         int64 // The contribution of the asset that will be used for payments
+	Name                   string
+	KP                     *keypair.Full
+	MultiSig               *keypair.Full
+	MultiSigSequenceNumber int64
+	Contribution           int64 // The contribution of the asset that will be used for payments
 }
 
 func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
@@ -47,7 +47,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	closeTxs := []*txnbuild.Transaction{}
 	declarationTxs := []*txnbuild.Transaction{}
 
-	s := initiator.EscrowSequenceNumber + 1
+	s := initiator.MultiSigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -120,12 +120,12 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiator.KP.Address(),
-			ResponderSigner: responder.KP.Address(),
-			InitiatorEscrow: initiator.Escrow.Address(),
-			ResponderEscrow: responder.Escrow.Address(),
-			StartSequence:   s,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   initiator.KP.Address(),
+			ResponderSigner:   responder.KP.Address(),
+			InitiatorMultiSig: initiator.MultiSig.Address(),
+			ResponderMultiSig: responder.MultiSig.Address(),
+			StartSequence:     s,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -147,10 +147,10 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -297,16 +297,16 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		t.Fatal("Channel close timed out after waiting 1 minute.")
 	}
 
-	// check final escrow fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
-	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	// check final multi-sig fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
+	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, responderEscrowResponse.Balances[0].Balance, amount.StringFromInt64(rBalanceCheck))
+	assert.Equal(t, responderMultiSigResponse.Balances[0].Balance, amount.StringFromInt64(rBalanceCheck))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
-	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
+	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, initiatorEscrowResponse.Balances[0].Balance, amount.StringFromInt64(iBalanceCheck))
+	assert.Equal(t, initiatorMultiSigResponse.Balances[0].Balance, amount.StringFromInt64(iBalanceCheck))
 }
 
 func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
@@ -323,7 +323,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.EscrowSequenceNumber + 1
+	s := initiator.MultiSigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -391,12 +391,12 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiator.KP.Address(),
-			ResponderSigner: responder.KP.Address(),
-			InitiatorEscrow: initiator.Escrow.Address(),
-			ResponderEscrow: responder.Escrow.Address(),
-			StartSequence:   s,
-			Asset:           txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
+			InitiatorSigner:   initiator.KP.Address(),
+			ResponderSigner:   responder.KP.Address(),
+			InitiatorMultiSig: initiator.MultiSig.Address(),
+			ResponderMultiSig: responder.MultiSig.Address(),
+			StartSequence:     s,
+			Asset:             txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
 		require.NoError(t, err)
 
@@ -415,10 +415,10 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -512,16 +512,16 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	}
 	t.Log("Coordinated close successful")
 
-	// check final escrow fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
-	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	// check final multi-sig fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
+	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultiSigResponse))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
-	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
+	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultiSigResponse))
 }
 
 func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
@@ -538,7 +538,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.EscrowSequenceNumber + 1
+	s := initiator.MultiSigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -608,12 +608,12 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiator.KP.Address(),
-			ResponderSigner: responder.KP.Address(),
-			InitiatorEscrow: initiator.Escrow.Address(),
-			ResponderEscrow: responder.Escrow.Address(),
-			StartSequence:   s,
-			Asset:           txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
+			InitiatorSigner:   initiator.KP.Address(),
+			ResponderSigner:   responder.KP.Address(),
+			InitiatorMultiSig: initiator.MultiSig.Address(),
+			ResponderMultiSig: responder.MultiSig.Address(),
+			StartSequence:     s,
+			Asset:             txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
 		require.NoError(t, err)
 
@@ -632,10 +632,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -730,16 +730,16 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	}
 	t.Log("Coordinated close successful")
 
-	// check final escrow fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
-	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	// check final multi-sig fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
+	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultiSigResponse))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
-	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
+	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultiSigResponse))
 }
 
 func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.T) {
@@ -756,7 +756,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.EscrowSequenceNumber + 1
+	s := initiator.MultiSigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -825,12 +825,12 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiator.KP.Address(),
-			ResponderSigner: responder.KP.Address(),
-			InitiatorEscrow: initiator.Escrow.Address(),
-			ResponderEscrow: responder.Escrow.Address(),
-			StartSequence:   s,
-			Asset:           txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
+			InitiatorSigner:   initiator.KP.Address(),
+			ResponderSigner:   responder.KP.Address(),
+			InitiatorMultiSig: initiator.MultiSig.Address(),
+			ResponderMultiSig: responder.MultiSig.Address(),
+			StartSequence:     s,
+			Asset:             txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
 		require.NoError(t, err)
 
@@ -849,10 +849,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -947,16 +947,16 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	}
 	t.Log("Coordinated close successful")
 
-	// check final escrow fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.Escrow.Address()}
-	responderEscrowResponse, err := client.AccountDetail(accountRequest)
+	// check final multi-sig fund amounts are correct
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
+	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultiSigResponse))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()}
-	initiatorEscrowResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
+	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorEscrowResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultiSigResponse))
 }
 
 func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
@@ -977,7 +977,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.EscrowSequenceNumber + 1
+	s := initiator.MultiSigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -1021,12 +1021,12 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiator.KP.Address(),
-			ResponderSigner: responder.KP.Address(),
-			InitiatorEscrow: initiator.Escrow.Address(),
-			ResponderEscrow: responder.Escrow.Address(),
-			StartSequence:   s,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   initiator.KP.Address(),
+			ResponderSigner:   responder.KP.Address(),
+			InitiatorMultiSig: initiator.MultiSig.Address(),
+			ResponderMultiSig: responder.MultiSig.Address(),
+			StartSequence:     s,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1045,10 +1045,10 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalEscrowAccountBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateLocalEscrowAccountBalance(responder.Contribution)
-	responderChannel.UpdateRemoteEscrowAccountBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
 
 	// Perform a transaction.
 	{
@@ -1178,16 +1178,16 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		t.Log("Closed")
 	}
 
-	// Check the final state of the escrow accounts.
+	// Check the final state of the multi-sig accounts.
 	{
 		// Initiator should be down 10 (0.0000010).
-		initiatorEscrowResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.Escrow.Address()})
+		initiatorMultiSigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()})
 		require.NoError(t, err)
-		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorEscrowResponse))
+		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorMultiSigResponse))
 
 		// Responder should be up 10 (0.0000010).
-		responderEscrowResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.Escrow.Address()})
+		responderMultiSigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()})
 		require.NoError(t, err)
-		assert.Equal(t, "1000.0000010", assetBalance(asset, responderEscrowResponse))
+		assert.Equal(t, "1000.0000010", assetBalance(asset, responderMultiSigResponse))
 	}
 }

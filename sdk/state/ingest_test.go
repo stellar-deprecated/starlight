@@ -22,25 +22,25 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 	feeAccount := keypair.MustRandom()
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
-	responderEscrowAccount := keypair.MustRandom().FromAddress()
+	initiatorMultiSigAccount := keypair.MustRandom().FromAddress()
+	responderMultiSigAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSigAccount,
+		RemoteMultiSigAccount: responderMultiSigAccount,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSigAccount,
+		RemoteMultiSigAccount: initiatorMultiSigAccount,
 	})
 	open, err := initiatorChannel.ProposeOpen(OpenParams{
 		ObservationPeriodTime:      1,
@@ -53,15 +53,15 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTxViaFeeBump(t *testing.T) {
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
-	responderChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	initiatorChannel.UpdateLocalMultiSigBalance(100)
+	initiatorChannel.UpdateRemoteMultiSigBalance(100)
+	responderChannel.UpdateLocalMultiSigBalance(100)
+	responderChannel.UpdateRemoteMultiSigBalance(100)
 
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
 	responderChannel.openExecutedAndValidated = true
-	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
+	initiatorChannel.initiatorMultiSigAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -109,25 +109,25 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
-	responderEscrowAccount := keypair.MustRandom().FromAddress()
+	initiatorMultiSigAccount := keypair.MustRandom().FromAddress()
+	responderMultiSigAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSigAccount,
+		RemoteMultiSigAccount: responderMultiSigAccount,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSigAccount,
+		RemoteMultiSigAccount: initiatorMultiSigAccount,
 	})
 	open, err := initiatorChannel.ProposeOpen(OpenParams{
 		ObservationPeriodTime:      1,
@@ -140,15 +140,15 @@ func TestChannel_IngestTx_latestUnauthorizedDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
-	responderChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	initiatorChannel.UpdateLocalMultiSigBalance(100)
+	initiatorChannel.UpdateRemoteMultiSigBalance(100)
+	responderChannel.UpdateLocalMultiSigBalance(100)
+	responderChannel.UpdateRemoteMultiSigBalance(100)
 
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
 	responderChannel.openExecutedAndValidated = true
-	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
+	initiatorChannel.initiatorMultiSigAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -186,25 +186,25 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
-	responderEscrowAccount := keypair.MustRandom().FromAddress()
+	initiatorMultiSigAccount := keypair.MustRandom().FromAddress()
+	responderMultiSigAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSigAccount,
+		RemoteMultiSigAccount: responderMultiSigAccount,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSigAccount,
+		RemoteMultiSigAccount: initiatorMultiSigAccount,
 	})
 	open, err := initiatorChannel.ProposeOpen(OpenParams{
 		ObservationPeriodTime:      1,
@@ -220,7 +220,7 @@ func TestChannel_IngestTx_latestAuthorizedDeclTx(t *testing.T) {
 
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
-	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
+	initiatorChannel.initiatorMultiSigAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -243,25 +243,25 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	// Setup
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrowAccount := keypair.MustRandom().FromAddress()
-	responderEscrowAccount := keypair.MustRandom().FromAddress()
+	initiatorMultiSigAccount := keypair.MustRandom().FromAddress()
+	responderMultiSigAccount := keypair.MustRandom().FromAddress()
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrowAccount,
-		RemoteEscrowAccount: responderEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSigAccount,
+		RemoteMultiSigAccount: responderMultiSigAccount,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrowAccount,
-		RemoteEscrowAccount: initiatorEscrowAccount,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSigAccount,
+		RemoteMultiSigAccount: initiatorMultiSigAccount,
 	})
 	open, err := initiatorChannel.ProposeOpen(OpenParams{
 		ObservationPeriodTime:      1,
@@ -274,15 +274,15 @@ func TestChannel_IngestTx_oldDeclTx(t *testing.T) {
 	require.NoError(t, err)
 	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(100)
-	responderChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	initiatorChannel.UpdateLocalMultiSigBalance(100)
+	initiatorChannel.UpdateRemoteMultiSigBalance(100)
+	responderChannel.UpdateLocalMultiSigBalance(100)
+	responderChannel.UpdateRemoteMultiSigBalance(100)
 
 	// Mock initiatorChannel ingested open tx successfully.
 	initiatorChannel.openExecutedAndValidated = true
 	responderChannel.openExecutedAndValidated = true
-	initiatorChannel.initiatorEscrowAccount().SequenceNumber = 1
+	initiatorChannel.initiatorMultiSigAccount().SequenceNumber = 1
 
 	// To prevent xdr parsing error.
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
@@ -314,94 +314,94 @@ func TestChannel_IngestTx_updateBalancesNative(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
-	initiatorEscrow := keypair.MustParseAddress("GDU5LGMB7QQPP5NABMPCI7JINHSEBJ576W7O5EFCTXUUZX63OJUFRNDI")
-	responderEscrow := keypair.MustParseAddress("GAWWANJAAOTAGEHCF7QD3Y5BAAIAWQ37323GKMI2ZKK34DJT2KX72MAF")
+	initiatorMultiSig := keypair.MustParseAddress("GDU5LGMB7QQPP5NABMPCI7JINHSEBJ576W7O5EFCTXUUZX63OJUFRNDI")
+	responderMultiSig := keypair.MustParseAddress("GAWWANJAAOTAGEHCF7QD3Y5BAAIAWQ37323GKMI2ZKK34DJT2KX72MAF")
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
-	initiatorChannel.UpdateLocalEscrowAccountBalance(10_000_0000000)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(10_000_0000000)
+	initiatorChannel.UpdateLocalMultiSigBalance(10_000_0000000)
+	initiatorChannel.UpdateRemoteMultiSigBalance(10_000_0000000)
 
-	// Deposit, payment of 20 xlm to initiator escrow.
+	// Deposit, payment of 20 xlm to initiator multi-sig.
 	paymentResultMeta := "AAAAAgAAAAIAAAADABAqFAAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAXHr20ywANrPwAAAAGAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABAqFAAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAXHr20ywANrPwAAAAHAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAECn+AAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdIdugAABAp/gAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECoUAAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdUYqoAABAp/gAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECoUAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABcevbTLAA2s/AAAAAcAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECoUAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABcS0fLLAA2s/AAAAAcAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	err := initiatorChannel.ingestTxMetaToUpdateBalances(1, paymentResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(10_020_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(10_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(10_020_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(10_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Deposit, claim claimable balance of 40 xlm to initiator escrow.
+	// Deposit, claim claimable balance of 40 xlm to initiator multi-sig.
 	claimableBalanceResultMeta := "AAAAAgAAAAIAAAADABAqUQAAAAAAAAAA6dWZgfwg9/WgCx4kfShp5ECnv/W+7pCinelM39tyaFgAAAAXVGKqAAAQKf4AAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABAqUQAAAAAAAAAA6dWZgfwg9/WgCx4kfShp5ECnv/W+7pCinelM39tyaFgAAAAXVGKqAAAQKf4AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABgAAAAMAECpGAAAABAAAAAC2Zv4SS0XztUmm9JQ95wv9Sfmece0ESbeDt+pLn6FFhAAAAAEAAAAAAAAAAOnVmYH8IPf1oAseJH0oaeRAp7/1vu6Qop3pTN/bcmhYAAAAAAAAAAAAAAAAF9eEAAAAAAAAAAABAAAAAQAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAAAAAAAACAAAABAAAAAC2Zv4SS0XztUmm9JQ95wv9Sfmece0ESbeDt+pLn6FFhAAAAAMAECpRAAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdUYqoAABAp/gAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECpRAAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdsOi4AABAp/gAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECpGAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABb6+m5nAA2s/AAAAAgAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAEAECpRAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABb6+m5nAA2s/AAAAAgAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(2, claimableBalanceResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(10_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(10_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Deposit, path paymnet send of 100 xlm to remote escrow
+	// Deposit, path paymnet send of 100 xlm to remote multi-sig.
 	pathPaymentSendResultMeta := "AAAAAgAAAAIAAAADABArRwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWv1+jnwANrPwAAAAJAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArRwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWv1+jnwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAECtHAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABa/X6OfAA2s/AAAAAoAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtHAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNmfAA2s/AAAAAoAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAMAECncAAAAAAAAAAAtYDUgA6YDEOIv4D3joQAQC0N/3rZlMRrKlb4NM9Kv/QAAABdIdugAABAp3AAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtHAAAAAAAAAAAtYDUgA6YDEOIv4D3joQAQC0N/3rZlMRrKlb4NM9Kv/QAAABeEEbIAABAp3AAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(3, pathPaymentSendResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(10_100_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(10_100_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Operation not involving an escrow account should not change balances.
+	// Operation not involving an multi-sig account should not change balances.
 	noOpResultMeta := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(4, noOpResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(10_100_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(10_100_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Withdrawal, payment of 1000 xlm from initiator escrow.
+	// Withdrawal, payment of 1000 xlm from initiator multi-sig.
 	withdrawalResultMeta := "AAAAAgAAAAIAAAADABAregAAAAAAAAAA6dWZgfwg9/WgCx4kfShp5ECnv/W+7pCinelM39tyaFgAAAAXp9T3OAAQKf4AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABAregAAAAAAAAAA6dWZgfwg9/WgCx4kfShp5ECnv/W+7pCinelM39tyaFgAAAAXp9T3OAAQKf4AAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECt6AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABny8AocAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECt6AAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdsOi4AABAp/gAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECt6AAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABUYLkoAABAp/gAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(5, withdrawalResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(9_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(10_100_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(9_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(10_100_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Withdrawal, payment of 1000 xlm from responder escrow to initiator escrow.
+	// Withdrawal, payment of 1000 xlm from responder multi-sig to initiator multi-sig.
 	withdrawalResultMeta = "AAAAAgAAAAIAAAADABArsgAAAAAAAAAALWA1IAOmAxDiL+A946EAEAtDf962ZTEaypW+DTPSr/0AAAAXhBGyAAAQKdwAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABArsgAAAAAAAAAALWA1IAOmAxDiL+A946EAEAtDf962ZTEaypW+DTPSr/0AAAAXhBGyAAAQKdwAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAECt6AAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABUYLkoAABAp/gAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECuyAAAAAAAAAADp1ZmB/CD39aALHiR9KGnkQKe/9b7ukKKd6Uzf23JoWAAAABdsOi4AABAp/gAAAAIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECuyAAAAAAAAAAAtYDUgA6YDEOIv4D3joQAQC0N/3rZlMRrKlb4NM9Kv/QAAABeEEbIAABAp3AAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECuyAAAAAAAAAAAtYDUgA6YDEOIv4D3joQAQC0N/3rZlMRrKlb4NM9Kv/QAAABUwBc4AABAp3AAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(6, withdrawalResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(9_100_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(9_100_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
 	// Bad xdr string should result in no change.
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(7, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "parsing the result meta xdr:")
-	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(9_100_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(10_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(9_100_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 }
 
 func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
-	initiatorEscrow := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
-	responderEscrow := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+	initiatorMultiSig := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	responderMultiSig := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
 
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
 	})
 
 	asset := Asset("TEST:GAOWNZMMFW25MWBAWKRYBMIEKY2KKEWKOINP2IDTRYOQ4DOEW26NV437")
@@ -419,90 +419,90 @@ func TestChannel_IngestTx_updateBalancesNonNative(t *testing.T) {
 	_, err = initiatorChannel.ConfirmOpen(open.Envelope)
 	require.NoError(t, err)
 
-	initiatorChannel.UpdateLocalEscrowAccountBalance(1_000_0000000)
-	initiatorChannel.UpdateRemoteEscrowAccountBalance(1_000_0000000)
+	initiatorChannel.UpdateLocalMultiSigBalance(1_000_0000000)
+	initiatorChannel.UpdateRemoteMultiSigBalance(1_000_0000000)
 
-	// Deposit, payment of 10 TEST to issuer escrow.
+	// Deposit, payment of 10 TEST to issuer multi-sig.
 	paymentResultMeta := "AAAAAgAAAAIAAAADABA5KgAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHbmDAAQOA4AAAADAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABA5KgAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHbmDAAQOA4AAAAEAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAEDj9AAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAlQL5AB//////////wAAAAEAAAAAAAAAAAAAAAEAEDkqAAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAloBxQB//////////wAAAAEAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(1, paymentResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_010_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_010_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Deposit, path paymnet send of 100 TEST to initiator escrow
+	// Deposit, path paymnet send of 100 TEST to initiator multi-sig.
 	pathPaymentSendResultMeta := "AAAAAgAAAAIAAAADABBjyQAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHblRAAQOA4AAAAFAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABBjyQAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHblRAAQOA4AAAAGAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAEDkqAAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAloBxQB//////////wAAAAEAAAAAAAAAAAAAAAEAEGPJAAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAApWcjwB//////////wAAAAEAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(2, pathPaymentSendResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_110_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_110_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Deposit, claim claimable balance of 50 TEST to initiator escrow.
+	// Deposit, claim claimable balance of 50 TEST to initiator multi-sig.
 	claimableBalanceResultMeta := "AAAAAgAAAAQAAAADABBj/gAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHaqegAQOA4AAAAHAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABBj/gAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHaqegAQOA4AAAAHAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAADABA47QAAAAAAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAAXSHbm1AAQN/UAAAADAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABBj/gAAAAAAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAAXSHbm1AAQN/UAAAAEAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAACAAAAAMAEGPhAAAABAAAAADT2NmmO5Sjq1foqo2nqykq8A+EJYwwSRG1upvSppSswgAAAAEAAAAAAAAAAGaHuZfNKPrVCNEdzu9sf0dFVYAQYw/s9bbFmNKIcSSBAAAAAAAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAB3NZQAAAAAAAAAAAQAAAAEAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAAAAAAAgAAAAQAAAAA09jZpjuUo6tX6KqNp6spKvAPhCWMMEkRtbqb0qaUrMIAAAADABBj/gAAAAAAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAAXSHbm1AAQN/UAAAAEAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABBj/gAAAAAAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAAXSHbm1AAQN/UAAAAEAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAADABBjyQAAAAEAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAABVEVTVAAAAAAdZuWMLbXWWCCyo4CxBFY0pRLKchr9IHOOHQ4NxLa82gAAAAKVnI8Af/////////8AAAABAAAAAAAAAAAAAAABABBj/gAAAAEAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAABVEVTVAAAAAAdZuWMLbXWWCCyo4CxBFY0pRLKchr9IHOOHQ4NxLa82gAAAAKzafQAf/////////8AAAABAAAAAAAAAAAAAAADABBj/gAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHaqegAQOA4AAAAHAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABBj/gAAAAAAAAAAHWbljC211lggsqOAsQRWNKUSynIa/SBzjh0ODcS2vNoAAAAXSHaqegAQOA4AAAAHAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(3, claimableBalanceResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_160_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_160_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Operation not involving an escrow account should not change balances.
+	// Operation not involving an multi-sig account should not change balances.
 	noOpResultMeta := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(4, noOpResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_160_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_160_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Withdrawal, payment of 150 TEST from initiator escrow.
+	// Withdrawal, payment of 150 TEST from initiator multi-sig.
 	withdrawalResultMeta := "AAAAAgAAAAIAAAADABBkPgAAAAAAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAAXSHbmcAAQN/UAAAAEAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABBkPgAAAAAAAAAAZoe5l80o+tUI0R3O72x/R0VVgBBjD+z1tsWY0ohxJIEAAAAXSHbmcAAQN/UAAAAFAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAEGP+AAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAArNp9AB//////////wAAAAEAAAAAAAAAAAAAAAEAEGQ+AAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAloBxQB//////////wAAAAEAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(5, withdrawalResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_010_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_010_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(1_000_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
-	// Withdrawal, payment of 50 TEST from responder escrow to initiator escrow.
+	// Withdrawal, payment of 50 TEST from responder multi-sig to initiator multi-sig.
 	withdrawalResultMeta = "AAAAAgAAAAIAAAADABBkXAAAAAAAAAAA3x4h0mrzLR2k09nyasl1CieCb9u4s10tJtXTu5pfzyUAAAAXSHbm1AAQOE8AAAACAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABBkXAAAAAAAAAAA3x4h0mrzLR2k09nyasl1CieCb9u4s10tJtXTu5pfzyUAAAAXSHbm1AAQOE8AAAADAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAEGQ+AAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAloBxQB//////////wAAAAEAAAAAAAAAAAAAAAEAEGRcAAAAAQAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAnfPKgB//////////wAAAAEAAAAAAAAAAAAAAAMAEDj9AAAAAQAAAADfHiHSavMtHaTT2fJqyXUKJ4Jv27izXS0m1dO7ml/PJQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAlQL5AB//////////wAAAAEAAAAAAAAAAAAAAAEAEGRcAAAAAQAAAADfHiHSavMtHaTT2fJqyXUKJ4Jv27izXS0m1dO7ml/PJQAAAAFURVNUAAAAAB1m5YwttdZYILKjgLEEVjSlEspyGv0gc44dDg3EtrzaAAAAAjY+fwB//////////wAAAAEAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(6, withdrawalResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
 	// Bad xdr string should result in no change.
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(7, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "parsing the result meta xdr:")
-	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 
 	// A payment sending xlm should not affect balance.
 	paymentResultMeta = "AAAAAgAAAAIAAAADABBkbQAAAAAAAAAA3x4h0mrzLR2k09nyasl1CieCb9u4s10tJtXTu5pfzyUAAAAXSHbmcAAQOE8AAAADAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABABBkbQAAAAAAAAAA3x4h0mrzLR2k09nyasl1CieCb9u4s10tJtXTu5pfzyUAAAAXSHbmcAAQOE8AAAAEAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAEGQ+AAAAAAAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAABdIduZwABA39QAAAAUAAAACAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAEGRtAAAAAAAAAABmh7mXzSj61QjRHc7vbH9HRVWAEGMP7PW2xZjSiHEkgQAAABe/rHpwABA39QAAAAUAAAACAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAEGRtAAAAAAAAAADfHiHSavMtHaTT2fJqyXUKJ4Jv27izXS0m1dO7ml/PJQAAABdIduZwABA4TwAAAAQAAAACAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAEGRtAAAAAAAAAADfHiHSavMtHaTT2fJqyXUKJ4Jv27izXS0m1dO7ml/PJQAAABbRQVJwABA4TwAAAAQAAAACAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.ingestTxMetaToUpdateBalances(8, paymentResultMeta)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localEscrowAccount.Balance)
-	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteEscrowAccount.Balance)
+	assert.Equal(t, int64(1_060_0000000), initiatorChannel.localMultiSigAccount.Balance)
+	assert.Equal(t, int64(950_0000000), initiatorChannel.remoteMultiSigAccount.Balance)
 }
 
 func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
-	initiatorEscrow := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
-	responderEscrow := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+	initiatorMultiSig := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	responderMultiSig := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
 
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
 	})
 
 	{
@@ -528,7 +528,7 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 	require.NoError(t, err)
 
 	type TestCase struct {
-		escrowAccount     *keypair.FromAddress
+		multiSigAccount   *keypair.FromAddress
 		balance           xdr.Int64
 		buying            xdr.Int64
 		wantBalanceLocal  int64
@@ -536,17 +536,17 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 	}
 
 	testCases := []TestCase{
-		{initiatorEscrow, 200, 200, 0, 0},
-		{initiatorEscrow, 1000, 100, 900, 0},
-		{initiatorEscrow, 1000, 0, 1000, 0},
-		{responderEscrow, 200, 200, 0, 0},
-		{responderEscrow, 1000, 100, 0, 900},
-		{responderEscrow, 1000, 0, 0, 1000},
+		{initiatorMultiSig, 200, 200, 0, 0},
+		{initiatorMultiSig, 1000, 100, 900, 0},
+		{initiatorMultiSig, 1000, 0, 1000, 0},
+		{responderMultiSig, 200, 200, 0, 0},
+		{responderMultiSig, 1000, 100, 0, 900},
+		{responderMultiSig, 1000, 0, 0, 1000},
 	}
 
 	for i, tc := range testCases {
-		initiatorChannel.UpdateLocalEscrowAccountBalance(0)
-		initiatorChannel.UpdateRemoteEscrowAccountBalance(0)
+		initiatorChannel.UpdateLocalMultiSigBalance(0)
+		initiatorChannel.UpdateRemoteMultiSigBalance(0)
 		ale, err := xdr.NewAccountEntryExt(1, xdr.AccountEntryExtensionV1{
 			Liabilities: xdr.Liabilities{
 				Buying:  tc.buying,
@@ -559,7 +559,7 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 			{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress(tc.escrowAccount.Address()),
+					AccountId: xdr.MustAddress(tc.multiSigAccount.Address()),
 					Balance:   tc.balance,
 					Ext:       ale,
 				},
@@ -568,8 +568,8 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 		require.NoError(t, err)
 		err = initiatorChannel.IngestTx(int64(i), placeholderXDR, validResultXDR, paymentResultMeta)
 		require.NoError(t, err)
-		assert.Equal(t, tc.wantBalanceLocal, initiatorChannel.localEscrowAccount.Balance)
-		assert.Equal(t, tc.wantBalanceRemote, initiatorChannel.remoteEscrowAccount.Balance)
+		assert.Equal(t, tc.wantBalanceLocal, initiatorChannel.localMultiSigAccount.Balance)
+		assert.Equal(t, tc.wantBalanceRemote, initiatorChannel.remoteMultiSigAccount.Balance)
 	}
 }
 
@@ -577,26 +577,26 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
 
-	initiatorEscrow := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
-	responderEscrow := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
+	initiatorMultiSig := keypair.MustParseAddress("GBTIPOMXZUUPVVII2EO4533MP5DUKVMACBRQ73HVW3CZRUUIOESIDZ4O")
+	responderMultiSig := keypair.MustParseAddress("GDPR4IOSNLZS2HNE2PM7E2WJOUFCPATP3O4LGXJNE3K5HO42L7HSL6SO")
 
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
 	})
 
 	asset := Asset("TEST:GAOWNZMMFW25MWBAWKRYBMIEKY2KKEWKOINP2IDTRYOQ4DOEW26NV437")
@@ -625,7 +625,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 	require.NoError(t, err)
 
 	type TestCase struct {
-		escrowAccount     *keypair.FromAddress
+		multiSigAccount   *keypair.FromAddress
 		trustLineBalance  xdr.Int64
 		selling           xdr.Int64
 		wantBalanceLocal  int64
@@ -633,17 +633,17 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 	}
 
 	testCases := []TestCase{
-		{initiatorEscrow, 200, 200, 0, 0},
-		{initiatorEscrow, 1000, 100, 900, 0},
-		{initiatorEscrow, 1000, 0, 1000, 0},
-		{responderEscrow, 200, 200, 0, 0},
-		{responderEscrow, 1000, 100, 0, 900},
-		{responderEscrow, 1000, 0, 0, 1000},
+		{initiatorMultiSig, 200, 200, 0, 0},
+		{initiatorMultiSig, 1000, 100, 900, 0},
+		{initiatorMultiSig, 1000, 0, 1000, 0},
+		{responderMultiSig, 200, 200, 0, 0},
+		{responderMultiSig, 1000, 100, 0, 900},
+		{responderMultiSig, 1000, 0, 0, 1000},
 	}
 
 	for i, tc := range testCases {
-		initiatorChannel.UpdateLocalEscrowAccountBalance(0)
-		initiatorChannel.UpdateRemoteEscrowAccountBalance(0)
+		initiatorChannel.UpdateLocalMultiSigBalance(0)
+		initiatorChannel.UpdateRemoteMultiSigBalance(0)
 		tle, err := xdr.NewTrustLineEntryExt(1, xdr.TrustLineEntryV1{
 			Liabilities: xdr.Liabilities{
 				Buying:  100,
@@ -656,7 +656,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(tc.escrowAccount.Address()),
+					AccountId: xdr.MustAddress(tc.multiSigAccount.Address()),
 					Asset:     xdr.MustNewCreditAsset(asset.Code(), asset.Issuer()).ToTrustLineAsset(),
 					Balance:   tc.trustLineBalance,
 					Ext:       tle,
@@ -666,8 +666,8 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 		require.NoError(t, err)
 		err = initiatorChannel.IngestTx(int64(i), placeholderXDR, validResultXDR, paymentResultMeta)
 		require.NoError(t, err)
-		assert.Equal(t, tc.wantBalanceLocal, initiatorChannel.localEscrowAccount.Balance)
-		assert.Equal(t, tc.wantBalanceRemote, initiatorChannel.remoteEscrowAccount.Balance)
+		assert.Equal(t, tc.wantBalanceLocal, initiatorChannel.localMultiSigAccount.Balance)
+		assert.Equal(t, tc.wantBalanceRemote, initiatorChannel.remoteMultiSigAccount.Balance)
 	}
 }
 
@@ -675,26 +675,26 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 	initiatorSigner := keypair.MustParseFull("SCBMAMOPWKL2YHWELK63VLAY2R74A6GTLLD4ON223B7K5KZ37MUR6IDF")
 	responderSigner := keypair.MustParseFull("SBM7D2IIDSRX5Y3VMTMTXXPB6AIB4WYGZBC2M64U742BNOK32X6SW4NF")
 
-	initiatorEscrow := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
-	responderEscrow := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
+	initiatorMultiSig := keypair.MustParseAddress("GAU4CFXQI6HLK5PPY2JWU3GMRJIIQNLF24XRAHX235F7QTG6BEKLGQ36")
+	responderMultiSig := keypair.MustParseAddress("GBQNGSEHTFC4YGQ3EXHIL7JQBA6265LFANKFFAYKHM7JFGU5CORROEGO")
 
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
 	})
 
 	// Before confirming an open, channel should not be open.
@@ -737,7 +737,7 @@ func TestChannel_IngestTx_updateState_nativeAsset(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, StateOpen, cs)
 	require.NoError(t, initiatorChannel.openExecutedWithError)
-	assert.Equal(t, openTx.SequenceNumber(), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, openTx.SequenceNumber(), initiatorChannel.initiatorMultiSigAccount().SequenceNumber)
 
 	// Invalid Result XDR, should return with no state changes.
 	invalidResultXDR := "AAAAAAAAAGT////6AAAAAA=="
@@ -771,26 +771,26 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	initiatorSigner := keypair.MustParseFull("SBQEQ2SJLI4DKK7T7DYNGAVHDIC2FJSMD2D4HZQTH67Y4YJ2HCIW23E2")
 	responderSigner := keypair.MustParseFull("SD3VHLBEPXOW74B2VLMRSNERLL4HMULIYNLCVLBSYS3ZIFJE5T5VIOBO")
 
-	initiatorEscrow := keypair.MustParseAddress("GDF7GNJLI6H5ENPPVHRNQF3LN6AT2N2UTXVX57INKELND3DIMROCYXCC")
-	responderEscrow := keypair.MustParseAddress("GBEWOADTWFUS5EKEDB63X5KDWAKBJ32A5WDZKXENOCU3XQTM26GKBV2X")
+	initiatorMultiSig := keypair.MustParseAddress("GDF7GNJLI6H5ENPPVHRNQF3LN6AT2N2UTXVX57INKELND3DIMROCYXCC")
+	responderMultiSig := keypair.MustParseAddress("GBEWOADTWFUS5EKEDB63X5KDWAKBJ32A5WDZKXENOCU3XQTM26GKBV2X")
 
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
 	})
 
 	asset := Asset("ABDC:GBW5R35MPDT6JPFRQ3NEHQBMBLX7V6LAPAPPXL6FYQQKNVOCWGV7LKDQ")
@@ -839,20 +839,20 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	assert.Equal(t, StateOpen, cs)
 	require.NoError(t, initiatorChannel.openExecutedWithError)
 
-	// XDR without updated initiator escrow account should give error.
+	// XDR without updated initiator multi-sig account should give error.
 	resultMetaXDR = "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	err = initiatorChannel.IngestTx(2, openTxXDR, validResultXDR, resultMetaXDR)
 	require.NoError(t, err)
-	assert.EqualError(t, initiatorChannel.openExecutedWithError, "could not find an updated ledger entry for both escrow accounts")
+	assert.EqualError(t, initiatorChannel.openExecutedWithError, "could not find an updated ledger entry for both multi-sig accounts")
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
 	assert.Equal(t, StateError, cs)
 
-	// Wrong initiator escrow sequence number.
+	// Wrong initiator multi-sig sequence number.
 	resultMetaXDR = "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"
 	err = initiatorChannel.IngestTx(3, openTxXDR, validResultXDR, resultMetaXDR)
 	require.NoError(t, err)
-	assert.EqualError(t, initiatorChannel.openExecutedWithError, "incorrect initiator escrow account sequence number found, found: 24936580120578 want: 24936580120577")
+	assert.EqualError(t, initiatorChannel.openExecutedWithError, "incorrect initiator multi-sig account sequence number found, found: 24936580120578 want: 24936580120577")
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
 	assert.Equal(t, StateError, cs)
@@ -870,7 +870,7 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	resultMetaXDR = "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"
 	err = initiatorChannel.IngestTx(5, openTxXDR, validResultXDR, resultMetaXDR)
 	require.NoError(t, err)
-	assert.EqualError(t, initiatorChannel.openExecutedWithError, "unexpected signer found on escrow account")
+	assert.EqualError(t, initiatorChannel.openExecutedWithError, "unexpected signer found on multi-sig account")
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
 	assert.Equal(t, StateError, cs)
@@ -879,7 +879,7 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	resultMetaXDR = "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"
 	err = initiatorChannel.IngestTx(6, openTxXDR, validResultXDR, resultMetaXDR)
 	require.NoError(t, err)
-	assert.EqualError(t, initiatorChannel.openExecutedWithError, "incorrect initiator escrow account thresholds found")
+	assert.EqualError(t, initiatorChannel.openExecutedWithError, "incorrect initiator multi-sig account thresholds found")
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
 	assert.Equal(t, StateError, cs)
@@ -903,30 +903,30 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 	assert.Equal(t, StateError, cs)
 }
 
-func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *testing.T) {
+func TestChannel_IngestTx_updateState_invalid_initiatorMultiSigHasExtraSigner(t *testing.T) {
 	initiatorSigner := keypair.MustParseFull("SAWFAB3JBDIB3WUW4GDWZJFDH4LYK646PFU2TUTQ2QPIJ7UDPFDALDLJ")
 	responderSigner := keypair.MustParseFull("SDM45WXZOOXEOG23LVWDHBUYTSLZ27YKIN5N3C6QBD3TIIWWQHFFH7FI")
 
-	initiatorEscrow := keypair.MustParseAddress("GC264CPQA3WZ64USLDCHXG4AFUYGMQXUIW7UY5WYM2QA2WFPS6FARAD4")
-	responderEscrow := keypair.MustParseAddress("GA63LTOE6CXAUGQTQW4332Z6UDBTAN7KTXSJKN4Y5KP4DBJFKEYOHWM7")
+	initiatorMultiSig := keypair.MustParseAddress("GC264CPQA3WZ64USLDCHXG4AFUYGMQXUIW7UY5WYM2QA2WFPS6FARAD4")
+	responderMultiSig := keypair.MustParseAddress("GA63LTOE6CXAUGQTQW4332Z6UDBTAN7KTXSJKN4Y5KP4DBJFKEYOHWM7")
 
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		MaxOpenExpiry:       time.Hour,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		MaxOpenExpiry:         time.Hour,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
 	})
 	open, err := initiatorChannel.ProposeOpen(OpenParams{
 		ObservationPeriodTime:      1,
@@ -945,14 +945,14 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 	openTxXDR, err := openTx.Base64()
 	require.NoError(t, err)
 
-	// Initiator Escrow has an extra signer before the open tx, should fail.
+	// Initiator MultiSig has an extra signer before the open tx, should fail.
 	validResultXDR, err := txbuildtest.BuildResultXDR(true)
 	require.NoError(t, err)
 	resultMetaXDR, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{
 		{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(initiatorEscrow.Address()),
+				AccountId: xdr.MustAddress(initiatorMultiSig.Address()),
 				SeqNum:    102,
 				Signers: []xdr.Signer{
 					{
@@ -966,40 +966,40 @@ func TestChannel_IngestTx_updateState_invalid_initiatorEscrowHasExtraSigner(t *t
 		{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(responderEscrow.Address()),
+				AccountId: xdr.MustAddress(responderMultiSig.Address()),
 			},
 		},
 	})
 	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(1, openTxXDR, validResultXDR, resultMetaXDR)
 	require.NoError(t, err)
-	assert.EqualError(t, initiatorChannel.openExecutedWithError, "unexpected signer found on escrow account")
+	assert.EqualError(t, initiatorChannel.openExecutedWithError, "unexpected signer found on multi-sig account")
 }
 
 func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrow := keypair.MustRandom().FromAddress()
-	responderEscrow := keypair.MustRandom().FromAddress()
+	initiatorMultiSig := keypair.MustRandom().FromAddress()
+	responderMultiSig := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 
 	// Put channel into the Open state.
@@ -1025,12 +1025,12 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiatorSigner.Address(),
-			ResponderSigner: responderSigner.Address(),
-			InitiatorEscrow: initiatorEscrow.Address(),
-			ResponderEscrow: responderEscrow.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   initiatorSigner.Address(),
+			ResponderSigner:   responderSigner.Address(),
+			InitiatorMultiSig: initiatorMultiSig.Address(),
+			ResponderMultiSig: responderMultiSig.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1046,8 +1046,8 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	initiatorChannel.UpdateLocalMultiSigBalance(100)
+	responderChannel.UpdateRemoteMultiSigBalance(100)
 
 	oldDeclTx, _, err := responderChannel.CloseTxs()
 	require.NoError(t, err)
@@ -1079,7 +1079,7 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 	cs, err := initiatorChannel.State()
 	require.NoError(t, err)
 	assert.Equal(t, StateClosing, cs)
-	assert.Equal(t, int64(105), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, int64(105), initiatorChannel.initiatorMultiSigAccount().SequenceNumber)
 
 	// Ingesting an old transaction with a previous seqNum should not move state backwards.
 	err = initiatorChannel.IngestTx(3, oldDeclTxXDR, validResultXDR, placeholderXDR)
@@ -1087,7 +1087,7 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 	cs, err = initiatorChannel.State()
 	require.NoError(t, err)
 	assert.Equal(t, StateClosing, cs)
-	assert.Equal(t, int64(105), initiatorChannel.initiatorEscrowAccount().SequenceNumber)
+	assert.Equal(t, int64(105), initiatorChannel.initiatorMultiSigAccount().SequenceNumber)
 
 	// Imposter open tx can not be ingested and move state back.
 	openTx, err := initiatorChannel.OpenTx()
@@ -1110,27 +1110,27 @@ func TestChannel_IngestTx_seqNumCantGoBackwards(t *testing.T) {
 func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrow := keypair.MustRandom().FromAddress()
-	responderEscrow := keypair.MustRandom().FromAddress()
+	initiatorMultiSig := keypair.MustRandom().FromAddress()
+	responderMultiSig := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 
 	// Put channel into the Open state.
@@ -1156,12 +1156,12 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiatorSigner.Address(),
-			ResponderSigner: responderSigner.Address(),
-			InitiatorEscrow: initiatorEscrow.Address(),
-			ResponderEscrow: responderEscrow.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   initiatorSigner.Address(),
+			ResponderSigner:   responderSigner.Address(),
+			InitiatorMultiSig: initiatorMultiSig.Address(),
+			ResponderMultiSig: responderMultiSig.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1177,8 +1177,8 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	initiatorChannel.UpdateLocalMultiSigBalance(100)
+	responderChannel.UpdateRemoteMultiSigBalance(100)
 
 	// New payment.
 	{
@@ -1190,15 +1190,15 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Create two txs that each deposit 10 into escrow account.
+	// Create two txs that each deposit 10 into multi-sig account.
 	depositer := keypair.MustRandom().Address()
 	tx1, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: depositer, Sequence: 1},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
 		Operations: []txnbuild.Operation{
-			&txnbuild.Payment{Destination: initiatorEscrow.Address(), Asset: txnbuild.NativeAsset{}, Amount: "10"},
-			&txnbuild.Payment{Destination: responderEscrow.Address(), Asset: txnbuild.NativeAsset{}, Amount: "10"},
+			&txnbuild.Payment{Destination: initiatorMultiSig.Address(), Asset: txnbuild.NativeAsset{}, Amount: "10"},
+			&txnbuild.Payment{Destination: responderMultiSig.Address(), Asset: txnbuild.NativeAsset{}, Amount: "10"},
 		},
 	})
 	require.NoError(t, err)
@@ -1207,8 +1207,8 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 	tx1ResultXDR, err := txbuildtest.BuildResultXDR(true)
 	require.NoError(t, err)
 	tx1ResultMetaXDR, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{
-		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(initiatorEscrow.Address()), Balance: 110}},
-		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(responderEscrow.Address()), Balance: 110}},
+		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(initiatorMultiSig.Address()), Balance: 110}},
+		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(responderMultiSig.Address()), Balance: 110}},
 	})
 	require.NoError(t, err)
 	tx2, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
@@ -1216,8 +1216,8 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
 		Operations: []txnbuild.Operation{
-			&txnbuild.Payment{Destination: initiatorEscrow.Address(), Asset: txnbuild.NativeAsset{}, Amount: "5"},
-			&txnbuild.Payment{Destination: responderEscrow.Address(), Asset: txnbuild.NativeAsset{}, Amount: "5"},
+			&txnbuild.Payment{Destination: initiatorMultiSig.Address(), Asset: txnbuild.NativeAsset{}, Amount: "5"},
+			&txnbuild.Payment{Destination: responderMultiSig.Address(), Asset: txnbuild.NativeAsset{}, Amount: "5"},
 		},
 	})
 	require.NoError(t, err)
@@ -1226,8 +1226,8 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 	tx2ResultXDR, err := txbuildtest.BuildResultXDR(true)
 	require.NoError(t, err)
 	tx2ResultMetaXDR, err := txbuildtest.BuildResultMetaXDR([]xdr.LedgerEntryData{
-		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(initiatorEscrow.Address()), Balance: 115}},
-		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(responderEscrow.Address()), Balance: 115}},
+		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(initiatorMultiSig.Address()), Balance: 115}},
+		{Type: xdr.LedgerEntryTypeAccount, Account: &xdr.AccountEntry{AccountId: xdr.MustAddress(responderMultiSig.Address()), Balance: 115}},
 	})
 	require.NoError(t, err)
 
@@ -1238,34 +1238,34 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that balance is the latest balance.
-	assert.Equal(t, int64(115), initiatorChannel.initiatorEscrowAccount().Balance)
-	assert.Equal(t, int64(115), initiatorChannel.responderEscrowAccount().Balance)
+	assert.Equal(t, int64(115), initiatorChannel.initiatorMultiSigAccount().Balance)
+	assert.Equal(t, int64(115), initiatorChannel.responderMultiSigAccount().Balance)
 }
 
 func TestChannel_IngestTx_OpenClose(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrow := keypair.MustRandom().FromAddress()
-	responderEscrow := keypair.MustRandom().FromAddress()
+	initiatorMultiSig := keypair.MustRandom().FromAddress()
+	responderMultiSig := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 
 	// Before channel is open IngestTx should error.
@@ -1295,12 +1295,12 @@ func TestChannel_IngestTx_OpenClose(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiatorSigner.Address(),
-			ResponderSigner: responderSigner.Address(),
-			InitiatorEscrow: initiatorEscrow.Address(),
-			ResponderEscrow: responderEscrow.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   initiatorSigner.Address(),
+			ResponderSigner:   responderSigner.Address(),
+			InitiatorMultiSig: initiatorMultiSig.Address(),
+			ResponderMultiSig: responderMultiSig.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1339,27 +1339,27 @@ func TestChannel_IngestTx_OpenClose(t *testing.T) {
 func TestChannel_IngestTx_ingestOldTransactions(t *testing.T) {
 	initiatorSigner := keypair.MustRandom()
 	responderSigner := keypair.MustRandom()
-	initiatorEscrow := keypair.MustRandom().FromAddress()
-	responderEscrow := keypair.MustRandom().FromAddress()
+	initiatorMultiSig := keypair.MustRandom().FromAddress()
+	responderMultiSig := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         initiatorSigner,
-		RemoteSigner:        responderSigner.FromAddress(),
-		LocalEscrowAccount:  initiatorEscrow,
-		RemoteEscrowAccount: responderEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           initiatorSigner,
+		RemoteSigner:          responderSigner.FromAddress(),
+		LocalMultiSigAccount:  initiatorMultiSig,
+		RemoteMultiSigAccount: responderMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         responderSigner,
-		RemoteSigner:        initiatorSigner.FromAddress(),
-		LocalEscrowAccount:  responderEscrow,
-		RemoteEscrowAccount: initiatorEscrow,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           responderSigner,
+		RemoteSigner:          initiatorSigner.FromAddress(),
+		LocalMultiSigAccount:  responderMultiSig,
+		RemoteMultiSigAccount: initiatorMultiSig,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 
 	// Put channel into the Open state.
@@ -1386,12 +1386,12 @@ func TestChannel_IngestTx_ingestOldTransactions(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: initiatorSigner.Address(),
-			ResponderSigner: responderSigner.Address(),
-			InitiatorEscrow: initiatorEscrow.Address(),
-			ResponderEscrow: responderEscrow.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   initiatorSigner.Address(),
+			ResponderSigner:   responderSigner.Address(),
+			InitiatorMultiSig: initiatorMultiSig.Address(),
+			ResponderMultiSig: responderMultiSig.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1400,8 +1400,8 @@ func TestChannel_IngestTx_ingestOldTransactions(t *testing.T) {
 		err = responderChannel.IngestTx(2, ftxXDR, successResultXDR, resultMetaXDR)
 		require.NoError(t, err)
 	}
-	initiatorChannel.UpdateLocalEscrowAccountBalance(100)
-	responderChannel.UpdateRemoteEscrowAccountBalance(100)
+	initiatorChannel.UpdateLocalMultiSigBalance(100)
+	responderChannel.UpdateRemoteMultiSigBalance(100)
 
 	placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 	validResultXDR, err := txbuildtest.BuildResultXDR(true)

@@ -216,8 +216,8 @@ func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, closeTxs CloseTr
 	open, err := txbuild.Open(txbuild.OpenParams{
 		InitiatorSigner:   c.initiatorSigner(),
 		ResponderSigner:   c.responderSigner(),
-		InitiatorEscrow:   c.initiatorEscrowAccount().Address,
-		ResponderEscrow:   c.responderEscrowAccount().Address,
+		InitiatorMultiSig: c.initiatorMultiSigAccount().Address,
+		ResponderMultiSig: c.responderMultiSigAccount().Address,
 		StartSequence:     d.StartingSequence,
 		Asset:             d.Asset.Asset(),
 		ExpiresAt:         d.ExpiresAt,

@@ -9,7 +9,7 @@ import (
 )
 
 type DeclarationParams struct {
-	InitiatorEscrow         *keypair.FromAddress
+	InitiatorMultiSig       *keypair.FromAddress
 	StartSequence           int64
 	IterationNumber         int64
 	IterationNumberExecuted int64
@@ -49,7 +49,7 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: p.InitiatorEscrow.Address(),
+			AccountID: p.InitiatorMultiSig.Address(),
 			Sequence:  seq,
 		},
 		BaseFee:           0,

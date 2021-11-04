@@ -13,8 +13,8 @@ import (
 type OpenParams struct {
 	InitiatorSigner   *keypair.FromAddress
 	ResponderSigner   *keypair.FromAddress
-	InitiatorEscrow   *keypair.FromAddress
-	ResponderEscrow   *keypair.FromAddress
+	InitiatorMultiSig *keypair.FromAddress
+	ResponderMultiSig *keypair.FromAddress
 	StartSequence     int64
 	Asset             txnbuild.Asset
 	ExpiresAt         time.Time
@@ -52,7 +52,7 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: p.InitiatorEscrow.Address(),
+			AccountID: p.InitiatorMultiSig.Address(),
 			Sequence:  p.StartSequence,
 		},
 		BaseFee:      0,
@@ -61,9 +61,9 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 	}
 
 	// I sponsoring ledger entries on EI
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.InitiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.InitiatorMultiSig.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount:   p.InitiatorEscrow.Address(),
+		SourceAccount:   p.InitiatorMultiSig.Address(),
 		MasterWeight:    txnbuild.NewThreshold(0),
 		LowThreshold:    txnbuild.NewThreshold(2),
 		MediumThreshold: txnbuild.NewThreshold(2),
@@ -74,23 +74,23 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
-			SourceAccount: p.InitiatorEscrow.Address(),
+			SourceAccount: p.InitiatorMultiSig.Address(),
 		})
 	}
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorMultiSig.Address()})
 
 	// I sponsoring ledger entries on ER
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.InitiatorSigner.Address(), SponsoredID: p.ResponderMultiSig.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount: p.ResponderEscrow.Address(),
+		SourceAccount: p.ResponderMultiSig.Address(),
 		Signer:        &txnbuild.Signer{Address: p.InitiatorSigner.Address(), Weight: 1},
 	})
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderMultiSig.Address()})
 
 	// R sponsoring ledger entries on ER
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.ResponderMultiSig.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount:   p.ResponderEscrow.Address(),
+		SourceAccount:   p.ResponderMultiSig.Address(),
 		MasterWeight:    txnbuild.NewThreshold(0),
 		LowThreshold:    txnbuild.NewThreshold(2),
 		MediumThreshold: txnbuild.NewThreshold(2),
@@ -101,18 +101,18 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 		tp.Operations = append(tp.Operations, &txnbuild.ChangeTrust{
 			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
-			SourceAccount: p.ResponderEscrow.Address(),
+			SourceAccount: p.ResponderMultiSig.Address(),
 		})
 	}
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.ResponderMultiSig.Address()})
 
 	// R sponsoring ledger entries on EI
-	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.InitiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.BeginSponsoringFutureReserves{SourceAccount: p.ResponderSigner.Address(), SponsoredID: p.InitiatorMultiSig.Address()})
 	tp.Operations = append(tp.Operations, &txnbuild.SetOptions{
-		SourceAccount: p.InitiatorEscrow.Address(),
+		SourceAccount: p.InitiatorMultiSig.Address(),
 		Signer:        &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 1},
 	})
-	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorEscrow.Address()})
+	tp.Operations = append(tp.Operations, &txnbuild.EndSponsoringFutureReserves{SourceAccount: p.InitiatorMultiSig.Address()})
 
 	tx, err := txnbuild.NewTransaction(tp)
 	if err != nil {

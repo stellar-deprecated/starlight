@@ -190,7 +190,7 @@ func (c *Channel) ProposePaymentWithMemo(amount int64, memo string) (CloseAgreem
 		newBalance = c.Balance() - amount
 	}
 
-	if c.amountToRemote(newBalance) > c.localEscrowAccount.Balance {
+	if c.amountToRemote(newBalance) > c.localMultiSigAccount.Balance {
 		return CloseAgreement{}, fmt.Errorf("amount over commits: %w", ErrUnderfunded)
 	}
 
@@ -333,7 +333,7 @@ func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreemen
 			return CloseAgreement{}, fmt.Errorf("close agreement is a payment to the proposer")
 		}
 		// If the payment over extends the proposers ability to pay, error.
-		if c.amountToLocal(ce.Details.Balance) > c.remoteEscrowAccount.Balance {
+		if c.amountToLocal(ce.Details.Balance) > c.remoteMultiSigAccount.Balance {
 			return CloseAgreement{}, fmt.Errorf("close agreement over commits: %w", ErrUnderfunded)
 		}
 		ce.ConfirmerSignatures, err = signCloseAgreementTxs(txs, c.localSigner)

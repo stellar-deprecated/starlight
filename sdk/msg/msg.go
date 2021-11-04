@@ -36,8 +36,8 @@ type Message struct {
 }
 
 type Hello struct {
-	EscrowAccount keypair.FromAddress
-	Signer        keypair.FromAddress
+	MultiSigAccount keypair.FromAddress
+	Signer          keypair.FromAddress
 }
 
 type Encoder = json.Encoder

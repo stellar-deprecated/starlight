@@ -14,8 +14,8 @@ type CloseParams struct {
 	ObservationPeriodLedgerGap int64
 	InitiatorSigner            *keypair.FromAddress
 	ResponderSigner            *keypair.FromAddress
-	InitiatorEscrow            *keypair.FromAddress
-	ResponderEscrow            *keypair.FromAddress
+	InitiatorMultiSig          *keypair.FromAddress
+	ResponderMultiSig          *keypair.FromAddress
 	StartSequence              int64
 	IterationNumber            int64
 	AmountToInitiator          int64
@@ -36,7 +36,7 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: p.InitiatorEscrow.Address(),
+			AccountID: p.InitiatorMultiSig.Address(),
 			Sequence:  seq,
 		},
 		BaseFee:              0,
@@ -45,7 +45,7 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 		MinSequenceLedgerGap: p.ObservationPeriodLedgerGap,
 		Operations: []txnbuild.Operation{
 			&txnbuild.SetOptions{
-				SourceAccount:   p.InitiatorEscrow.Address(),
+				SourceAccount:   p.InitiatorMultiSig.Address(),
 				MasterWeight:    txnbuild.NewThreshold(0),
 				LowThreshold:    txnbuild.NewThreshold(1),
 				MediumThreshold: txnbuild.NewThreshold(1),
@@ -53,7 +53,7 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 				Signer:          &txnbuild.Signer{Address: p.ResponderSigner.Address(), Weight: 0},
 			},
 			&txnbuild.SetOptions{
-				SourceAccount:   p.ResponderEscrow.Address(),
+				SourceAccount:   p.ResponderMultiSig.Address(),
 				MasterWeight:    txnbuild.NewThreshold(0),
 				LowThreshold:    txnbuild.NewThreshold(1),
 				MediumThreshold: txnbuild.NewThreshold(1),
@@ -64,16 +64,16 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 	}
 	if p.AmountToInitiator != 0 {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
-			SourceAccount: p.ResponderEscrow.Address(),
-			Destination:   p.InitiatorEscrow.Address(),
+			SourceAccount: p.ResponderMultiSig.Address(),
+			Destination:   p.InitiatorMultiSig.Address(),
 			Asset:         p.Asset,
 			Amount:        amount.StringFromInt64(p.AmountToInitiator),
 		})
 	}
 	if p.AmountToResponder != 0 {
 		tp.Operations = append(tp.Operations, &txnbuild.Payment{
-			SourceAccount: p.InitiatorEscrow.Address(),
-			Destination:   p.ResponderEscrow.Address(),
+			SourceAccount: p.InitiatorMultiSig.Address(),
+			Destination:   p.ResponderMultiSig.Address(),
 			Asset:         p.Asset,
 			Amount:        amount.StringFromInt64(p.AmountToResponder),
 		})
