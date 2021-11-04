@@ -566,7 +566,7 @@ Participant I provides reserves for:
 - Signers added to MR for I
 
 Participant R provides reserves for:
-- Multisig account MR
+- Account MR
 - Trustlines added to MR
 - Signers added to MR for R
 - Signers added to MI for R
