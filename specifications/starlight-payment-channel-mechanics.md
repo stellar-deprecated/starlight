@@ -405,7 +405,7 @@ Operations that can fail and where the additional requirements apply:
 ##### Deposit / Top-up
 
 Participants may deposit into the channel without coordination, as long as both
-multisig accounts MI and MR already have a trustline for the asset being
+accounts MI and MR already have a trustline for the asset being
 deposited.
 
 Participant I deposits or tops-up their balance by using a standard payment
