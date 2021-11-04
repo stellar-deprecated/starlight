@@ -75,12 +75,12 @@ transaction that will disburse $8 to I and $22 to R.
 A payment channel has two participants:
 
 - I, the _initiator_, who proposes the payment channel, and creates the 
-multi-sig account that will be used for sequence numbers.  I creates multi-sig 
+multisig account that will be used for sequence numbers.  I creates  
 account MI and receives disbursement through regaining control of MI at channel 
 close.
 
 - R, the _responder_, who joins the payment channel, and creates the other
-multi-sig account. R creates multi-sig account MR and receives disbursement 
+multisig account. R creates account MR and receives disbursement 
 through regaining control of MR at channel close.
 
 ### Observation Period
