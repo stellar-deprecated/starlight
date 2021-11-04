@@ -662,7 +662,7 @@ If the issuer of a clawback enabled trustline submits a clawback operation for
 amounts in either multi-sig account, the close transaction may fail to process 
 if its payment operation is dependent on amounts clawed back.
 
-### Multi-sig Account and Trustline State
+### Account and Trustline State
 
 Participants can inspect the state of multi-sig accounts and trustlines before
 execution of the open to check the state of the accounts and trustlines are
