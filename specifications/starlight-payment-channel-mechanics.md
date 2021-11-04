@@ -483,9 +483,9 @@ to the network.
 The participants may agree at anytime to increase period O by using a larger
 value for O in the next and future transaction sets, or regenerating the most
 recent transaction set, then signing and submitting a transaction that bumps the
-sequence number of the multisig account to the sequence before the most recent
-D_i. The sequence bump ensures only the most recent transaction with the new
-period O is valid.
+sequence number of account MI to the sequence before the most recent D_i. The 
+sequence bump ensures only the most recent transaction with the new period O is 
+valid.
 
 The participant initiating this change is X, and the other participant is Y. The
 participants:
