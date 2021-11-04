@@ -18,19 +18,17 @@ The Open, Payment, and Close operations are broken up into three steps:
 - Finalize*: Called by the payer to finalize the agreement with the payees
 signatures.
 
-    +-----------+      +-----------+
-    |   Payer   |      |   Payee   |
-    +-----+-----+      +-----+-----+
-          |                  |
-          |Propose           |
-          +----------------->+
-          |                  |
-          |           Confirm|
-  Finalize+<-----------------+
-        | |                  |
-        | |                  |
-        +->                  |
-          |                  |
+  +-----------+      +-----------+
+  |   Payer   |      |   Payee   |
+  +-----+-----+      +-----+-----+
+        |                  |
+     Propose               |
+        +----------------->+
+        |                  |
+        |               Confirm
+        +<-----------------+
+    Finalize               |
+        |                  |
 
 Note that the Open and Close processes do not have a Finalize operation, and the
 Confirm is used in its place at this time. A Finalize operation is likely to be
