@@ -447,7 +447,7 @@ did not succeed:
 The transactions are constructed as follows:
 
 - W_i, the _withdrawal transaction_, makes one or more payments from the 
-multisig account MI and/or MR to any Stellar account. W_i has any source 
+account MI and/or MR to any Stellar account. W_i has any source 
 account that is not MI, typically the participant proposing the change.
 
   W_i has two signers in its `extraSigners` precondition that ensures that if
