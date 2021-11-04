@@ -1372,27 +1372,27 @@ func TestChannel_ConfirmPayment_signatureChecks(t *testing.T) {
 func TestChannel_FinalizePayment_noUnauthorizedAgreement(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := keypair.MustRandom().FromAddress()
-	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+	localMultiSigAccount := keypair.MustRandom().FromAddress()
+	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           localSigner,
+		RemoteSigner:          remoteSigner.FromAddress(),
+		LocalMultiSigAccount:  localMultiSigAccount,
+		RemoteMultiSigAccount: remoteMultiSigAccount,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         remoteSigner,
-		RemoteSigner:        localSigner.FromAddress(),
-		LocalEscrowAccount:  remoteEscrowAccount,
-		RemoteEscrowAccount: localEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           remoteSigner,
+		RemoteSigner:          localSigner.FromAddress(),
+		LocalMultiSigAccount:  remoteMultiSigAccount,
+		RemoteMultiSigAccount: localMultiSigAccount,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 
 	// Put channel into the Open state.
@@ -1417,12 +1417,12 @@ func TestChannel_FinalizePayment_noUnauthorizedAgreement(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: remoteSigner.Address(),
-			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address(),
-			ResponderEscrow: localEscrowAccount.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   remoteSigner.Address(),
+			ResponderSigner:   localSigner.Address(),
+			InitiatorMultiSig: remoteMultiSigAccount.Address(),
+			ResponderMultiSig: localMultiSigAccount.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1438,8 +1438,8 @@ func TestChannel_FinalizePayment_noUnauthorizedAgreement(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
-	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
-	responderChannel.UpdateRemoteEscrowAccountBalance(200)
+	initiatorChannel.UpdateLocalMultiSigBalance(200)
+	responderChannel.UpdateRemoteMultiSigBalance(200)
 
 	ca, err := initiatorChannel.ProposePayment(100)
 	require.NoError(t, err)
@@ -1457,27 +1457,27 @@ func TestChannel_FinalizePayment_noUnauthorizedAgreement(t *testing.T) {
 func TestChannel_FinalizePayment_signatureChecks(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localEscrowAccount := keypair.MustRandom().FromAddress()
-	remoteEscrowAccount := keypair.MustRandom().FromAddress()
+	localMultiSigAccount := keypair.MustRandom().FromAddress()
+	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           false,
-		LocalSigner:         localSigner,
-		RemoteSigner:        remoteSigner.FromAddress(),
-		LocalEscrowAccount:  localEscrowAccount,
-		RemoteEscrowAccount: remoteEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             false,
+		LocalSigner:           localSigner,
+		RemoteSigner:          remoteSigner.FromAddress(),
+		LocalMultiSigAccount:  localMultiSigAccount,
+		RemoteMultiSigAccount: remoteMultiSigAccount,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 	initiatorChannel := NewChannel(Config{
-		NetworkPassphrase:   network.TestNetworkPassphrase,
-		Initiator:           true,
-		LocalSigner:         remoteSigner,
-		RemoteSigner:        localSigner.FromAddress(),
-		LocalEscrowAccount:  remoteEscrowAccount,
-		RemoteEscrowAccount: localEscrowAccount,
-		MaxOpenExpiry:       2 * time.Hour,
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		Initiator:             true,
+		LocalSigner:           remoteSigner,
+		RemoteSigner:          localSigner.FromAddress(),
+		LocalMultiSigAccount:  remoteMultiSigAccount,
+		RemoteMultiSigAccount: localMultiSigAccount,
+		MaxOpenExpiry:         2 * time.Hour,
 	})
 
 	// Put channel into the Open state.
@@ -1502,12 +1502,12 @@ func TestChannel_FinalizePayment_signatureChecks(t *testing.T) {
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
 		require.NoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
-			InitiatorSigner: remoteSigner.Address(),
-			ResponderSigner: localSigner.Address(),
-			InitiatorEscrow: remoteEscrowAccount.Address(),
-			ResponderEscrow: localEscrowAccount.Address(),
-			StartSequence:   101,
-			Asset:           txnbuild.NativeAsset{},
+			InitiatorSigner:   remoteSigner.Address(),
+			ResponderSigner:   localSigner.Address(),
+			InitiatorMultiSig: remoteMultiSigAccount.Address(),
+			ResponderMultiSig: localMultiSigAccount.Address(),
+			StartSequence:     101,
+			Asset:             txnbuild.NativeAsset{},
 		})
 		require.NoError(t, err)
 
@@ -1523,8 +1523,8 @@ func TestChannel_FinalizePayment_signatureChecks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
-	initiatorChannel.UpdateLocalEscrowAccountBalance(200)
-	responderChannel.UpdateRemoteEscrowAccountBalance(200)
+	initiatorChannel.UpdateLocalMultiSigBalance(200)
+	responderChannel.UpdateRemoteMultiSigBalance(200)
 
 	ca, err := initiatorChannel.ProposePayment(100)
 	require.NoError(t, err)
