@@ -152,10 +152,17 @@ func (ca CloseAgreement) SignedTransactions() CloseTransactions {
 	}
 }
 
+// ProposePayment proposes a new payment from the local, the caller of the
+// function, to the remote. ProposePayment is the first step in the process that
+// the paricipants use to make a payment from a payer to a payee.
 func (c *Channel) ProposePayment(amount int64) (CloseAgreement, error) {
 	return c.ProposePaymentWithMemo(amount, nil)
 }
 
+// ProposePaymentWithMemo proposes a new payment that has a byte memo attached
+// to it. The memo can be used to store an identifier or any amount of
+// information about the payment. See the ProposePayment function for more
+// information.
 func (c *Channel) ProposePaymentWithMemo(amount int64, memo []byte) (CloseAgreement, error) {
 	if amount < 0 {
 		return CloseAgreement{}, fmt.Errorf("payment amount must not be less than 0")
@@ -223,6 +230,8 @@ func (c *Channel) ProposePaymentWithMemo(amount int64, memo []byte) (CloseAgreem
 	return c.latestUnauthorizedCloseAgreement, nil
 }
 
+// ErrUnderfunded indicates that the account has insufficient funds to make a
+// specific payment amount.
 var ErrUnderfunded = fmt.Errorf("account is underfunded to make payment")
 
 // validatePayment validates the close agreement given to the ConfirmPayment method. Note that
@@ -278,8 +287,7 @@ func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 }
 
 // ConfirmPayment confirms an agreement. The destination of a payment calls this
-// once to sign and store the agreement. The source of a payment calls this once
-// with a copy of the agreement signed by the destination to store the destination's signatures.
+// once to sign and store the agreement.
 func (c *Channel) ConfirmPayment(ce CloseEnvelope) (closeAgreement CloseAgreement, err error) {
 	err = c.validatePayment(ce)
 	if err != nil {
