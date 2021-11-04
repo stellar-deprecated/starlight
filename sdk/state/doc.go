@@ -24,7 +24,6 @@ signatures.
         |                  |
      Propose               |
         +----------------->+
-        |                  |
         |               Confirm
         +<-----------------+
     Finalize               |
