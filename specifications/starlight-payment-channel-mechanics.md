@@ -159,8 +159,8 @@ executed iteration e's transaction set starts at, and is computable as, s+(m*e).
 
 To setup the payment channel:
 
-1. I creates multisig account MI.
-2. R creates multisig account MR.
+1. I creates account MI.
+2. R creates account MR.
 3. Set variable initial states:
    - s to MI's sequence number + 1.
    - i to 0.
