@@ -560,7 +560,7 @@ by their beneficiary.  Participants pay for their own key and signing
 requirements.
 
 Participant I provides reserves for:
-- Multisig account MI
+- Account MI
 - Trustlines added to MI
 - Signers added to MI for I
 - Signers added to MR for I
