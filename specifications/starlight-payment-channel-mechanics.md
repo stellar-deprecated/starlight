@@ -181,7 +181,7 @@ Signatures for F, D_i, and C_i may be shared in a single message.
 
 The transactions are constructed as follows:
 
-- F, the _open transaction_, changes multisig accounts MI and MR to be 2-of-2
+- F, the _open transaction_, changes accounts MI and MR to be 2-of-2
 multisig accounts. F has source account E, and sequence number set to s.
 
   F has two signers in its `extraSigners` precondition that ensures that if F is
