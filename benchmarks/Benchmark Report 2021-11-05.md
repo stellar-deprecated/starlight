@@ -15,13 +15,13 @@ The tests use a Starlight bi-directional payment channel, but only move assets
 in a single direction for the duration of the test. The tests send payments
 using buffering, where payments are buffered and sent in batches.
 
-Test AB3 enabled snapshotting and demonstrated 1.1 million payments per second
+Test AB1 enabled snapshotting and demonstrated 1.1 million payments per second
 for payments varying from 0.0000001 to 0.001.
 
 Test AB2 disabled snapshotting and demonstrated similar, over 1.5 million
 payments per second for payments varying from 0.0000001 to 0.001.
 
-Test AB1 demonstrated over 1.5 million payments per second for payments varying
+Test AB3 demonstrated over 1.5 million payments per second for payments varying
 from 1 to 1000.0, over Internet with 20-30ms latency.
 
 Test AB4 sent payments serially and was therefore limited by the network latency
