@@ -160,9 +160,9 @@ buffered payments min buffer size: 773
 buffered payments avg buffer size: 309420
 ```
 
-##### Test AB3
+##### Test AB2
 
-Test AB3 ran 10 million payments of $1000 or less, with payments being buffered
+Test AB2 ran 10 million payments of $1000 or less, with payments being buffered
 into buffers of max size 95,000. The application blocked and waited for the
 response of the previous buffer before sending the next buffer.  16 buffers per
 second and 1.5 million payments per second were witnessed. Each message was a
@@ -184,9 +184,9 @@ buffered payments min buffer size: 768
 buffered payments avg buffer size: 306113
 ```
 
-##### Test AB2
+##### Test AB3
 
-Test AB2 ran 10 million payments of $0.001 or less, with payments being buffered
+Test AB3 ran 10 million payments of $0.001 or less, with payments being buffered
 into buffers of max size 95,000. The application blocked and waited for the
 response of the previous buffer before sending the next buffer.  16 buffers per
 second and 1.5 million payments per second were witnessed. Each message was a
