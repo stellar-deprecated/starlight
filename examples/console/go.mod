@@ -8,7 +8,7 @@ require (
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/stellar/experimental-payment-channels/sdk v0.0.0-00010101000000-000000000000
-	github.com/stellar/go v0.0.0-20211101224627-ea4e6e6e5b27
+	github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 
@@ -41,5 +41,3 @@ require (
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-replace github.com/stellar/go => github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
