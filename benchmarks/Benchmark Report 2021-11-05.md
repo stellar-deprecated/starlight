@@ -27,6 +27,16 @@ from 1 to 1000.0, over Internet with 20-30ms latency.
 Test AB4 sent payments serially and was therefore limited by the network latency
 between participants and demonstrated 38 payments and agreements per second.
 
+An impact on performance was witnessed when enabling snapshotting as both
+participants wrote the entire state of the channel to a JSON file.
+
+There was no noticeable difference in buffer size and performance with different
+size payments during these tests even though smaller amounts do result in
+smaller buffers before they're compressed. This is because amounts are encoded
+as variable binary integers into the minimum number of bytes required to hold
+the value. The lack of difference in the final buffer size may be due to GZIP
+compression that is used to reduce the size of the buffers.
+
 ## Participants
 
 Two participants were involved in the tests, with a payment channel formed
@@ -151,8 +161,8 @@ buffered payments avg buffer size: 309420
 
 Test AB3 ran 10 million payments of $1000 or less, with payments being buffered
 into buffers of max size 95,000. The application blocked and waited for the
-response of the previous buffer before sending the next buffer.  12 buffers per
-second and 1.1 million payments per second were witnessed. Each message was a
+response of the previous buffer before sending the next buffer.  16 buffers per
+second and 1.5 million payments per second were witnessed. Each message was a
 bit more than 485KB in size. Snapshots were not enabled and as such the state of
 the channel was not being written to disk.
 
@@ -175,8 +185,8 @@ buffered payments avg buffer size: 306113
 
 Test AB2 ran 10 million payments of $0.001 or less, with payments being buffered
 into buffers of max size 95,000. The application blocked and waited for the
-response of the previous buffer before sending the next buffer.  12 buffers per
-second and 1.1 million payments per second were witnessed. Each message was a
+response of the previous buffer before sending the next buffer.  16 buffers per
+second and 1.5 million payments per second were witnessed. Each message was a
 bit more than 490KB in size. Snapshots were not enabled and as such the state of
 the channel was not being written to disk.
 
