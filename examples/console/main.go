@@ -378,7 +378,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Func: func(c *ishell.Context) {
 			depositAmountStr := c.Args[0]
 			destination := escrowAccount
-			if len(c.Args) >= 2 && c.Args[1] == "other" {
+			if len(c.Args) >= 2 && c.Args[1] != "" {
 				destination = otherEscrowAccount
 			}
 			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
