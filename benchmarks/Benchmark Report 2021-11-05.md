@@ -160,30 +160,6 @@ buffered payments min buffer size: 773
 buffered payments avg buffer size: 309420
 ```
 
-##### Test AB2
-
-Test AB2 ran 10 million payments of $1000 or less, with payments being buffered
-into buffers of max size 95,000. The application blocked and waited for the
-response of the previous buffer before sending the next buffer.  16 buffers per
-second and 1.5 million payments per second were witnessed. Each message was a
-bit more than 485KB in size. Snapshots were not enabled and as such the state of
-the channel was not being written to disk.
-
-```
->>> payx 1000 10000000 95000
-sending 1000 payment 10000000 times
-time spent: 6.444609094s
-agreements sent: 107
-agreements received: 0
-agreements tps: 16.603
-buffered payments sent: 10000000
-buffered payments received: 0
-buffered payments tps: 1551684.494
-buffered payments max buffer size: 485915
-buffered payments min buffer size: 768
-buffered payments avg buffer size: 306113
-```
-
 ##### Test AB3
 
 Test AB3 ran 10 million payments of $0.001 or less, with payments being buffered
@@ -206,6 +182,30 @@ buffered payments tps: 1555284.432
 buffered payments max buffer size: 490652
 buffered payments min buffer size: 544
 buffered payments avg buffer size: 309526
+```
+
+##### Test AB3
+
+Test AB3 ran 10 million payments of $1000 or less, with payments being buffered
+into buffers of max size 95,000. The application blocked and waited for the
+response of the previous buffer before sending the next buffer.  16 buffers per
+second and 1.5 million payments per second were witnessed. Each message was a
+bit more than 485KB in size. Snapshots were not enabled and as such the state of
+the channel was not being written to disk.
+
+```
+>>> payx 1000 10000000 95000
+sending 1000 payment 10000000 times
+time spent: 6.444609094s
+agreements sent: 107
+agreements received: 0
+agreements tps: 16.603
+buffered payments sent: 10000000
+buffered payments received: 0
+buffered payments tps: 1551684.494
+buffered payments max buffer size: 485915
+buffered payments min buffer size: 768
+buffered payments avg buffer size: 306113
 ```
 
 ##### Test AB4
