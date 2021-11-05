@@ -28,7 +28,10 @@ Test AB4 sent payments serially and was therefore limited by the network latency
 between participants and demonstrated 38 payments and agreements per second.
 
 An impact on performance was witnessed when enabling snapshotting as both
-participants wrote the entire state of the channel to a JSON file.
+participants wrote the entire state of the channel to a JSON file. The
+application writes the file and blocks until that is complete to ensure the
+state of the channel is persisted before continuing and this briefly delays the
+sending of the next payment.
 
 There was no noticeable difference in buffer size and performance with different
 size payments during these tests even though smaller amounts do result in
