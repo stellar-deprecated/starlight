@@ -15,14 +15,14 @@ The tests use a Starlight bi-directional payment channel, but only move assets
 in a single direction for the duration of the test. The tests send payments
 using buffering, where payments are buffered and sent in batches.
 
-Test AB1 demonstrated over 1.5 million payments per second for payments varying
-from 1 to 1000.0, over Internet with 20-30ms latency.
-
-Test AB2 demonstrated similar, over 1.5 million payments per second for payments
-varying from 0.0000001 to 0.001.
-
 Test AB3 enabled snapshotting and demonstrated 1.1 million payments per second
 for payments varying from 0.0000001 to 0.001.
+
+Test AB2 disabled snapshotting and demonstrated similar, over 1.5 million
+payments per second for payments varying from 0.0000001 to 0.001.
+
+Test AB1 demonstrated over 1.5 million payments per second for payments varying
+from 1 to 1000.0, over Internet with 20-30ms latency.
 
 Test AB4 sent payments serially and was therefore limited by the network latency
 between participants and demonstrated 38 payments and agreements per second.
@@ -125,7 +125,31 @@ Latency between participants A and B was observed to be approximately 20-30ms.
 
 ##### Test AB1
 
-Test AB1 ran 10 million payments of $1000 or less, with payments being buffered
+Test AB1 ran 10 million payments of $0.001 or less, with payments being buffered
+into buffers of max size 95,000. The application blocked and waited for the
+response of the previous buffer before sending the next buffer.  12 buffers per
+second and 1.1 million payments per second were witnessed. Each message was a
+bit more than 309KB in size. Snapshots were enabled and as such the state of the
+channel was being written to disk.
+
+```
+>>> payx 0.001 10000000 95000
+sending 0.001 payment 10000000 times
+time spent: 8.402299672s
+agreements sent: 107
+agreements received: 0
+agreements tps: 12.735
+buffered payments sent: 10000000
+buffered payments received: 0
+buffered payments tps: 1190150.362
+buffered payments max buffer size: 490698
+buffered payments min buffer size: 773
+buffered payments avg buffer size: 309420
+```
+
+##### Test AB3
+
+Test AB3 ran 10 million payments of $1000 or less, with payments being buffered
 into buffers of max size 95,000. The application blocked and waited for the
 response of the previous buffer before sending the next buffer.  12 buffers per
 second and 1.1 million payments per second were witnessed. Each message was a
@@ -169,30 +193,6 @@ buffered payments tps: 1555284.432
 buffered payments max buffer size: 490652
 buffered payments min buffer size: 544
 buffered payments avg buffer size: 309526
-```
-
-##### Test AB3
-
-Test AB3 ran 10 million payments of $0.001 or less, with payments being buffered
-into buffers of max size 95,000. The application blocked and waited for the
-response of the previous buffer before sending the next buffer.  12 buffers per
-second and 1.1 million payments per second were witnessed. Each message was a
-bit more than 309KB in size. Snapshots were enabled and as such the state of the
-channel was being written to disk.
-
-```
->>> payx 0.001 10000000 95000
-sending 0.001 payment 10000000 times
-time spent: 8.402299672s
-agreements sent: 107
-agreements received: 0
-agreements tps: 12.735
-buffered payments sent: 10000000
-buffered payments received: 0
-buffered payments tps: 1190150.362
-buffered payments max buffer size: 490698
-buffered payments min buffer size: 773
-buffered payments avg buffer size: 309420
 ```
 
 ##### Test AB4
