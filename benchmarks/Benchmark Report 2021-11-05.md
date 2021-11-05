@@ -91,9 +91,9 @@ Each test specifies a max payment amount, payment count, and a maximum buffer
 size in the `payx` command. i.e. `payx <maximum payment amount> <payment count>
 <max buffer size>`.
 
-For example, test AB4 `payx 1000 10000000 95000`, sent 1 million payments, with
-amounts varying from 0.0001 to 1000.0, and it allowed payments to buffer into
-batches holding up to 50k payments.
+For example, test AB1 `payx 0.001 10000000 95000`, sent 1 million payments, with
+amounts varying from 0.00000001 to 0.001, and it allowed payments to buffer into
+batches holding up to 95k payments.
 
 Payments are buffered until the channel is available to propose the next
 agreement. An agreement is then built containing one or more buffered payments.
