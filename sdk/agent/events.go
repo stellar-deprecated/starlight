@@ -1,8 +1,8 @@
 package agent
 
 import (
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 // ErrorEvent occurs when an error has occurred, and contains the error

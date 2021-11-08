@@ -5,9 +5,9 @@
 <h1>Starlight Protocol</h1>
 </div>
 <p align="center">
-<a href="https://github.com/stellar/experimental-payment-channels/actions/workflows/sdk.yml"><img src="https://github.com/stellar/experimental-payment-channels/actions/workflows/sdk.yml/badge.svg" />
-<a href="https://pkg.go.dev/github.com/stellar/experimental-payment-channels/sdk"><img src="https://pkg.go.dev/badge/github.com/stellar/experimental-payment-channels/sdk.svg" alt="Go Reference"></a>
-<a href="https://github.com/stellar/experimental-payment-channels/discussions"><img src="https://img.shields.io/github/discussions/stellar/experimental-payment-channels" alt="Discussions"></a>
+<a href="https://github.com/stellar/starlight/actions/workflows/sdk.yml"><img src="https://github.com/stellar/starlight/actions/workflows/sdk.yml/badge.svg" />
+<a href="https://pkg.go.dev/github.com/stellar/starlight/sdk"><img src="https://pkg.go.dev/badge/github.com/stellar/starlight/sdk.svg" alt="Go Reference"></a>
+<a href="https://github.com/stellar/starlight/discussions"><img src="https://img.shields.io/github/discussions/stellar/starlight" alt="Discussions"></a>
 </p>
 
 Starlight is a prototype layer 2 payment channel protocol for the Stellar Network. Starlight has existed in a couple different forms. The previous version of Starlight lives at [interstellar/starlight](https://github.com/interstellar/starlight).
@@ -18,8 +18,8 @@ The Starlight protocol, SDK, code in this repository, and any forks of other Ste
 
 ## Index
 
-- [Discussions](https://github.com/stellar/experimental-payment-channels/discussions)
-- [Demos](https://github.com/stellar/experimental-payment-channels/discussions/categories/demos)
+- [Discussions](https://github.com/stellar/starlight/discussions)
+- [Demos](https://github.com/stellar/starlight/discussions/categories/demos)
 - [Getting Started](Getting%20Started.md)
 - [Specifications](specifications/)
 - [Examples](examples/)

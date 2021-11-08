@@ -16,7 +16,7 @@ stellar-core and horizon with CAP-21 capabilities.
 Run the example using the below commands.
 
 ```
-git clone https://github.com/stellar/experimental-payment-channels
+git clone https://github.com/stellar/starlight
 cd examples/console
 go run . -horizon=http://localhost:8000
 ```

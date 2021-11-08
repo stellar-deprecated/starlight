@@ -3,8 +3,8 @@ package state
 import (
 	"fmt"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/starlight/sdk/txbuild"
 )
 
 // closeTxs builds the transactions that can be submitted to close the channel

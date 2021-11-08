@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/starlight/sdk/state"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,4 +1,4 @@
-module github.com/stellar/experimental-payment-channels/sdk
+module github.com/stellar/starlight/sdk
 
 go 1.17
 
