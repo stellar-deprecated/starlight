@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
