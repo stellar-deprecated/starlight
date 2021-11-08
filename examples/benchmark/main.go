@@ -9,9 +9,9 @@ import (
 	"time"
 
 	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
-	"github.com/stellar/experimental-payment-channels/sdk/horizon"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/horizon"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/submit"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
-	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
