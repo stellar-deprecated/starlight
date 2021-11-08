@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/stellar/experimental-payment-channels/sdk/state"
-	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
+	"github.com/stellar/experimental-payment-channels/sdk/txbuild/txbuildtest"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
