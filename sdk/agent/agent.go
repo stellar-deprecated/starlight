@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/msg"
+	"github.com/stellar/experimental-payment-channels/sdk/agent/msg"
 	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
