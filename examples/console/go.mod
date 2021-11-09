@@ -1,4 +1,4 @@
-module github.com/stellar/experimental-paymentment-channels/examples/console
+module github.com/stellar/starlight/examples/console
 
 go 1.17
 
