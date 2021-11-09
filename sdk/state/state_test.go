@@ -32,16 +32,16 @@ func assertChannelSnapshotsAndRestores(t *testing.T, config Config, channel *Cha
 func TestNewChannelWithSnapshot(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	localConfig := Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	}
 	localChannel := NewChannel(localConfig)
@@ -50,8 +50,8 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		Initiator:             false,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	}
 	remoteChannel := NewChannel(remoteConfig)
@@ -91,8 +91,8 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   localSigner.Address(),
 			ResponderSigner:   remoteSigner.Address(),
-			InitiatorMultiSig: localMultiSigAccount.Address(),
-			ResponderMultiSig: remoteMultiSigAccount.Address(),
+			InitiatorMultisig: localMultisigAccount.Address(),
+			ResponderMultisig: remoteMultisigAccount.Address(),
 			StartSequence:     101,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -117,10 +117,10 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 	assertChannelSnapshotsAndRestores(t, remoteConfig, remoteChannel)
 
 	// Update balances.
-	localChannel.UpdateLocalMultiSigBalance(100)
-	localChannel.UpdateRemoteMultiSigBalance(200)
-	remoteChannel.UpdateLocalMultiSigBalance(300)
-	remoteChannel.UpdateRemoteMultiSigBalance(400)
+	localChannel.UpdateLocalMultisigBalance(100)
+	localChannel.UpdateRemoteMultisigBalance(200)
+	remoteChannel.UpdateLocalMultisigBalance(300)
+	remoteChannel.UpdateRemoteMultisigBalance(400)
 
 	// Check snapshot rehydrates the channel identically when open and with
 	// balances updated.
@@ -167,7 +167,7 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 			{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress(localMultiSigAccount.Address()),
+					AccountId: xdr.MustAddress(localMultisigAccount.Address()),
 					SeqNum:    102,
 					Signers: []xdr.Signer{
 						{Key: xdr.MustSigner(localSigner.Address()), Weight: 1},
@@ -179,7 +179,7 @@ func TestNewChannelWithSnapshot(t *testing.T) {
 			{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress(remoteMultiSigAccount.Address()),
+					AccountId: xdr.MustAddress(remoteMultisigAccount.Address()),
 					SeqNum:    103,
 					Signers: []xdr.Signer{
 						{Key: xdr.MustSigner(remoteSigner.Address()), Weight: 1},

@@ -16,16 +16,16 @@ import (
 func TestChannel_CloseTx(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	oe := OpenEnvelope{
 		Details: OpenDetails{
@@ -80,7 +80,7 @@ func TestChannel_CloseTx(t *testing.T) {
 	// Check stored txs are used by replacing the stored tx with an identifiable
 	// tx and checking that's what is used for the authorized closing transactions.
 	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: localMultiSigAccount.Address(), Sequence: 123456789},
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localMultisigAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
@@ -99,7 +99,7 @@ func TestChannel_CloseTx(t *testing.T) {
 	// tx and checking that's what is used when building the same tx as the
 	// latest unauthorized tx.
 	testTx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: localMultiSigAccount.Address(), Sequence: 987654321},
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localMultisigAccount.Address(), Sequence: 987654321},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
@@ -118,16 +118,16 @@ func TestChannel_CloseTx(t *testing.T) {
 func TestChannel_ProposeClose(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	localChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 	remoteChannel := NewChannel(Config{
@@ -135,8 +135,8 @@ func TestChannel_ProposeClose(t *testing.T) {
 		Initiator:             false,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 
@@ -164,8 +164,8 @@ func TestChannel_ProposeClose(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   localSigner.Address(),
 			ResponderSigner:   remoteSigner.Address(),
-			InitiatorMultiSig: localMultiSigAccount.Address(),
-			ResponderMultiSig: remoteMultiSigAccount.Address(),
+			InitiatorMultisig: localMultisigAccount.Address(),
+			ResponderMultisig: remoteMultisigAccount.Address(),
 			StartSequence:     101,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -201,8 +201,8 @@ func TestChannel_ProposeClose(t *testing.T) {
 func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
@@ -210,8 +210,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 		MaxOpenExpiry:         10 * time.Second,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	receiverChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
@@ -219,8 +219,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 		MaxOpenExpiry:         10 * time.Second,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 	})
 
 	// Open channel.
@@ -248,8 +248,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   localSigner.Address(),
 			ResponderSigner:   remoteSigner.Address(),
-			InitiatorMultiSig: localMultiSigAccount.Address(),
-			ResponderMultiSig: remoteMultiSigAccount.Address(),
+			InitiatorMultisig: localMultisigAccount.Address(),
+			ResponderMultisig: remoteMultisigAccount.Address(),
 			StartSequence:     101,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -281,8 +281,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose(t *testing.T) {
 func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	senderChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
@@ -290,8 +290,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 		MaxOpenExpiry:         10 * time.Second,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	receiverChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
@@ -299,8 +299,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 		MaxOpenExpiry:         10 * time.Second,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 	})
 
 	// Before open, proposing a coordinated close should error.
@@ -339,8 +339,8 @@ func TestChannel_ProposeAndConfirmCoordinatedClose_rejectIfChannelNotOpen(t *tes
 func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -348,8 +348,8 @@ func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
 		Initiator:             false,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 	initiatorChannel := NewChannel(Config{
@@ -357,8 +357,8 @@ func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
 		Initiator:             true,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 
@@ -386,8 +386,8 @@ func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   remoteSigner.Address(),
 			ResponderSigner:   localSigner.Address(),
-			InitiatorMultiSig: remoteMultiSigAccount.Address(),
-			ResponderMultiSig: localMultiSigAccount.Address(),
+			InitiatorMultisig: remoteMultisigAccount.Address(),
+			ResponderMultisig: localMultisigAccount.Address(),
 			StartSequence:     101,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -405,8 +405,8 @@ func TestChannel_ConfirmClose_signatureChecks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
-	initiatorChannel.UpdateLocalMultiSigBalance(200)
-	responderChannel.UpdateRemoteMultiSigBalance(200)
+	initiatorChannel.UpdateLocalMultisigBalance(200)
+	responderChannel.UpdateRemoteMultisigBalance(200)
 
 	ca, err := initiatorChannel.ProposeClose()
 	require.NoError(t, err)

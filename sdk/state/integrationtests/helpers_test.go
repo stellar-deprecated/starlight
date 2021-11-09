@@ -27,11 +27,11 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 	initiator = Participant{
 		Name:         "Initiator",
 		KP:           keypair.MustRandom(),
-		MultiSig:     keypair.MustRandom(),
+		Multisig:     keypair.MustRandom(),
 		Contribution: 1_000_0000000,
 	}
 	t.Log("Initiator:", initiator.KP.Address())
-	t.Log("Initiator MultiSig:", initiator.MultiSig.Address())
+	t.Log("Initiator Multisig:", initiator.Multisig.Address())
 	{
 		err := retry(t, 2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
@@ -41,19 +41,19 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 		require.NoError(t, err)
 
 		t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", assetParam.Asset.Code(), "issuer: ", assetParam.Asset.Issuer())
-		initMultiSigAccount(t, &initiator, assetParam)
+		initMultisigAccount(t, &initiator, assetParam)
 	}
-	t.Log("Initiator MultiSig Sequence Number:", initiator.MultiSigSequenceNumber)
+	t.Log("Initiator Multisig Sequence Number:", initiator.MultisigSequenceNumber)
 
 	// Setup responder.
 	responder = Participant{
 		Name:         "Responder",
 		KP:           keypair.MustRandom(),
-		MultiSig:     keypair.MustRandom(),
+		Multisig:     keypair.MustRandom(),
 		Contribution: 1_000_0000000,
 	}
 	t.Log("Responder:", responder.KP.Address())
-	t.Log("Responder MultiSig:", responder.MultiSig.Address())
+	t.Log("Responder Multisig:", responder.Multisig.Address())
 	{
 		err := retry(t, 2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
@@ -63,28 +63,28 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 		require.NoError(t, err)
 
 		t.Log("Responder Contribution:", responder.Contribution, "of asset:", assetParam.Asset.Code(), "issuer: ", assetParam.Asset.Issuer())
-		initMultiSigAccount(t, &responder, assetParam)
+		initMultisigAccount(t, &responder, assetParam)
 	}
-	t.Log("Responder MultiSig Sequence Number:", responder.MultiSigSequenceNumber)
+	t.Log("Responder Multisig Sequence Number:", responder.MultisigSequenceNumber)
 
 	return initiator, responder
 }
 
-func initMultiSigAccount(t *testing.T, participant *Participant, assetParam AssetParam) {
+func initMultisigAccount(t *testing.T, participant *Participant, assetParam AssetParam) {
 	// create multisig account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
 	seqNum, err := account.GetSequenceNumber()
 	require.NoError(t, err)
 
-	tx, err := txbuild.CreateMultiSig(txbuild.CreateMultiSigParams{
+	tx, err := txbuild.CreateMultisig(txbuild.CreateMultisigParams{
 		Creator:        participant.KP.FromAddress(),
-		MultiSig:       participant.MultiSig.FromAddress(),
+		Multisig:       participant.Multisig.FromAddress(),
 		SequenceNumber: seqNum + 1,
 		Asset:          assetParam.Asset.Asset(),
 	})
 	require.NoError(t, err)
-	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.MultiSig)
+	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Multisig)
 	require.NoError(t, err)
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      tx,
@@ -100,7 +100,7 @@ func initMultiSigAccount(t *testing.T, participant *Participant, assetParam Asse
 		return err
 	})
 	require.NoError(t, err)
-	participant.MultiSigSequenceNumber = int64(txResp.Ledger) << 32
+	participant.MultisigSequenceNumber = int64(txResp.Ledger) << 32
 
 	// add initial contribution, use the same contribution for each asset
 	_, err = account.IncrementSequenceNumber()
@@ -108,7 +108,7 @@ func initMultiSigAccount(t *testing.T, participant *Participant, assetParam Asse
 
 	payments := []txnbuild.Operation{
 		&txnbuild.Payment{
-			Destination: participant.MultiSig.Address(),
+			Destination: participant.Multisig.Address(),
 			Amount:      stellarAmount.StringFromInt64(participant.Contribution),
 			Asset:       assetParam.Asset.Asset(),
 		},
@@ -137,8 +137,8 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 		NetworkPassphrase:     networkPassphrase,
 		MaxOpenExpiry:         5 * time.Minute,
 		Initiator:             true,
-		LocalMultiSigAccount:  initiator.MultiSig.FromAddress(),
-		RemoteMultiSigAccount: responder.MultiSig.FromAddress(),
+		LocalMultisigAccount:  initiator.Multisig.FromAddress(),
+		RemoteMultisigAccount: responder.Multisig.FromAddress(),
 		LocalSigner:           initiator.KP,
 		RemoteSigner:          responder.KP.FromAddress(),
 	})
@@ -146,8 +146,8 @@ func initChannels(t *testing.T, initiator Participant, responder Participant) (i
 		NetworkPassphrase:     networkPassphrase,
 		MaxOpenExpiry:         5 * time.Minute,
 		Initiator:             false,
-		LocalMultiSigAccount:  responder.MultiSig.FromAddress(),
-		RemoteMultiSigAccount: initiator.MultiSig.FromAddress(),
+		LocalMultisigAccount:  responder.Multisig.FromAddress(),
+		RemoteMultisigAccount: initiator.Multisig.FromAddress(),
 		LocalSigner:           responder.KP,
 		RemoteSigner:          initiator.KP.FromAddress(),
 	})

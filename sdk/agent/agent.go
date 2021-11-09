@@ -73,8 +73,8 @@ type Config struct {
 	Streamer                Streamer
 	Snapshotter             Snapshotter
 
-	MultiSigAccountKey    *keypair.FromAddress
-	MultiSigAccountSigner *keypair.Full
+	MultisigAccountKey    *keypair.FromAddress
+	MultisigAccountSigner *keypair.Full
 
 	LogWriter io.Writer
 
@@ -94,8 +94,8 @@ func NewAgent(c Config) *Agent {
 		streamer:                c.Streamer,
 		snapshotter:             c.Snapshotter,
 
-		multisigAccountKey:    c.MultiSigAccountKey,
-		multisigAccountSigner: c.MultiSigAccountSigner,
+		multisigAccountKey:    c.MultisigAccountKey,
+		multisigAccountSigner: c.MultisigAccountSigner,
 
 		logWriter: c.LogWriter,
 
@@ -108,8 +108,8 @@ func NewAgent(c Config) *Agent {
 // provided in the Config when instantiating an agent. A Snapshot can be
 // restored into an Agent using NewAgentWithSnapshot.
 type Snapshot struct {
-	OtherMultiSigAccount       *keypair.FromAddress
-	OtherMultiSigAccountSigner *keypair.FromAddress
+	OtherMultisigAccount       *keypair.FromAddress
+	OtherMultisigAccountSigner *keypair.FromAddress
 	StreamerCursor             string
 	State                      *struct {
 		Initiator bool
@@ -123,8 +123,8 @@ type Snapshot struct {
 // was in use when the snapshot was created.
 func NewAgentFromSnapshot(c Config, s Snapshot) *Agent {
 	agent := NewAgent(c)
-	agent.otherMultiSigAccount = s.OtherMultiSigAccount
-	agent.otherMultiSigAccountSigner = s.OtherMultiSigAccountSigner
+	agent.otherMultisigAccount = s.OtherMultisigAccount
+	agent.otherMultisigAccountSigner = s.OtherMultisigAccountSigner
 	agent.streamerCursor = s.StreamerCursor
 	if s.State != nil {
 		agent.initChannel(s.State.Initiator, &s.State.Snapshot)
@@ -159,8 +159,8 @@ type Agent struct {
 	mu sync.Mutex
 
 	conn                       io.ReadWriter
-	otherMultiSigAccount       *keypair.FromAddress
-	otherMultiSigAccountSigner *keypair.FromAddress
+	otherMultisigAccount       *keypair.FromAddress
+	otherMultisigAccountSigner *keypair.FromAddress
 	channel                    *state.Channel
 	streamerTransactions       <-chan StreamedTransaction
 	streamerCursor             string
@@ -181,8 +181,8 @@ func (a *Agent) Config() Config {
 		Streamer:                a.streamer,
 		Snapshotter:             a.snapshotter,
 
-		MultiSigAccountKey:    a.multisigAccountKey,
-		MultiSigAccountSigner: a.multisigAccountSigner,
+		MultisigAccountKey:    a.multisigAccountKey,
+		MultisigAccountSigner: a.multisigAccountSigner,
 
 		LogWriter: a.logWriter,
 
@@ -207,8 +207,8 @@ func (a *Agent) takeSnapshot() {
 
 func (a *Agent) buildSnapshot() Snapshot {
 	snapshot := Snapshot{
-		OtherMultiSigAccount:       a.otherMultiSigAccount,
-		OtherMultiSigAccountSigner: a.otherMultiSigAccountSigner,
+		OtherMultisigAccount:       a.otherMultisigAccount,
+		OtherMultisigAccountSigner: a.otherMultisigAccountSigner,
 		StreamerCursor:             a.streamerCursor,
 	}
 	if a.channel != nil {
@@ -232,7 +232,7 @@ func (a *Agent) hello() error {
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
 		Hello: &msg.Hello{
-			MultiSigAccount: *a.multisigAccountKey,
+			MultisigAccount: *a.multisigAccountKey,
 			Signer:          *a.multisigAccountSigner.FromAddress(),
 		},
 	})
@@ -247,10 +247,10 @@ func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) {
 		NetworkPassphrase:     a.networkPassphrase,
 		MaxOpenExpiry:         a.maxOpenExpiry,
 		Initiator:             initiator,
-		LocalMultiSigAccount:  a.multisigAccountKey,
-		RemoteMultiSigAccount: a.otherMultiSigAccount,
+		LocalMultisigAccount:  a.multisigAccountKey,
+		RemoteMultisigAccount: a.otherMultisigAccount,
 		LocalSigner:           a.multisigAccountSigner,
-		RemoteSigner:          a.otherMultiSigAccountSigner,
+		RemoteSigner:          a.otherMultisigAccountSigner,
 	}
 	if snapshot == nil {
 		a.channel = state.NewChannel(config)
@@ -338,11 +338,11 @@ func (a *Agent) PaymentWithMemo(paymentAmount int64, memo []byte) error {
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "local is underfunded for this payment based on cached account balances, checking multisig account...\n")
 		var balance int64
-		balance, err = a.balanceCollector.GetBalance(a.channel.LocalMultiSigAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
+		balance, err = a.balanceCollector.GetBalance(a.channel.LocalMultisigAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
 		if err != nil {
 			return err
 		}
-		a.channel.UpdateLocalMultiSigBalance(balance)
+		a.channel.UpdateLocalMultisigBalance(balance)
 		ca, err = a.channel.ProposePaymentWithMemo(paymentAmount, memo)
 	}
 	if err != nil {
@@ -511,21 +511,21 @@ func (a *Agent) handleHello(m msg.Message, send *msg.Encoder) error {
 
 	h := m.Hello
 
-	if a.otherMultiSigAccount != nil && !a.otherMultiSigAccount.Equal(&h.MultiSigAccount) {
-		return fmt.Errorf("hello received with unexpected multisig account: %s expected: %s", h.MultiSigAccount.Address(), a.otherMultiSigAccount.Address())
+	if a.otherMultisigAccount != nil && !a.otherMultisigAccount.Equal(&h.MultisigAccount) {
+		return fmt.Errorf("hello received with unexpected multisig account: %s expected: %s", h.MultisigAccount.Address(), a.otherMultisigAccount.Address())
 	}
-	if a.otherMultiSigAccountSigner != nil && !a.otherMultiSigAccountSigner.Equal(&h.Signer) {
-		return fmt.Errorf("hello received with unexpected signer: %s expected: %s", h.Signer.Address(), a.otherMultiSigAccountSigner.Address())
+	if a.otherMultisigAccountSigner != nil && !a.otherMultisigAccountSigner.Equal(&h.Signer) {
+		return fmt.Errorf("hello received with unexpected signer: %s expected: %s", h.Signer.Address(), a.otherMultisigAccountSigner.Address())
 	}
 
-	a.otherMultiSigAccount = &h.MultiSigAccount
-	a.otherMultiSigAccountSigner = &h.Signer
+	a.otherMultisigAccount = &h.MultisigAccount
+	a.otherMultisigAccountSigner = &h.Signer
 
-	fmt.Fprintf(a.logWriter, "other's multisig account: %v\n", a.otherMultiSigAccount.Address())
-	fmt.Fprintf(a.logWriter, "other's signer: %v\n", a.otherMultiSigAccountSigner.Address())
+	fmt.Fprintf(a.logWriter, "other's multisig account: %v\n", a.otherMultisigAccount.Address())
+	fmt.Fprintf(a.logWriter, "other's signer: %v\n", a.otherMultisigAccountSigner.Address())
 
 	if a.events != nil {
-		a.events <- ConnectedEvent{MultiSigAccount: &h.MultiSigAccount, Signer: &h.Signer}
+		a.events <- ConnectedEvent{MultisigAccount: &h.MultisigAccount, Signer: &h.Signer}
 	}
 
 	return nil
@@ -600,11 +600,11 @@ func (a *Agent) handlePaymentRequest(m msg.Message, send *msg.Encoder) error {
 	if errors.Is(err, state.ErrUnderfunded) {
 		fmt.Fprintf(a.logWriter, "remote is underfunded for this payment based on cached account balances, checking their multisig account...\n")
 		var balance int64
-		balance, err = a.balanceCollector.GetBalance(a.channel.RemoteMultiSigAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
+		balance, err = a.balanceCollector.GetBalance(a.channel.RemoteMultisigAccount().Address, a.channel.OpenAgreement().Envelope.Details.Asset)
 		if err != nil {
 			return err
 		}
-		a.channel.UpdateRemoteMultiSigBalance(balance)
+		a.channel.UpdateRemoteMultisigBalance(balance)
 		payment, err = a.channel.ConfirmPayment(paymentIn)
 	}
 	if err != nil {

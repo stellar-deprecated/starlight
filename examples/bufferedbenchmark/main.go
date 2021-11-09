@@ -130,8 +130,8 @@ func run() error {
 		BalanceCollector:           balanceCollector,
 		Submitter:                  submitter,
 		Streamer:                   streamer,
-		MultiSigAccountKey:         multisigAccountKey.FromAddress(),
-		MultiSigAccountSigner:      accountKey,
+		MultisigAccountKey:         multisigAccountKey.FromAddress(),
+		MultisigAccountSigner:      accountKey,
 		LogWriter:                  io.Discard,
 		Events:                     underlyingEvents,
 	}

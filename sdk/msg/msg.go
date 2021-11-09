@@ -36,7 +36,7 @@ type Message struct {
 }
 
 type Hello struct {
-	MultiSigAccount keypair.FromAddress
+	MultisigAccount keypair.FromAddress
 	Signer          keypair.FromAddress
 }
 

@@ -8,25 +8,25 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-type CreateMultiSigParams struct {
+type CreateMultisigParams struct {
 	Creator        *keypair.FromAddress
-	MultiSig       *keypair.FromAddress
+	Multisig       *keypair.FromAddress
 	SequenceNumber int64
 	Asset          txnbuild.BasicAsset
 }
 
-func CreateMultiSig(p CreateMultiSigParams) (*txnbuild.Transaction, error) {
+func CreateMultisig(p CreateMultisigParams) (*txnbuild.Transaction, error) {
 	ops := []txnbuild.Operation{
 		&txnbuild.BeginSponsoringFutureReserves{
-			SponsoredID: p.MultiSig.Address(),
+			SponsoredID: p.Multisig.Address(),
 		},
 		&txnbuild.CreateAccount{
-			Destination: p.MultiSig.Address(),
+			Destination: p.Multisig.Address(),
 			// base reserves sponsored by p.Creator
 			Amount: "0",
 		},
 		&txnbuild.SetOptions{
-			SourceAccount:   p.MultiSig.Address(),
+			SourceAccount:   p.Multisig.Address(),
 			MasterWeight:    txnbuild.NewThreshold(0),
 			LowThreshold:    txnbuild.NewThreshold(1),
 			MediumThreshold: txnbuild.NewThreshold(1),
@@ -38,11 +38,11 @@ func CreateMultiSig(p CreateMultiSigParams) (*txnbuild.Transaction, error) {
 		ops = append(ops, &txnbuild.ChangeTrust{
 			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
-			SourceAccount: p.MultiSig.Address(),
+			SourceAccount: p.Multisig.Address(),
 		})
 	}
 	ops = append(ops, &txnbuild.EndSponsoringFutureReserves{
-		SourceAccount: p.MultiSig.Address(),
+		SourceAccount: p.Multisig.Address(),
 	})
 
 	tx, err := txnbuild.NewTransaction(

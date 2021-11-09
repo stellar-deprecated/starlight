@@ -53,7 +53,7 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 	}
 
 	// Ingest the transaction and update channel state if valid.
-	c.ingestTxToUpdateInitiatorMultiSigAccountSequence(tx)
+	c.ingestTxToUpdateInitiatorMultisigAccountSequence(tx)
 
 	err = c.ingestTxToUpdateUnauthorizedCloseAgreement(tx)
 	if err != nil {
@@ -73,19 +73,19 @@ func (c *Channel) IngestTx(txOrderID int64, txXDR, resultXDR, resultMetaXDR stri
 	return nil
 }
 
-func (c *Channel) ingestTxToUpdateInitiatorMultiSigAccountSequence(tx *txnbuild.Transaction) {
+func (c *Channel) ingestTxToUpdateInitiatorMultisigAccountSequence(tx *txnbuild.Transaction) {
 	// If the transaction's source account is not the initiator's multisig
 	// account, return.
-	if tx.SourceAccount().AccountID != c.initiatorMultiSigAccount().Address.Address() {
+	if tx.SourceAccount().AccountID != c.initiatorMultisigAccount().Address.Address() {
 		return
 	}
 
 	// If the transaction is from an earlier sequence number, return.
-	if tx.SourceAccount().Sequence <= c.initiatorMultiSigAccount().SequenceNumber {
+	if tx.SourceAccount().Sequence <= c.initiatorMultisigAccount().SequenceNumber {
 		return
 	}
 
-	c.setInitiatorMultiSigAccountSequence(tx.SourceAccount().Sequence)
+	c.setInitiatorMultisigAccountSequence(tx.SourceAccount().Sequence)
 }
 
 // ingestTxToUpdateUnauthorizedCloseAgreement uses the signatures in the transaction to
@@ -99,7 +99,7 @@ func (c *Channel) ingestTxToUpdateInitiatorMultiSigAccountSequence(tx *txnbuild.
 func (c *Channel) ingestTxToUpdateUnauthorizedCloseAgreement(tx *txnbuild.Transaction) error {
 	// If the transaction's source account is not the initiator's multisig
 	// account, then the transaction is not a part of a close agreement.
-	if tx.SourceAccount().AccountID != c.initiatorMultiSigAccount().Address.Address() {
+	if tx.SourceAccount().AccountID != c.initiatorMultisigAccount().Address.Address() {
 		return nil
 	}
 
@@ -203,15 +203,15 @@ func (c *Channel) ingestTxMetaToUpdateBalances(txOrderID int64, resultMetaXDR st
 			}
 
 			switch ledgerEntryAddress {
-			case c.localMultiSigAccount.Address.Address():
-				if txOrderID > c.localMultiSigAccount.LastSeenTransactionOrderID {
-					c.UpdateLocalMultiSigBalance(ledgerEntryAvailableBalance)
-					c.localMultiSigAccount.LastSeenTransactionOrderID = txOrderID
+			case c.localMultisigAccount.Address.Address():
+				if txOrderID > c.localMultisigAccount.LastSeenTransactionOrderID {
+					c.UpdateLocalMultisigBalance(ledgerEntryAvailableBalance)
+					c.localMultisigAccount.LastSeenTransactionOrderID = txOrderID
 				}
-			case c.remoteMultiSigAccount.Address.Address():
-				if txOrderID > c.remoteMultiSigAccount.LastSeenTransactionOrderID {
-					c.UpdateRemoteMultiSigBalance(ledgerEntryAvailableBalance)
-					c.remoteMultiSigAccount.LastSeenTransactionOrderID = txOrderID
+			case c.remoteMultisigAccount.Address.Address():
+				if txOrderID > c.remoteMultisigAccount.LastSeenTransactionOrderID {
+					c.UpdateRemoteMultisigBalance(ledgerEntryAvailableBalance)
+					c.remoteMultisigAccount.LastSeenTransactionOrderID = txOrderID
 				}
 			}
 		}
@@ -271,8 +271,8 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 
 	// Find multisig account ledger changes. Grabs the latest entry, which gives
 	// the latest ledger entry state.
-	var initiatorMultiSigAccountEntry, responderMultiSigAccountEntry *xdr.AccountEntry
-	var initiatorMultiSigTrustlineEntry, responderMultiSigTrustlineEntry *xdr.TrustLineEntry
+	var initiatorMultisigAccountEntry, responderMultisigAccountEntry *xdr.AccountEntry
+	var initiatorMultisigTrustlineEntry, responderMultisigTrustlineEntry *xdr.TrustLineEntry
 	for _, o := range txMetaV2.Operations {
 		for _, change := range o.Changes {
 			var entry *xdr.LedgerEntry
@@ -290,35 +290,35 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 				if !c.openAgreement.Envelope.Details.Asset.EqualTrustLineAsset(entry.Data.TrustLine.Asset) {
 					continue
 				}
-				if entry.Data.TrustLine.AccountId.Address() == c.initiatorMultiSigAccount().Address.Address() {
-					initiatorMultiSigTrustlineEntry = entry.Data.TrustLine
-				} else if entry.Data.TrustLine.AccountId.Address() == c.responderMultiSigAccount().Address.Address() {
-					responderMultiSigTrustlineEntry = entry.Data.TrustLine
+				if entry.Data.TrustLine.AccountId.Address() == c.initiatorMultisigAccount().Address.Address() {
+					initiatorMultisigTrustlineEntry = entry.Data.TrustLine
+				} else if entry.Data.TrustLine.AccountId.Address() == c.responderMultisigAccount().Address.Address() {
+					responderMultisigTrustlineEntry = entry.Data.TrustLine
 				}
 			case xdr.LedgerEntryTypeAccount:
-				if entry.Data.Account.AccountId.Address() == c.initiatorMultiSigAccount().Address.Address() {
-					initiatorMultiSigAccountEntry = entry.Data.Account
-				} else if entry.Data.Account.AccountId.Address() == c.responderMultiSigAccount().Address.Address() {
-					responderMultiSigAccountEntry = entry.Data.Account
+				if entry.Data.Account.AccountId.Address() == c.initiatorMultisigAccount().Address.Address() {
+					initiatorMultisigAccountEntry = entry.Data.Account
+				} else if entry.Data.Account.AccountId.Address() == c.responderMultisigAccount().Address.Address() {
+					responderMultisigAccountEntry = entry.Data.Account
 				}
 			}
 		}
 	}
 
 	// Validate both multisig accounts have been updated.
-	if initiatorMultiSigAccountEntry == nil || responderMultiSigAccountEntry == nil {
+	if initiatorMultisigAccountEntry == nil || responderMultisigAccountEntry == nil {
 		c.openExecutedWithError = fmt.Errorf("could not find an updated ledger entry for both multisig accounts")
 		return nil
 	}
 
 	// Validate the initiator multisig account sequence number is correct.
-	if int64(initiatorMultiSigAccountEntry.SeqNum) != openTx.SequenceNumber() {
+	if int64(initiatorMultisigAccountEntry.SeqNum) != openTx.SequenceNumber() {
 		c.openExecutedWithError = fmt.Errorf("incorrect initiator multisig account sequence number found, found: %d want: %d",
-			int64(initiatorMultiSigAccountEntry.SeqNum), openTx.SequenceNumber())
+			int64(initiatorMultisigAccountEntry.SeqNum), openTx.SequenceNumber())
 		return nil
 	}
 
-	multisigAccounts := [2]*xdr.AccountEntry{initiatorMultiSigAccountEntry, responderMultiSigAccountEntry}
+	multisigAccounts := [2]*xdr.AccountEntry{initiatorMultisigAccountEntry, responderMultisigAccountEntry}
 	for _, ea := range multisigAccounts {
 		// Validate the multisig account thresholds are equal to the number of
 		// signers so that all signers are required to sign all transactions.
@@ -354,7 +354,7 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 
 	// Validate the required trustlines are correct for a non-native channel.
 	if !c.openAgreement.Envelope.Details.Asset.IsNative() {
-		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorMultiSigTrustlineEntry, responderMultiSigTrustlineEntry}
+		trustlineEntries := [2]*xdr.TrustLineEntry{initiatorMultisigTrustlineEntry, responderMultisigTrustlineEntry}
 		for _, te := range trustlineEntries {
 			// Validate trustline exists.
 			if te == nil {

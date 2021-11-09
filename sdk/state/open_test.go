@@ -114,16 +114,16 @@ func TestOpenEnvelope_Equal(t *testing.T) {
 func TestProposeOpen_validAsset(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	sendingChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	_, err := sendingChannel.ProposeOpen(OpenParams{
 		Asset:            NativeAsset,
@@ -137,8 +137,8 @@ func TestProposeOpen_validAsset(t *testing.T) {
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	_, err = sendingChannel.ProposeOpen(OpenParams{
 		Asset:            "ABCD:GCSZIQEYTDI427C2XCCIWAGVHOIZVV2XKMRELUTUVKOODNZWSR2OLF6P",
@@ -151,16 +151,16 @@ func TestProposeOpen_validAsset(t *testing.T) {
 func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	channel.openAgreement = OpenAgreement{
 		Envelope: OpenEnvelope{
@@ -198,8 +198,8 @@ func TestConfirmOpen_rejectsDifferentOpenAgreements(t *testing.T) {
 func TestConfirmOpen_rejectsOpenAgreementsWithLongOpen(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
@@ -207,8 +207,8 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongOpen(t *testing.T) {
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 
 	_, err := channel.ConfirmOpen(OpenEnvelope{Details: OpenDetails{
@@ -223,8 +223,8 @@ func TestConfirmOpen_rejectsOpenAgreementsWithLongOpen(t *testing.T) {
 func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	// Given a channel with observation periods set to 1.
 	responderChannel := NewChannel(Config{
@@ -232,8 +232,8 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 		Initiator:             false,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 	initiatorChannel := NewChannel(Config{
@@ -241,8 +241,8 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 		Initiator:             true,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 
@@ -385,16 +385,16 @@ func TestChannel_ConfirmOpen_signatureChecks(t *testing.T) {
 func TestChannel_OpenTx(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	channel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 	})
 	oe := OpenEnvelope{
 		Details: OpenDetails{
@@ -440,7 +440,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	// Check stored txs are used by replacing the stored tx with an identifiable
 	// tx and checking that's what is used.
 	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: localMultiSigAccount.Address(), Sequence: 123456789},
+		SourceAccount: &txnbuild.SimpleAccount{AccountID: localMultisigAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
 		Timebounds:    txnbuild.NewInfiniteTimeout(),
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
@@ -457,16 +457,16 @@ func TestChannel_OpenTx(t *testing.T) {
 func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpened(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 	responderChannel := NewChannel(Config{
@@ -474,8 +474,8 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpe
 		Initiator:             false,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 
@@ -516,8 +516,8 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpe
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   localSigner.Address(),
 			ResponderSigner:   remoteSigner.Address(),
-			InitiatorMultiSig: localMultiSigAccount.Address(),
-			ResponderMultiSig: remoteMultiSigAccount.Address(),
+			InitiatorMultisig: localMultisigAccount.Address(),
+			ResponderMultisig: remoteMultisigAccount.Address(),
 			StartSequence:     101,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -552,16 +552,16 @@ func TestChannel_ProposeAndConfirmOpen_rejectIfChannelAlreadyOpeningOrAlreadyOpe
 func TestChannel_OpenAndPayment_sequenceOverflow(t *testing.T) {
 	localSigner := keypair.MustRandom()
 	remoteSigner := keypair.MustRandom()
-	localMultiSigAccount := keypair.MustRandom().FromAddress()
-	remoteMultiSigAccount := keypair.MustRandom().FromAddress()
+	localMultisigAccount := keypair.MustRandom().FromAddress()
+	remoteMultisigAccount := keypair.MustRandom().FromAddress()
 
 	initiatorChannel := NewChannel(Config{
 		NetworkPassphrase:     network.TestNetworkPassphrase,
 		Initiator:             true,
 		LocalSigner:           localSigner,
 		RemoteSigner:          remoteSigner.FromAddress(),
-		LocalMultiSigAccount:  localMultiSigAccount,
-		RemoteMultiSigAccount: remoteMultiSigAccount,
+		LocalMultisigAccount:  localMultisigAccount,
+		RemoteMultisigAccount: remoteMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 	responderChannel := NewChannel(Config{
@@ -569,8 +569,8 @@ func TestChannel_OpenAndPayment_sequenceOverflow(t *testing.T) {
 		Initiator:             false,
 		LocalSigner:           remoteSigner,
 		RemoteSigner:          localSigner.FromAddress(),
-		LocalMultiSigAccount:  remoteMultiSigAccount,
-		RemoteMultiSigAccount: localMultiSigAccount,
+		LocalMultisigAccount:  remoteMultisigAccount,
+		RemoteMultisigAccount: localMultisigAccount,
 		MaxOpenExpiry:         2 * time.Hour,
 	})
 
@@ -620,8 +620,8 @@ func TestChannel_OpenAndPayment_sequenceOverflow(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   localSigner.Address(),
 			ResponderSigner:   remoteSigner.Address(),
-			InitiatorMultiSig: localMultiSigAccount.Address(),
-			ResponderMultiSig: remoteMultiSigAccount.Address(),
+			InitiatorMultisig: localMultisigAccount.Address(),
+			ResponderMultisig: remoteMultisigAccount.Address(),
 			StartSequence:     math.MaxInt64 - 3,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -640,7 +640,7 @@ func TestChannel_OpenAndPayment_sequenceOverflow(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, StateOpen, cs)
 	}
-	initiatorChannel.UpdateLocalMultiSigBalance(200)
+	initiatorChannel.UpdateLocalMultisigBalance(200)
 
 	// Proposing Payment that pushes the sequence number over max int64 should error.
 	_, err = initiatorChannel.ProposePayment(10)

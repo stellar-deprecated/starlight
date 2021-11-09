@@ -75,8 +75,8 @@ func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error
 type OpenResultMetaParams struct {
 	InitiatorSigner   string
 	ResponderSigner   string
-	InitiatorMultiSig string
-	ResponderMultiSig string
+	InitiatorMultisig string
+	ResponderMultisig string
 	StartSequence     int64
 	Asset             txnbuild.Asset
 }
@@ -86,7 +86,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 		{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(params.InitiatorMultiSig),
+				AccountId: xdr.MustAddress(params.InitiatorMultisig),
 				SeqNum:    xdr.SequenceNumber(params.StartSequence),
 				Signers: []xdr.Signer{
 					{
@@ -104,7 +104,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 		{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(params.ResponderMultiSig),
+				AccountId: xdr.MustAddress(params.ResponderMultisig),
 				SeqNum:    xdr.SequenceNumber(1),
 				Signers: []xdr.Signer{
 					{
@@ -126,7 +126,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(params.InitiatorMultiSig),
+					AccountId: xdr.MustAddress(params.InitiatorMultisig),
 					Balance:   0,
 					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
@@ -135,7 +135,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(params.ResponderMultiSig),
+					AccountId: xdr.MustAddress(params.ResponderMultisig),
 					Balance:   0,
 					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),

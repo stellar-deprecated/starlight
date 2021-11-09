@@ -13,7 +13,7 @@ type ErrorEvent struct {
 
 // ConnectedEvent occurs when the agent is connected to another participant.
 type ConnectedEvent struct {
-	MultiSigAccount *keypair.FromAddress
+	MultisigAccount *keypair.FromAddress
 	Signer          *keypair.FromAddress
 }
 

@@ -20,8 +20,8 @@ import (
 type Participant struct {
 	Name                   string
 	KP                     *keypair.Full
-	MultiSig               *keypair.Full
-	MultiSigSequenceNumber int64
+	Multisig               *keypair.Full
+	MultisigSequenceNumber int64
 	Contribution           int64 // The contribution of the asset that will be used for payments
 }
 
@@ -47,7 +47,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	closeTxs := []*txnbuild.Transaction{}
 	declarationTxs := []*txnbuild.Transaction{}
 
-	s := initiator.MultiSigSequenceNumber + 1
+	s := initiator.MultisigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -122,8 +122,8 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   initiator.KP.Address(),
 			ResponderSigner:   responder.KP.Address(),
-			InitiatorMultiSig: initiator.MultiSig.Address(),
-			ResponderMultiSig: responder.MultiSig.Address(),
+			InitiatorMultisig: initiator.Multisig.Address(),
+			ResponderMultisig: responder.Multisig.Address(),
 			StartSequence:     s,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -147,10 +147,10 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Iteration", i, "Closes:", txSeqs(closeTxs))
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultisigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultisigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultisigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultisigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -298,15 +298,15 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	}
 
 	// check final multisig fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
-	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Multisig.Address()}
+	responderMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, responderMultiSigResponse.Balances[0].Balance, amount.StringFromInt64(rBalanceCheck))
+	assert.Equal(t, responderMultisigResponse.Balances[0].Balance, amount.StringFromInt64(rBalanceCheck))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
-	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Multisig.Address()}
+	initiatorMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, initiatorMultiSigResponse.Balances[0].Balance, amount.StringFromInt64(iBalanceCheck))
+	assert.Equal(t, initiatorMultisigResponse.Balances[0].Balance, amount.StringFromInt64(iBalanceCheck))
 }
 
 func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
@@ -323,7 +323,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.MultiSigSequenceNumber + 1
+	s := initiator.MultisigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -393,8 +393,8 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   initiator.KP.Address(),
 			ResponderSigner:   responder.KP.Address(),
-			InitiatorMultiSig: initiator.MultiSig.Address(),
-			ResponderMultiSig: responder.MultiSig.Address(),
+			InitiatorMultisig: initiator.Multisig.Address(),
+			ResponderMultisig: responder.Multisig.Address(),
 			StartSequence:     s,
 			Asset:             txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
@@ -415,10 +415,10 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultisigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultisigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultisigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultisigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -513,15 +513,15 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	t.Log("Coordinated close successful")
 
 	// check final multisig fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
-	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Multisig.Address()}
+	responderMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultiSigResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultisigResponse))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
-	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Multisig.Address()}
+	initiatorMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultiSigResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultisigResponse))
 }
 
 func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
@@ -538,7 +538,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.MultiSigSequenceNumber + 1
+	s := initiator.MultisigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -610,8 +610,8 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   initiator.KP.Address(),
 			ResponderSigner:   responder.KP.Address(),
-			InitiatorMultiSig: initiator.MultiSig.Address(),
-			ResponderMultiSig: responder.MultiSig.Address(),
+			InitiatorMultisig: initiator.Multisig.Address(),
+			ResponderMultisig: responder.Multisig.Address(),
 			StartSequence:     s,
 			Asset:             txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
@@ -632,10 +632,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultisigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultisigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultisigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultisigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -731,15 +731,15 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	t.Log("Coordinated close successful")
 
 	// check final multisig fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
-	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Multisig.Address()}
+	responderMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultiSigResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultisigResponse))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
-	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Multisig.Address()}
+	initiatorMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultiSigResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultisigResponse))
 }
 
 func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.T) {
@@ -756,7 +756,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.MultiSigSequenceNumber + 1
+	s := initiator.MultisigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -827,8 +827,8 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   initiator.KP.Address(),
 			ResponderSigner:   responder.KP.Address(),
-			InitiatorMultiSig: initiator.MultiSig.Address(),
-			ResponderMultiSig: responder.MultiSig.Address(),
+			InitiatorMultisig: initiator.Multisig.Address(),
+			ResponderMultisig: responder.Multisig.Address(),
 			StartSequence:     s,
 			Asset:             txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
@@ -849,10 +849,10 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultisigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultisigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultisigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultisigBalance(initiator.Contribution)
 
 	// Perform a number of iterations, much like two participants may.
 	// Exchange signed C_i and D_i for each
@@ -948,15 +948,15 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	t.Log("Coordinated close successful")
 
 	// check final multisig fund amounts are correct
-	accountRequest := horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()}
-	responderMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest := horizonclient.AccountRequest{AccountID: responder.Multisig.Address()}
+	responderMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultiSigResponse))
+	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderMultisigResponse))
 
-	accountRequest = horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()}
-	initiatorMultiSigResponse, err := client.AccountDetail(accountRequest)
+	accountRequest = horizonclient.AccountRequest{AccountID: initiator.Multisig.Address()}
+	initiatorMultisigResponse, err := client.AccountDetail(accountRequest)
 	require.NoError(t, err)
-	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultiSigResponse))
+	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorMultisigResponse))
 }
 
 func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
@@ -977,7 +977,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	})
 	initiatorChannel, responderChannel := initChannels(t, initiator, responder)
 
-	s := initiator.MultiSigSequenceNumber + 1
+	s := initiator.MultisigSequenceNumber + 1
 	i := int64(1)
 	e := int64(0)
 	t.Log("Vars: s:", s, "i:", i, "e:", e)
@@ -1023,8 +1023,8 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:   initiator.KP.Address(),
 			ResponderSigner:   responder.KP.Address(),
-			InitiatorMultiSig: initiator.MultiSig.Address(),
-			ResponderMultiSig: responder.MultiSig.Address(),
+			InitiatorMultisig: initiator.Multisig.Address(),
+			ResponderMultisig: responder.Multisig.Address(),
 			StartSequence:     s,
 			Asset:             txnbuild.NativeAsset{},
 		})
@@ -1045,10 +1045,10 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	}
 
 	// Update balances known for each other.
-	initiatorChannel.UpdateLocalMultiSigBalance(initiator.Contribution)
-	initiatorChannel.UpdateRemoteMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateLocalMultiSigBalance(responder.Contribution)
-	responderChannel.UpdateRemoteMultiSigBalance(initiator.Contribution)
+	initiatorChannel.UpdateLocalMultisigBalance(initiator.Contribution)
+	initiatorChannel.UpdateRemoteMultisigBalance(responder.Contribution)
+	responderChannel.UpdateLocalMultisigBalance(responder.Contribution)
+	responderChannel.UpdateRemoteMultisigBalance(initiator.Contribution)
 
 	// Perform a transaction.
 	{
@@ -1181,13 +1181,13 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	// Check the final state of the multisig accounts.
 	{
 		// Initiator should be down 10 (0.0000010).
-		initiatorMultiSigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.MultiSig.Address()})
+		initiatorMultisigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.Multisig.Address()})
 		require.NoError(t, err)
-		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorMultiSigResponse))
+		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorMultisigResponse))
 
 		// Responder should be up 10 (0.0000010).
-		responderMultiSigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.MultiSig.Address()})
+		responderMultisigResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.Multisig.Address()})
 		require.NoError(t, err)
-		assert.Equal(t, "1000.0000010", assetBalance(asset, responderMultiSigResponse))
+		assert.Equal(t, "1000.0000010", assetBalance(asset, responderMultisigResponse))
 	}
 }

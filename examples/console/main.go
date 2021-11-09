@@ -42,7 +42,7 @@ func main() {
 
 var (
 	asset                = state.Asset("")
-	otherMultiSigAccount = (*keypair.FromAddress)(nil)
+	otherMultisigAccount = (*keypair.FromAddress)(nil)
 	closeAgreements      = []state.CloseAgreement{}
 )
 
@@ -133,7 +133,7 @@ func run() error {
 			case agentpkg.ErrorEvent:
 				fmt.Fprintf(os.Stderr, "error: %v\n", e.Err)
 			case agentpkg.ConnectedEvent:
-				otherMultiSigAccount = e.MultiSigAccount
+				otherMultisigAccount = e.MultisigAccount
 				fmt.Fprintf(os.Stderr, "connected\n")
 			case agentpkg.OpenedEvent:
 				asset = e.OpenAgreement.Envelope.Details.Asset
@@ -221,8 +221,8 @@ func run() error {
 			BalanceCollector:           balanceCollector,
 			Submitter:                  submitter,
 			Streamer:                   streamer,
-			MultiSigAccountKey:         multisigKey,
-			MultiSigAccountSigner:      signerKey,
+			MultisigAccountKey:         multisigKey,
+			MultisigAccountSigner:      signerKey,
 			LogWriter:                  io.Discard,
 			Events:                     underlyingEvents,
 		}
@@ -232,14 +232,14 @@ func run() error {
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 				MaxOpenExpiry:              maxOpenExpiry,
-				MultiSigAccountKey:         multisigKey,
+				MultisigAccountKey:         multisigKey,
 			}
 		}
 		underlyingAgent = agentpkg.NewAgent(config)
 
-		tx, err := txbuild.CreateMultiSig(txbuild.CreateMultiSigParams{
+		tx, err := txbuild.CreateMultisig(txbuild.CreateMultisigParams{
 			Creator:        accountKey.FromAddress(),
-			MultiSig:       multisigKey.FromAddress(),
+			Multisig:       multisigKey.FromAddress(),
 			SequenceNumber: accountSeqNum + 1,
 			Asset:          txnbuild.NativeAsset{},
 		})
@@ -258,7 +258,7 @@ func run() error {
 		}
 		fmt.Fprintln(os.Stdout, "multisig created")
 	} else {
-		multisigKey = file.MultiSigAccountKey
+		multisigKey = file.MultisigAccountKey
 		config := agentpkg.Config{
 			ObservationPeriodTime:      file.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
@@ -273,10 +273,10 @@ func run() error {
 				ObservationPeriodTime:      file.ObservationPeriodTime,
 				ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
 				MaxOpenExpiry:              file.MaxOpenExpiry,
-				MultiSigAccountKey:         multisigKey,
+				MultisigAccountKey:         multisigKey,
 			},
-			MultiSigAccountKey:    multisigKey,
-			MultiSigAccountSigner: signerKey,
+			MultisigAccountKey:    multisigKey,
+			MultisigAccountSigner: signerKey,
 			LogWriter:             io.Discard,
 			Events:                underlyingEvents,
 		}
@@ -379,7 +379,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 			depositAmountStr := c.Args[0]
 			destination := multisigAccount
 			if len(c.Args) >= 2 && c.Args[1] != "" {
-				destination = otherMultiSigAccount
+				destination = otherMultisigAccount
 			}
 			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
 			if err != nil {
