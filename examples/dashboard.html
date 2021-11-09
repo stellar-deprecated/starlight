@@ -150,16 +150,16 @@
     const chartUpdate = async (r) => {
       const localSigner = r['Config']['MultiSigAccountSigner'];
       const remoteSigner = r['Snapshot']['OtherMultiSigAccountSigner'];
-      var multiSig;
+      var multisig;
       var signer;
       if (local) {
-        multiSig = r['Config']['MultiSigAccountKey'];
+        multisig = r['Config']['MultiSigAccountKey'];
         signer = localSigner;
       } else {
-        multiSig = r['Snapshot']['OtherMultiSigAccount'];
+        multisig = r['Snapshot']['OtherMultiSigAccount'];
         signer = remoteSigner;
       }
-      const h = await (await fetch(`${horizonUrl}/accounts/${multiSig}`)).json();
+      const h = await (await fetch(`${horizonUrl}/accounts/${multisig}`)).json();
       if (h['last_modified_time'] == lastUpdate) {
         return;
       }

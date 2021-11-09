@@ -94,8 +94,8 @@ func NewAgent(c Config) *Agent {
 		streamer:                c.Streamer,
 		snapshotter:             c.Snapshotter,
 
-		multiSigAccountKey:    c.MultiSigAccountKey,
-		multiSigAccountSigner: c.MultiSigAccountSigner,
+		multisigAccountKey:    c.MultiSigAccountKey,
+		multisigAccountSigner: c.MultiSigAccountSigner,
 
 		logWriter: c.LogWriter,
 
@@ -145,8 +145,8 @@ type Agent struct {
 	streamer                Streamer
 	snapshotter             Snapshotter
 
-	multiSigAccountKey    *keypair.FromAddress
-	multiSigAccountSigner *keypair.Full
+	multisigAccountKey    *keypair.FromAddress
+	multisigAccountSigner *keypair.Full
 
 	logWriter io.Writer
 
@@ -181,8 +181,8 @@ func (a *Agent) Config() Config {
 		Streamer:                a.streamer,
 		Snapshotter:             a.snapshotter,
 
-		MultiSigAccountKey:    a.multiSigAccountKey,
-		MultiSigAccountSigner: a.multiSigAccountSigner,
+		MultiSigAccountKey:    a.multisigAccountKey,
+		MultiSigAccountSigner: a.multisigAccountSigner,
 
 		LogWriter: a.logWriter,
 
@@ -232,8 +232,8 @@ func (a *Agent) hello() error {
 	err := enc.Encode(msg.Message{
 		Type: msg.TypeHello,
 		Hello: &msg.Hello{
-			MultiSigAccount: *a.multiSigAccountKey,
-			Signer:          *a.multiSigAccountSigner.FromAddress(),
+			MultiSigAccount: *a.multisigAccountKey,
+			Signer:          *a.multisigAccountSigner.FromAddress(),
 		},
 	})
 	if err != nil {
@@ -247,9 +247,9 @@ func (a *Agent) initChannel(initiator bool, snapshot *state.Snapshot) {
 		NetworkPassphrase:     a.networkPassphrase,
 		MaxOpenExpiry:         a.maxOpenExpiry,
 		Initiator:             initiator,
-		LocalMultiSigAccount:  a.multiSigAccountKey,
+		LocalMultiSigAccount:  a.multisigAccountKey,
 		RemoteMultiSigAccount: a.otherMultiSigAccount,
-		LocalSigner:           a.multiSigAccountSigner,
+		LocalSigner:           a.multisigAccountSigner,
 		RemoteSigner:          a.otherMultiSigAccountSigner,
 	}
 	if snapshot == nil {
@@ -274,7 +274,7 @@ func (a *Agent) Open(asset state.Asset) error {
 		return fmt.Errorf("channel already exists")
 	}
 
-	seqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.multiSigAccountKey)
+	seqNum, err := a.sequenceNumberCollector.GetSequenceNumber(a.multisigAccountKey)
 	if err != nil {
 		return fmt.Errorf("getting sequence number of multisig account: %w", err)
 	}

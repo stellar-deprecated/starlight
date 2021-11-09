@@ -185,7 +185,7 @@ func run() error {
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
 
-	var multiSigKey *keypair.FromAddress
+	var multisigKey *keypair.FromAddress
 	var underlyingAgent *agentpkg.Agent
 	underlyingEvents := make(chan interface{})
 	if file == nil {
@@ -206,11 +206,11 @@ func run() error {
 			return err
 		}
 
-		multiSigKeyFull := keypair.MustRandom()
-		multiSigKey = multiSigKeyFull.FromAddress()
+		multisigKeyFull := keypair.MustRandom()
+		multisigKey = multisigKeyFull.FromAddress()
 		fmt.Fprintln(os.Stdout, "waiting before creating multisig")
 		time.Sleep(5 * time.Second)
-		fmt.Fprintln(os.Stdout, "multisig account:", multiSigKey.Address())
+		fmt.Fprintln(os.Stdout, "multisig account:", multisigKey.Address())
 
 		config := agentpkg.Config{
 			ObservationPeriodTime:      observationPeriodTime,
@@ -221,7 +221,7 @@ func run() error {
 			BalanceCollector:           balanceCollector,
 			Submitter:                  submitter,
 			Streamer:                   streamer,
-			MultiSigAccountKey:         multiSigKey,
+			MultiSigAccountKey:         multisigKey,
 			MultiSigAccountSigner:      signerKey,
 			LogWriter:                  io.Discard,
 			Events:                     underlyingEvents,
@@ -232,21 +232,21 @@ func run() error {
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 				MaxOpenExpiry:              maxOpenExpiry,
-				MultiSigAccountKey:         multiSigKey,
+				MultiSigAccountKey:         multisigKey,
 			}
 		}
 		underlyingAgent = agentpkg.NewAgent(config)
 
 		tx, err := txbuild.CreateMultiSig(txbuild.CreateMultiSigParams{
 			Creator:        accountKey.FromAddress(),
-			MultiSig:       multiSigKey.FromAddress(),
+			MultiSig:       multisigKey.FromAddress(),
 			SequenceNumber: accountSeqNum + 1,
 			Asset:          txnbuild.NativeAsset{},
 		})
 		if err != nil {
 			return fmt.Errorf("creating multisig account tx: %w", err)
 		}
-		tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, multiSigKeyFull)
+		tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, multisigKeyFull)
 		if err != nil {
 			return fmt.Errorf("signing tx to create multisig account: %w", err)
 		}
@@ -258,7 +258,7 @@ func run() error {
 		}
 		fmt.Fprintln(os.Stdout, "multisig created")
 	} else {
-		multiSigKey = file.MultiSigAccountKey
+		multisigKey = file.MultiSigAccountKey
 		config := agentpkg.Config{
 			ObservationPeriodTime:      file.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
@@ -273,9 +273,9 @@ func run() error {
 				ObservationPeriodTime:      file.ObservationPeriodTime,
 				ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
 				MaxOpenExpiry:              file.MaxOpenExpiry,
-				MultiSigAccountKey:         multiSigKey,
+				MultiSigAccountKey:         multisigKey,
 			},
-			MultiSigAccountKey:    multiSigKey,
+			MultiSigAccountKey:    multisigKey,
 			MultiSigAccountSigner: signerKey,
 			LogWriter:             io.Discard,
 			Events:                underlyingEvents,
@@ -323,7 +323,7 @@ func run() error {
 		}
 	}
 
-	err = runShell(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, multiSigKey, signerKey)
+	err = runShell(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, multisigKey, signerKey)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "error: %#v\n", err)
 	}
@@ -331,7 +331,7 @@ func run() error {
 	return nil
 }
 
-func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, multiSigAccount *keypair.FromAddress, signer *keypair.Full) (err error) {
+func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, multisigAccount *keypair.FromAddress, signer *keypair.Full) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -377,7 +377,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 		Help: "deposit <amount> - deposit asset into multisig account",
 		Func: func(c *ishell.Context) {
 			depositAmountStr := c.Args[0]
-			destination := multiSigAccount
+			destination := multisigAccount
 			if len(c.Args) >= 2 && c.Args[1] != "" {
 				destination = otherMultiSigAccount
 			}

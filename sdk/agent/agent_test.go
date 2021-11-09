@@ -72,8 +72,8 @@ func assertAgentSnapshotsAndRestores(t *testing.T, agent *Agent, config Config, 
 	assert.Equal(t, agent.observationPeriodLedgerGap, restoredAgent.observationPeriodLedgerGap)
 	assert.Equal(t, agent.maxOpenExpiry, restoredAgent.maxOpenExpiry)
 	assert.Equal(t, agent.networkPassphrase, restoredAgent.networkPassphrase)
-	assert.Equal(t, agent.multiSigAccountKey, restoredAgent.multiSigAccountKey)
-	assert.Equal(t, agent.multiSigAccountSigner, restoredAgent.multiSigAccountSigner)
+	assert.Equal(t, agent.multisigAccountKey, restoredAgent.multisigAccountKey)
+	assert.Equal(t, agent.multisigAccountSigner, restoredAgent.multisigAccountSigner)
 	assert.Equal(t, agent.otherMultiSigAccount, restoredAgent.otherMultiSigAccount)
 	assert.Equal(t, agent.otherMultiSigAccountSigner, restoredAgent.otherMultiSigAccountSigner)
 	assert.Equal(t, agent.channel, restoredAgent.channel)
@@ -217,12 +217,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Extra hellos with wrong data raise an error.
 	incorrectMultiSig := keypair.MustRandom().FromAddress()
-	localAgent.multiSigAccountKey = incorrectMultiSig
+	localAgent.multisigAccountKey = incorrectMultiSig
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.EqualError(t, err, "handling message: handling message 10: hello received with unexpected multisig account: "+incorrectMultiSig.Address()+" expected: "+localMultiSig.Address())
-	localAgent.multiSigAccountKey = localMultiSig
+	localAgent.multisigAccountKey = localMultiSig
 
 	// Expect error event.
 	{
@@ -233,12 +233,12 @@ func TestAgent_openPaymentClose(t *testing.T) {
 
 	// Extra hellos with wrong data raise an error.
 	incorrectSigner := keypair.MustRandom()
-	localAgent.multiSigAccountSigner = incorrectSigner
+	localAgent.multisigAccountSigner = incorrectSigner
 	err = localAgent.hello()
 	require.NoError(t, err)
 	err = remoteAgent.receive()
 	require.EqualError(t, err, "handling message: handling message 10: hello received with unexpected signer: "+incorrectSigner.Address()+" expected: "+localSigner.Address())
-	localAgent.multiSigAccountSigner = localSigner
+	localAgent.multisigAccountSigner = localSigner
 
 	// Expect error event.
 	{
@@ -514,8 +514,8 @@ func TestAgent_concurrency(t *testing.T) {
 		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return localVars.transactionsStream, func() {}
 		}),
-		multiSigAccountKey:    localMultiSig.FromAddress(),
-		multiSigAccountSigner: localSigner,
+		multisigAccountKey:    localMultiSig.FromAddress(),
+		multisigAccountSigner: localSigner,
 		logWriter:             io.Discard,
 	}
 
@@ -543,8 +543,8 @@ func TestAgent_concurrency(t *testing.T) {
 		streamer: streamerFunc(func(cursor string, accounts ...*keypair.FromAddress) (transactions <-chan StreamedTransaction, cancel func()) {
 			return remoteVars.transactionsStream, func() {}
 		}),
-		multiSigAccountKey:    remoteMultiSig.FromAddress(),
-		multiSigAccountSigner: remoteSigner,
+		multisigAccountKey:    remoteMultiSig.FromAddress(),
+		multisigAccountSigner: remoteSigner,
 		logWriter:             io.Discard,
 	}
 

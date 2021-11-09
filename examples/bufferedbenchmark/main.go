@@ -82,7 +82,7 @@ func run() error {
 	}
 
 	accountKey := keypair.MustRandom()
-	multiSigAccountKey := keypair.MustRandom()
+	multisigAccountKey := keypair.MustRandom()
 
 	horizonClient := &horizonclient.Client{HorizonURL: horizonURL}
 	networkDetails, err := horizonClient.Root()
@@ -111,8 +111,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "creating multisig account %s with network root\n", multiSigAccountKey.Address())
-	err = createAccountWithSignerWithRoot(horizonClient, networkDetails.NetworkPassphrase, multiSigAccountKey, accountKey.FromAddress())
+	fmt.Fprintf(os.Stdout, "creating multisig account %s with network root\n", multisigAccountKey.Address())
+	err = createAccountWithSignerWithRoot(horizonClient, networkDetails.NetworkPassphrase, multisigAccountKey, accountKey.FromAddress())
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func run() error {
 		BalanceCollector:           balanceCollector,
 		Submitter:                  submitter,
 		Streamer:                   streamer,
-		MultiSigAccountKey:         multiSigAccountKey.FromAddress(),
+		MultiSigAccountKey:         multisigAccountKey.FromAddress(),
 		MultiSigAccountSigner:      accountKey,
 		LogWriter:                  io.Discard,
 		Events:                     underlyingEvents,

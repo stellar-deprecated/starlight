@@ -528,7 +528,7 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 	require.NoError(t, err)
 
 	type TestCase struct {
-		multiSigAccount   *keypair.FromAddress
+		multisigAccount   *keypair.FromAddress
 		balance           xdr.Int64
 		buying            xdr.Int64
 		wantBalanceLocal  int64
@@ -559,7 +559,7 @@ func TestChannel_IngestTx_updateBalancesNative_withLiabilities(t *testing.T) {
 			{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId: xdr.MustAddress(tc.multiSigAccount.Address()),
+					AccountId: xdr.MustAddress(tc.multisigAccount.Address()),
 					Balance:   tc.balance,
 					Ext:       ale,
 				},
@@ -625,7 +625,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 	require.NoError(t, err)
 
 	type TestCase struct {
-		multiSigAccount   *keypair.FromAddress
+		multisigAccount   *keypair.FromAddress
 		trustLineBalance  xdr.Int64
 		selling           xdr.Int64
 		wantBalanceLocal  int64
@@ -656,7 +656,7 @@ func TestChannel_IngestTx_updateBalancesNonNative_withLiabilities(t *testing.T) 
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(tc.multiSigAccount.Address()),
+					AccountId: xdr.MustAddress(tc.multisigAccount.Address()),
 					Asset:     xdr.MustNewCreditAsset(asset.Code(), asset.Issuer()).ToTrustLineAsset(),
 					Balance:   tc.trustLineBalance,
 					Ext:       tle,

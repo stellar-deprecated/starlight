@@ -318,8 +318,8 @@ func (c *Channel) ingestOpenTx(tx *txnbuild.Transaction, resultXDR string, resul
 		return nil
 	}
 
-	multiSigAccounts := [2]*xdr.AccountEntry{initiatorMultiSigAccountEntry, responderMultiSigAccountEntry}
-	for _, ea := range multiSigAccounts {
+	multisigAccounts := [2]*xdr.AccountEntry{initiatorMultiSigAccountEntry, responderMultiSigAccountEntry}
+	for _, ea := range multisigAccounts {
 		// Validate the multisig account thresholds are equal to the number of
 		// signers so that all signers are required to sign all transactions.
 		// Thresholds are: Master Key, Low, Medium, High.
