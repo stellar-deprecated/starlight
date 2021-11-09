@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/starlight/sdk/txbuild"
 )
 
+// OpenDetails contain the details participants agree on for opening a channel.
 type OpenDetails struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -21,6 +22,7 @@ type OpenDetails struct {
 	ConfirmingSigner           *keypair.FromAddress
 }
 
+// Equal returns true if two OpenDetails objects are equal, else false.
 func (d OpenDetails) Equal(d2 OpenDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
@@ -31,20 +33,27 @@ func (d OpenDetails) Equal(d2 OpenDetails) bool {
 		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
 }
 
+// OpenSignatures contains a possible signature for each type of Starlight
+// transaction.
 type OpenSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
 	Open        xdr.Signature
 }
 
+// Empty returns true if the OpenSignatures object does not have a signature for
+// each Starlight transaction type, else false.
 func (oas OpenSignatures) Empty() bool {
 	return len(oas.Declaration) == 0 && len(oas.Close) == 0 && len(oas.Open) == 0
 }
 
+// HasAllSignatures returns true if the OpenSignatures object has a signature
+// for each Starlight transaction type, else false.
 func (oas OpenSignatures) HasAllSignatures() bool {
 	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Open) != 0
 }
 
+// Equal returns true if two OpenSignatures objects are equal, else false.
 func (oas OpenSignatures) Equal(oas2 OpenSignatures) bool {
 	return bytes.Equal(oas.Open, oas2.Open) &&
 		bytes.Equal(oas.Declaration, oas2.Declaration) &&
@@ -67,6 +76,8 @@ func signOpenAgreementTxs(txs OpenTransactions, closeTxs CloseTransactions, sign
 	return s, nil
 }
 
+// Verify returns true if the given open and close transactions, signed by the
+// given signer, resulted in these OpenSignatures, else false.
 func (s OpenSignatures) Verify(txs OpenTransactions, closeTxs CloseTransactions, signer *keypair.FromAddress) error {
 	err := signer.Verify(closeTxs.DeclarationHash[:], s.Declaration)
 	if err != nil {
@@ -90,12 +101,15 @@ type OpenTransactions struct {
 	Open     *txnbuild.Transaction
 }
 
+// OpenEnvelope wraps the details and signatures that are part of an open
+// agreement.
 type OpenEnvelope struct {
 	Details             OpenDetails
 	ProposerSignatures  OpenSignatures
 	ConfirmerSignatures OpenSignatures
 }
 
+// Empty returns true if the OpenEnvelope has no data, else false.
 func (oa OpenEnvelope) Empty() bool {
 	return oa.Equal(OpenEnvelope{})
 }
@@ -106,12 +120,15 @@ func (oa OpenEnvelope) HasAllSignatures() bool {
 	return oa.ProposerSignatures.HasAllSignatures() && oa.ConfirmerSignatures.HasAllSignatures()
 }
 
+// Equal returns true if two OpenEnvelope objects are equal, else false.
 func (oa OpenEnvelope) Equal(oa2 OpenEnvelope) bool {
 	return oa.Details.Equal(oa2.Details) &&
 		oa.ProposerSignatures.Equal(oa2.ProposerSignatures) &&
 		oa.ConfirmerSignatures.Equal(oa2.ConfirmerSignatures)
 }
 
+// SignaturesFor returns the signatures currently held for the given signer, if
+// any.
 func (oa OpenEnvelope) SignaturesFor(signer *keypair.FromAddress) *OpenSignatures {
 	if oa.Details.ProposingSigner.Equal(signer) {
 		return &oa.ProposerSignatures
@@ -152,6 +169,8 @@ type OpenAgreement struct {
 	CloseTransactions CloseTransactions
 }
 
+// CloseAgreement returns the initial close agreement created at the channel
+// open.
 func (oa OpenAgreement) CloseAgreement() CloseAgreement {
 	return CloseAgreement{
 		Envelope:     oa.Envelope.CloseEnvelope(),
@@ -159,6 +178,8 @@ func (oa OpenAgreement) CloseAgreement() CloseAgreement {
 	}
 }
 
+// SignedTransactions returns the OpenTransactions with added signatures
+// from the OpenAgreement's Envelope.
 func (oa OpenAgreement) SignedTransactions() OpenTransactions {
 	openTx := oa.Transactions.Open
 
@@ -180,7 +201,8 @@ func (oa OpenAgreement) SignedTransactions() OpenTransactions {
 	}
 }
 
-// OpenParams are the parameters selected by the participant proposing an open channel.
+// OpenParams are the parameters selected by the participant proposing an open
+// channel.
 type OpenParams struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -192,7 +214,7 @@ type OpenParams struct {
 // openTxs builds the transactions that embody the open agreement that can be
 // submitted to open the channel with the state defined in the
 // OpenAgreementDetails, and includes the first close agreement transactions. If
-// the channel has previous build the open transactions then it will return
+// the channel has previously built the open transactions then it will return
 // those previously built transactions, otherwise the transactions will be built
 // from scratch.
 func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, closeTxs CloseTransactions, err error) {
