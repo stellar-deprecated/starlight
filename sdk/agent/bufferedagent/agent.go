@@ -58,7 +58,7 @@ func NewAgent(c Config) *Agent {
 	return agent
 }
 
-// BufferedAgent coordinates a payment channel over a TCP connection, and
+// Agent coordinates a payment channel over a TCP connection, and
 // buffers payments by collapsing them down into single payments while it waits
 // for a chance to make the next payment.
 //
