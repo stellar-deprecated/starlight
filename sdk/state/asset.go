@@ -19,7 +19,7 @@ func (a Asset) IsNative() bool {
 	return a.Asset().IsNative()
 }
 
-// Code returns the asset code.
+// Code returns the asset code of credit assets.
 func (a Asset) Code() string {
 	return a.Asset().GetCode()
 }
