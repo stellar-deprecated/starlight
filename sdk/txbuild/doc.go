@@ -1,4 +1,4 @@
-// Package txbuild houses the functions for creating a Starlight
-// channel, interacting with, and finally closing the channel.
+// Package txbuild houses the functions for creating transasctions
+// to create, interact with, and finally close a Starlight channel.
 
 package txbuild
