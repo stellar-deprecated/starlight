@@ -5,12 +5,17 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/starlight/sdk/agent"
 )
 
+var _ agent.Streamer = &Streamer{}
+
+// Streamer implements the agent's interface for streaming transactions that
+// affect a set of accounts, by using the streaming endpoints of Horizon's API
+// to collect new transactions as they occur.
 type Streamer struct {
 	HorizonClient horizonclient.ClientInterface
 	ErrorHandler  func(error)

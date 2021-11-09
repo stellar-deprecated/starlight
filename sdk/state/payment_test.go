@@ -6,10 +6,10 @@ import (
 	"time"
 
 	fuzz "github.com/google/gofuzz"
-	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/starlight/sdk/txbuild/txbuildtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,10 +31,10 @@ func TestCloseDetails_Equal(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			f := fuzz.New()
-			a := CloseSignatures{}
+			a := CloseDetails{}
 			f.Fuzz(&a)
 			t.Log("a:", a)
-			b := CloseSignatures{}
+			b := CloseDetails{}
 			f.Fuzz(&b)
 			t.Log("b:", b)
 			assert.False(t, a.Equal(b))
@@ -62,10 +62,10 @@ func TestCloseSignatures_Equal(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			f := fuzz.New()
 			a := CloseSignatures{}
-			f.Fuzz(&a)
+			f.NumElements(0, 32).Fuzz(&a)
 			t.Log("a:", a)
 			b := CloseSignatures{}
-			f.Fuzz(&b)
+			f.NilChance(0).NumElements(1, 32).Fuzz(&b)
 			t.Log("b:", b)
 			assert.False(t, a.Equal(b))
 			assert.False(t, b.Equal(a))

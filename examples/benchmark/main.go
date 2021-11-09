@@ -8,13 +8,13 @@ import (
 	"runtime/pprof"
 	"time"
 
-	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
-	"github.com/stellar/experimental-payment-channels/sdk/horizon"
-	"github.com/stellar/experimental-payment-channels/sdk/state"
-	"github.com/stellar/experimental-payment-channels/sdk/submit"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	agentpkg "github.com/stellar/starlight/sdk/agent"
+	"github.com/stellar/starlight/sdk/agent/horizon"
+	"github.com/stellar/starlight/sdk/agent/submit"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 const (

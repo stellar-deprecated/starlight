@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"time"
 
-	agentpkg "github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/go/keypair"
+	agentpkg "github.com/stellar/starlight/sdk/agent"
 )
 
 type File struct {

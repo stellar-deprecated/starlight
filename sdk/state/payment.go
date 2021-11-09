@@ -11,13 +11,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// The high level steps for creating a channel update should be as follows, where the returned payments
-// flow to the next step:
-// 1. Sender calls ProposePayment
-// 2. Receiver calls ConfirmPayment
-// 3. Sender calls ConfirmPayment
-// 4. Receiver calls ConfirmPayment
-
 // CloseDetails contains the details that the participants agree on.
 type CloseDetails struct {
 	ObservationPeriodTime      time.Duration
@@ -34,6 +27,7 @@ type CloseDetails struct {
 	Memo          []byte
 }
 
+// Equal returns true if two CloseDetails are equal, else false.
 func (d CloseDetails) Equal(d2 CloseDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
@@ -45,19 +39,24 @@ func (d CloseDetails) Equal(d2 CloseDetails) bool {
 		bytes.Equal(d.Memo, d2.Memo)
 }
 
+// CloseSignatures holds the signatures for a close agreement.
 type CloseSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
 }
 
+// Empty returns true if there are not any signatures present, else false.
 func (cas CloseSignatures) Empty() bool {
 	return len(cas.Declaration) == 0 && len(cas.Close) == 0
 }
 
+// HasAllSignatures returns true if there is a signature for each transaction
+// type present, else false.
 func (cas CloseSignatures) HasAllSignatures() bool {
 	return len(cas.Close) != 0 && len(cas.Declaration) != 0
 }
 
+// Equal returns true if two CloseSignatures are equal, else false.
 func (cas CloseSignatures) Equal(cas2 CloseSignatures) bool {
 	return bytes.Equal(cas.Declaration, cas2.Declaration) &&
 		bytes.Equal(cas.Close, cas2.Close)
@@ -95,16 +94,20 @@ type CloseEnvelope struct {
 	ConfirmerSignatures CloseSignatures
 }
 
+// Empty returns true if the CloseEnvelope has no data, else false.
 func (ca CloseEnvelope) Empty() bool {
 	return ca.Equal(CloseEnvelope{})
 }
 
+// Equal returns true if two CloseEnvelope are equal, else false.
 func (ca CloseEnvelope) Equal(ca2 CloseEnvelope) bool {
 	return ca.Details.Equal(ca2.Details) &&
 		ca.ProposerSignatures.Equal(ca2.ProposerSignatures) &&
 		ca.ConfirmerSignatures.Equal(ca2.ConfirmerSignatures)
 }
 
+// SignaturesFor returns the signatures currently held for the given signer, if
+// any.
 func (ca CloseEnvelope) SignaturesFor(signer *keypair.FromAddress) *CloseSignatures {
 	if ca.Details.ProposingSigner.Equal(signer) {
 		return &ca.ProposerSignatures

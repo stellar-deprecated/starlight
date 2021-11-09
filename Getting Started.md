@@ -3,18 +3,20 @@
 - [Running a network with CAP-21 and CAP-40](#running-core-and-horizon-with-cap-21-and-cap-40)
 - [Experiment with the prototype Starlight Go SDK](#experiment-with-the-prototype-starlight-go-sdk)
 - [Run the console example application](#run-the-console-example-application)
-- [Manually build transactions](#manually-build-transactions)
+- [Manually inspect or build transactions](#manually-inspect-or-build-transactions)
 
 ## Running a network with CAP-21 and CAP-40
 
 To run a standalone network use the branch of the `stellar/quickstart` docker image:
 
+### Locally
+
 ```
-docker build -t stellar/quickstart:cap21and40 https://github.com/stellar/docker-stellar-core-horizon.git#cap21and40
+docker build -t stellar/quickstart:cap21and40 git://github.com/stellar/docker-stellar-core-horizon#cap21and40
 ```
 
 ```
-docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21and40 --standalone --enable-core-artificially-accelerate-time-for-testing
+docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21and40 --standalone
 ```
 
 The root account of the network will be:
@@ -25,29 +27,43 @@ SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
 
 There is no friendbot, so you'll need to create a transaction funding accounts from the root account.
 
+Test that the network is running by curling the root endpoint:
+
+```
+curl http://localhost:8000
+```
+
+### Deployed
+
+Alternatively, deploy a standalone network to Digital Ocean to develop and test with:
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/stellar/docker-stellar-core-horizon/tree/cap21and40)
+
+The network passphrase will be randomly generated in this case, and you can retrieve it from the logs.
+
+_Reminder:_ The DigitalOcean server is publicly accessible on the Internet. Do not put sensitive information on the network that you would not want someone else to know. Anyone with access to the network will be able to use the root account above.
+
 ## Experiment with the prototype Starlight Go SDK
 
 The `sdk` directory contains the prototype Starlight Go SDK.
 
-### Docs
-
-https://pkg.go.dev/github.com/stellar/starlight/sdk
-
-### Add to your Go project
+Reference: https://pkg.go.dev/github.com/stellar/starlight/sdk
 
 ```
 go get github.com/stellar/starlight/sdk
 ```
 
+See the [console example](https://github.com/stellar/experimental-payment-channels/tree/readme/examples/console) application for an example for how to use the Starlight agent.
+
 ## Run the console example application
 
 The `examples/console` directory contains an example application that operates a payment channel between two participants over a TCP connection. Requires a network to be running with support for CAP-21 and CAP-40.
 
-See the [README](https://github.com/stellar/experimental-payment-channels/tree/readme/examples/console) for more details.
+See the [README](https://github.com/stellar/starlight/tree/readme/examples/console) for more details.
 
-## Manually build transactions
+## Manually inspect or build transactions
 
-You can use `stc` to manually build transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
+You can use `stc` to manually build and inspect transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
 
 ```
 git clone -b cap21 https://github.com/leighmcculloch/xdrpp--stc stc

@@ -7,11 +7,11 @@ import (
 	"time"
 
 	fuzz "github.com/google/gofuzz"
-	"github.com/stellar/experimental-payment-channels/sdk/txbuildtest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
+	"github.com/stellar/starlight/sdk/txbuild/txbuildtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

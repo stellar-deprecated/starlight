@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/msg"
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/starlight/sdk/agent/msg"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 // BalanceCollector gets the balance of an asset for an account.
@@ -61,6 +61,8 @@ type Snapshotter interface {
 	Snapshot(a *Agent, s Snapshot)
 }
 
+// Config contains the information that can be supplied to configure the Agent
+// at construction.
 type Config struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
@@ -81,6 +83,7 @@ type Config struct {
 	Events chan<- interface{}
 }
 
+// NewAgent constructs a new agent with the given config.
 func NewAgent(c Config) *Agent {
 	agent := &Agent{
 		observationPeriodTime:      c.ObservationPeriodTime,
