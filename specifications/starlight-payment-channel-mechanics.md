@@ -729,7 +729,8 @@ proposals.
 
 ## Implementations
 
-TODO: Add implementation.
+Prototype implementation of these mechanics in the `sdk/state` package of:
+https://github.com/stellar/starlight
 
 [CAP-21]: https://stellar.org/protocol/cap-21
 [CAP-33]: https://stellar.org/protocol/cap-33
