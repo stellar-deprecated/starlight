@@ -1,4 +1,4 @@
-module github.com/stellar/experimental-paymentment-channels/examples/bufferedbenchmark
+module github.com/stellar/starlight/examples/bufferedbenchmark
 
 go 1.17
 

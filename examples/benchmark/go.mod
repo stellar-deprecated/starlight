@@ -1,4 +1,4 @@
-module github.com/stellar/experimental-paymentment-channels/examples/benchmark
+module github.com/stellar/starlight/examples/benchmark
 
 go 1.17
 
