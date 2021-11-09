@@ -1,3 +1,11 @@
+// Package submit contains a type and logic for submitting transactions that need to be fee bumped.
+//
+// The Submitter type can be used to wrap any submission logic, and it will
+// check if the transactions fee is below a threshold that indicates it needs to
+// be fee bumped, and if so, it will wrap it in a fee bump transaction before
+// submission.
+//
+// This package is intended for use in example payment channel implementations.
 package submit
 
 import (
