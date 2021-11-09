@@ -19,8 +19,12 @@ import (
 	"github.com/stellar/starlight/sdk/state"
 )
 
+// ErrBufferFull indicates that the payment buffer has reached it's maximum size
+// as configured when the buffered agent was created.
 var ErrBufferFull = errors.New("buffer full")
 
+// Config contains the information that can be supplied to configure the Agent
+// at construction.
 type Config struct {
 	Agent       *agent.Agent
 	AgentEvents <-chan interface{}
@@ -32,6 +36,7 @@ type Config struct {
 	Events chan<- interface{}
 }
 
+// NewAgent constructs a new buffered agent with the given config.
 func NewAgent(c Config) *Agent {
 	agent := &Agent{
 		agent:       c.Agent,
@@ -53,9 +58,12 @@ func NewAgent(c Config) *Agent {
 	return agent
 }
 
-// BufferedAgent coordinates a payment channel over a TCP connection, and
+// Agent coordinates a payment channel over a TCP connection, and
 // buffers payments by collapsing them down into single payments while it waits
-// for a change to make a payment itself.
+// for a chance to make the next payment.
+//
+// All functions of the Agent are safe to call from multiple goroutines as they
+// use an internal mutex.
 type Agent struct {
 	maxbufferSize int
 
@@ -80,26 +88,38 @@ type Agent struct {
 	idle              chan struct{}
 }
 
+// MaxBufferSize returns the maximum buffer size that was configured at
+// construction or changed with SetMaxBufferSize. The maximum buffer size is the
+// maximum number of payments that can be buffered while waiting for the
+// opportunity to include the buffered payments in an agreement.
 func (a *Agent) MaxBufferSize() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.maxbufferSize
 }
 
+// SetMaxBufferSize sets and changes the maximum buffer size.
 func (a *Agent) SetMaxBufferSize(maxbufferSize int) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.maxbufferSize = maxbufferSize
 }
 
+// Open opens the channel for the given asset. The open is coordinated with the
+// other participant. An immediate error may be indicated if the attempt to open
+// was immediately unsuccessful. However, more likely any error will be returned
+// on the events channel as the process involves the other participant.
 func (a *Agent) Open(asset state.Asset) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.agent.Open(asset)
 }
 
-// PaymentWithMemo buffers a payment which will be paid in the next settlement.
-// The identifier for the settlement is returned.
+// PaymentWithMemo buffers a payment which will be paid in the next agreement.
+// The identifier for the buffer is returned. An error may be returned
+// immediately if the buffer is full. Any errors relating to the payment, and
+// confirmation of the payment, will be returned asynchronously on the events
+// channel.
 func (a *Agent) PaymentWithMemo(paymentAmount int64, memo string) (bufferID string, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -124,11 +144,20 @@ func (a *Agent) Payment(paymentAmount int64) (bufferID string, err error) {
 	return a.PaymentWithMemo(paymentAmount, "")
 }
 
-// Wait waits for sending to complete and the buffer to be empty.
+// Wait waits for sending of all buffered payments to complete and the buffer to
+// be empty. It can be called multiple times, and it can be called in between
+// sends of new payments.
 func (a *Agent) Wait() {
 	<-a.idle
 }
 
+// DeclareClose starts the close process of the channel by submitting the latest
+// declaration to the network, then coordinating an immediate close with the
+// other participant. If an immediate close can be coordinated it will
+// automatically occur, otherwise a participant must call Close after the
+// observation period has passed to close the channel.
+//
+// It is not possible to make new payments once called.
 func (a *Agent) DeclareClose() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -136,6 +165,8 @@ func (a *Agent) DeclareClose() error {
 	return a.agent.DeclareClose()
 }
 
+// Close submits the close transaction to the network. DeclareClose must have
+// been called by one of the participants before hand.
 func (a *Agent) Close() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
