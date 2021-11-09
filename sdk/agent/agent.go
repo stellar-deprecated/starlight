@@ -83,7 +83,7 @@ type Config struct {
 	Events chan<- interface{}
 }
 
-// NewAgent constructs a new buffered agent with the given config.
+// NewAgent constructs a new agent with the given config.
 func NewAgent(c Config) *Agent {
 	agent := &Agent{
 		observationPeriodTime:      c.ObservationPeriodTime,
