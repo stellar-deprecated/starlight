@@ -4,12 +4,18 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/starlight/sdk/agent/submit"
 )
 
+var _ submit.SubmitTxer = &Submitter{}
+
+// Submitter implements an submit's interface for submitting transaction XDRs to
+// the network, via Horizon's API.
 type Submitter struct {
 	HorizonClient horizonclient.ClientInterface
 }
 
+// SubmitTx submits the given xdr as a transaction to Horizon.
 func (h *Submitter) SubmitTx(xdr string) error {
 	_, err := h.HorizonClient.SubmitTransactionXDR(xdr)
 	if err != nil {
