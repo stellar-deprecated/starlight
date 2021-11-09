@@ -1,11 +1,11 @@
-module github.com/stellar/experimental-paymentment-channels/examples/benchmark
+module github.com/stellar/starlight/examples/benchmark
 
 go 1.17
 
-replace github.com/stellar/experimental-payment-channels/sdk => ../../sdk
+replace github.com/stellar/starlight/sdk => ../../sdk
 
 require (
-	github.com/stellar/experimental-payment-channels/sdk v0.0.0-00010101000000-000000000000
+	github.com/stellar/starlight/sdk v0.0.0-00010101000000-000000000000
 	github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

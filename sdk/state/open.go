@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
+	"github.com/stellar/starlight/sdk/txbuild"
 )
 
 type OpenDetails struct {

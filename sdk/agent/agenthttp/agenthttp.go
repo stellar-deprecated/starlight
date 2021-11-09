@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/rs/cors"
-	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/starlight/sdk/agent"
 )
 
 func New(a *agent.Agent) http.Handler {

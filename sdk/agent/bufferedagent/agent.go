@@ -15,8 +15,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/stellar/experimental-payment-channels/sdk/agent"
-	"github.com/stellar/experimental-payment-channels/sdk/state"
+	"github.com/stellar/starlight/sdk/agent"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 var ErrBufferFull = errors.New("buffer full")
