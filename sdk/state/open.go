@@ -33,22 +33,20 @@ func (d OpenDetails) Equal(d2 OpenDetails) bool {
 		d.ConfirmingSigner.Equal(d2.ConfirmingSigner)
 }
 
-// OpenSignatures contains a possible signature for each type of Starlight
-// transaction.
+// OpenSignatures holds the signatures for an open agreement.
 type OpenSignatures struct {
 	Close       xdr.Signature
 	Declaration xdr.Signature
 	Open        xdr.Signature
 }
 
-// Empty returns true if the OpenSignatures object does not have a signature for
-// each Starlight transaction type, else false.
+// Empty returns true if there are not any signatures present, else false.
 func (oas OpenSignatures) Empty() bool {
 	return len(oas.Declaration) == 0 && len(oas.Close) == 0 && len(oas.Open) == 0
 }
 
-// HasAllSignatures returns true if the OpenSignatures object has a signature
-// for each Starlight transaction type, else false.
+// HasAllSignatures returns true if there is a signature for each transaction
+// type present, else false.
 func (oas OpenSignatures) HasAllSignatures() bool {
 	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Open) != 0
 }
