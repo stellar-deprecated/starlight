@@ -73,7 +73,7 @@ A private network running using Docker container from:
 https://github.com/stellar/docker-stellar-core-horizon/tree/4d34da83d0876e21ff68cf90653053879239707b
 
 Benchmark application in use `examples/console` from:
-https://github.com/stellar/experimental-payment-channels/tree/9dbede9133883d6fcd69ca037c3e3466bad1f974
+https://github.com/stellar/starlight/tree/9dbede9133883d6fcd69ca037c3e3466bad1f974
 
 Note in some tests no snapshots of the channel state are being written to disk.
 See each test for whether it was enabled or not. Tests that had it enabled used
@@ -130,7 +130,7 @@ Buffered payments average buffer size is the average size in bytes of the
 buffers that were transmitted between participants.
 
 For more information on buffering payments, see this discussion:
-https://github.com/stellar/experimental-payment-channels/discussions/330#discussioncomment-1345257
+https://github.com/stellar/starlight/discussions/330#discussioncomment-1345257
 
 #### Participants A (US) and B (US)
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/starlight/sdk/txbuild"
 )
 
 type Config struct {

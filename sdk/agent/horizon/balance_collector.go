@@ -3,11 +3,11 @@ package horizon
 import (
 	"fmt"
 
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 type BalanceCollector struct {

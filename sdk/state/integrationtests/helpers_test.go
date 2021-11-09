@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/state"
-	"github.com/stellar/experimental-payment-channels/sdk/txbuild"
 	stellarAmount "github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/starlight/sdk/state"
+	"github.com/stellar/starlight/sdk/txbuild"
 	"github.com/stretchr/testify/require"
 )
 

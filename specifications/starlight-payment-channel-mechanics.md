@@ -6,7 +6,7 @@ Title: Starlight Payment Channel Mechanics
 Author: David Mazières <@standford-scs>, Leigh McCulloch <@leighmcculloch>
 Track: Standard
 Status: Draft
-Discussion: https://github.com/stellar/experimental-payment-channels/issues
+Discussion: https://github.com/stellar/starlight/issues
 Created: 2021-04-21
 Updated: 2021-11-04
 Version: 0.5.0
@@ -729,7 +729,8 @@ proposals.
 
 ## Implementations
 
-TODO: Add implementation.
+Prototype implementation of these mechanics are in the `sdk/state` package of:
+https://github.com/stellar/starlight
 
 [CAP-21]: https://stellar.org/protocol/cap-21
 [CAP-33]: https://stellar.org/protocol/cap-33

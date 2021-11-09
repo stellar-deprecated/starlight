@@ -78,7 +78,7 @@ A preivate network running using Docker container from:
 https://github.com/stellar/docker-stellar-core-horizon/tree/4d34da83d0876e21ff68cf90653053879239707b
 
 Benchmark application in use `examples/console` from:
-https://github.com/stellar/experimental-payment-channels/tree/f43363c6b1593134344629b32883529f494bab23
+https://github.com/stellar/starlight/tree/f43363c6b1593134344629b32883529f494bab23
 
 Note in both setups below no snapshots of the channel state are being written to
 disk. Data persistence functionality exists in the console application and can
@@ -140,7 +140,7 @@ payments TPS are limited by the bandwidth and latency between both participants.
 Buffered payments average buffer size is the average size in bytes of the
 buffers that were transmitted between participants.
 
-For more information on buffering payments, see this discussion: https://github.com/stellar/experimental-payment-channels/discussions/330#discussioncomment-1345257
+For more information on buffering payments, see this discussion: https://github.com/stellar/starlight/discussions/330#discussioncomment-1345257
 
 #### Participants A (US) and B (US)
 

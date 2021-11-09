@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/stellar/experimental-payment-channels/sdk/agent"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/starlight/sdk/agent"
 )
 
 type Streamer struct {
