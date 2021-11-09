@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stellar/experimental-payment-channels/sdk/state"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 var ingestingFinished = errors.New("ingesting finished")

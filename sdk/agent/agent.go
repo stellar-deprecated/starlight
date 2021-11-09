@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/stellar/experimental-payment-channels/sdk/agent/msg"
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/starlight/sdk/agent/msg"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 // BalanceCollector gets the balance of an asset for an account.

@@ -4,8 +4,8 @@ import (
 	"encoding/gob"
 	"io"
 
-	"github.com/stellar/experimental-payment-channels/sdk/state"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/starlight/sdk/state"
 )
 
 type Type int

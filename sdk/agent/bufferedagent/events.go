@@ -1,6 +1,6 @@
 package bufferedagent
 
-import "github.com/stellar/experimental-payment-channels/sdk/agent"
+import "github.com/stellar/starlight/sdk/agent"
 
 // BufferedPaymentReceivedEvent occurs when a payment is received that was
 // buffered.
