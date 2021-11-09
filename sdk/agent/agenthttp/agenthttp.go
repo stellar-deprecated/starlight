@@ -1,3 +1,5 @@
+// Package agenthttp contains a simple HTTP handler that, when requested, will
+// return a snapshot of an agent's snapshot at that moment.
 package agenthttp
 
 import (
@@ -10,6 +12,10 @@ import (
 	"github.com/stellar/starlight/sdk/agent"
 )
 
+// New creates a new http.Handler that returns snapshots for the given agent at
+// the root path. The snapshot generated is also accompanied by the agents
+// config that was used to create the agent at the time it was created. Secrets
+// keys in the config are transformed into public keys.
 func New(a *agent.Agent) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("/", handleSnapshot(a))
