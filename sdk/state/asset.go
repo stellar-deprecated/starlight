@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Asset is a Starlight payment channel asset.
+// Asset is a Stellar asset.
 type Asset string
 
 const NativeAsset = Asset("native")
