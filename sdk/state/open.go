@@ -99,8 +99,8 @@ type OpenTransactions struct {
 	Open     *txnbuild.Transaction
 }
 
-// OpenEnvelope wraps the details and signatures that are part of an open
-// agreement.
+// OpenEnvelope contains everything a participant needs to execute the open
+// agreement on the Stellar network.
 type OpenEnvelope struct {
 	Details             OpenDetails
 	ProposerSignatures  OpenSignatures
