@@ -729,7 +729,7 @@ proposals.
 
 ## Implementations
 
-Prototype implementation of these mechanics in the `sdk/state` package of:
+Prototype implementation of these mechanics are in the `sdk/state` package of:
 https://github.com/stellar/starlight
 
 [CAP-21]: https://stellar.org/protocol/cap-21
