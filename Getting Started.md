@@ -43,7 +43,7 @@ go get github.com/stellar/starlight/sdk
 
 The `examples/console` directory contains an example application that operates a payment channel between two participants over a TCP connection. Requires a network to be running with support for CAP-21 and CAP-40.
 
-See the [README](https://github.com/stellar/experimental-payment-channels/tree/readme/examples/console) for more details.
+See the [README](https://github.com/stellar/starlight/tree/readme/examples/console) for more details.
 
 ## Manually build transactions
 
