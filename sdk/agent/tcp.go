@@ -5,6 +5,8 @@ import (
 	"net"
 )
 
+// ServeTCP listens on the given address for a single incoming connection to
+// start a payment channel.
 func (a *Agent) ServeTCP(addr string) error {
 	if a.conn != nil {
 		return fmt.Errorf("already connected")
@@ -27,6 +29,8 @@ func (a *Agent) ServeTCP(addr string) error {
 	return nil
 }
 
+// ConnectTCP connects to the given address for establishing a single payment
+// channel.
 func (a *Agent) ConnectTCP(addr string) error {
 	if a.conn != nil {
 		return fmt.Errorf("already connected")
