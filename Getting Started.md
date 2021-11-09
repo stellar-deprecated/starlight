@@ -47,7 +47,7 @@ See the [README](https://github.com/stellar/starlight/tree/readme/examples/conso
 
 ## Manually inspect or build transactions
 
-You can use `stc` to manually build transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
+You can use `stc` to manually build and inspect transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
 
 ```
 git clone -b cap21 https://github.com/leighmcculloch/xdrpp--stc stc
