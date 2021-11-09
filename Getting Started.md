@@ -3,7 +3,7 @@
 - [Running a network with CAP-21 and CAP-40](#running-core-and-horizon-with-cap-21-and-cap-40)
 - [Experiment with the prototype Starlight Go SDK](#experiment-with-the-prototype-starlight-go-sdk)
 - [Run the console example application](#run-the-console-example-application)
-- [Manually build transactions](#manually-build-transactions)
+- [Manually inspect or build transactions](#manually-inspect-or-build-transactions)
 
 ## Running a network with CAP-21 and CAP-40
 
@@ -45,7 +45,7 @@ The `examples/console` directory contains an example application that operates a
 
 See the [README](https://github.com/stellar/experimental-payment-channels/tree/readme/examples/console) for more details.
 
-## Manually build transactions
+## Manually inspect or build transactions
 
 You can use `stc` to manually build transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
 
