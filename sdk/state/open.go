@@ -22,7 +22,7 @@ type OpenDetails struct {
 	ConfirmingSigner           *keypair.FromAddress
 }
 
-// Equal returns true if two OpenDetails objects are equal, else false.
+// Equal returns true if two OpenDetails are equal, else false.
 func (d OpenDetails) Equal(d2 OpenDetails) bool {
 	return d.ObservationPeriodTime == d2.ObservationPeriodTime &&
 		d.ObservationPeriodLedgerGap == d2.ObservationPeriodLedgerGap &&
@@ -51,7 +51,7 @@ func (oas OpenSignatures) HasAllSignatures() bool {
 	return len(oas.Close) != 0 && len(oas.Declaration) != 0 && len(oas.Open) != 0
 }
 
-// Equal returns true if two OpenSignatures objects are equal, else false.
+// Equal returns true if two OpenSignatures are equal, else false.
 func (oas OpenSignatures) Equal(oas2 OpenSignatures) bool {
 	return bytes.Equal(oas.Open, oas2.Open) &&
 		bytes.Equal(oas.Declaration, oas2.Declaration) &&
@@ -118,7 +118,7 @@ func (oa OpenEnvelope) HasAllSignatures() bool {
 	return oa.ProposerSignatures.HasAllSignatures() && oa.ConfirmerSignatures.HasAllSignatures()
 }
 
-// Equal returns true if two OpenEnvelope objects are equal, else false.
+// Equal returns true if two OpenEnvelope are equal, else false.
 func (oa OpenEnvelope) Equal(oa2 OpenEnvelope) bool {
 	return oa.Details.Equal(oa2.Details) &&
 		oa.ProposerSignatures.Equal(oa2.ProposerSignatures) &&
