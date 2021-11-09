@@ -24,7 +24,7 @@ func (a Asset) Code() string {
 	return a.Asset().GetCode()
 }
 
-// Issuer returns the issuer of the asset.
+// Issuer returns the issuer of credit assets.
 func (a Asset) Issuer() string {
 	return a.Asset().GetIssuer()
 }
