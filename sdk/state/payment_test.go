@@ -62,10 +62,10 @@ func TestCloseSignatures_Equal(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			f := fuzz.New()
 			a := CloseSignatures{}
-			f.Fuzz(&a)
+			f.NumElements(0, 32).Fuzz(&a)
 			t.Log("a:", a)
 			b := CloseSignatures{}
-			f.Fuzz(&b)
+			f.NilChance(0).NumElements(1, 32).Fuzz(&b)
 			t.Log("b:", b)
 			assert.False(t, a.Equal(b))
 			assert.False(t, b.Equal(a))
