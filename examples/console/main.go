@@ -198,10 +198,8 @@ func run() error {
 				fmt.Fprintf(os.Stdout, "friendbot not supported on this network\n")
 				fmt.Fprintf(os.Stdout, "attempting to create using network root key\n")
 				err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
-				if err != nil {
-					return err
-				}
-			} else if err != nil {
+			}
+			if err != nil {
 				return err
 			}
 			account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
