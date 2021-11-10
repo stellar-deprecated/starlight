@@ -234,16 +234,16 @@ func (c *Channel) openTxs(d OpenDetails) (txs OpenTransactions, closeTxs CloseTr
 	}
 
 	open, err := txbuild.Open(txbuild.OpenParams{
-		InitiatorSigner:   c.initiatorSigner(),
-		ResponderSigner:   c.responderSigner(),
-		InitiatorMultisig: c.initiatorMultisigAccount().Address,
-		ResponderMultisig: c.responderMultisigAccount().Address,
-		StartSequence:     d.StartingSequence,
-		Asset:             d.Asset.Asset(),
-		ExpiresAt:         d.ExpiresAt,
-		DeclarationTxHash: closeTxs.DeclarationHash,
-		CloseTxHash:       closeTxs.CloseHash,
-		ConfirmingSigner:  d.ConfirmingSigner,
+		InitiatorSigner:         c.initiatorSigner(),
+		ResponderSigner:         c.responderSigner(),
+		InitiatorChannelAccount: c.initiatorChannelAccount().Address,
+		ResponderChannelAccount: c.responderChannelAccount().Address,
+		StartSequence:           d.StartingSequence,
+		Asset:                   d.Asset.Asset(),
+		ExpiresAt:               d.ExpiresAt,
+		DeclarationTxHash:       closeTxs.DeclarationHash,
+		CloseTxHash:             closeTxs.CloseHash,
+		ConfirmingSigner:        d.ConfirmingSigner,
 	})
 	if err != nil {
 		err = fmt.Errorf("building open tx for open: %w", err)

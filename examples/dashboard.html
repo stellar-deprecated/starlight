@@ -148,18 +148,18 @@
     });
     var lastUpdate = null;
     const chartUpdate = async (r) => {
-      const localSigner = r['Config']['MultisigAccountSigner'];
-      const remoteSigner = r['Snapshot']['OtherMultisigAccountSigner'];
-      var multisig;
+      const localSigner = r['Config']['ChannelAccountSigner'];
+      const remoteSigner = r['Snapshot']['OtherChannelAccountSigner'];
+      var channelAccount;
       var signer;
       if (local) {
-        multisig = r['Config']['MultisigAccountKey'];
+        channelAccount = r['Config']['ChannelAccountKey'];
         signer = localSigner;
       } else {
-        multisig = r['Snapshot']['OtherMultisigAccount'];
+        channelAccount = r['Snapshot']['OtherChannelAccount'];
         signer = remoteSigner;
       }
-      const h = await (await fetch(`${horizonUrl}/accounts/${multisig}`)).json();
+      const h = await (await fetch(`${horizonUrl}/accounts/${channelAccount}`)).json();
       if (h['last_modified_time'] == lastUpdate) {
         return;
       }
@@ -202,7 +202,7 @@
     });
     var lastUpdate = null;
     const chartUpdate = async (snapshot) => {
-      const hashCode = `${snapshot['Snapshot']['State']['Snapshot']['LocalMultisigAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['RemoteMultisigAccountLastSeenTransactionOrderID']}`
+      const hashCode = `${snapshot['Snapshot']['State']['Snapshot']['LocalChannelAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['RemoteChannelAccountLastSeenTransactionOrderID']}`
       if (hashCode == lastUpdate) {
         return;
       }
@@ -215,18 +215,18 @@
           (b['asset_type'] == 'credit_alphanum4' || b['asset_type'] == 'credit_alphanum12') &&
           (b['asset_code'] == assetParts[0]) &&
           (b['asset_issuer'] == assetParts[1]);
-      const localMultisig = snapshot['Config']['MultisigAccountKey'];
-      const remoteMultisig = snapshot['Snapshot']['OtherMultisigAccount'];
-      const localHorizon = await (await fetch(`${horizonUrl}/accounts/${localMultisig}`)).json();
-      const remoteHorizon = await (await fetch(`${horizonUrl}/accounts/${remoteMultisig}`)).json();
+      const localChannelAccount = snapshot['Config']['ChannelAccountKey'];
+      const remoteChannelAccount = snapshot['Snapshot']['OtherChannelAccount'];
+      const localHorizon = await (await fetch(`${horizonUrl}/accounts/${localChannelAccount}`)).json();
+      const remoteHorizon = await (await fetch(`${horizonUrl}/accounts/${remoteChannelAccount}`)).json();
       chart.load({
         columns: [
-          [remoteMultisig.slice(0, 4), Number(remoteHorizon['balances'].find(balanceFunc)['balance'])],
-          [localMultisig.slice(0, 4), Number(localHorizon['balances'].find(balanceFunc)['balance'])],
+          [remoteChannelAccount.slice(0, 4), Number(remoteHorizon['balances'].find(balanceFunc)['balance'])],
+          [localChannelAccount.slice(0, 4), Number(localHorizon['balances'].find(balanceFunc)['balance'])],
         ],
         colors: {
-          [remoteMultisig.slice(0, 4)]: color2,
-          [localMultisig.slice(0, 4)]: color1,
+          [remoteChannelAccount.slice(0, 4)]: color2,
+          [localChannelAccount.slice(0, 4)]: color1,
         },
         order: null,
         unload: true,
@@ -265,7 +265,7 @@
     });
     var lastUpdate = null;
     const chartUpdate = async (snapshot) => {
-      const hashCode = `${snapshot['Snapshot']['State']['Snapshot']['LocalMultisigAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['RemoteMultisigAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber']}`
+      const hashCode = `${snapshot['Snapshot']['State']['Snapshot']['LocalChannelAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['RemoteChannelAccountLastSeenTransactionOrderID']}-${snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['IterationNumber']}`
       if (hashCode == lastUpdate) {
         return;
       }
@@ -276,10 +276,10 @@
       }
       const localIsInitiator = snapshot['Snapshot']['State']['Initiator'];
       const rawBalance = snapshot['Snapshot']['State']['Snapshot']['LatestAuthorizedCloseAgreement']['Envelope']['Details']['Balance'];
-      const local = snapshot['Snapshot']['State']['Snapshot']['LocalMultisigAccountBalance'];
-      const remote = snapshot['Snapshot']['State']['Snapshot']['RemoteMultisigAccountBalance'];
-      const localAcc = snapshot['Config']['MultisigAccountKey'];
-      const remoteAcc = snapshot['Snapshot']['OtherMultisigAccount'];
+      const local = snapshot['Snapshot']['State']['Snapshot']['LocalChannelAccountBalance'];
+      const remote = snapshot['Snapshot']['State']['Snapshot']['RemoteChannelAccountBalance'];
+      const localAcc = snapshot['Config']['ChannelAccountKey'];
+      const remoteAcc = snapshot['Snapshot']['OtherChannelAccount'];
       const balance = localIsInitiator ? rawBalance : -rawBalance;
       if (balance > 0) {
         chart.load({

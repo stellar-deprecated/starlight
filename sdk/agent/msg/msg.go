@@ -48,8 +48,8 @@ type Message struct {
 // Hello can be used to signal to another participant a minimal amount of
 // information the other participant needs to know about them.
 type Hello struct {
-	MultisigAccount keypair.FromAddress
-	Signer          keypair.FromAddress
+	ChannelAccount keypair.FromAddress
+	Signer         keypair.FromAddress
 }
 
 // Encoder is an encoder that can be used to encode messages.

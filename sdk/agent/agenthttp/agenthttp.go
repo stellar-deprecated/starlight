@@ -31,8 +31,8 @@ func handleSnapshot(a *agent.Agent) func(w http.ResponseWriter, r *http.Request)
 			ObservationPeriodLedgerGap int64
 			MaxOpenExpiry              time.Duration
 			NetworkPassphrase          string
-			MultisigAccountKey         *keypair.FromAddress
-			MultisigAccountSigner      *keypair.FromAddress
+			ChannelAccountKey          *keypair.FromAddress
+			ChannelAccountSigner       *keypair.FromAddress
 		}
 		c := a.Config()
 		v := struct {
@@ -44,8 +44,8 @@ func handleSnapshot(a *agent.Agent) func(w http.ResponseWriter, r *http.Request)
 				ObservationPeriodLedgerGap: c.ObservationPeriodLedgerGap,
 				MaxOpenExpiry:              c.MaxOpenExpiry,
 				NetworkPassphrase:          c.NetworkPassphrase,
-				MultisigAccountKey:         c.MultisigAccountKey,
-				MultisigAccountSigner:      c.MultisigAccountSigner.FromAddress(),
+				ChannelAccountKey:          c.ChannelAccountKey,
+				ChannelAccountSigner:       c.ChannelAccountSigner.FromAddress(),
 			},
 			Snapshot: a.Snapshot(),
 		}
