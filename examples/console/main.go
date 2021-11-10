@@ -201,10 +201,8 @@ func run() error {
 				if err != nil {
 					return err
 				}
-			} else {
-				if err != nil {
-					return err
-				}
+			} else if err != nil {
+				return err
 			}
 			account, err = horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 		}
