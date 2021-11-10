@@ -41,9 +41,9 @@ func main() {
 }
 
 var (
-	asset              = state.Asset("")
-	otherEscrowAccount = (*keypair.FromAddress)(nil)
-	closeAgreements    = []state.CloseAgreement{}
+	asset               = state.Asset("")
+	otherChannelAccount = (*keypair.FromAddress)(nil)
+	closeAgreements     = []state.CloseAgreement{}
 )
 
 func run() error {
@@ -133,7 +133,7 @@ func run() error {
 			case agentpkg.ErrorEvent:
 				fmt.Fprintf(os.Stderr, "error: %v\n", e.Err)
 			case agentpkg.ConnectedEvent:
-				otherEscrowAccount = e.EscrowAccount
+				otherChannelAccount = e.ChannelAccount
 				fmt.Fprintf(os.Stderr, "connected\n")
 			case agentpkg.OpenedEvent:
 				asset = e.OpenAgreement.Envelope.Details.Asset
@@ -185,7 +185,7 @@ func run() error {
 		FeeAccountSigners: []*keypair.Full{signerKey},
 	}
 
-	var escrowAccountKey *keypair.FromAddress
+	var channelAccountKey *keypair.FromAddress
 	var underlyingAgent *agentpkg.Agent
 	underlyingEvents := make(chan interface{})
 	if file == nil {
@@ -212,11 +212,11 @@ func run() error {
 			return err
 		}
 
-		escrowAccountKeyFull := keypair.MustRandom()
-		escrowAccountKey = escrowAccountKeyFull.FromAddress()
-		fmt.Fprintln(os.Stdout, "waiting before creating escrow")
+		channelAccountKeyFull := keypair.MustRandom()
+		channelAccountKey = channelAccountKeyFull.FromAddress()
+		fmt.Fprintln(os.Stdout, "waiting before creating channel")
 		time.Sleep(5 * time.Second)
-		fmt.Fprintln(os.Stdout, "escrow account:", escrowAccountKey.Address())
+		fmt.Fprintln(os.Stdout, "channel account:", channelAccountKey.Address())
 
 		config := agentpkg.Config{
 			ObservationPeriodTime:      observationPeriodTime,
@@ -227,8 +227,8 @@ func run() error {
 			BalanceCollector:           balanceCollector,
 			Submitter:                  submitter,
 			Streamer:                   streamer,
-			EscrowAccountKey:           escrowAccountKey,
-			EscrowAccountSigner:        signerKey,
+			ChannelAccountKey:          channelAccountKey,
+			ChannelAccountSigner:       signerKey,
 			LogWriter:                  io.Discard,
 			Events:                     underlyingEvents,
 		}
@@ -238,33 +238,33 @@ func run() error {
 				ObservationPeriodTime:      observationPeriodTime,
 				ObservationPeriodLedgerGap: observationPeriodLedgerGap,
 				MaxOpenExpiry:              maxOpenExpiry,
-				EscrowAccountKey:           escrowAccountKey,
+				ChannelAccountKey:          channelAccountKey,
 			}
 		}
 		underlyingAgent = agentpkg.NewAgent(config)
 
-		tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
+		tx, err := txbuild.CreateChannelAccount(txbuild.CreateChannelAccountParams{
 			Creator:        accountKey.FromAddress(),
-			Escrow:         escrowAccountKey.FromAddress(),
+			ChannelAccount: channelAccountKey.FromAddress(),
 			SequenceNumber: accountSeqNum + 1,
 			Asset:          txnbuild.NativeAsset{},
 		})
 		if err != nil {
-			return fmt.Errorf("creating escrow account tx: %w", err)
+			return fmt.Errorf("creating channel account tx: %w", err)
 		}
-		tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, escrowAccountKeyFull)
+		tx, err = tx.Sign(networkDetails.NetworkPassphrase, signerKey, channelAccountKeyFull)
 		if err != nil {
-			return fmt.Errorf("signing tx to create escrow account: %w", err)
+			return fmt.Errorf("signing tx to create channel account: %w", err)
 		}
 		err = retry(10, func() error {
 			return submitter.SubmitTx(tx)
 		})
 		if err != nil {
-			return fmt.Errorf("submitting tx to create escrow account: %w", err)
+			return fmt.Errorf("submitting tx to create channel account: %w", err)
 		}
-		fmt.Fprintln(os.Stdout, "escrow created")
+		fmt.Fprintln(os.Stdout, "channel account created")
 	} else {
-		escrowAccountKey = file.EscrowAccountKey
+		channelAccountKey = file.ChannelAccountKey
 		config := agentpkg.Config{
 			ObservationPeriodTime:      file.ObservationPeriodTime,
 			ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
@@ -279,12 +279,12 @@ func run() error {
 				ObservationPeriodTime:      file.ObservationPeriodTime,
 				ObservationPeriodLedgerGap: file.ObservationPeriodLedgerGap,
 				MaxOpenExpiry:              file.MaxOpenExpiry,
-				EscrowAccountKey:           escrowAccountKey,
+				ChannelAccountKey:          channelAccountKey,
 			},
-			EscrowAccountKey:    escrowAccountKey,
-			EscrowAccountSigner: signerKey,
-			LogWriter:           io.Discard,
-			Events:              underlyingEvents,
+			ChannelAccountKey:    channelAccountKey,
+			ChannelAccountSigner: signerKey,
+			LogWriter:            io.Discard,
+			Events:               underlyingEvents,
 		}
 		underlyingAgent = agentpkg.NewAgentFromSnapshot(config, file.Snapshot)
 	}
@@ -329,7 +329,7 @@ func run() error {
 		}
 	}
 
-	err = runShell(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, escrowAccountKey, signerKey)
+	err = runShell(agent, stats, submitter, horizonClient, networkDetails.NetworkPassphrase, accountKey, channelAccountKey, signerKey)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "error: %#v\n", err)
 	}
@@ -337,7 +337,7 @@ func run() error {
 	return nil
 }
 
-func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, escrowAccount *keypair.FromAddress, signer *keypair.Full) (err error) {
+func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submitter, horizonClient horizonclient.ClientInterface, networkPassphrase string, account, channelAccount *keypair.FromAddress, signer *keypair.Full) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -380,16 +380,16 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 	})
 	shell.AddCmd(&ishell.Cmd{
 		Name: "deposit",
-		Help: "deposit <amount> - deposit asset into escrow account",
+		Help: "deposit <amount> - deposit asset into channel account",
 		Func: func(c *ishell.Context) {
 			depositAmountStr := c.Args[0]
-			destination := escrowAccount
+			destination := channelAccount
 			if len(c.Args) >= 2 && c.Args[1] != "" {
-				destination = otherEscrowAccount
+				destination = otherChannelAccount
 			}
 			account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: account.Address()})
 			if err != nil {
-				c.Err(fmt.Errorf("getting state of local escrow account: %w", err))
+				c.Err(fmt.Errorf("getting state of local channel account: %w", err))
 				return
 			}
 			tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{

@@ -8,25 +8,25 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-type CreateEscrowParams struct {
+type CreateChannelAccountParams struct {
 	Creator        *keypair.FromAddress
-	Escrow         *keypair.FromAddress
+	ChannelAccount *keypair.FromAddress
 	SequenceNumber int64
 	Asset          txnbuild.BasicAsset
 }
 
-func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
+func CreateChannelAccount(p CreateChannelAccountParams) (*txnbuild.Transaction, error) {
 	ops := []txnbuild.Operation{
 		&txnbuild.BeginSponsoringFutureReserves{
-			SponsoredID: p.Escrow.Address(),
+			SponsoredID: p.ChannelAccount.Address(),
 		},
 		&txnbuild.CreateAccount{
-			Destination: p.Escrow.Address(),
+			Destination: p.ChannelAccount.Address(),
 			// base reserves sponsored by p.Creator
 			Amount: "0",
 		},
 		&txnbuild.SetOptions{
-			SourceAccount:   p.Escrow.Address(),
+			SourceAccount:   p.ChannelAccount.Address(),
 			MasterWeight:    txnbuild.NewThreshold(0),
 			LowThreshold:    txnbuild.NewThreshold(1),
 			MediumThreshold: txnbuild.NewThreshold(1),
@@ -38,11 +38,11 @@ func CreateEscrow(p CreateEscrowParams) (*txnbuild.Transaction, error) {
 		ops = append(ops, &txnbuild.ChangeTrust{
 			Line:          p.Asset.MustToChangeTrustAsset(),
 			Limit:         amount.StringFromInt64(math.MaxInt64),
-			SourceAccount: p.Escrow.Address(),
+			SourceAccount: p.ChannelAccount.Address(),
 		})
 	}
 	ops = append(ops, &txnbuild.EndSponsoringFutureReserves{
-		SourceAccount: p.Escrow.Address(),
+		SourceAccount: p.ChannelAccount.Address(),
 	})
 
 	tx, err := txnbuild.NewTransaction(

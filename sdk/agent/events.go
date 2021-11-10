@@ -13,8 +13,8 @@ type ErrorEvent struct {
 
 // ConnectedEvent occurs when the agent is connected to another participant.
 type ConnectedEvent struct {
-	EscrowAccount *keypair.FromAddress
-	Signer        *keypair.FromAddress
+	ChannelAccount *keypair.FromAddress
+	Signer         *keypair.FromAddress
 }
 
 // OpenedEvent occurs when the channel has been opened.

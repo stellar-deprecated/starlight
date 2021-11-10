@@ -82,7 +82,7 @@ func run() error {
 	}
 
 	accountKey := keypair.MustRandom()
-	escrowAccountKey := keypair.MustRandom()
+	channelAccountKey := keypair.MustRandom()
 
 	horizonClient := &horizonclient.Client{HorizonURL: horizonURL}
 	networkDetails, err := horizonClient.Root()
@@ -111,13 +111,13 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "creating escrow account %s with network root\n", escrowAccountKey.Address())
-	err = createAccountWithSignerWithRoot(horizonClient, networkDetails.NetworkPassphrase, escrowAccountKey, accountKey.FromAddress())
+	fmt.Fprintf(os.Stdout, "creating channel account %s with network root\n", channelAccountKey.Address())
+	err = createAccountWithSignerWithRoot(horizonClient, networkDetails.NetworkPassphrase, channelAccountKey, accountKey.FromAddress())
 	if err != nil {
 		return err
 	}
 
-	// Wait for state of escrow accounts to be ingested by Horizon.
+	// Wait for state of channel accounts to be ingested by Horizon.
 	time.Sleep(2 * time.Second)
 
 	underlyingEvents := make(chan interface{})
@@ -130,8 +130,8 @@ func run() error {
 		BalanceCollector:           balanceCollector,
 		Submitter:                  submitter,
 		Streamer:                   streamer,
-		EscrowAccountKey:           escrowAccountKey.FromAddress(),
-		EscrowAccountSigner:        accountKey,
+		ChannelAccountKey:          channelAccountKey.FromAddress(),
+		ChannelAccountSigner:       accountKey,
 		LogWriter:                  io.Discard,
 		Events:                     underlyingEvents,
 	}

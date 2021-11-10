@@ -13,7 +13,7 @@ type File struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	MaxOpenExpiry              time.Duration
-	EscrowAccountKey           *keypair.FromAddress
+	ChannelAccountKey          *keypair.FromAddress
 	Snapshot                   agentpkg.Snapshot
 }
 
@@ -23,7 +23,7 @@ type JSONFileSnapshotter struct {
 	ObservationPeriodTime      time.Duration
 	ObservationPeriodLedgerGap int64
 	MaxOpenExpiry              time.Duration
-	EscrowAccountKey           *keypair.FromAddress
+	ChannelAccountKey          *keypair.FromAddress
 }
 
 func (j JSONFileSnapshotter) Snapshot(a *agentpkg.Agent, s agentpkg.Snapshot) {
@@ -31,7 +31,7 @@ func (j JSONFileSnapshotter) Snapshot(a *agentpkg.Agent, s agentpkg.Snapshot) {
 		ObservationPeriodTime:      j.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: j.ObservationPeriodLedgerGap,
 		MaxOpenExpiry:              j.MaxOpenExpiry,
-		EscrowAccountKey:           j.EscrowAccountKey,
+		ChannelAccountKey:          j.ChannelAccountKey,
 		Snapshot:                   s,
 	}
 	b, err := json.MarshalIndent(f, "", "  ")

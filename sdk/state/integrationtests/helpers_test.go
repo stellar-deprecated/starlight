@@ -25,13 +25,13 @@ type AssetParam struct {
 
 func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, responder Participant) {
 	initiator = Participant{
-		Name:         "Initiator",
-		KP:           keypair.MustRandom(),
-		Escrow:       keypair.MustRandom(),
-		Contribution: 1_000_0000000,
+		Name:           "Initiator",
+		KP:             keypair.MustRandom(),
+		ChannelAccount: keypair.MustRandom(),
+		Contribution:   1_000_0000000,
 	}
 	t.Log("Initiator:", initiator.KP.Address())
-	t.Log("Initiator Escrow:", initiator.Escrow.Address())
+	t.Log("Initiator ChannelAccount:", initiator.ChannelAccount.Address())
 	{
 		err := retry(t, 2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
@@ -41,19 +41,19 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 		require.NoError(t, err)
 
 		t.Log("Initiator Contribution:", initiator.Contribution, "of asset:", assetParam.Asset.Code(), "issuer: ", assetParam.Asset.Issuer())
-		initEscrowAccount(t, &initiator, assetParam)
+		initChannelAccount(t, &initiator, assetParam)
 	}
-	t.Log("Initiator Escrow Sequence Number:", initiator.EscrowSequenceNumber)
+	t.Log("Initiator ChannelAccount Sequence Number:", initiator.ChannelAccountSequenceNumber)
 
 	// Setup responder.
 	responder = Participant{
-		Name:         "Responder",
-		KP:           keypair.MustRandom(),
-		Escrow:       keypair.MustRandom(),
-		Contribution: 1_000_0000000,
+		Name:           "Responder",
+		KP:             keypair.MustRandom(),
+		ChannelAccount: keypair.MustRandom(),
+		Contribution:   1_000_0000000,
 	}
 	t.Log("Responder:", responder.KP.Address())
-	t.Log("Responder Escrow:", responder.Escrow.Address())
+	t.Log("Responder ChannelAccount:", responder.ChannelAccount.Address())
 	{
 		err := retry(t, 2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
 		require.NoError(t, err)
@@ -63,28 +63,28 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 		require.NoError(t, err)
 
 		t.Log("Responder Contribution:", responder.Contribution, "of asset:", assetParam.Asset.Code(), "issuer: ", assetParam.Asset.Issuer())
-		initEscrowAccount(t, &responder, assetParam)
+		initChannelAccount(t, &responder, assetParam)
 	}
-	t.Log("Responder Escrow Sequence Number:", responder.EscrowSequenceNumber)
+	t.Log("Responder ChannelAccount Sequence Number:", responder.ChannelAccountSequenceNumber)
 
 	return initiator, responder
 }
 
-func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetParam) {
-	// create escrow account
+func initChannelAccount(t *testing.T, participant *Participant, assetParam AssetParam) {
+	// create channel account
 	account, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: participant.KP.Address()})
 	require.NoError(t, err)
 	seqNum, err := account.GetSequenceNumber()
 	require.NoError(t, err)
 
-	tx, err := txbuild.CreateEscrow(txbuild.CreateEscrowParams{
+	tx, err := txbuild.CreateChannelAccount(txbuild.CreateChannelAccountParams{
 		Creator:        participant.KP.FromAddress(),
-		Escrow:         participant.Escrow.FromAddress(),
+		ChannelAccount: participant.ChannelAccount.FromAddress(),
 		SequenceNumber: seqNum + 1,
 		Asset:          assetParam.Asset.Asset(),
 	})
 	require.NoError(t, err)
-	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.Escrow)
+	tx, err = tx.Sign(networkPassphrase, participant.KP, participant.ChannelAccount)
 	require.NoError(t, err)
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      tx,
@@ -100,7 +100,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 		return err
 	})
 	require.NoError(t, err)
-	participant.EscrowSequenceNumber = int64(txResp.Ledger) << 32
+	participant.ChannelAccountSequenceNumber = int64(txResp.Ledger) << 32
 
 	// add initial contribution, use the same contribution for each asset
 	_, err = account.IncrementSequenceNumber()
@@ -108,7 +108,7 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 
 	payments := []txnbuild.Operation{
 		&txnbuild.Payment{
-			Destination: participant.Escrow.Address(),
+			Destination: participant.ChannelAccount.Address(),
 			Amount:      stellarAmount.StringFromInt64(participant.Contribution),
 			Asset:       assetParam.Asset.Asset(),
 		},
@@ -134,22 +134,22 @@ func initEscrowAccount(t *testing.T, participant *Participant, assetParam AssetP
 
 func initChannels(t *testing.T, initiator Participant, responder Participant) (initiatorChannel *state.Channel, responderChannel *state.Channel) {
 	initiatorChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:   networkPassphrase,
-		MaxOpenExpiry:       5 * time.Minute,
-		Initiator:           true,
-		LocalEscrowAccount:  initiator.Escrow.FromAddress(),
-		RemoteEscrowAccount: responder.Escrow.FromAddress(),
-		LocalSigner:         initiator.KP,
-		RemoteSigner:        responder.KP.FromAddress(),
+		NetworkPassphrase:    networkPassphrase,
+		MaxOpenExpiry:        5 * time.Minute,
+		Initiator:            true,
+		LocalChannelAccount:  initiator.ChannelAccount.FromAddress(),
+		RemoteChannelAccount: responder.ChannelAccount.FromAddress(),
+		LocalSigner:          initiator.KP,
+		RemoteSigner:         responder.KP.FromAddress(),
 	})
 	responderChannel = state.NewChannel(state.Config{
-		NetworkPassphrase:   networkPassphrase,
-		MaxOpenExpiry:       5 * time.Minute,
-		Initiator:           false,
-		LocalEscrowAccount:  responder.Escrow.FromAddress(),
-		RemoteEscrowAccount: initiator.Escrow.FromAddress(),
-		LocalSigner:         responder.KP,
-		RemoteSigner:        initiator.KP.FromAddress(),
+		NetworkPassphrase:    networkPassphrase,
+		MaxOpenExpiry:        5 * time.Minute,
+		Initiator:            false,
+		LocalChannelAccount:  responder.ChannelAccount.FromAddress(),
+		RemoteChannelAccount: initiator.ChannelAccount.FromAddress(),
+		LocalSigner:          responder.KP,
+		RemoteSigner:         initiator.KP.FromAddress(),
 	})
 	return initiatorChannel, responderChannel
 }

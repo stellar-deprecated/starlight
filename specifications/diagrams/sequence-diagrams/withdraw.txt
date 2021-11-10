@@ -4,13 +4,13 @@ sequenceDiagram
 
     Note over I,R: 1. Setup and a single payment
     Note right of R: i = 2, e = 0
-    Note left of I: EI.seqNum = 1000
+    Note left of I: MI.seqNum = 1000
 
     Note over I,R: 2. Withdrawal by I
     I->>I: increment i
     R->>R: increment i
     Note right of R: i = 3
-    I->>R: create W_3, which has a payment op from EI to I, and bumps EI.seqNum to s_3
+    I->>R: create W_3, which has a payment op from MI to I, and bumps MI.seqNum to s_3
     I->>I: set e' = e, set e = i, then increment i
     R->>R: set e' = e, set e = i, then increment i
     Note right of R: e' = 0, e = 3, i = 4
@@ -23,7 +23,7 @@ sequenceDiagram
 
     alt W_4 successful
         Note right of R: withdrawal complete
-        Note left of I: EI.seqNum = 1007
+        Note left of I: MI.seqNum = 1007
     else W_4 unsuccessful
         I->>I: set e = e'
         R->>R: set e = e'
