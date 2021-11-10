@@ -4,8 +4,8 @@ sequenceDiagram
     
     Note over I,R: 1. Setup
     Note right of R: i = 0, e = 0
-    I-->>I: create and deposit funds to EI
-    R-->>R: create and deposits funds to ER
+    I-->>I: create and deposit funds to MI
+    R-->>R: create and deposits funds to MR
     I->>R: Create open transaction F
     I->>I: increment i
     R->>R: increment i

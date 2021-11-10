@@ -73,12 +73,12 @@ func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error
 }
 
 type OpenResultMetaParams struct {
-	InitiatorSigner string
-	ResponderSigner string
-	InitiatorEscrow string
-	ResponderEscrow string
-	StartSequence   int64
-	Asset           txnbuild.Asset
+	InitiatorSigner         string
+	ResponderSigner         string
+	InitiatorChannelAccount string
+	ResponderChannelAccount string
+	StartSequence           int64
+	Asset                   txnbuild.Asset
 }
 
 func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
@@ -86,7 +86,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 		{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(params.InitiatorEscrow),
+				AccountId: xdr.MustAddress(params.InitiatorChannelAccount),
 				SeqNum:    xdr.SequenceNumber(params.StartSequence),
 				Signers: []xdr.Signer{
 					{
@@ -104,7 +104,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 		{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(params.ResponderEscrow),
+				AccountId: xdr.MustAddress(params.ResponderChannelAccount),
 				SeqNum:    xdr.SequenceNumber(1),
 				Signers: []xdr.Signer{
 					{
@@ -126,7 +126,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(params.InitiatorEscrow),
+					AccountId: xdr.MustAddress(params.InitiatorChannelAccount),
 					Balance:   0,
 					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
@@ -135,7 +135,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(params.ResponderEscrow),
+					AccountId: xdr.MustAddress(params.ResponderChannelAccount),
 					Balance:   0,
 					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
