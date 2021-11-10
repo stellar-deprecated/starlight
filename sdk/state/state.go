@@ -14,8 +14,8 @@ type Config struct {
 
 	Initiator bool
 
-	LocalEscrowAccount  *keypair.FromAddress
-	RemoteEscrowAccount *keypair.FromAddress
+	LocalChannelAccount  *keypair.FromAddress
+	RemoteChannelAccount *keypair.FromAddress
 
 	LocalSigner  *keypair.Full
 	RemoteSigner *keypair.FromAddress
@@ -23,13 +23,13 @@ type Config struct {
 
 func NewChannel(c Config) *Channel {
 	channel := &Channel{
-		networkPassphrase:   c.NetworkPassphrase,
-		maxOpenExpiry:       c.MaxOpenExpiry,
-		initiator:           c.Initiator,
-		localEscrowAccount:  &EscrowAccount{Address: c.LocalEscrowAccount},
-		remoteEscrowAccount: &EscrowAccount{Address: c.RemoteEscrowAccount},
-		localSigner:         c.LocalSigner,
-		remoteSigner:        c.RemoteSigner,
+		networkPassphrase:    c.NetworkPassphrase,
+		maxOpenExpiry:        c.MaxOpenExpiry,
+		initiator:            c.Initiator,
+		localChannelAccount:  &ChannelAccount{Address: c.LocalChannelAccount},
+		remoteChannelAccount: &ChannelAccount{Address: c.RemoteChannelAccount},
+		localSigner:          c.LocalSigner,
+		remoteSigner:         c.RemoteSigner,
 	}
 	return channel
 }
@@ -38,12 +38,12 @@ func NewChannel(c Config) *Channel {
 // combined with a Channel's initialization config they can be used to create a
 // new Channel that has the same state.
 type Snapshot struct {
-	LocalEscrowSequence                           int64
-	LocalEscrowAccountBalance                     int64
-	LocalEscrowAccountLastSeenTransactionOrderID  int64
-	RemoteEscrowSequence                          int64
-	RemoteEscrowAccountBalance                    int64
-	RemoteEscrowAccountLastSeenTransactionOrderID int64
+	LocalChannelAccountSequence                    int64
+	LocalChannelAccountBalance                     int64
+	LocalChannelAccountLastSeenTransactionOrderID  int64
+	RemoteChannelAccountSequence                   int64
+	RemoteChannelAccountBalance                    int64
+	RemoteChannelAccountLastSeenTransactionOrderID int64
 
 	OpenAgreement            OpenAgreement
 	OpenExecutedAndValidated bool
@@ -60,12 +60,12 @@ type Snapshot struct {
 func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	channel := NewChannel(c)
 
-	channel.localEscrowAccount.SequenceNumber = s.LocalEscrowSequence
-	channel.localEscrowAccount.Balance = s.LocalEscrowAccountBalance
-	channel.localEscrowAccount.LastSeenTransactionOrderID = s.LocalEscrowAccountLastSeenTransactionOrderID
-	channel.remoteEscrowAccount.SequenceNumber = s.RemoteEscrowSequence
-	channel.remoteEscrowAccount.Balance = s.RemoteEscrowAccountBalance
-	channel.remoteEscrowAccount.LastSeenTransactionOrderID = s.RemoteEscrowAccountLastSeenTransactionOrderID
+	channel.localChannelAccount.SequenceNumber = s.LocalChannelAccountSequence
+	channel.localChannelAccount.Balance = s.LocalChannelAccountBalance
+	channel.localChannelAccount.LastSeenTransactionOrderID = s.LocalChannelAccountLastSeenTransactionOrderID
+	channel.remoteChannelAccount.SequenceNumber = s.RemoteChannelAccountSequence
+	channel.remoteChannelAccount.Balance = s.RemoteChannelAccountBalance
+	channel.remoteChannelAccount.LastSeenTransactionOrderID = s.RemoteChannelAccountLastSeenTransactionOrderID
 
 	channel.openAgreement = s.OpenAgreement
 	channel.openExecutedAndValidated = s.OpenExecutedAndValidated
@@ -79,7 +79,7 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	return channel
 }
 
-type EscrowAccount struct {
+type ChannelAccount struct {
 	Address                    *keypair.FromAddress
 	SequenceNumber             int64
 	Balance                    int64
@@ -90,9 +90,9 @@ type Channel struct {
 	networkPassphrase string
 	maxOpenExpiry     time.Duration
 
-	initiator           bool
-	localEscrowAccount  *EscrowAccount
-	remoteEscrowAccount *EscrowAccount
+	initiator            bool
+	localChannelAccount  *ChannelAccount
+	remoteChannelAccount *ChannelAccount
 
 	localSigner  *keypair.Full
 	remoteSigner *keypair.FromAddress
@@ -110,12 +110,12 @@ type Channel struct {
 // the same state.
 func (c *Channel) Snapshot() Snapshot {
 	return Snapshot{
-		LocalEscrowSequence:                           c.localEscrowAccount.SequenceNumber,
-		LocalEscrowAccountBalance:                     c.localEscrowAccount.Balance,
-		LocalEscrowAccountLastSeenTransactionOrderID:  c.localEscrowAccount.LastSeenTransactionOrderID,
-		RemoteEscrowSequence:                          c.remoteEscrowAccount.SequenceNumber,
-		RemoteEscrowAccountBalance:                    c.remoteEscrowAccount.Balance,
-		RemoteEscrowAccountLastSeenTransactionOrderID: c.remoteEscrowAccount.LastSeenTransactionOrderID,
+		LocalChannelAccountSequence:                    c.localChannelAccount.SequenceNumber,
+		LocalChannelAccountBalance:                     c.localChannelAccount.Balance,
+		LocalChannelAccountLastSeenTransactionOrderID:  c.localChannelAccount.LastSeenTransactionOrderID,
+		RemoteChannelAccountSequence:                   c.remoteChannelAccount.SequenceNumber,
+		RemoteChannelAccountBalance:                    c.remoteChannelAccount.Balance,
+		RemoteChannelAccountLastSeenTransactionOrderID: c.remoteChannelAccount.LastSeenTransactionOrderID,
 
 		OpenAgreement:            c.openAgreement,
 		OpenExecutedAndValidated: c.openExecutedAndValidated,
@@ -159,28 +159,28 @@ func (c *Channel) State() (State, error) {
 	latestDeclSequence := txs.Declaration.SequenceNumber()
 	latestCloseSequence := txs.Close.SequenceNumber()
 
-	initiatorEscrowSeqNum := c.initiatorEscrowAccount().SequenceNumber
+	initiatorChannelAccountSeqNum := c.initiatorChannelAccount().SequenceNumber
 	s := c.openAgreement.Envelope.Details.StartingSequence
 
-	if initiatorEscrowSeqNum == s {
+	if initiatorChannelAccountSeqNum == s {
 		return StateOpen, nil
-	} else if initiatorEscrowSeqNum < latestDeclSequence &&
-		txbuild.SequenceNumberToTransactionType(s, initiatorEscrowSeqNum) == txbuild.TransactionTypeDeclaration {
+	} else if initiatorChannelAccountSeqNum < latestDeclSequence &&
+		txbuild.SequenceNumberToTransactionType(s, initiatorChannelAccountSeqNum) == txbuild.TransactionTypeDeclaration {
 		return StateClosingWithOutdatedState, nil
-	} else if initiatorEscrowSeqNum < latestDeclSequence &&
-		txbuild.SequenceNumberToTransactionType(s, initiatorEscrowSeqNum) == txbuild.TransactionTypeClose {
+	} else if initiatorChannelAccountSeqNum < latestDeclSequence &&
+		txbuild.SequenceNumberToTransactionType(s, initiatorChannelAccountSeqNum) == txbuild.TransactionTypeClose {
 		return StateClosedWithOutdatedState, nil
-	} else if initiatorEscrowSeqNum == latestDeclSequence {
+	} else if initiatorChannelAccountSeqNum == latestDeclSequence {
 		return StateClosing, nil
-	} else if initiatorEscrowSeqNum >= latestCloseSequence {
+	} else if initiatorChannelAccountSeqNum >= latestCloseSequence {
 		return StateClosed, nil
 	}
 
-	return StateError, fmt.Errorf("initiator escrow account sequence has unexpected value")
+	return StateError, fmt.Errorf("initiator channel account sequence has unexpected value")
 }
 
-func (c *Channel) setInitiatorEscrowAccountSequence(seqNum int64) {
-	c.initiatorEscrowAccount().SequenceNumber = seqNum
+func (c *Channel) setInitiatorChannelAccountSequence(seqNum int64) {
+	c.initiatorChannelAccount().SequenceNumber = seqNum
 }
 
 func (c *Channel) IsInitiator() bool {
@@ -212,35 +212,35 @@ func (c *Channel) LatestUnauthorizedCloseAgreement() (CloseAgreement, bool) {
 	return c.latestUnauthorizedCloseAgreement, !c.latestUnauthorizedCloseAgreement.Envelope.Empty()
 }
 
-func (c *Channel) UpdateLocalEscrowAccountBalance(balance int64) {
-	c.localEscrowAccount.Balance = balance
+func (c *Channel) UpdateLocalChannelAccountBalance(balance int64) {
+	c.localChannelAccount.Balance = balance
 }
 
-func (c *Channel) UpdateRemoteEscrowAccountBalance(balance int64) {
-	c.remoteEscrowAccount.Balance = balance
+func (c *Channel) UpdateRemoteChannelAccountBalance(balance int64) {
+	c.remoteChannelAccount.Balance = balance
 }
 
-func (c *Channel) LocalEscrowAccount() EscrowAccount {
-	return *c.localEscrowAccount
+func (c *Channel) LocalChannelAccount() ChannelAccount {
+	return *c.localChannelAccount
 }
 
-func (c *Channel) RemoteEscrowAccount() EscrowAccount {
-	return *c.remoteEscrowAccount
+func (c *Channel) RemoteChannelAccount() ChannelAccount {
+	return *c.remoteChannelAccount
 }
 
-func (c *Channel) initiatorEscrowAccount() *EscrowAccount {
+func (c *Channel) initiatorChannelAccount() *ChannelAccount {
 	if c.initiator {
-		return c.localEscrowAccount
+		return c.localChannelAccount
 	} else {
-		return c.remoteEscrowAccount
+		return c.remoteChannelAccount
 	}
 }
 
-func (c *Channel) responderEscrowAccount() *EscrowAccount {
+func (c *Channel) responderChannelAccount() *ChannelAccount {
 	if c.initiator {
-		return c.remoteEscrowAccount
+		return c.remoteChannelAccount
 	} else {
-		return c.localEscrowAccount
+		return c.localChannelAccount
 	}
 }
 
