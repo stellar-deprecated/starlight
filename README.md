@@ -42,7 +42,7 @@ go run . -horizon=http://horizon-devnet-cap21and40.stellar.org
 
 Run two copies of the example console application and connect them directly over
 TCP to open a payment channel between two participants.
-
+(more details [here](https://github.com/stellar/starlight/blob/main/examples/console/README.md))
 ## Get involved
 
 - [Discussions](https://github.com/stellar/starlight/discussions)
