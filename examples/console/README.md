@@ -11,7 +11,7 @@ This example is a rough example and is brittle and is still a work in progress.
 ## Usage
 
 Follow the [Getting Started](../../Getting%20Started.md) instructions to run a
-stellar-core and horizon with CAP-21 capabilities.
+stellar-core and horizon with CAP-21 and CAP-40 capabilities.
 
 Run the example using the below commands.
 
