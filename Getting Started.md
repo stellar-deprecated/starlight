@@ -1,11 +1,33 @@
 # Getting Started
 
-- [Running a network with CAP-21 and CAP-40](#running-core-and-horizon-with-cap-21-and-cap-40)
+- [Connecting to the deployed devnet](#connecting-to-the-deployed-devnet)
+- [Running your own devnet with CAP-21 and CAP-40](#running-your-own-devnet-with-cap-21-and-cap-40)
 - [Experiment with the prototype Starlight Go SDK](#experiment-with-the-prototype-starlight-go-sdk)
 - [Run the console example application](#run-the-console-example-application)
 - [Manually inspect or build transactions](#manually-inspect-or-build-transactions)
 
-## Running a network with CAP-21 and CAP-40
+## Connecting to the deployed devnet
+
+The deployed devnet is a development network with no uptime or data durability
+guarantees. It is intended for convenient use with examples or testing. A
+network reset occurs when deployed.
+
+Horizon: https://horizon-devnet-cap21and40.stellar.org  
+Network Passphrase: `Starlight Network; October 2021`
+
+To run the example console application with the deployed devnet:
+
+```
+git clone https://github.com/stellar/starlight
+cd examples/console
+go run . -horizon=http://horizon-devnet-cap21and40.stellar.org
+>>> help
+```
+
+Run two copies of the example console application and connect them directly over
+TCP to open a payment channel between two participants.
+
+## Running your own devnet with CAP-21 and CAP-40
 
 To run a standalone network use the branch of the `stellar/quickstart` docker image:
 

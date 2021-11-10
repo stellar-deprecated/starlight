@@ -12,18 +12,49 @@
 
 Starlight is a prototype layer 2 payment channel protocol for the Stellar Network. Starlight has existed in a couple different forms. The previous version of Starlight lives at [interstellar/starlight](https://github.com/interstellar/starlight).
 
-This repository contains a experiments, prototypes, documents, and issues relating to implementing the Starlight protocol on the Stellar network. Protoypes here are dependent on Core Advancement Protocols, [CAP-21] and [CAP-40], that are not yet accepted or implemented. You can experiment with the Starlight protocol by running a private Stellar network in a docker container. To find out how, see [Getting Started](Getting%20Started.md).
+This repository contains a experiments, prototypes, documents, and issues
+relating to implementing the Starlight protocol on the Stellar network.
+Protoypes here are dependent on Core Advancement Protocols, [CAP-21] and
+[CAP-40], that are not yet accepted or implemented. You can experiment with the
+Starlight protocol by using the devnet, or running a private Stellar network in
+a docker container. To find out how, see [Getting
+Started](Getting%20Started.md).
 
 The Starlight protocol, SDK, code in this repository, and any forks of other Stellar software referenced here, are **experimental** and **not recommended for use in production** systems. Please use the SDK to experiment with payment channels on Stellar, but it is not recommended for use with assets that hold real world value.
 
-## Index
+## Try it out
+
+The devnet is a development network with no uptime or data durability
+guarantees. It is intended for convenient use with examples or testing. A
+network reset occurs when deployed.
+
+Horizon: https://horizon-devnet-cap21and40.stellar.org  
+Network Passphrase: `Starlight Network; October 2021`
+
+To run the example console application with the deployed devnet:
+
+```
+git clone https://github.com/stellar/starlight
+cd examples/console
+go run . -horizon=http://horizon-devnet-cap21and40.stellar.org
+>>> help
+```
+
+Run two copies of the example console application and connect them directly over
+TCP to open a payment channel between two participants.
+
+## Get involved
 
 - [Discussions](https://github.com/stellar/starlight/discussions)
 - [Demos](https://github.com/stellar/starlight/discussions/categories/demos)
 - [Getting Started](Getting%20Started.md)
 - [Specifications](specifications/)
-- [Examples](examples/)
 - [Benchmarks](benchmarks/)
+
+## Build and experiment
+
+- [SDK](https://pkg.go.dev/github.com/stellar/starlight/sdk)
+- [Examples](examples/)
 
 ## Discussions
 
