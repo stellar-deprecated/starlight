@@ -24,8 +24,9 @@ The Starlight protocol, SDK, code in this repository, and any forks of other Ste
 
 ## Try it out
 
-The devnet is a development network with no uptime or data durability
-guarantees. It is intended for convenient use with examples or testing. A
+The devnet is a development network with partial implementations of CAP-21 and
+CAP-40, required for the Starlight protocol. It is intended for convenient use
+with examples or testing. It has no uptime or data durability guarantees and a
 network reset occurs when deployed.
 
 Horizon: https://horizon-devnet-cap21and40.stellar.org  
