@@ -191,8 +191,14 @@ func run() error {
 	if file == nil {
 		account, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: accountKey.Address()})
 		if horizonclient.IsNotFoundError(err) {
-			fmt.Fprintf(os.Stdout, "account %s does not exist, attempting to create using network root key\n", accountKey.Address())
-			err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
+			fmt.Fprintf(os.Stdout, "account %s does not exist\n", accountKey.Address())
+			fmt.Fprintf(os.Stdout, "attempting to create using friendbot\n")
+			_, err = horizonClient.Fund(accountKey.Address())
+			if horizonclient.IsNotFoundError(err) {
+				fmt.Fprintf(os.Stdout, "friendbot not supported on this network\n")
+				fmt.Fprintf(os.Stdout, "attempting to create using network root key\n")
+				err = createAccountWithRoot(horizonClient, networkDetails.NetworkPassphrase, accountKey)
+			}
 			if err != nil {
 				return err
 			}
