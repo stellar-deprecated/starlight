@@ -81,11 +81,12 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	return channel
 }
 
-// ChannelAccount holds the details that a Channel tracks for a Stellar account. A Channel tracks the details of two Stellar accounts, one for each participant in the channel.
+// ChannelAccount holds the details that a Channel tracks for a Stellar account.
+// A Channel tracks the details of two Stellar accounts, one for each
+// participant in the channel.
 //
 // The channel accounts hold the assets that are used for payments and will be
-// re-distributed at close.  The initiator channel account's sequence number
-// serves as the sequence number for the channel.
+// re-distributed at close.
 type ChannelAccount struct {
 	Address                    *keypair.FromAddress
 	SequenceNumber             int64
