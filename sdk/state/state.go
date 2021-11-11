@@ -198,10 +198,10 @@ func (c *Channel) IsInitiator() bool {
 	return c.initiator
 }
 
-// NextIterationNumber returns the next iteration number for the channel. If
+// nextIterationNumber returns the next iteration number for the channel. If
 // there is a pending unauthorized close agreement, then that agreement
 // iteration is used, else the latest authorized agreeement is used.
-func (c *Channel) NextIterationNumber() int64 {
+func (c *Channel) nextIterationNumber() int64 {
 	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber
 	}
