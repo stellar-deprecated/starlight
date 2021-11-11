@@ -95,7 +95,7 @@ type ChannelAccount struct {
 	LastSeenTransactionOrderID int64
 }
 
-// Channel holds the data for a Starlight payment channel.
+// Channel holds the state of a single Starlight payment channel.
 type Channel struct {
 	networkPassphrase string
 	maxOpenExpiry     time.Duration
