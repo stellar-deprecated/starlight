@@ -81,9 +81,7 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	return channel
 }
 
-// ChannelAccount is an account that, with another channel account, form a
-// channel. Two participants are needed to form a channel, referred to as remote
-// and local.
+// ChannelAccount holds the details that a Channel tracks for a Stellar account. A Channel tracks the details of two Stellar accounts, one for each participant in the channel.
 //
 // The channel accounts hold the assets that are used for payments and will be
 // re-distributed at close.  The initiator channel account's sequence number
