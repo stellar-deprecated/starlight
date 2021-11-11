@@ -207,7 +207,7 @@ func (c *Channel) ProposePaymentWithMemo(amount int64, memo []byte) (CloseAgreem
 	d := CloseDetails{
 		ObservationPeriodTime:      c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime,
 		ObservationPeriodLedgerGap: c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap,
-		IterationNumber:            c.NextIterationNumber(),
+		IterationNumber:            c.nextIterationNumber(),
 		Balance:                    newBalance,
 		ProposingSigner:            c.localSigner.FromAddress(),
 		ConfirmingSigner:           c.remoteSigner,
@@ -259,8 +259,8 @@ func (c *Channel) validatePayment(ce CloseEnvelope) (err error) {
 	}
 
 	// If the new close agreement details are incorrect, error.
-	if ce.Details.IterationNumber != c.NextIterationNumber() {
-		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ce.Details.IterationNumber, c.NextIterationNumber())
+	if ce.Details.IterationNumber != c.nextIterationNumber() {
+		return fmt.Errorf("invalid payment iteration number, got: %d want: %d", ce.Details.IterationNumber, c.nextIterationNumber())
 	}
 	if ce.Details.ObservationPeriodTime != c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodTime ||
 		ce.Details.ObservationPeriodLedgerGap != c.latestAuthorizedCloseAgreement.Envelope.Details.ObservationPeriodLedgerGap {

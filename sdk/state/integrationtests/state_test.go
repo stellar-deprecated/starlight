@@ -160,8 +160,6 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	endingIterationNumber := int64(20)
 	for i < endingIterationNumber {
 		i++
-		require.Equal(t, i, initiatorChannel.NextIterationNumber())
-		require.Equal(t, i, responderChannel.NextIterationNumber())
 		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
@@ -182,7 +180,6 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 			iBalanceCheck += amount
 		}
 		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
-		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, signs, sends to other party
@@ -428,8 +425,6 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	endingIterationNumber := int64(20)
 	for i < endingIterationNumber {
 		i++
-		require.Equal(t, i, initiatorChannel.NextIterationNumber())
-		require.Equal(t, i, responderChannel.NextIterationNumber())
 		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
@@ -449,7 +444,6 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 			iBalanceCheck += amount
 		}
 		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
-		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, signs, sends to other party
@@ -645,8 +639,6 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	endingIterationNumber := int64(20)
 	for i < endingIterationNumber {
 		i++
-		require.Equal(t, i, initiatorChannel.NextIterationNumber())
-		require.Equal(t, i, responderChannel.NextIterationNumber())
 		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
@@ -666,7 +658,6 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 			iBalanceCheck += amount
 		}
 		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
-		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, signs, sends to other party
@@ -862,8 +853,6 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	endingIterationNumber := int64(20)
 	for i < endingIterationNumber {
 		i++
-		require.Equal(t, i, initiatorChannel.NextIterationNumber())
-		require.Equal(t, i, responderChannel.NextIterationNumber())
 		// get a random payment amount from 0 to 100 lumens
 		amount := randomPositiveInt64(t, 100_0000000)
 
@@ -883,7 +872,6 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 			iBalanceCheck += amount
 		}
 		t.Log("Current channel balances: I: ", sendingChannel.Balance()/1_000_0000, "R: ", receivingChannel.Balance()/1_000_0000)
-		t.Log("Current channel iteration numbers: I: ", sendingChannel.NextIterationNumber(), "R: ", receivingChannel.NextIterationNumber())
 		t.Log("Proposal: ", i, paymentLog, amount/1_000_0000)
 
 		// Sender: creates new Payment, signs, sends to other party
