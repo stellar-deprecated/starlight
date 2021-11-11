@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/starlight/sdk/txbuild"
 )
 
+// Config contains the information for setting up a new channel.
 type Config struct {
 	NetworkPassphrase string
 	MaxOpenExpiry     time.Duration
@@ -21,6 +22,7 @@ type Config struct {
 	RemoteSigner *keypair.FromAddress
 }
 
+// NewChannel constructs a new channel with the given config.
 func NewChannel(c Config) *Channel {
 	channel := &Channel{
 		networkPassphrase:    c.NetworkPassphrase,
@@ -79,6 +81,12 @@ func NewChannelFromSnapshot(c Config, s Snapshot) *Channel {
 	return channel
 }
 
+// ChannelAccount holds the details that a Channel tracks for a Stellar account.
+// A Channel tracks the details of two Stellar accounts, one for each
+// participant in the channel.
+//
+// The channel accounts hold the assets that are used for payments and will be
+// re-distributed at close.
 type ChannelAccount struct {
 	Address                    *keypair.FromAddress
 	SequenceNumber             int64
@@ -86,6 +94,7 @@ type ChannelAccount struct {
 	LastSeenTransactionOrderID int64
 }
 
+// Channel holds the state of a single Starlight payment channel.
 type Channel struct {
 	networkPassphrase string
 	maxOpenExpiry     time.Duration
@@ -183,10 +192,15 @@ func (c *Channel) setInitiatorChannelAccountSequence(seqNum int64) {
 	c.initiatorChannelAccount().SequenceNumber = seqNum
 }
 
+// IsInitiator returns true if this channel initiated the process of opening a
+// channel, else false.
 func (c *Channel) IsInitiator() bool {
 	return c.initiator
 }
 
+// nextIterationNumber returns the next iteration number for the channel. If
+// there is a pending unauthorized close agreement, then that agreement
+// iteration is used, else the latest authorized agreeement is used.
 func (c *Channel) nextIterationNumber() int64 {
 	if !c.latestUnauthorizedCloseAgreement.Envelope.Empty() {
 		return c.latestUnauthorizedCloseAgreement.Envelope.Details.IterationNumber
@@ -200,30 +214,39 @@ func (c *Channel) Balance() int64 {
 	return c.latestAuthorizedCloseAgreement.Envelope.Details.Balance
 }
 
+// OpenAgreement returns the open agreement used to open the channel.
 func (c *Channel) OpenAgreement() OpenAgreement {
 	return c.openAgreement
 }
 
+// LatestCloseAgreement returns the latest close agreement signed by both
+// channel participants.
 func (c *Channel) LatestCloseAgreement() CloseAgreement {
 	return c.latestAuthorizedCloseAgreement
 }
 
+// LatestUnauthorizedCloseAgreement returns the latest unauthorized close
+// agreement yet to be signed by both participants.
 func (c *Channel) LatestUnauthorizedCloseAgreement() (CloseAgreement, bool) {
 	return c.latestUnauthorizedCloseAgreement, !c.latestUnauthorizedCloseAgreement.Envelope.Empty()
 }
 
+// UpdateLocalChannelAccountBalance updates the local channel account balance.
 func (c *Channel) UpdateLocalChannelAccountBalance(balance int64) {
 	c.localChannelAccount.Balance = balance
 }
 
+// UpdateRemoteChannelAccountBalance updates the remote channel account balance.
 func (c *Channel) UpdateRemoteChannelAccountBalance(balance int64) {
 	c.remoteChannelAccount.Balance = balance
 }
 
+// LocalChannelAccount returns the local channel account.
 func (c *Channel) LocalChannelAccount() ChannelAccount {
 	return *c.localChannelAccount
 }
 
+// RemoteChannelAccount returns the remote channel account.
 func (c *Channel) RemoteChannelAccount() ChannelAccount {
 	return *c.remoteChannelAccount
 }
