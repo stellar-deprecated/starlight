@@ -11,6 +11,8 @@
 </p>
 
 Starlight is a prototype layer 2 payment channel protocol for the Stellar Network. Starlight has existed in a couple different forms. The previous version of Starlight lives at [interstellar/starlight](https://github.com/interstellar/starlight).
+  
+**Have a use case for payment channels on Stellar? Tell us about it [here](https://github.com/stellar/starlight/discussions/categories/use-cases).**
 
 This repository contains a experiments, prototypes, documents, and issues
 relating to implementing the Starlight protocol on the Stellar network.
