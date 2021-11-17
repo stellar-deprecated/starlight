@@ -22,6 +22,8 @@ Starlight protocol by using the devnet, or running a private Stellar network in
 a docker container. To find out how, see [Getting
 Started](Getting%20Started.md).
 
+![Diagram of two people opening a payment channel, transacting off-network, and closing the payment channel.](README-diagram.png)
+
 The Starlight protocol, SDK, code in this repository, and any forks of other Stellar software referenced here, are **experimental** and **not recommended for use in production** systems. Please use the SDK to experiment with payment channels on Stellar, but it is not recommended for use with assets that hold real world value.
 
 ## Try it out
