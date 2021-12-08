@@ -34,11 +34,7 @@ To run a standalone network use the branch of the `stellar/quickstart` docker im
 ### Locally
 
 ```
-docker build -t stellar/quickstart:cap21and40 git://github.com/stellar/docker-stellar-core-horizon#cap21and40
-```
-
-```
-docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:cap21and40 --standalone
+docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:pr-294 --standalone
 ```
 
 The root account of the network will be:
