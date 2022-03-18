@@ -8,8 +8,8 @@ Track: Standard
 Status: Draft
 Discussion: https://github.com/stellar/starlight/issues
 Created: 2021-04-21
-Updated: 2021-11-04
-Version: 0.5.0
+Updated: 2022-03-17
+Version: 0.5.1
 ```
 
 ## Summary
@@ -717,6 +717,14 @@ declaration transaction in order and wait just less than the observation period
 between each submission. The sending participant would not be in possession of
 the most recent authorized declaration transaction and so could not jump ahead
 to that most recent payment.
+
+### Presence of a Free Option
+
+Like most multi-party protocols, where multiple parties must authorize a
+transaction, there exists a period of time where a free-option may exist. One
+party may sign a payment and another party can wait some period of time to
+decide if they will authorize it, or if they will fallback to the previously
+authorized transaction.
 
 ## Limitations
 
