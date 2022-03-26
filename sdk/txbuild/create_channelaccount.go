@@ -51,8 +51,10 @@ func CreateChannelAccount(p CreateChannelAccountParams) (*txnbuild.Transaction, 
 				AccountID: p.Creator.Address(),
 				Sequence:  p.SequenceNumber,
 			},
-			BaseFee:    0,
-			Timebounds: txnbuild.NewTimeout(300),
+			BaseFee: 0,
+			Preconditions: txnbuild.Preconditions{
+				Timebounds: txnbuild.NewTimeout(300),
+			},
 			Operations: ops,
 		},
 	)

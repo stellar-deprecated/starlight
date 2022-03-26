@@ -65,7 +65,7 @@ type Snapshotter interface {
 // at construction.
 type Config struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	MaxOpenExpiry              time.Duration
 	NetworkPassphrase          string
 
@@ -138,7 +138,7 @@ func NewAgentFromSnapshot(c Config, s Snapshot) *Agent {
 // Agent coordinates a payment channel over a TCP connection.
 type Agent struct {
 	observationPeriodTime      time.Duration
-	observationPeriodLedgerGap int64
+	observationPeriodLedgerGap uint32
 	maxOpenExpiry              time.Duration
 	networkPassphrase          string
 

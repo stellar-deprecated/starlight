@@ -82,8 +82,10 @@ func TestChannel_CloseTx(t *testing.T) {
 	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localChannelAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
+		Preconditions: txnbuild.Preconditions{
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+		Operations: []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)
 	channel.latestAuthorizedCloseAgreement.Transactions = CloseTransactions{
@@ -101,7 +103,7 @@ func TestChannel_CloseTx(t *testing.T) {
 	testTx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localChannelAccount.Address(), Sequence: 987654321},
 		BaseFee:       txnbuild.MinBaseFee,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Preconditions: txnbuild.Preconditions{Timebounds: txnbuild.NewInfiniteTimeout()},
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)

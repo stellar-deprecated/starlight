@@ -7,11 +7,12 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 type CloseParams struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	InitiatorSigner            *keypair.FromAddress
 	ResponderSigner            *keypair.FromAddress
 	InitiatorChannelAccount    *keypair.FromAddress
@@ -39,10 +40,12 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorChannelAccount.Address(),
 			Sequence:  seq,
 		},
-		BaseFee:              0,
-		Timebounds:           txnbuild.NewInfiniteTimeout(),
-		MinSequenceAge:       int64(p.ObservationPeriodTime.Seconds()),
-		MinSequenceLedgerGap: p.ObservationPeriodLedgerGap,
+		BaseFee: 0,
+		Preconditions: txnbuild.Preconditions{
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+			MinSequenceNumberAge: xdr.Duration(p.ObservationPeriodTime.Seconds()),
+			MinSequenceNumberLedgerGap: p.ObservationPeriodLedgerGap,
+		},
 		Operations: []txnbuild.Operation{
 			&txnbuild.SetOptions{
 				SourceAccount:   p.InitiatorChannelAccount.Address(),

@@ -6,6 +6,7 @@ import (
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -32,22 +33,33 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 	// open transaction. This prevents the confirming signer from
 	// withholding signatures for the declaration and closing transactions.
 	extraSignerKeys := [2]xdr.SignerKey{}
-	err := extraSignerKeys[0].SetSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
-	if err != nil {
-		return nil, err
-	}
-	err = extraSignerKeys[1].SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
-	if err != nil {
-		return nil, err
-	}
-	extraSigners := []string{}
-	for _, k := range extraSignerKeys {
-		var a string
-		a, err = k.GetAddress()
+	{
+		extraSigner, err := strkey.NewSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
 		if err != nil {
 			return nil, err
 		}
-		extraSigners = append(extraSigners, a)
+		extraSignerStr, err := extraSigner.Encode()
+		if err != nil {
+			return nil, err
+		}
+		err = extraSignerKeys[0].SetAddress(extraSignerStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+	{
+		extraSigner, err := strkey.NewSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
+		if err != nil {
+			return nil, err
+		}
+		extraSignerStr, err := extraSigner.Encode()
+		if err != nil {
+			return nil, err
+		}
+		err = extraSignerKeys[1].SetAddress(extraSignerStr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tp := txnbuild.TransactionParams{
@@ -55,9 +67,11 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorChannelAccount.Address(),
 			Sequence:  p.StartSequence,
 		},
-		BaseFee:      0,
-		Timebounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
-		ExtraSigners: extraSigners,
+		BaseFee: 0,
+		Preconditions: txnbuild.Preconditions{
+			Timebounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
+			ExtraSigners: extraSignerKeys[:],
+		},
 	}
 
 	// I sponsoring ledger entries on EI

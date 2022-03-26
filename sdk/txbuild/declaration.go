@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -37,12 +38,16 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 	// reveal that signature publicly when submitting the declaration
 	// transaction. This prevents the confirming signer from withholding
 	// signatures for the closing transactions.
-	extraSignerKey := xdr.SignerKey{}
-	err := extraSignerKey.SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
+	extraSigner, err := strkey.NewSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
 	if err != nil {
 		return nil, err
 	}
-	extraSigner, err := extraSignerKey.GetAddress()
+	extraSignerStr, err := extraSigner.Encode()
+	if err != nil {
+		return nil, err
+	}
+	extraSignerKey := xdr.SignerKey{}
+	err = extraSignerKey.SetAddress(extraSignerStr)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +57,13 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorChannelAccount.Address(),
 			Sequence:  seq,
 		},
-		BaseFee:           0,
-		Timebounds:        txnbuild.NewInfiniteTimeout(),
-		MinSequenceNumber: &minSequenceNumber,
-		ExtraSigners: []string{
-			extraSigner,
+		BaseFee: 0,
+		Preconditions: txnbuild.Preconditions{
+			Timebounds:        txnbuild.NewInfiniteTimeout(),
+			MinSequenceNumber: &minSequenceNumber,
+			ExtraSigners: []xdr.SignerKey{
+				extraSignerKey,
+			},
 		},
 		Operations: []txnbuild.Operation{
 			&txnbuild.BumpSequence{

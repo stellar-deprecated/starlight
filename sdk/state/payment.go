@@ -14,7 +14,7 @@ import (
 // CloseDetails contains the details that the participants agree on.
 type CloseDetails struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	IterationNumber            int64
 	Balance                    int64
 	ProposingSigner            *keypair.FromAddress

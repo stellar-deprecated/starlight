@@ -28,7 +28,7 @@ func handleSnapshot(a *agent.Agent) func(w http.ResponseWriter, r *http.Request)
 		enc.SetIndent("", "  ")
 		type agentConfig struct {
 			ObservationPeriodTime      time.Duration
-			ObservationPeriodLedgerGap int64
+			ObservationPeriodLedgerGap uint32
 			MaxOpenExpiry              time.Duration
 			NetworkPassphrase          string
 			ChannelAccountKey          *keypair.FromAddress
