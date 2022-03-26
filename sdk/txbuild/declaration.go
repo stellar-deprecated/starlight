@@ -6,7 +6,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 type DeclarationParams struct {
@@ -46,11 +45,6 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	extraSignerKey := xdr.SignerKey{}
-	err = extraSignerKey.SetAddress(extraSignerStr)
-	if err != nil {
-		return nil, err
-	}
 
 	tp := txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
@@ -59,10 +53,10 @@ func Declaration(p DeclarationParams) (*txnbuild.Transaction, error) {
 		},
 		BaseFee: 0,
 		Preconditions: txnbuild.Preconditions{
-			Timebounds:        txnbuild.NewInfiniteTimeout(),
+			TimeBounds:        txnbuild.NewInfiniteTimeout(),
 			MinSequenceNumber: &minSequenceNumber,
-			ExtraSigners: []xdr.SignerKey{
-				extraSignerKey,
+			ExtraSigners: []string{
+				extraSignerStr,
 			},
 		},
 		Operations: []txnbuild.Operation{

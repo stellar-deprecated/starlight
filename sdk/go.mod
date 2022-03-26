@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
-	github.com/stellar/go v0.0.0-20220325171119-9fdd7ffb0956
+	github.com/stellar/go v0.0.0-20220325232616-6d0f666bcd9e
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c

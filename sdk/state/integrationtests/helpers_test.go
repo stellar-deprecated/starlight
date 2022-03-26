@@ -117,7 +117,7 @@ func initChannelAccount(t *testing.T, participant *Participant, assetParam Asset
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount:        &account,
 		BaseFee:              txnbuild.MinBaseFee,
-		Preconditions:        txnbuild.Preconditions{Timebounds: txnbuild.NewTimeout(300)},
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 		IncrementSequenceNum: true,
 		Operations:           payments,
 	})
@@ -173,7 +173,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 			SourceAccount:        &distributor,
 			IncrementSequenceNum: true,
 			BaseFee:              txnbuild.MinBaseFee,
-			Preconditions:        txnbuild.Preconditions{Timebounds: txnbuild.NewInfiniteTimeout()},
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 			Operations: []txnbuild.Operation{
 				&txnbuild.ChangeTrust{
 					Line:  asset.MustToChangeTrustAsset(),
@@ -252,7 +252,7 @@ func fundAsset(asset state.Asset, amount int64, accountKP *keypair.Full, distrib
 		SourceAccount:        &distributor,
 		IncrementSequenceNum: true,
 		BaseFee:              txnbuild.MinBaseFee,
-		Preconditions:        txnbuild.Preconditions{Timebounds: txnbuild.NewTimeout(300)},
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 		Operations:           ops,
 	})
 	if err != nil {
@@ -290,7 +290,7 @@ func createAccount(account *keypair.FromAddress, startingBalance int64) error {
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
 			BaseFee:              txnbuild.MinBaseFee,
-			Preconditions:        txnbuild.Preconditions{Timebounds: txnbuild.NewTimeout(300)},
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 			Operations: []txnbuild.Operation{
 				&txnbuild.CreateAccount{
 					Destination: account.Address(),

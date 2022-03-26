@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 type OpenParams struct {
@@ -32,17 +31,13 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 	// signer must reveal those signatures publicly when submitting the
 	// open transaction. This prevents the confirming signer from
 	// withholding signatures for the declaration and closing transactions.
-	extraSignerKeys := [2]xdr.SignerKey{}
+	extraSignerStrs := [2]string{}
 	{
 		extraSigner, err := strkey.NewSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
 		if err != nil {
 			return nil, err
 		}
-		extraSignerStr, err := extraSigner.Encode()
-		if err != nil {
-			return nil, err
-		}
-		err = extraSignerKeys[0].SetAddress(extraSignerStr)
+		extraSignerStrs[0], err = extraSigner.Encode()
 		if err != nil {
 			return nil, err
 		}
@@ -52,11 +47,7 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		extraSignerStr, err := extraSigner.Encode()
-		if err != nil {
-			return nil, err
-		}
-		err = extraSignerKeys[1].SetAddress(extraSignerStr)
+		extraSignerStrs[1], err = extraSigner.Encode()
 		if err != nil {
 			return nil, err
 		}
@@ -69,8 +60,8 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 		},
 		BaseFee: 0,
 		Preconditions: txnbuild.Preconditions{
-			Timebounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
-			ExtraSigners: extraSignerKeys[:],
+			TimeBounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
+			ExtraSigners: extraSignerStrs[:],
 		},
 	}
 

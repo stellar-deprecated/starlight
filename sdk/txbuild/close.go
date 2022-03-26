@@ -7,7 +7,6 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 type CloseParams struct {
@@ -42,8 +41,8 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 		},
 		BaseFee: 0,
 		Preconditions: txnbuild.Preconditions{
-			Timebounds:           txnbuild.NewInfiniteTimeout(),
-			MinSequenceNumberAge: xdr.Duration(p.ObservationPeriodTime.Seconds()),
+			TimeBounds:                 txnbuild.NewInfiniteTimeout(),
+			MinSequenceNumberAge:       int64(p.ObservationPeriodTime.Seconds()),
 			MinSequenceNumberLedgerGap: p.ObservationPeriodLedgerGap,
 		},
 		Operations: []txnbuild.Operation{

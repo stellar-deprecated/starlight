@@ -44,8 +44,8 @@ github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2/go.mod h1:8z
 github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca h1:oR/RycYTFTVXzND5r4FdsvbnBn0HJXSVeNAnwaTXRwk=
 github.com/sirupsen/logrus v1.4.1 h1:GL2rEmy6nsikmW0r8opw9JIRScdMF5hA8cOYLH7In1k=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
-github.com/stellar/go v0.0.0-20220325171119-9fdd7ffb0956 h1:JyGWPedrdWDQhKzqrAgL42xUxEKX0ZBC+JKsSnFl1A8=
-github.com/stellar/go v0.0.0-20220325171119-9fdd7ffb0956/go.mod h1:iDxR5/jooz0ZYqP/PLIs+WqkvKWaHyQ9NB8BcvzCuqc=
+github.com/stellar/go v0.0.0-20220325232616-6d0f666bcd9e h1:+sotVlidjw+1ytv2RgoQleYNy9Emi05G361ptfzdJcs=
+github.com/stellar/go v0.0.0-20220325232616-6d0f666bcd9e/go.mod h1:iDxR5/jooz0ZYqP/PLIs+WqkvKWaHyQ9NB8BcvzCuqc=
 github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee h1:fbVs0xmXpBvVS4GBeiRmAE3Le70ofAqFMch1GTiq/e8=
 github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee/go.mod h1:yoxyU/M8nl9LKeWIoBrbDPQ7Cy+4jxRcWcOayZ4BMps=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
