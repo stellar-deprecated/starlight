@@ -7,7 +7,7 @@ replace github.com/stellar/starlight/sdk => ../../sdk
 require (
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
-	github.com/stellar/go v0.0.0-20220325232616-6d0f666bcd9e
+	github.com/stellar/go v0.0.0-20220406183204-45b6f52202f3
 	github.com/stellar/starlight/sdk v0.0.0-00010101000000-000000000000
 )
 
@@ -40,6 +40,5 @@ require (
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
