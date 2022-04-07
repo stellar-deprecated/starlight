@@ -1,15 +1,14 @@
 module github.com/stellar/starlight/examples/console
 
-go 1.17
+go 1.18
 
 replace github.com/stellar/starlight/sdk => ../../sdk
 
 require (
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
-	github.com/stellar/starlight/sdk v0.0.0-00010101000000-000000000000
 	github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
-	gopkg.in/yaml.v2 v2.3.0 // indirect
+	github.com/stellar/starlight/sdk v0.0.0-00010101000000-000000000000
 )
 
 require (
