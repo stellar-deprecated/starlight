@@ -1,13 +1,12 @@
 module github.com/stellar/starlight/examples/bufferedbenchmark
 
-go 1.17
+go 1.18
 
 replace github.com/stellar/starlight/sdk => ../../sdk
 
 require (
+	github.com/stellar/go v0.0.0-20220325232616-6d0f666bcd9e
 	github.com/stellar/starlight/sdk v0.0.0-00010101000000-000000000000
-	github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 
 require (
@@ -30,8 +29,9 @@ require (
 	github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
