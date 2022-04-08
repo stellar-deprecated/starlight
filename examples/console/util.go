@@ -18,7 +18,7 @@ func createAccountWithRoot(client horizonclient.ClientInterface, networkPassphra
 		SourceAccount:        &root,
 		IncrementSequenceNum: true,
 		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewTimeout(300),
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 		Operations: []txnbuild.Operation{
 			&txnbuild.CreateAccount{
 				Destination: accountKey.Address(),
