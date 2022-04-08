@@ -1,6 +1,6 @@
 module github.com/stellar/starlight/sdk
 
-go 1.17
+go 1.18
 
 require (
 	github.com/google/gofuzz v1.2.0
@@ -31,4 +31,5 @@ require (
 	github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

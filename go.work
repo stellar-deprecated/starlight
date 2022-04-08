@@ -1,0 +1,8 @@
+go 1.18
+
+use (
+	examples/benchmark
+	examples/bufferedbenchmark
+	examples/console
+	sdk
+)
