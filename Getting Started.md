@@ -34,16 +34,8 @@ To run a standalone network use the branch of the `stellar/quickstart` docker im
 ### Locally
 
 ```
-docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:pr-294 --standalone
+docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:pr-341-dev --standalone
 ```
-
-The root account of the network will be:
-```
-GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI
-SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
-```
-
-There is no friendbot, so you'll need to create a transaction funding accounts from the root account.
 
 Test that the network is running by curling the root endpoint:
 
@@ -51,11 +43,13 @@ Test that the network is running by curling the root endpoint:
 curl http://localhost:8000
 ```
 
+There is a friendbot included in the network that can faucet new accounts.
+
 ### Deployed
 
 Alternatively, deploy a standalone network to Digital Ocean to develop and test with:
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/stellar/docker-stellar-core-horizon/tree/cap21and40)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/stellar/docker-stellar-core-horizon/tree/protocol19)
 
 The network passphrase will be randomly generated in this case, and you can retrieve it from the logs.
 
@@ -81,16 +75,7 @@ See the [README](https://github.com/stellar/starlight/tree/readme/examples/conso
 
 ## Manually inspect or build transactions
 
-You can use `stc` to manually build and inspect transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
-
-```
-git clone -b cap21 https://github.com/leighmcculloch/xdrpp--stc stc
-cd stc
-make depend
-make
-make install
-export STCNET=standalone
-```
+You can use [stc](https://github.com/xdrpp/stc) to manually build and inspect transactions at the command line using text files. A fork of `stc` has been updated to support CAP-21 and CAP-40. Use the instructions below to install it.
 
 Build transactions as you normally would, but for standalone network.
 ```
