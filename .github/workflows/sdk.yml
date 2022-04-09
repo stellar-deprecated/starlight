@@ -60,6 +60,8 @@ jobs:
       run: docker run -d -p 8000:8000 --name stellar stellar/quickstart:pr-341-dev --standalone --enable-core-artificially-accelerate-time-for-testing
     - name: "Stellar Quickstart w/ Protocol 19: Wait for Ready"
       run: while ! [ "$(curl -s --fail localhost:8000 | jq '.history_latest_ledger')" -gt 0 ]; do echo waiting; sleep 1; done
+    - name: "Stellar Quickstart w/ Protocol 19: Details"
+      run: curl localhost:8000
     - name: Checkout
       uses: actions/checkout@v2
     - name: Set up Go
