@@ -56,11 +56,9 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     steps:
-    - name: "Stellar Quickstart w/ CAP-21 + CAP-40: Build"
-      run: docker build -t stellar/quickstart:cap21and40 https://github.com/stellar/docker-stellar-core-horizon.git#cap21and40
-    - name: "Stellar Quickstart w/ CAP-21 + CAP-40: Run"
-      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart:cap21and40 --standalone --enable-core-artificially-accelerate-time-for-testing
-    - name: "Stellar Quickstart w/ CAP-21 + CAP-40: Wait for Ready"
+    - name: "Stellar Quickstart w/ Protocol 19: Run"
+      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart:pr-341-dev --standalone --enable-core-artificially-accelerate-time-for-testing
+    - name: "Stellar Quickstart w/ Protocol 19: Wait for Ready"
       run: while ! [ "$(curl -s --fail localhost:8000 | jq '.history_latest_ledger')" -gt 0 ]; do echo waiting; sleep 1; done
     - name: Checkout
       uses: actions/checkout@v2
