@@ -64,40 +64,15 @@ More details in the [README](https://github.com/stellar/starlight/tree/main/exam
 
 ## Discussions
 
-- Discussions about Starlight are on [GitHub Discussions](https://github.com/stellar/starlight/discussions)
+- Discussions about Starlight are on [Discord](https://discord.gg/xGWRjyNzQh)
 - Discussions about CAP-21 and CAP-40:
   - CAP-21 thread on the [stellar-dev mailing list](https://groups.google.com/g/stellar-dev/c/Wp7gNaJvt40)
   - CAP-40 thread on the [stellar-dev mailing list](https://groups.google.com/g/stellar-dev/c/Wp7gNaJvt40)
   - Live Protocol Meetings: https://www.youtube.com/playlist?list=PLmr3tp_7-7Gj9cTR5ieSaRHxiA2zItFyx
 
-## Forks
+## Protocol 19
 
-The code in this repository is dependent on some other Stellar software that have been forked to add partial implementations of [CAP-21] and [CAP-40].
-
-- xdr: https://github.com/stellar/stellar-core-experimental-cap21and40/tree/cap21and40/src/xdr
-- stellar-core: https://github.com/stellar/stellar-core-experimental-cap21and40/pull/1
-- horizon & Go SDK: https://github.com/stellar/go/pull/4013
-- quickstart: https://github.com/stellar/docker-stellar-core-horizon/pull/294
-- stc: https://github.com/leighmcculloch/xdrpp--stc/pull/1
-
-### CAP-21
-
-The forks may not be exactly the same as CAP-21 defines as shortcuts were taken, however should be functionally equivalent. Not all general preconditions were implemented. Horizon was updated to expose the preconditions and new accounts state that is helpful to Starlight as a bare minimum, but not all because payment channels primariliy need these capabilities in the transactions and don't necessarily need to see that state in the API. Horizon's ingestion validation was not updated and must be disabled when running the Horizon fork. Functionality in Horizon's transaction submission queue was disabled to support `minSeqNum`.
-
-The preconditions from CAP-21 are listed here, and checked if implemented.
-
-- [x] `timeBounds`
-- [ ] `ledgerBounds`
-- [x] `minSeqNum`
-- [x] `minSeqAge`
-- [x] `minSeqLedgerGap`
-- [x] `extraSigners`
-
-### CAP-40
-
-The forks have a more complete implementation of CAP-40 because it is a small change.
-
-- [x] ed25519 signed payload signer
+The code in this repository is dependent on changes to the Stellar protocol coming in Protocol 19, specifically the changes described by [CAP-21] and [CAP-40]. Protocol 19 is in development.
 
 [CAP-21]: https://stellar.org/protocol/cap-21
 [CAP-40]: https://stellar.org/protocol/cap-40
