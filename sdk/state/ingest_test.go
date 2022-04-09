@@ -962,7 +962,7 @@ func TestChannel_IngestTx_updateState_nonNativeAsset(t *testing.T) {
 		ResponderChannelAccount: responderChannelAccount.Address(),
 		StartSequence:           24936580120577,
 		Asset:                   asset.Asset(),
-		TrustLineFlag:               xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag, // Wrong trustline flag.
+		TrustLineFlag:           xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag, // Wrong trustline flag.
 	})
 	require.NoError(t, err)
 	err = initiatorChannel.IngestTx(8, openTxXDR, validResultXDR, resultMetaXDR)

@@ -83,7 +83,7 @@ type OpenResultMetaParams struct {
 	Thresholds              xdr.Thresholds // Defaults to 0, 2, 2, 2 if not set.
 	StartSequence           int64
 	Asset                   txnbuild.Asset
-	TrustLineFlag               xdr.TrustLineFlags // Defaults to authorized flag.
+	TrustLineFlag           xdr.TrustLineFlags // Defaults to authorized flag.
 }
 
 func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
