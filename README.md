@@ -16,9 +16,9 @@ Starlight is a prototype layer 2 payment channel protocol for the Stellar Networ
 
 This repository contains a experiments, prototypes, documents, and issues
 relating to implementing the Starlight protocol on the Stellar network.
-Protoypes here are dependent on Core Advancement Protocols, [CAP-21] and
-[CAP-40], that are not yet accepted or implemented. You can experiment with the
-Starlight protocol by using the devnet, or running a private Stellar network in
+Protoypes here are dependent on Protocol 19 and Core Advancement Protocols, [CAP-21] and
+[CAP-40], that are not yet released. You can experiment with the
+Starlight protocol by using the devnet, or running a Stellar network in
 a docker container. To find out how, see [Getting
 Started](Getting%20Started.md).
 
