@@ -14,7 +14,7 @@ import (
 // OpenDetails contain the details participants agree on for opening a channel.
 type OpenDetails struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	Asset                      Asset
 	ExpiresAt                  time.Time
 	StartingSequence           int64
@@ -203,7 +203,7 @@ func (oa OpenAgreement) SignedTransactions() OpenTransactions {
 // channel.
 type OpenParams struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	Asset                      Asset
 	ExpiresAt                  time.Time
 	StartingSequence           int64

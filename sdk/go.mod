@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
-	github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
+	github.com/stellar/go v0.0.0-20220406183204-45b6f52202f3
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -29,7 +29,8 @@ require (
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2 // indirect
 	github.com/sirupsen/logrus v1.4.1 // indirect
 	github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

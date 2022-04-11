@@ -396,7 +396,7 @@ func runShell(agent *bufferedagent.Agent, stats *stats, submitter agentpkg.Submi
 				SourceAccount:        &account,
 				IncrementSequenceNum: true,
 				BaseFee:              txnbuild.MinBaseFee,
-				Timebounds:           txnbuild.NewTimeout(300),
+				Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 				Operations: []txnbuild.Operation{
 					&txnbuild.Payment{Destination: destination.Address(), Asset: asset.Asset(), Amount: depositAmountStr},
 				},

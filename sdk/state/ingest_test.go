@@ -1276,7 +1276,7 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 	tx1, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: depositer, Sequence: 1},
 		BaseFee:       txnbuild.MinBaseFee,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		Operations: []txnbuild.Operation{
 			&txnbuild.Payment{Destination: initiatorChannelAccount.Address(), Asset: txnbuild.NativeAsset{}, Amount: "10"},
 			&txnbuild.Payment{Destination: responderChannelAccount.Address(), Asset: txnbuild.NativeAsset{}, Amount: "10"},
@@ -1295,7 +1295,7 @@ func TestChannel_IngestTx_balanceCantGoBackwards(t *testing.T) {
 	tx2, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: depositer, Sequence: 2},
 		BaseFee:       txnbuild.MinBaseFee,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		Operations: []txnbuild.Operation{
 			&txnbuild.Payment{Destination: initiatorChannelAccount.Address(), Asset: txnbuild.NativeAsset{}, Amount: "5"},
 			&txnbuild.Payment{Destination: responderChannelAccount.Address(), Asset: txnbuild.NativeAsset{}, Amount: "5"},

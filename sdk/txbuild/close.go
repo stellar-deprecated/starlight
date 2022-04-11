@@ -11,7 +11,7 @@ import (
 
 type CloseParams struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	InitiatorSigner            *keypair.FromAddress
 	ResponderSigner            *keypair.FromAddress
 	InitiatorChannelAccount    *keypair.FromAddress
@@ -39,10 +39,12 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorChannelAccount.Address(),
 			Sequence:  seq,
 		},
-		BaseFee:              0,
-		Timebounds:           txnbuild.NewInfiniteTimeout(),
-		MinSequenceAge:       int64(p.ObservationPeriodTime.Seconds()),
-		MinSequenceLedgerGap: p.ObservationPeriodLedgerGap,
+		BaseFee: 0,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds:                 txnbuild.NewInfiniteTimeout(),
+			MinSequenceNumberAge:       int64(p.ObservationPeriodTime.Seconds()),
+			MinSequenceNumberLedgerGap: p.ObservationPeriodLedgerGap,
+		},
 		Operations: []txnbuild.Operation{
 			&txnbuild.SetOptions{
 				SourceAccount:   p.InitiatorChannelAccount.Address(),

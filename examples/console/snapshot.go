@@ -11,7 +11,7 @@ import (
 
 type File struct {
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	MaxOpenExpiry              time.Duration
 	ChannelAccountKey          *keypair.FromAddress
 	Snapshot                   agentpkg.Snapshot
@@ -21,7 +21,7 @@ type JSONFileSnapshotter struct {
 	Filename string
 
 	ObservationPeriodTime      time.Duration
-	ObservationPeriodLedgerGap int64
+	ObservationPeriodLedgerGap uint32
 	MaxOpenExpiry              time.Duration
 	ChannelAccountKey          *keypair.FromAddress
 }

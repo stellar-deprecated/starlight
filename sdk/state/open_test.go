@@ -442,7 +442,7 @@ func TestChannel_OpenTx(t *testing.T) {
 	testTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: localChannelAccount.Address(), Sequence: 123456789},
 		BaseFee:       txnbuild.MinBaseFee,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
+		Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		Operations:    []txnbuild.Operation{&txnbuild.BumpSequence{}},
 	})
 	require.NoError(t, err)

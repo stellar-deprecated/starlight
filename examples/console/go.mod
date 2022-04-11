@@ -7,12 +7,14 @@ replace github.com/stellar/starlight/sdk => ../../sdk
 require (
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
-	github.com/stellar/go v0.0.0-20211104231909-68ccd74d8906
+	github.com/stellar/go v0.0.0-20220406183204-45b6f52202f3
 	github.com/stellar/starlight/sdk v0.0.0-00010101000000-000000000000
 )
 
 require (
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db // indirect
+	github.com/chzyer/logex v1.1.10 // indirect
+	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
@@ -35,7 +37,7 @@ require (
 	github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect

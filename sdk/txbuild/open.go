@@ -6,8 +6,8 @@ import (
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 type OpenParams struct {
@@ -31,23 +31,26 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 	// signer must reveal those signatures publicly when submitting the
 	// open transaction. This prevents the confirming signer from
 	// withholding signatures for the declaration and closing transactions.
-	extraSignerKeys := [2]xdr.SignerKey{}
-	err := extraSignerKeys[0].SetSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
-	if err != nil {
-		return nil, err
-	}
-	err = extraSignerKeys[1].SetSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
-	if err != nil {
-		return nil, err
-	}
-	extraSigners := []string{}
-	for _, k := range extraSignerKeys {
-		var a string
-		a, err = k.GetAddress()
+	extraSignerStrs := [2]string{}
+	{
+		extraSigner, err := strkey.NewSignedPayload(p.ConfirmingSigner.Address(), p.DeclarationTxHash[:])
 		if err != nil {
 			return nil, err
 		}
-		extraSigners = append(extraSigners, a)
+		extraSignerStrs[0], err = extraSigner.Encode()
+		if err != nil {
+			return nil, err
+		}
+	}
+	{
+		extraSigner, err := strkey.NewSignedPayload(p.ConfirmingSigner.Address(), p.CloseTxHash[:])
+		if err != nil {
+			return nil, err
+		}
+		extraSignerStrs[1], err = extraSigner.Encode()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tp := txnbuild.TransactionParams{
@@ -55,9 +58,11 @@ func Open(p OpenParams) (*txnbuild.Transaction, error) {
 			AccountID: p.InitiatorChannelAccount.Address(),
 			Sequence:  p.StartSequence,
 		},
-		BaseFee:      0,
-		Timebounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
-		ExtraSigners: extraSigners,
+		BaseFee: 0,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds:   txnbuild.NewTimebounds(0, p.ExpiresAt.UTC().Unix()),
+			ExtraSigners: extraSignerStrs[:],
+		},
 	}
 
 	// I sponsoring ledger entries on EI

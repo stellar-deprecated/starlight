@@ -29,7 +29,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const observationPeriodLedgerGap = uint32(observationPeriodTime / averageLedgerDuration)
 	const openExpiry = 5 * time.Minute
 
 	asset := state.NativeAsset
@@ -310,7 +310,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const observationPeriodLedgerGap = uint32(observationPeriodTime / averageLedgerDuration)
 	const openExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
@@ -522,7 +522,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const observationPeriodLedgerGap = uint32(observationPeriodTime / averageLedgerDuration)
 	const openExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
@@ -737,7 +737,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const observationPeriodLedgerGap = uint32(observationPeriodTime / averageLedgerDuration)
 	const openExpiry = 5 * time.Minute
 
 	asset, distributor := initAsset(t, client, "ABDC")
@@ -951,7 +951,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	// Channel constants.
 	const observationPeriodTime = 20 * time.Second
 	const averageLedgerDuration = 5 * time.Second
-	const observationPeriodLedgerGap = int64(observationPeriodTime / averageLedgerDuration)
+	const observationPeriodLedgerGap = uint32(observationPeriodTime / averageLedgerDuration)
 	const openExpiry = 5 * time.Minute
 
 	asset := state.NativeAsset
