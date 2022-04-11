@@ -74,14 +74,31 @@ func BuildResultMetaXDR(ledgerEntryResults []xdr.LedgerEntryData) (string, error
 
 type OpenResultMetaParams struct {
 	InitiatorSigner         string
+	InitiatorSignerWeight   uint32 // Defaults to 1 if not set.
 	ResponderSigner         string
+	ResponderSignerWeight   uint32 // Defaults to 1 if not set.
+	ExtraSigner             string
 	InitiatorChannelAccount string
 	ResponderChannelAccount string
+	Thresholds              xdr.Thresholds // Defaults to 0, 2, 2, 2 if not set.
 	StartSequence           int64
 	Asset                   txnbuild.Asset
+	TrustLineFlag           xdr.TrustLineFlags // Defaults to authorized flag.
 }
 
 func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
+	initiatorSignerWeight := uint32(1)
+	if params.InitiatorSignerWeight > 0 {
+		initiatorSignerWeight = params.InitiatorSignerWeight
+	}
+	responderSignerWeight := uint32(1)
+	if params.ResponderSignerWeight > 0 {
+		responderSignerWeight = params.ResponderSignerWeight
+	}
+	thresholds := xdr.Thresholds{0, 2, 2, 2}
+	if params.Thresholds != (xdr.Thresholds{}) {
+		thresholds = params.Thresholds
+	}
 	led := []xdr.LedgerEntryData{
 		{
 			Type: xdr.LedgerEntryTypeAccount,
@@ -91,14 +108,14 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 				Signers: []xdr.Signer{
 					{
 						Key:    xdr.MustSigner(params.InitiatorSigner),
-						Weight: 1,
+						Weight: xdr.Uint32(initiatorSignerWeight),
 					},
 					{
 						Key:    xdr.MustSigner(params.ResponderSigner),
-						Weight: 1,
+						Weight: xdr.Uint32(responderSignerWeight),
 					},
 				},
-				Thresholds: xdr.Thresholds{0, 2, 2, 2},
+				Thresholds: thresholds,
 			},
 		},
 		{
@@ -109,19 +126,33 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 				Signers: []xdr.Signer{
 					{
 						Key:    xdr.MustSigner(params.InitiatorSigner),
-						Weight: 1,
+						Weight: xdr.Uint32(initiatorSignerWeight),
 					},
 					{
 						Key:    xdr.MustSigner(params.ResponderSigner),
-						Weight: 1,
+						Weight: xdr.Uint32(responderSignerWeight),
 					},
 				},
-				Thresholds: xdr.Thresholds{0, 2, 2, 2},
+				Thresholds: thresholds,
 			},
 		},
 	}
+	if params.ExtraSigner != "" {
+		led[0].Account.Signers = append(led[0].Account.Signers, xdr.Signer{
+			Key:    xdr.MustSigner(params.ExtraSigner),
+			Weight: 1,
+		})
+		led[1].Account.Signers = append(led[0].Account.Signers, xdr.Signer{
+			Key:    xdr.MustSigner(params.ExtraSigner),
+			Weight: 1,
+		})
+	}
 
 	if !params.Asset.IsNative() {
+		trustlineFlag := xdr.TrustLineFlagsAuthorizedFlag
+		if params.TrustLineFlag != 0 {
+			trustlineFlag = params.TrustLineFlag
+		}
 		led = append(led, []xdr.LedgerEntryData{
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
@@ -129,7 +160,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 					AccountId: xdr.MustAddress(params.InitiatorChannelAccount),
 					Balance:   0,
 					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
-					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+					Flags:     xdr.Uint32(trustlineFlag),
 				},
 			},
 			{
@@ -138,7 +169,7 @@ func BuildOpenResultMetaXDR(params OpenResultMetaParams) (string, error) {
 					AccountId: xdr.MustAddress(params.ResponderChannelAccount),
 					Balance:   0,
 					Asset:     xdr.MustNewCreditAsset(params.Asset.GetCode(), params.Asset.GetIssuer()).ToTrustLineAsset(),
-					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+					Flags:     xdr.Uint32(trustlineFlag),
 				},
 			},
 		}...)
