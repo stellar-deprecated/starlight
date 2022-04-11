@@ -51,6 +51,7 @@ More details in the [README](https://github.com/stellar/starlight/tree/main/exam
 
 ## Get involved
 
+- [Discord](https://discord.gg/xGWRjyNzQh)
 - [Discussions](https://github.com/stellar/starlight/discussions)
 - [Demos](https://github.com/stellar/starlight/discussions/categories/demos)
 - [Getting Started](Getting%20Started.md)
@@ -64,7 +65,7 @@ More details in the [README](https://github.com/stellar/starlight/tree/main/exam
 
 ## Discussions
 
-
+- Live chat is on the `#starlight` channel in [Discord](https://discord.gg/xGWRjyNzQh)
 - Discussions about Starlight are on [GitHub Discussions](https://github.com/stellar/starlight/discussions)
 - Discussions about CAP-21 and CAP-40:
   - CAP-21 thread on the [stellar-dev mailing list](https://groups.google.com/g/stellar-dev/c/Wp7gNaJvt40)
