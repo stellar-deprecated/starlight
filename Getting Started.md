@@ -71,7 +71,7 @@ See the [console example](https://github.com/stellar/experimental-payment-channe
 
 The `examples/console` directory contains an example application that operates a payment channel between two participants over a TCP connection. Requires a network to be running with support for CAP-21 and CAP-40.
 
-See the [README](https://github.com/stellar/starlight/tree/readme/examples/console) for more details.
+See the [README](https://github.com/stellar/starlight/blob/main/examples/console/README.md) for more details.
 
 ## Manually inspect or build transactions
 
