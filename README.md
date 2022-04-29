@@ -28,20 +28,18 @@ The Starlight protocol, SDK, code in this repository, and any forks of other Ste
 
 ## Try it out
 
-The devnet is a development network with partial implementations of CAP-21 and
-CAP-40, required for the Starlight protocol. It is intended for convenient use
-with examples or testing. It has no uptime or data durability guarantees and a
-network reset occurs when deployed.
+Run a devnet locally which runs stellar-core, horizon and friendbot:
 
-Horizon: https://horizon-devnet-cap21and40.stellar.org  
-Network Passphrase: `Starlight Network; October 2021`
+```
+docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:testing --standalone
+```
 
 To run the example console application with the deployed devnet:
 
 ```
 git clone https://github.com/stellar/starlight
 cd examples/console
-go run . -horizon=http://horizon-devnet-cap21and40.stellar.org
+go run . -horizon=http://localhost:8000
 >>> help
 ```
 
