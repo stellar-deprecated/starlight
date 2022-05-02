@@ -52,6 +52,12 @@ func NewAgent(c Config) *Agent {
 
 		events: c.Events,
 	}
+	bufferReadyCloseOnce := sync.Once{}
+	agent.bufferReadyClose = func() {
+		bufferReadyCloseOnce.Do(func() {
+			close(agent.bufferReady)
+		})
+	}
 	agent.resetbuffer()
 	agent.sendingReady <- struct{}{}
 	go agent.flushLoop()
@@ -84,6 +90,7 @@ type Agent struct {
 	buffer            []BufferedPayment
 	bufferTotalAmount int64
 	bufferReady       chan struct{}
+	bufferReadyClose  func()
 	sendingReady      chan struct{}
 	idle              chan struct{}
 }
@@ -161,7 +168,7 @@ func (a *Agent) Wait() {
 func (a *Agent) DeclareClose() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	close(a.bufferReady)
+	a.bufferReadyClose()
 	return a.agent.DeclareClose()
 }
 
@@ -170,7 +177,7 @@ func (a *Agent) DeclareClose() error {
 func (a *Agent) Close() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	close(a.bufferReady)
+	a.bufferReadyClose()
 	return a.agent.Close()
 }
 
