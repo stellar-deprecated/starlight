@@ -13,7 +13,7 @@ import (
 var horizonURL = func() string {
 	url := os.Getenv("INTEGRATION_TESTS_HORIZON_URL")
 	if url == "" {
-		url = "http://localhost:8000"
+		url = "http://horizon-testnet.stellar.org"
 	}
 	return url
 }()
