@@ -48,7 +48,7 @@ var (
 
 func run() error {
 	showHelp := false
-	horizonURL := "http://localhost:8000"
+	horizonURL := "http://horizon-testnet.stellar.org"
 	signerKeyStr := "S..."
 	filename := ""
 	httpPort := ""
@@ -163,6 +163,8 @@ func run() error {
 
 			case agentpkg.ClosingEvent:
 				fmt.Fprintf(os.Stderr, "channel closing\n")
+			case agentpkg.ClosingWithOutdatedStateEvent:
+				fmt.Fprintf(os.Stderr, "channel closing with outdated state\n")
 			case agentpkg.ClosedEvent:
 				fmt.Fprintf(os.Stderr, "channel closed\n")
 			}

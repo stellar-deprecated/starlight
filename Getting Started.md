@@ -1,9 +1,16 @@
 # Getting Started
 
+- [Testing with testnet](#testing-with-testnet)
 - [Running your own devnet with CAP-21 and CAP-40](#running-your-own-devnet-with-cap-21-and-cap-40)
 - [Experiment with the prototype Starlight Go SDK](#experiment-with-the-prototype-starlight-go-sdk)
 - [Run the console example application](#run-the-console-example-application)
 - [Manually inspect or build transactions](#manually-inspect-or-build-transactions)
+
+## Testing with testnet
+
+The Stellar testnet has protocol 19 implemented:
+
+https://horizon-testnet.stellar.org
 
 ## Running your own devnet with CAP-21 and CAP-40
 
