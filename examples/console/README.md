@@ -10,15 +10,12 @@ This example is a rough example and is brittle and is still a work in progress.
 
 ## Usage
 
-Follow the [Getting Started](../../Getting%20Started.md) instructions to run a
-stellar-core and horizon with CAP-21 and CAP-40 capabilities.
-
 Run the example using the below commands.
 
 ```
 git clone https://github.com/stellar/starlight
 cd examples/console
-go run . -horizon=http://localhost:8000
+go run .
 ```
 
 Type `help` once in to discover commands to use.
@@ -31,7 +28,7 @@ tty device.
 
 Run these commands on the first terminal:
 ```
-$ go run . -horizon=http://localhost:8000
+$ go run .
 > listen :6000
 > open
 > deposit 100
@@ -41,7 +38,7 @@ $ go run . -horizon=http://localhost:8000
 
 Run these commands in the second terminal:
 ```
-$ go run . -horizon=http://localhost:8000
+$ go run .
 > connect :6000
 > deposit 80
 > pay 2

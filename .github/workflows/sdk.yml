@@ -56,11 +56,11 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     steps:
-    - name: "Stellar Quickstart w/ Protocol 19: Run"
-      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart:testing --standalone --enable-core-artificially-accelerate-time-for-testing
-    - name: "Stellar Quickstart w/ Protocol 19: Wait for Ready"
+    - name: "Stellar Quickstart: Run"
+      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart --standalone --enable-core-artificially-accelerate-time-for-testing
+    - name: "Stellar Quickstart: Wait for Ready"
       run: while ! [ "$(curl -s --fail localhost:8000 | jq '.history_latest_ledger')" -gt 0 ]; do echo waiting; sleep 1; done
-    - name: "Stellar Quickstart w/ Protocol 19: Details"
+    - name: "Stellar Quickstart: Details"
       run: curl localhost:8000
     - name: Checkout
       uses: actions/checkout@v2
@@ -73,3 +73,4 @@ jobs:
       run: go test -v -race -p=1 ./**/integrationtests
       env:
         INTEGRATION_TESTS: 1
+        INTEGRATION_TESTS_HORIZON_URL: http://localhost:8000

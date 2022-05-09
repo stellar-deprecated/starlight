@@ -16,11 +16,10 @@ Starlight is a prototype layer 2 payment channel protocol for the Stellar Networ
 
 This repository contains a experiments, prototypes, documents, and issues
 relating to implementing the Starlight protocol on the Stellar network.
-Protoypes here are dependent on Protocol 19 and Core Advancement Protocols, [CAP-21] and
-[CAP-40], that are not yet released. You can experiment with the
-Starlight protocol by using the devnet, or running a Stellar network in
-a docker container. To find out how, see [Getting
-Started](Getting%20Started.md).
+Protoypes here are dependent on Protocol 19 and Core Advancement Protocols,
+[CAP-21] and [CAP-40]. You can experiment with the Starlight protocol by using
+the testnet, or running a Stellar network in a docker container. To find out
+how, see [Getting Started](Getting%20Started.md).
 
 ![Diagram of two people opening a payment channel, transacting off-network, and closing the payment channel.](README-diagram.png)
 
@@ -28,18 +27,12 @@ The Starlight protocol, SDK, code in this repository, and any forks of other Ste
 
 ## Try it out
 
-Run a devnet locally which runs stellar-core, horizon and friendbot:
-
-```
-docker run --rm -it -p 8000:8000 --name stellar stellar/quickstart:testing --standalone
-```
-
-To run the example console application with the deployed devnet:
+Run the example console application with testnet:
 
 ```
 git clone https://github.com/stellar/starlight
 cd examples/console
-go run . -horizon=http://localhost:8000
+go run .
 >>> help
 ```
 
@@ -65,14 +58,10 @@ More details in the [README](https://github.com/stellar/starlight/tree/main/exam
 
 - Live chat is on the `#starlight` channel in [Discord](https://discord.gg/xGWRjyNzQh)
 - Discussions about Starlight are on [GitHub Discussions](https://github.com/stellar/starlight/discussions)
-- Discussions about CAP-21 and CAP-40:
-  - CAP-21 thread on the [stellar-dev mailing list](https://groups.google.com/g/stellar-dev/c/Wp7gNaJvt40)
-  - CAP-40 thread on the [stellar-dev mailing list](https://groups.google.com/g/stellar-dev/c/Wp7gNaJvt40)
-  - Live Protocol Meetings: https://www.youtube.com/playlist?list=PLmr3tp_7-7Gj9cTR5ieSaRHxiA2zItFyx
 
 ## Protocol 19
 
-The code in this repository is dependent on changes to the Stellar protocol coming in Protocol 19, specifically the changes described by [CAP-21] and [CAP-40]. Protocol 19 is in development.
+The code in this repository is dependent on changes to the Stellar protocol coming in Protocol 19, specifically the changes described by [CAP-21] and [CAP-40]. Protocol 19 is released.
 
 [CAP-21]: https://stellar.org/protocol/cap-21
 [CAP-40]: https://stellar.org/protocol/cap-40

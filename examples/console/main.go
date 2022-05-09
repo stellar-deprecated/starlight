@@ -48,7 +48,7 @@ var (
 
 func run() error {
 	showHelp := false
-	horizonURL := "http://localhost:8000"
+	horizonURL := "http://horizon-testnet.stellar.org"
 	signerKeyStr := "S..."
 	filename := ""
 	httpPort := ""
