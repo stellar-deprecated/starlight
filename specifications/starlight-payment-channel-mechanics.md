@@ -735,6 +735,18 @@ methods through which more than two participants can coordinate and exchange
 dependent agreements. These issues are likely to be discussed in separate
 proposals.
 
+## Rationale
+### Why use `extraSigners` and atomic signature disclosure instead of pre-authorized transactions?
+Using a preauth tx works too to some degree, however it creates a ledger entry, and any operation that creates a ledger entry has extra failure cases. The most relevant here is that lumens required for the entry. If those lumens are missing the tx will fail, but the tx will still have been included in the ledger and the sequence number will have been consumed on the source account. If the failed tx was the most recent close tx then the channel will be stuck unless the participants agree to sign a new set of txs, which could mean one party can hold the other part ransom.
+
+One of the proprieties of Starlight's protocol is that no ledger entries must be created for its operation once open.
+
+### Why use atomic signature disclosure instead of hashX `extraSigners`
+In order to generate a valid hashX signer for the `extraSigners` field in the Declaration transaction and thus reveal the Close signature you need the counter party to sign the Close transaction hash thus introducing an additional trip. Atomic signature disclosure reduces this two step process down to a one step process by effectively introducing a blank signature request of a payload vs requiring the payload be signed before the transaction can even be constructed.
+
+### Why use accounts vs claimable balances for storing channel balances
+// TODO
+
 ## Implementations
 
 Prototype implementation of these mechanics are in the `sdk/state` package of:
