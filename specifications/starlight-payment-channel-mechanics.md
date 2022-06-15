@@ -593,13 +593,13 @@ Changes in the networks base reserve do not impact the channel.
 
 The protocol does not, and must not, create new sponsorship of ledger entries
 while the channel is open. Any Stellar operation that creates a ledger entry
-depends on sponsorship and the transaction containing the operation may fail
-when being applied if the sponsorship cannot be satisfied. When the operation
-fails, the transaction containing it fails, consuming the sequence number of the
-transaction even though it was not successful. If the sequence number of the
-declaration or close transactions are consumed without being successful the
-channel may be in a state where participants would need to collaborate honestly
-to close the channel.
+depends on sponsorship may cause the transaction containing the operation to
+fail when being applied if the sponsorship cannot be satisfied. When the
+operation fails, the transaction containing it fails, consuming the sequence
+number of the transaction even though it was not successful. If the sequence
+number of the declaration or close transactions are consumed without being
+successful the channel may be in a state where participants would need to
+collaborate honestly to close the channel.
 
 This constraint is why the protocol does not use claimable balances or
 preauthorized transactions, as both features create ledger entries.
