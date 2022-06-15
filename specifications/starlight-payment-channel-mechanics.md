@@ -601,7 +601,8 @@ declaration or close transactions are consumed without being successful the
 channel may be in a state where participants would need to collaborate honestly
 to close the channel.
 
-This constraint is why the protocol does not use claimable balances or preauthorized transactions, as both features create ledger entries.
+This constraint is why the protocol does not use claimable balances or
+preauthorized transactions, as both features create ledger entries.
 
 ### Transaction Signing Order
 
