@@ -727,7 +727,7 @@ transaction's signature. However, there is no efficient method to prove that a
 `HASH_X` signer is the hash of a valid signature of the close transaction which
 introduces some uncertainty for the payer participant. Also, exchanging the hash
 would need to occur prior to the agreement signatures being exchanged,
-introducing additional messages reducing on-the-wire efficiency.
+introducing additional messages and reducing on-the-wire efficiency.
 
 ### Queueing Multiple Payments
 
