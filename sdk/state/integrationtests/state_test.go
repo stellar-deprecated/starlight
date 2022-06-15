@@ -35,7 +35,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	asset := state.NativeAsset
 	// native asset has no asset limit
 	rootResp, err := client.Root()
-	require.NoError(t, err)
+	requireNoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
 	initiator, responder := initAccounts(t, AssetParam{
 		Asset:       asset,
@@ -62,7 +62,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(openExpiry),
 		StartingSequence:           s,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -70,7 +70,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	{
 		// R signs, R is done
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -80,7 +80,7 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -91,34 +91,34 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 	{
 		di, ci, err := initiatorChannel.CloseTxs()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		declarationTxs = append(declarationTxs, di)
 		closeTxs = append(closeTxs, ci)
 
 		fi, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      fi,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	{
 		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		ftxXDR, err := ftx.Base64()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:         initiator.KP.Address(),
 			ResponderSigner:         responder.KP.Address(),
@@ -127,19 +127,19 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 			StartSequence:           s,
 			Asset:                   txnbuild.NativeAsset{},
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		cs, err := initiatorChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 
 		cs, err = responderChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 	}
 
@@ -184,19 +184,19 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 
 		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
 		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Sender: stores receiver's signatures
 		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Record the close tx's at this point in time.
 		di, ci, err := sendingChannel.CloseTxs()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		declarationTxs = append(declarationTxs, di)
 		closeTxs = append(closeTxs, ci)
 
@@ -214,12 +214,12 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 			FeeAccount: responder.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		t.Log("Responder - Submitting Declaration:", oldD.SourceAccount().Sequence)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		go func() {
 			oldC := closeTxs[oldIteration]
 			for {
@@ -228,9 +228,9 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 					FeeAccount: responder.KP.Address(),
 					BaseFee:    txnbuild.MinBaseFee,
 				})
-				require.NoError(t, err)
+				requireNoError(t, err)
 				fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-				require.NoError(t, err)
+				requireNoError(t, err)
 				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
 					t.Log("Responder - Submitting:", oldC.SourceAccount().Sequence, "Success")
@@ -248,19 +248,19 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	t.Log("Good participant (initiator) closing channel at latest iteration...")
 	{
 		lastD, lastC, err := initiatorChannel.CloseTxs()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      lastD,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		t.Log("Initiator - Submitting Declaration:", lastD.SourceAccount().Sequence)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		go func() {
 			defer close(done)
 			for {
@@ -269,11 +269,11 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 					FeeAccount: initiator.KP.Address(),
 					BaseFee:    txnbuild.MinBaseFee,
 				})
-				require.NoError(t, err)
+				requireNoError(t, err)
 				fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-				require.NoError(t, err)
+				requireNoError(t, err)
 				lastCHash, err := lastC.HashHex(networkPassphrase)
-				require.NoError(t, err)
+				requireNoError(t, err)
 				_, err = client.SubmitFeeBumpTransaction(fbtx)
 				if err == nil {
 					t.Log("Initiator - Submitting Close:", lastCHash, lastC.SourceAccount().Sequence, "Success")
@@ -297,12 +297,12 @@ func TestOpenUpdatesUncoordinatedClose(t *testing.T) {
 	// check final channel account fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.ChannelAccount.Address()}
 	responderChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, responderChannelAccountResponse.Balances[0].Balance, amount.StringFromInt64(rBalanceCheck))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.ChannelAccount.Address()}
 	initiatorChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, initiatorChannelAccountResponse.Balances[0].Balance, amount.StringFromInt64(iBalanceCheck))
 }
 
@@ -335,7 +335,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 		ExpiresAt:                  time.Now().Add(openExpiry),
 		StartingSequence:           s,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -343,7 +343,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 	{
 		// R signs, R is done
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -353,7 +353,7 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 
 		// I stores the signatures, I is done.
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -364,29 +364,29 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 
 	{
 		fi, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      fi,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	{
 		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		ftxXDR, err := ftx.Base64()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:         initiator.KP.Address(),
 			ResponderSigner:         responder.KP.Address(),
@@ -395,19 +395,19 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 			StartSequence:           s,
 			Asset:                   txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		cs, err := initiatorChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 
 		cs, err = responderChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 	}
 
@@ -448,73 +448,73 @@ func TestOpenUpdatesCoordinatedCloseStartCloseThenCoordinate(t *testing.T) {
 
 		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
 		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Sender: stores the receivers signatures
 		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	// Coordinated Close
 	t.Log("Begin coordinated close process ...")
 	t.Log("Initiator submitting latest declaration transaction")
 	lastD, _, err := initiatorChannel.CloseTxs()
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      lastD,
 		FeeAccount: initiator.KP.Address(),
 		BaseFee:    txnbuild.MinBaseFee,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	_, err = client.SubmitFeeBumpTransaction(fbtx)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	t.Log("Initiator proposes a coordinated close")
 	ca, err := initiatorChannel.ProposeClose()
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	ca, err = responderChannel.ConfirmClose(ca.Envelope)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
 	_, txCoordinated, err := initiatorChannel.CloseTxs()
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
 		FeeAccount: initiator.KP.Address(),
 		BaseFee:    txnbuild.MinBaseFee,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	_, err = client.SubmitFeeBumpTransaction(fbtx)
 	if err != nil {
 		hErr := horizonclient.GetError(err)
 		t.Log("Submitting Close:", txCoordinated.SourceAccount().Sequence, "Error:", err)
 		t.Log(hErr.ResultString())
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 	t.Log("Coordinated close successful")
 
 	// check final channel account fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.ChannelAccount.Address()}
 	responderChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderChannelAccountResponse))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.ChannelAccount.Address()}
 	initiatorChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorChannelAccountResponse))
 }
 
@@ -548,7 +548,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 		StartingSequence:           s,
 	})
 
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -557,7 +557,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 	{
 		// R signs txClose and txDecl
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -567,7 +567,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -578,29 +578,29 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 	{
 		fi, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      fi,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	{
 		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		ftxXDR, err := ftx.Base64()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:         initiator.KP.Address(),
 			ResponderSigner:         responder.KP.Address(),
@@ -609,19 +609,19 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 			StartSequence:           s,
 			Asset:                   txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		cs, err := initiatorChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 
 		cs, err = responderChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 	}
 
@@ -662,15 +662,15 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
 		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Sender: stores the signatures from receiver
 		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	// Coordinated Close
@@ -678,58 +678,58 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartClose(t *testing.T) {
 
 	t.Log("Initiator proposes a coordinated close")
 	ca, err := initiatorChannel.ProposeClose()
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	ca, err = responderChannel.ConfirmClose(ca.Envelope)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	t.Log("Initiator submitting latest declaration transaction")
 	lastD, _, err := initiatorChannel.CloseTxs()
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      lastD,
 		FeeAccount: initiator.KP.Address(),
 		BaseFee:    txnbuild.MinBaseFee,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	_, err = client.SubmitFeeBumpTransaction(fbtx)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	t.Log("Initiator closing channel with new coordinated close transaction")
 	_, txCoordinated, err := initiatorChannel.CloseTxs()
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
 		FeeAccount: initiator.KP.Address(),
 		BaseFee:    txnbuild.MinBaseFee,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	_, err = client.SubmitFeeBumpTransaction(fbtx)
 	if err != nil {
 		hErr := horizonclient.GetError(err)
 		t.Log("Submitting Close:", txCoordinated.SourceAccount().Sequence, "Error:", err)
 		t.Log(hErr.ResultString())
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 	t.Log("Coordinated close successful")
 
 	// check final channel account fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.ChannelAccount.Address()}
 	responderChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderChannelAccountResponse))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.ChannelAccount.Address()}
 	initiatorChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorChannelAccountResponse))
 }
 
@@ -763,7 +763,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 		StartingSequence:           s,
 	})
 
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 	assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -771,7 +771,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 	{
 		// R signs
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -781,7 +781,7 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 
 		// I receives the signatures, I is done
 		open, err = initiatorChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Declaration)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Close)
 		assert.NotEmpty(t, open.Envelope.ProposerSignatures.Open)
@@ -792,29 +792,29 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 
 	{
 		fi, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      fi,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	{
 		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		ftxXDR, err := ftx.Base64()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:         initiator.KP.Address(),
 			ResponderSigner:         responder.KP.Address(),
@@ -823,19 +823,19 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 			StartSequence:           s,
 			Asset:                   txnbuild.CreditAsset{Code: asset.Code(), Issuer: asset.Issuer()},
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		cs, err := initiatorChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 
 		cs, err = responderChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 	}
 
@@ -876,15 +876,15 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 
 		// Sender: creates new Payment, signs, sends to other party
 		payment, err := sendingChannel.ProposePayment(amount)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Receiver: receives new payment, validates, then confirms by signing
 		payment, err = receivingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		// Sender: stores signatures from receiver
 		_, err = sendingChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	// Coordinated Close
@@ -892,58 +892,58 @@ func TestOpenUpdatesCoordinatedCloseCoordinateThenStartCloseByRemote(t *testing.
 
 	t.Log("Initiator proposes a coordinated close")
 	ca, err := initiatorChannel.ProposeClose()
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	ca, err = responderChannel.ConfirmClose(ca.Envelope)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	_, err = initiatorChannel.ConfirmClose(ca.Envelope)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	t.Log("Responder submitting latest declaration transaction")
 	lastD, _, err := responderChannel.CloseTxs()
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      lastD,
 		FeeAccount: responder.KP.Address(),
 		BaseFee:    txnbuild.MinBaseFee,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	_, err = client.SubmitFeeBumpTransaction(fbtx)
-	require.NoError(t, err)
+	requireNoError(t, err)
 
 	t.Log("Responder closing channel with new coordinated close transaction")
 	_, txCoordinated, err := responderChannel.CloseTxs()
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      txCoordinated,
 		FeeAccount: responder.KP.Address(),
 		BaseFee:    txnbuild.MinBaseFee,
 	})
-	require.NoError(t, err)
+	requireNoError(t, err)
 	fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	_, err = client.SubmitFeeBumpTransaction(fbtx)
 	if err != nil {
 		hErr := horizonclient.GetError(err)
 		t.Log("Submitting Close:", txCoordinated.SourceAccount().Sequence, "Error:", err)
 		t.Log(hErr.ResultString())
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 	t.Log("Coordinated close successful")
 
 	// check final channel account fund amounts are correct
 	accountRequest := horizonclient.AccountRequest{AccountID: responder.ChannelAccount.Address()}
 	responderChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(rBalanceCheck), assetBalance(asset, responderChannelAccountResponse))
 
 	accountRequest = horizonclient.AccountRequest{AccountID: initiator.ChannelAccount.Address()}
 	initiatorChannelAccountResponse, err := client.AccountDetail(accountRequest)
-	require.NoError(t, err)
+	requireNoError(t, err)
 	assert.Equal(t, amount.StringFromInt64(iBalanceCheck), assetBalance(asset, initiatorChannelAccountResponse))
 }
 
@@ -957,7 +957,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	asset := state.NativeAsset
 	// native asset has no asset limit
 	rootResp, err := client.Root()
-	require.NoError(t, err)
+	requireNoError(t, err)
 	distributor := keypair.Master(rootResp.NetworkPassphrase).(*keypair.Full)
 	initiator, responder := initAccounts(t, AssetParam{
 		Asset:       asset,
@@ -980,34 +980,34 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			ExpiresAt:                  time.Now().Add(openExpiry),
 			StartingSequence:           s,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		open, err = responderChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = initiatorChannel.ConfirmOpen(open.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		tx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      tx,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	{
 		t.Log("Initiator and Responder channels ingest the open tx ...")
 		ftx, err := initiatorChannel.OpenTx()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		ftxXDR, err := ftx.Base64()
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		successResultXDR, err := txbuildtest.BuildResultXDR(true)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		resultMetaXDR, err := txbuildtest.BuildOpenResultMetaXDR(txbuildtest.OpenResultMetaParams{
 			InitiatorSigner:         initiator.KP.Address(),
 			ResponderSigner:         responder.KP.Address(),
@@ -1016,19 +1016,19 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			StartSequence:           s,
 			Asset:                   txnbuild.NativeAsset{},
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		err = initiatorChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		err = responderChannel.IngestTx(1, ftxXDR, successResultXDR, resultMetaXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		cs, err := initiatorChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 
 		cs, err = responderChannel.State()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, state.StateOpen, cs)
 	}
 
@@ -1041,19 +1041,19 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	// Perform a transaction.
 	{
 		payment, err := initiatorChannel.ProposePayment(8)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		payment, err = responderChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = initiatorChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 	}
 
 	// Perform another transaction.
 	{
 		payment, err := initiatorChannel.ProposePayment(2)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = responderChannel.ConfirmPayment(payment.Envelope)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		// Pretend the responder doesn't pass back their response to the
 		// initiator. The initiator never sees their signatures, so the
 		// initiator never calls confirm payment with the responders signature.
@@ -1073,7 +1073,7 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 
 		{
 			declTx, _, err := responderChannel.CloseTxs()
-			require.NoError(t, err)
+			requireNoError(t, err)
 			declHash, _ := declTx.HashHex(networkPassphrase)
 			t.Log("Responder tries to submit the declaration without disclosing signatures of the close tx:", declHash)
 			declTxXDR := declTx.ToXDR()
@@ -1084,9 +1084,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 			// does not occur.
 			declTxXDR.V1.Signatures = declTxXDR.V1.Signatures[:2]
 			declTxModified64, err := xdr.MarshalBase64(declTxXDR)
-			require.NoError(t, err)
+			requireNoError(t, err)
 			declTxModifiedEnv, err := txnbuild.TransactionFromXDR(declTxModified64)
-			require.NoError(t, err)
+			requireNoError(t, err)
 			declTxModified, ok := declTxModifiedEnv.Transaction()
 			require.True(t, ok)
 			// Submit the modified declaration transaction and confirm.
@@ -1095,23 +1095,23 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 				FeeAccount: responder.KP.Address(),
 				BaseFee:    txnbuild.MinBaseFee,
 			})
-			require.NoError(t, err)
+			requireNoError(t, err)
 			fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-			require.NoError(t, err)
+			requireNoError(t, err)
 			_, err = client.SubmitFeeBumpTransaction(fbtx)
 			require.Error(t, err)
 			resultsStr, err := horizonclient.GetError(err).ResultString()
-			require.NoError(t, err)
+			requireNoError(t, err)
 			results := xdr.TransactionResult{}
 			_, err = xdr.Unmarshal(base64.NewDecoder(base64.StdEncoding, strings.NewReader(resultsStr)), &results)
-			require.NoError(t, err)
+			requireNoError(t, err)
 			require.Equal(t, xdr.TransactionResultCodeTxBadAuth, results.Result.InnerResultPair.Result.Result.Code)
 			t.Log("Responder failed to submit tx, result:", results.Result.InnerResultPair.Result.Result.Code)
 		}
 
 		{
 			declTx, closeTx, err := responderChannel.CloseTxs()
-			require.NoError(t, err)
+			requireNoError(t, err)
 			declHash, _ := declTx.HashHex(networkPassphrase)
 			t.Log("Responder tries to submit the declaration with all signatures:", declHash)
 			t.Log("Responder submits the declaration:", declHash)
@@ -1120,11 +1120,11 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 				FeeAccount: responder.KP.Address(),
 				BaseFee:    txnbuild.MinBaseFee,
 			})
-			require.NoError(t, err)
+			requireNoError(t, err)
 			fbtx, err = fbtx.Sign(networkPassphrase, responder.KP)
-			require.NoError(t, err)
+			requireNoError(t, err)
 			_, err = client.SubmitFeeBumpTransaction(fbtx)
-			require.NoError(t, err)
+			requireNoError(t, err)
 			t.Log("Responder succeeds in submitting declaration")
 			closeHash, _ := closeTx.HashHex(networkPassphrase)
 			t.Log("Responder does not submit the close:", closeHash)
@@ -1139,9 +1139,9 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 		placeholderXDR := "AAAAAgAAAAIAAAADABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAAKAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABABArWwAAAAAAAAAAWPnYf+6kQN3t44vgesQdWh4JOOPj7aer852I7RJhtzAAAAAWg8TZOwANrPwAAAALAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAD/39AAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABdjSVwcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAAD49aUpVx7fhJPK6wDdlPJgkA1HkAi85qUL1tii8YSZzQAAABee5CYcAA/8sgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABaDxNk7AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAECtbAAAAAAAAAABY+dh/7qRA3e3ji+B6xB1aHgk44+Ptp6vznYjtEmG3MAAAABZIKg87AA2s/AAAAAsAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="
 		validResultXDR := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
 		broadcastedTxXDR, err := broadcastedTx.Base64()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		err = initiatorChannel.IngestTx(2, broadcastedTxXDR, validResultXDR, placeholderXDR)
-		require.NoError(t, err)
+		requireNoError(t, err)
 
 		t.Log("Initiator found signature:", base64.StdEncoding.EncodeToString(initiatorChannel.LatestCloseAgreement().Envelope.ConfirmerSignatures.Close))
 
@@ -1150,15 +1150,15 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 
 		t.Log("Initiator submits close")
 		_, closeTx, err := initiatorChannel.CloseTxs()
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 			Inner:      closeTx,
 			FeeAccount: initiator.KP.Address(),
 			BaseFee:    txnbuild.MinBaseFee,
 		})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		fbtx, err = fbtx.Sign(networkPassphrase, initiator.KP)
-		require.NoError(t, err)
+		requireNoError(t, err)
 		_, err = client.SubmitFeeBumpTransaction(fbtx)
 		if !assert.NoError(t, err) {
 			t.Log(horizonclient.GetError(err).ResultString())
@@ -1170,12 +1170,12 @@ func TestOpenUpdatesUncoordinatedClose_recieverNotReturningSigs(t *testing.T) {
 	{
 		// Initiator should be down 10 (0.0000010).
 		initiatorChannelAccountResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: initiator.ChannelAccount.Address()})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, "999.9999990", assetBalance(asset, initiatorChannelAccountResponse))
 
 		// Responder should be up 10 (0.0000010).
 		responderChannelAccountResponse, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: responder.ChannelAccount.Address()})
-		require.NoError(t, err)
+		requireNoError(t, err)
 		assert.Equal(t, "1000.0000010", assetBalance(asset, responderChannelAccountResponse))
 	}
 }

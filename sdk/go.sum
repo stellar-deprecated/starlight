@@ -47,6 +47,8 @@ github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca h1:oR/RycYTFTVXzND5r
 github.com/sirupsen/logrus v1.4.1 h1:GL2rEmy6nsikmW0r8opw9JIRScdMF5hA8cOYLH7In1k=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/stellar/go v0.0.0-20220406183204-45b6f52202f3 h1:PLVF895y1tGeDj1L2Wzocl6Vn60zYCSAKtuATczbLYc=
+github.com/stellar/go v0.0.0-20220419042134-9f968df09eda h1:wIBsNGn+W8ZjFFY5ScqU2p1IDsCOSp9eUtC0+FYqikE=
+github.com/stellar/go v0.0.0-20220419042134-9f968df09eda/go.mod h1:XDw7zGAJCmEuZVmcr7PvLioASsqQRN80dL+OkOxV50A=
 github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee h1:fbVs0xmXpBvVS4GBeiRmAE3Le70ofAqFMch1GTiq/e8=
 github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee/go.mod h1:yoxyU/M8nl9LKeWIoBrbDPQ7Cy+4jxRcWcOayZ4BMps=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
