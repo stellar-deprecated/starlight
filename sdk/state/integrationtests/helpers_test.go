@@ -164,7 +164,7 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 	require.NoError(t, err)
 
 	var distributor horizon.Account
-	err = retry(t, 5, func() error {
+	err = retry(t, 2, func() error {
 		distributor, err = client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
 		return err
 	})
