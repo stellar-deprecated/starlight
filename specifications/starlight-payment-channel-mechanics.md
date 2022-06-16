@@ -589,6 +589,20 @@ Changes in the networks base reserve do not impact the channel.
 
 ## Security Concerns
 
+### Sponsoring Ledger Entries
+
+The protocol does not, and must not, create new sponsorship of ledger entries
+while the channel is open. Any Stellar operation that creates a ledger entry
+depends on sponsorship may fail when being applied if the sponsorship cannot be
+satisfied. When the operation fails, the transaction containing it fails,
+consuming the sequence number of the transaction even though it was not
+successful. If the sequence number of the declaration or close transactions are
+consumed without being successful the channel may be in a state where
+participants would need to collaborate honestly to close the channel.
+
+This constraint is why the protocol does not use claimable balances or
+preauthorized transactions, as both features create ledger entries.
+
 ### Transaction Signing Order
 
 In many of the processes outlined in the protocol an order is provided to when
@@ -689,7 +703,7 @@ liabilities are the sum of all selling offers for the asset and therefore
 represent the maximum amount the balance could be reduced if all offers were
 consumed.
 
-### Transaction Signature Disclosure
+### Atomic Transaction Signature Disclosure
 
 Processes that require the signing of multiple transactions make use of an
 ed25519 signed payload signer proposed in [CAP-40] and the `extraSigners`
@@ -703,6 +717,17 @@ share the signatures. If a participant fails to do this the other participant
 could submit a subset of the transactions required by the process and the
 participant will not have any other capability to authorize and submit the
 remaining transactions.
+
+It may be observed that it could be possible to create a link between multiple
+transactions by using other mechanisms on the Stellar network by using hash
+locks, such as the `HASH_X` signer. For example, it has been previously proposed
+that a `HASH_X` signer of the close transaction's signature could be included in
+the declaration transaction's `extraSigners` requiring the reveal of the close
+transaction's signature. However, there is no efficient method to prove that a
+`HASH_X` signer is the hash of a valid signature of the close transaction which
+introduces some uncertainty for the payer participant. Also, exchanging the hash
+would need to occur prior to the agreement signatures being exchanged,
+introducing additional messages and reducing on-the-wire efficiency.
 
 ### Queueing Multiple Payments
 
