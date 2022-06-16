@@ -33,7 +33,7 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 	t.Log("Initiator:", initiator.KP.Address())
 	t.Log("Initiator ChannelAccount:", initiator.ChannelAccount.Address())
 	{
-		err := retry(t, 2, func() error { return createAccount(initiator.KP.FromAddress(), 10_000_0000000) })
+		err := retry(t, 2, func() error { return createAccount(initiator.KP.FromAddress()) })
 		require.NoError(t, err)
 		err = retry(t, 2, func() error {
 			return fundAsset(assetParam.Asset, initiator.Contribution, initiator.KP, assetParam.Distributor)
@@ -55,7 +55,7 @@ func initAccounts(t *testing.T, assetParam AssetParam) (initiator Participant, r
 	t.Log("Responder:", responder.KP.Address())
 	t.Log("Responder ChannelAccount:", responder.ChannelAccount.Address())
 	{
-		err := retry(t, 2, func() error { return createAccount(responder.KP.FromAddress(), 10_000_0000000) })
+		err := retry(t, 2, func() error { return createAccount(responder.KP.FromAddress()) })
 		require.NoError(t, err)
 		err = retry(t, 2, func() error {
 			return fundAsset(assetParam.Asset, responder.Contribution, responder.KP, assetParam.Distributor)
@@ -158,12 +158,16 @@ func initAsset(t *testing.T, client horizonclient.ClientInterface, code string) 
 	issuerKP := keypair.MustRandom()
 	distributorKP := keypair.MustRandom()
 
-	err := retry(t, 2, func() error { return createAccount(issuerKP.FromAddress(), 1_000_0000000) })
+	err := retry(t, 2, func() error { return createAccount(issuerKP.FromAddress()) })
 	require.NoError(t, err)
-	err = retry(t, 2, func() error { return createAccount(distributorKP.FromAddress(), 1_000_0000000) })
+	err = retry(t, 2, func() error { return createAccount(distributorKP.FromAddress()) })
 	require.NoError(t, err)
 
-	distributor, err := client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
+	var distributor horizon.Account
+	err = retry(t, 2, func() error {
+		distributor, err = client.AccountDetail(horizonclient.AccountRequest{AccountID: distributorKP.Address()})
+		return err
+	})
 	require.NoError(t, err)
 
 	asset := txnbuild.CreditAsset{Code: code, Issuer: issuerKP.Address()}
@@ -275,7 +279,15 @@ func fundAsset(asset state.Asset, amount int64, accountKP *keypair.Full, distrib
 	return nil
 }
 
-func createAccount(account *keypair.FromAddress, startingBalance int64) error {
+func createAccount(account *keypair.FromAddress) error {
+	// Try to fund via the fund endpoint first.
+	_, err := client.Fund(account.Address())
+	if err == nil {
+		return nil
+	}
+
+	// Otherwise, fund via the root account.
+	startingBalance := int64(1_000_0000000)
 	rootResp, err := client.Root()
 	if err != nil {
 		return err

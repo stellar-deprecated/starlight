@@ -42,7 +42,7 @@ func Close(p CloseParams) (*txnbuild.Transaction, error) {
 		BaseFee: 0,
 		Preconditions: txnbuild.Preconditions{
 			TimeBounds:                 txnbuild.NewInfiniteTimeout(),
-			MinSequenceNumberAge:       int64(p.ObservationPeriodTime.Seconds()),
+			MinSequenceNumberAge:       uint64(p.ObservationPeriodTime.Seconds()),
 			MinSequenceNumberLedgerGap: p.ObservationPeriodLedgerGap,
 		},
 		Operations: []txnbuild.Operation{
