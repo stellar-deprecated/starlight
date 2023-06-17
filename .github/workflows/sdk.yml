@@ -18,7 +18,7 @@ jobs:
         with:
           go-version: 1
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@5c56cd6c9dc07901af25baab6f2b0d9f3b7c3018
+        uses: golangci/golangci-lint-action@2dcd82f331c9e834f283075b23ef289435be9354
         with:
           version: v1.45.2
           working-directory: sdk
