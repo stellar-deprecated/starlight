@@ -22,7 +22,7 @@ jobs:
         with:
           version: v1.45.2
           working-directory: examples/console
-skip-go-installation: true
+          skip-go-installation: true
 
   build:
     runs-on: ubuntu-latest
