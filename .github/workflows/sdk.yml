@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: "Stellar Quickstart: Run"
-      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart --standalone --enable-core-artificially-accelerate-time-for-testing
+      run: docker run -d -p 8000:8000 --name stellar stellar/quickstart --local
     - name: "Stellar Quickstart: Wait for Ready"
       run: while ! [ "$(curl -s --fail localhost:8000 | jq '.history_latest_ledger')" -gt 0 ]; do echo waiting; sleep 1; done
     - name: "Stellar Quickstart: Details"
