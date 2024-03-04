@@ -108,7 +108,7 @@ func (s *stats) AgreementsPerSecond() float64 {
 	if timeFinish.IsZero() {
 		timeFinish = time.Now()
 	}
-	duration := s.timeFinish.Sub(s.timeStart)
+	duration := timeFinish.Sub(s.timeStart)
 	rate := float64(s.agreementsSent+s.agreementsReceived) / duration.Seconds()
 	if math.IsNaN(rate) || math.IsInf(rate, 0) {
 		rate = 0

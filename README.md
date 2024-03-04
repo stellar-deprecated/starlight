@@ -42,7 +42,7 @@ More details in the [README](https://github.com/stellar/starlight/tree/main/exam
 
 ## Get involved
 
-- [Discord](https://discord.gg/xGWRjyNzQh)
+- [Discord](https://discord.gg/stellardev)
 - [Discussions](https://github.com/stellar/starlight/discussions)
 - [Demos](https://github.com/stellar/starlight/discussions/categories/demos)
 - [Getting Started](Getting%20Started.md)
