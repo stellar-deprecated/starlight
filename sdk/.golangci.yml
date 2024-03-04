@@ -3,8 +3,6 @@ linters:
   enable:
     - gofmt
     - gofumpt
-  disable:
-    - gocritic
 
 linters-settings:
   govet:
